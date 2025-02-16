@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
-import  SignIn  from "./custom/SignIn"
+import  SignIn  from "./ui-comp/SignIn"
+import FullPage from "./ui-comp/FullPage"
 export default function Home() {
   return (
     <div>

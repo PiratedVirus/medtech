@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "storybook": "concurrently \"npm run watch:storybook\" \"npm run watch:build:css\"",
+    "watch:storybook": "storybook dev -p 6006",
+    "watch:build:css": "tailwindcss -i ./app/globals.css -o ./styles/globals.css",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.0",
@@ -37,18 +41,21 @@
     "@radix-ui/react-toggle": "^1.1.2",
     "@radix-ui/react-toggle-group": "^1.1.2",
     "@radix-ui/react-tooltip": "^1.1.8",
+    "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
-    "date-fns": "^4.1.0",
+    "concurrently": "^9.1.2",
+    "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.5.2",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.475.0",
     "next": "15.1.7",
     "next-themes": "^0.4.4",
-    "react": "^19.0.0",
+    "postcss-loader": "^8.1.1",
+    "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
-    "react-dom": "^19.0.0",
+    "react-dom": "^18.3.1",
     "react-hook-form": "^7.54.2",
     "react-resizable-panels": "^2.1.7",
     "recharts": "^2.15.1",
@@ -59,14 +66,32 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@chromatic-com/storybook": "^3.2.4",
     "@eslint/eslintrc": "^3",
+    "@storybook/addon-essentials": "^8.5.6",
+    "@storybook/addon-interactions": "^8.5.6",
+    "@storybook/addon-onboarding": "^8.5.6",
+    "@storybook/addon-styling-webpack": "^1.0.1",
+    "@storybook/addon-webpack5-compiler-swc": "^2.1.0",
+    "@storybook/blocks": "^8.5.6",
+    "@storybook/nextjs": "^8.5.6",
+    "@storybook/react": "^8.5.6",
+    "@storybook/react-webpack5": "^8.5.6",
+    "@storybook/test": "^8.5.6",
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/react": "^18.0.28",
+    "@types/react-dom": "^18.0.11",
     "eslint": "^9",
     "eslint-config-next": "15.1.7",
+    "eslint-plugin-storybook": "^0.11.3",
     "postcss": "^8",
+    "storybook": "^8.5.6",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "eslintConfig": {
+    "extends": [
+      "plugin:storybook/recommended"
+    ]
   }
 }
