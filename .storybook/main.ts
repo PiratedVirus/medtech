@@ -14,6 +14,7 @@ const config: StorybookConfig = {
     "@storybook/addon-interactions",
     "@storybook/addon-styling-webpack"
   ],
+  staticDirs: ["../public"],
   framework: '@storybook/nextjs',
   webpackFinal: async (config) => {
     config.resolve = {

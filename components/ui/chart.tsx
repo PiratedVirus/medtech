@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import * as RechartsPrimitive from "recharts"
-
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { cn } from "@/lib/utils"
 
 // Format: { THEME_NAME: CSS_SELECTOR }
@@ -362,4 +362,22 @@ export {
   ChartLegend,
   ChartLegendContent,
   ChartStyle,
+}
+export const AreaChart = ({ data, className, showXAxis, showYAxis, showGridLines, lineColor, ...props }: { data: any[], className?: string, showXAxis?: boolean, showYAxis?: boolean, lineColor?: string, showGridLines?: boolean }) => {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart width={500} height={100} data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }} {...props}>
+        {showGridLines && <CartesianGrid strokeDasharray="3 3" />}
+        {showXAxis && <XAxis dataKey="name" />}
+        {showYAxis && <YAxis />}
+        <Tooltip />
+        <Line type="monotone" dataKey="value" stroke={lineColor} />
+        {/* <Legend /> */}
+      </LineChart>
+    </ResponsiveContainer>
+  )
+}
+
+export const Area = ({ dataKey, ...props }: { dataKey: string; [key: string]: any }) => {
+  return <Line type="monotone" dataKey={dataKey} {...props} />
 }

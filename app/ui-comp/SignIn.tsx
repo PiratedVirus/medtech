@@ -1,6 +1,4 @@
 "use client"
-
-import React  from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Lato } from "next/font/google"
@@ -14,8 +12,8 @@ const lato = Lato({
 
 export default function SignIn() {
   return (
-    <div className={`${lato.variable} font-sans min-h-screen flex items-center justify-center p-6 bg-white`}>
-      <div className="w-full max-w-[440px] space-y-16">
+    <div className={`${lato.variable} font-sans flex items-center justify-center p-6 h-full bg-[#f9fafb]`}>
+      <div className="w-full max-w-[400px] space-y-16">
         {/* Sign in header */}
         <div className="text-center">
           <h1 className="text-custom-green text-2xl font-normal">Sign in</h1>
@@ -38,7 +36,7 @@ export default function SignIn() {
           </div>
 
           {/* Get OTP Button */}
-          <Button className="w-full bg-custom-orange hover:bg-custom-orange/95 text-white rounded-[16px] h-14 text-xl font-normal shadow-custom">
+          <Button className="w-full h-14 bg-[#f28a2e] rounded-lg shadow-[0px_12px_21px_4px_rgba(224,126,41,0.33)]">
             Get OTP
           </Button>
 
