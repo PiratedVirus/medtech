@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import Header from "../ui-comp/Header";
+import Header from "../../components/ui/custom/cd-header";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (

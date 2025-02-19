@@ -1,20 +1,26 @@
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import SignIn from "./ui-comp/SignIn"
-import FullPage from "./ui-comp/FullPage"
-import GDMCard from "./ui-comp/BookingCard"
-import HealthInsightsCard from "./ui-comp/HealthInsightsCard"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+
 export default function Home() {
   return (
-    <div>
-      {/* <SignIn /> */}
-      <FullPage/>
-      {/* <GDMCard
-        title="GDM Care"
-        description="You can book the appointment from here.."
-        iconSrc="/icons/mother.svg"
-        buttonText="Explore our Plans"
-      />
-      <HealthInsightsCard/> */}
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <Card className="w-[350px]">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center">Coming Soon</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center text-muted-foreground">
+            We're working hard to bring you something amazing. Stay tuned! Meanwhile you can check out our dashboard.
+          </p>
+        </CardContent>
+        <CardFooter className="flex justify-center">
+          <Button asChild>
+            <Link href="/dashboard">Go to Dashboard</Link>
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   )
 }
+

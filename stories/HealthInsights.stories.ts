@@ -1,4 +1,4 @@
-import HealthInsightsCard from "@/app/ui-comp/HealthInsightsCard";
+import HealthInsightsCard from "@/components/ui/custom/cd-health-insights-card";
 import type { Meta, StoryObj } from "@storybook/react";
 
 // ...existing code...

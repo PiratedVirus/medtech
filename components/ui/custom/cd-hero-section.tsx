@@ -1,11 +1,11 @@
 import Image from "next/image"
 
-export default function LeftSection() {
+export default function HeroSection() {
   return (
     <div className="w-7/12 flex flex-col relative bg-[#f9fafb]">
       {/* Background Image */}
       <Image
-        src="/bg-blur.png"
+        src="/images/bg-blur.png"
         alt="Background"
         fill
         objectFit="cover"
@@ -26,7 +26,7 @@ export default function LeftSection() {
           {/* 60% width column */}
           <div className="w-[60%] relative">
             <Image
-              src="/iphone-large.png"
+              src="/images/iphone-large.png"
               alt="Large image"
               width={400}
               height={300}
@@ -37,7 +37,7 @@ export default function LeftSection() {
           {/* 20% width column */}
           <div className="w-[20%] relative mb-4">
             <Image
-              src="/playstore.png"
+              src="/images/playstore.png"
               alt="Medium image"
               width={150}
               height={150}
@@ -48,7 +48,7 @@ export default function LeftSection() {
           {/* 20% width column */}
           <div className="w-[20%] relative mb-4">
             <Image
-              src="/appstore.png"
+              src="/images/appstore.png"
               alt="Medium image"
               width={150}
               height={150}

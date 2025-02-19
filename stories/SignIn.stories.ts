@@ -1,4 +1,4 @@
-import SignIn from "../app/ui-comp/SignIn";
+import SignIn from "../components/common/SignIn";
 import type { Meta, StoryObj } from "@storybook/react";
 
 const meta: Meta<typeof SignIn> = {

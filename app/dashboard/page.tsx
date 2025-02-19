@@ -1,6 +1,6 @@
-import Header from "../ui-comp/Header"
-import SignIn from "../ui-comp/SignIn"
-import LeftSection from "../ui-comp/LeftSection"
+import Header from "@/components/ui/custom/cd-header"
+import SignIn from "@/components/common/SignIn"
+import HeroSection from "@/components/ui/custom/cd-hero-section"
 
 export default function Page() {
   return (
@@ -8,9 +8,8 @@ export default function Page() {
       <Header />
 
       <main className="flex flex-1 overflow-hidden">
-        <LeftSection />
+        <HeroSection />
 
-        {/* Right section (5/12) */}
         <div className="w-5/1">
           <SignIn />
         </div>

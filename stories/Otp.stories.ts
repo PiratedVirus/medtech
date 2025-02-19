@@ -1,4 +1,4 @@
-import OTPVerification from "../app/ui-comp/Otp";
+import OTPVerification from "../components/common/Otp";
 import type { Meta, StoryObj } from "@storybook/react";
 
 const meta: Meta<typeof OTPVerification> = {
