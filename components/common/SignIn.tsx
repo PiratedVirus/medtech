@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import axios from "axios";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
@@ -30,6 +31,7 @@ export default function SignInForm() {
       inputRefs[index - 1].current?.focus();
     }
   };
+
   const formatPhoneNumber = (phoneNumber: string) => {
     return `+91${phoneNumber}`;
   };
@@ -37,15 +39,9 @@ export default function SignInForm() {
   const handleGetOtpClick = async () => {
     if (isValidPhoneNumber(phoneNumber)) {
       try {
-        const response = await fetch('/api/auth/send-otp', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ phoneNumber:formatPhoneNumber(phoneNumber) }),
-          
-        });
-        const data = await response.json();
+        const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+        const response = await axios.post('/api/auth/send-otp', { phoneNumber: formattedPhoneNumber });
+        const data = response.data;
         if (data.success) {
           setStep("otp");
           setPhoneError("");
@@ -63,18 +59,12 @@ export default function SignInForm() {
   const handleOtpSubmit = async () => {
     if (otp.every((digit) => digit !== "")) {
       try {
-        const response = await fetch('/api/auth/verify-otp', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ phoneNumber:formatPhoneNumber(phoneNumber), code: otp.join('') }),
-        });
-        const data = await response.json();
+        const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+        const response = await axios.post('/api/auth/verify-otp', { phoneNumber: formattedPhoneNumber, code: otp.join('') });
+        const data = response.data;
         if (data.success) {
-          // Mock API call to check if user exists
-          const userExists = false; // Replace with actual API call
-          if (userExists) {
+          const userExistsResponse = await axios.post('/api/auth/check-user', { phoneNumber: formattedPhoneNumber });
+          if (userExistsResponse.data.exists) {
             alert("OTP Submitted!");
           } else {
             setStep("register");
@@ -91,9 +81,18 @@ export default function SignInForm() {
     }
   };
 
-  const handleRegistrationSubmit = (data: any) => {
-    // Handle registration logic here
-    alert("Registration Successful!");
+  const handleRegistrationSubmit = async (data: any) => {
+    try {
+      const response = await axios.post('/api/auth/register', { ...data, phoneNumber });
+      if (response.data.success) {
+        alert("Registration Successful!");
+        // Redirect or update state as needed
+      } else {
+        alert("Registration Failed: " + response.data.error);
+      }
+    } catch (error: any) {
+      alert("Registration Failed: " + error.message);
+    }
   };
 
   return (

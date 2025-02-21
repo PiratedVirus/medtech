@@ -46,6 +46,7 @@ model User {
   phoneNumber String      @unique
   email       String?     @unique
   password    String?     // Optional if using OTP only
+  name        String
   role        UserRole
   status      UserStatus  @default(ACTIVE)
   createdAt   DateTime    @default(now())
@@ -74,6 +75,12 @@ model OtpRequest {
 model PatientProfile {
   id              Int     @id @default(autoincrement())
   userId          Int     @unique
+  age             Int
+  weight          Float?
+  height          Float?
+  gender          String
+  bloodGroup      String?
+  allergies       String?
   medicalHistory  String?
   emergencyContact String?
   createdAt       DateTime @default(now())
