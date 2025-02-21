@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef } from "react";
+import axios from "axios";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { isValidPhoneNumber } from "@/lib/utils";
 import RegistrationForm from "@/components/common/Registration";
+import { isValidPhoneNumber } from "@/lib/utils";
 
 export default function SignInForm() {
   const [step, setStep] = useState<"signIn" | "otp" | "register">("signIn");
@@ -31,33 +32,67 @@ export default function SignInForm() {
     }
   };
 
-  const handleGetOtpClick = () => {
+  const formatPhoneNumber = (phoneNumber: string) => {
+    return `+91${phoneNumber}`;
+  };
+
+  const handleGetOtpClick = async () => {
     if (isValidPhoneNumber(phoneNumber)) {
-      setStep("otp");
-      setPhoneError("");
+      try {
+        const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+        const response = await axios.post('/api/auth/send-otp', { phoneNumber: formattedPhoneNumber });
+        const data = response.data;
+        if (data.success) {
+          setStep("otp");
+          setPhoneError("");
+        } else {
+          setPhoneError(data.error);
+        }
+      } catch (error) {
+        setPhoneError("Failed to send OTP. Please try again.");
+      }
     } else {
       setPhoneError("Please enter a valid 10-digit phone number.");
     }
   };
 
-  const handleOtpSubmit = () => {
+  const handleOtpSubmit = async () => {
     if (otp.every((digit) => digit !== "")) {
-      // Mock API call to check if user exists
-      const userExists = false; // Replace with actual API call
-      if (userExists) {
-        alert("OTP Submitted!");
-      } else {
-        setStep("register");
+      try {
+        const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+        const response = await axios.post('/api/auth/verify-otp', { phoneNumber: formattedPhoneNumber, code: otp.join('') });
+        const data = response.data;
+        if (data.success) {
+          const userExistsResponse = await axios.post('/api/auth/check-user', { phoneNumber: formattedPhoneNumber });
+          if (userExistsResponse.data.exists) {
+            alert("OTP Submitted!");
+          } else {
+            setStep("register");
+          }
+          setOtpError("");
+        } else {
+          setOtpError(data.error);
+        }
+      } catch (error) {
+        setOtpError("Failed to verify OTP. Please try again.");
       }
-      setOtpError("");
     } else {
       setOtpError("Please enter the complete OTP.");
     }
   };
 
-  const handleRegistrationSubmit = (data: any) => {
-    // Handle registration logic here
-    alert("Registration Successful!");
+  const handleRegistrationSubmit = async (data: any) => {
+    try {
+      const response = await axios.post('/api/auth/register', { ...data, phoneNumber });
+      if (response.data.success) {
+        alert("Registration Successful!");
+        // Redirect or update state as needed
+      } else {
+        alert("Registration Failed: " + response.data.error);
+      }
+    } catch (error: any) {
+      alert("Registration Failed: " + error.message);
+    }
   };
 
   return (
@@ -92,7 +127,6 @@ export default function SignInForm() {
 
         <div className="space-y-12">
           {step === "signIn" ? (
-            // **Mobile Number Input Section**
             <div>
               <h2 className="text-[28px] text-gray-800 font-normal mb-8">Enter 10-Digit mobile number</h2>
               <div className="flex rounded-[16px] overflow-hidden border border-gray-200">
@@ -109,7 +143,6 @@ export default function SignInForm() {
               {phoneError && <p className="text-red-500 text-sm mt-2">{phoneError}</p>}
             </div>
           ) : step === "otp" ? (
-            // **OTP Input Section**
             <div>
               <h2 className="text-[26px] text-gray-800 font-normal mb-8 text-center">Enter OTP</h2>
               <div className="flex gap-4 justify-center mb-6">
@@ -130,7 +163,6 @@ export default function SignInForm() {
               <button className="text-custom-green text-[15px] text-center w-full">Resend OTP</button>
             </div>
           ) : (
-            // **Registration Form Section**
             <RegistrationForm onSubmit={handleRegistrationSubmit} />
           )}
 

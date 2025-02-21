@@ -1,0 +1,138 @@
+datasource db {
+  provider = "postgresql"  // Change to "mysql" if using MySQL
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+/// 📌 ENUMS: Standardized role & status values
+enum UserRole {
+  PATIENT
+  DOCTOR
+  LAB_TECH
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  DELETED
+}
+
+/// 📌 CLINIC TABLE: Represents SaaS tenants
+model Clinic {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  subdomain   String?  @unique
+  domain      String?  @unique
+  address     String?
+  contactInfo String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?  // Soft delete
+
+  // Relationships
+  users       User[]
+}
+
+/// 📌 USER TABLE: Centralized user management
+model User {
+  id          Int         @id @default(autoincrement())
+  clinicId    Int?
+  phoneNumber String      @unique
+  email       String?     @unique
+  password    String?     // Optional if using OTP only
+  name        String
+  role        UserRole
+  status      UserStatus  @default(ACTIVE)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?   // Soft delete
+
+  // Relationships
+  clinic          Clinic? @relation(fields: [clinicId], references: [id])
+  patientProfile  PatientProfile?
+  doctorProfile   DoctorProfile?
+  labTechProfile  LabTechProfile?
+  
+}
+
+/// 📌 OTP TABLE: Manages OTP-based login
+model OtpRequest {
+  id         Int      @id @default(autoincrement())
+  phone      String
+  otpCode    String
+  isUsed     Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+}
+
+/// 📌 PATIENT PROFILE: Stores patient-specific details
+model PatientProfile {
+  id              Int     @id @default(autoincrement())
+  userId          Int     @unique
+  age             Int
+  weight          Float?
+  height          Float?
+  gender          String
+  bloodGroup      String?
+  allergies       String?
+  medicalHistory  String?
+  emergencyContact String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+/// 📌 DOCTOR PROFILE: Stores doctor-specific details
+model DoctorProfile {
+  id                Int     @id @default(autoincrement())
+  userId            Int     @unique
+  specialty         String
+  yearsOfExperience Int?
+  licenseNumber     String?  @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+/// 📌 LAB TECH PROFILE: Stores lab technician details
+model LabTechProfile {
+  id              Int     @id @default(autoincrement())
+  userId          Int     @unique
+  specialization  String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+/// 📌 MEDICINES TABLE: Stores available medicines
+model Medicine {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  category    String?
+  description String?
+  price       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+ 
+}
+
+/// 📌 COMPLAINTS TABLE: Stores common patient complaints
+model Complaint {
+  id          Int      @id @default(autoincrement())
+  text        String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  
+}
+
