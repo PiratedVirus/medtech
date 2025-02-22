@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUserProfile } from "@/store/userSlice";
 import { usePathname } from "next/navigation";
@@ -8,24 +8,31 @@ import { DashboardHeader } from "@/components/ui/custom/cd-dashboard-header";
 import "@/app/globals.css";
 import type { AppDispatch, RootState } from "@/store";
 import { ProfileProvider } from "@/hooks/context/ProfileContext";
+
 const lato = Lato({
   subsets: ["latin"],
   weight: ["400", "700"],
   variable: "--font-lato",
 });
+
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
+
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { profile, loading, error } = useSelector(
     (state: RootState) => state.user,
   );
   const pathname = usePathname();
+  const hasFetched = useRef(false); // ✅ Prevent double fetch
 
   useEffect(() => {
-    dispatch(fetchUserProfile());
-  }, [dispatch]);
+    if (!profile && !loading && !hasFetched.current) {
+      hasFetched.current = true; // ✅ Mark as fetched to avoid duplicate calls
+      dispatch(fetchUserProfile());
+    }
+  }, [dispatch, profile, loading]);
 
   if (loading) {
     return (
@@ -42,15 +49,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           Oops! Something went wrong.
         </h2>
         <p className="text-gray-600 mt-2">{error}</p>
-        <button
-          onClick={() => dispatch(fetchUserProfile())}
-          className="mt-4 px-6 py-3 bg-custom-green text-white rounded-lg shadow-md hover:bg-green-700 transition-all"
-        >
-          Retry
-        </button>
       </div>
     );
   }
+
   return (
     <html lang="en">
       <body className={`${lato.variable} antialiased`}>
@@ -62,4 +64,5 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     </html>
   );
 };
+
 export default DashboardLayout;

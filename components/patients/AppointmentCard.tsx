@@ -1,8 +1,8 @@
-import { ArrowRight } from "lucide-react"
+import { ArrowRight } from "lucide-react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 export function AppointmentCard() {
   return (
@@ -11,7 +11,7 @@ export function AppointmentCard() {
         <div className="flex flex-col gap-[15px]">
           <div className="flex items-center gap-2.5">
             <Avatar className="h-[58px] w-[58px]">
-              <AvatarImage src="/image-14.png" alt="Appointment" />
+              {/* <AvatarImage src="/image-14.png" alt="Appointment" /> */}
               <AvatarFallback>AP</AvatarFallback>
             </Avatar>
             <h3 className="text-xl font-semibold">Upcoming Appointment</h3>
@@ -35,6 +35,5 @@ export function AppointmentCard() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
-
