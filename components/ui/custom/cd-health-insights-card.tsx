@@ -24,7 +24,7 @@ export default function HealthInsightsCard({
   data?: { value: number }[]
 }) {
   return (
-    <Card className="w-[320px] p-6 rounded-3xl bg-white">
+    <Card className="w-full max-w-80 p-6 rounded-3xl bg-white border">
       <div className="flex items-center gap-4 mb-8">
         <Image
           className="flex"

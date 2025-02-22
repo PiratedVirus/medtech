@@ -3,11 +3,15 @@
 import { useState, useRef } from "react";
 import axios from "axios";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import LoadingButton from "@/components/ui/custom/cd-loading-button";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import RegistrationForm from "@/components/common/Registration";
 import { isValidPhoneNumber } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { useDispatch } from 'react-redux';
+import { setPhoneNumberSlice } from '@/store/userSlice';
+
 
 export default function SignInForm() {
   const [step, setStep] = useState<"signIn" | "otp" | "register">("signIn");
@@ -16,6 +20,8 @@ export default function SignInForm() {
   const [phoneError, setPhoneError] = useState("");
   const [otpError, setOtpError] = useState("");
   const inputRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+  const router = useRouter();
+  const dispatch = useDispatch();
 
   const handleOtpChange = (index: number, value: string) => {
     if (value.length <= 1) {
@@ -65,7 +71,8 @@ export default function SignInForm() {
         if (data.success) {
           const userExistsResponse = await axios.post('/api/auth/check-user', { phoneNumber: formattedPhoneNumber });
           if (userExistsResponse.data.exists) {
-            alert("OTP Submitted!");
+            dispatch(setPhoneNumberSlice(formattedPhoneNumber));
+            router.push('/dashboard');
           } else {
             setStep("register");
           }
@@ -83,7 +90,7 @@ export default function SignInForm() {
 
   const handleRegistrationSubmit = async (data: any) => {
     try {
-      const response = await axios.post('/api/auth/register', { ...data, phoneNumber });
+      const response = await axios.post('/api/auth/register', { ...data, phoneNumber: formatPhoneNumber(phoneNumber) });
       if (response.data.success) {
         alert("Registration Successful!");
         // Redirect or update state as needed
@@ -166,14 +173,26 @@ export default function SignInForm() {
             <RegistrationForm onSubmit={handleRegistrationSubmit} />
           )}
 
-          {/* Button: Get OTP / Submit / Register */}
-          {step !== "register" && (
-            <Button
+          {/* Button: Get OTP */}
+          {step === "signIn" && (
+            <LoadingButton
               className="w-full h-14 bg-[#f28a2e] rounded-lg shadow-[0px_12px_21px_4px_rgba(224,126,41,0.33)]"
-              onClick={() => (step === "signIn" ? handleGetOtpClick() : handleOtpSubmit())}
+              onClick={handleGetOtpClick}
+              loadingText="Sending..."
             >
-              {step === "signIn" ? "Get OTP" : "Submit"}
-            </Button>
+              Get OTP
+            </LoadingButton>
+          )}
+
+          {/* Button: Verify OTP */}
+          {step === "otp" && (
+            <LoadingButton
+              className="w-full h-14 bg-[#f28a2e] rounded-lg shadow-[0px_12px_21px_4px_rgba(224,126,41,0.33)]"
+              onClick={handleOtpSubmit}
+              loadingText="Verifying..."
+            >
+              Verify OTP
+            </LoadingButton>
           )}
 
           {/* Terms and Privacy */}
