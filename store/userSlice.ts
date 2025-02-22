@@ -1,40 +1,41 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import axios from 'axios';
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import axios from "axios";
 
 interface UserState {
   profile: any;
   loading: boolean;
   error: string | null;
-  phoneNumber: string | null;
 }
+
 interface UserProfile {
   id: string;
   name: string;
   email: string;
 }
+
 const initialState: UserState = {
   profile: null,
   loading: false,
   error: null,
-  phoneNumber: null,
 };
 
-
-
+// ✅ Fetch user profile from `/api/auth/get-user-profile`
 export const fetchUserProfile = createAsyncThunk(
-  'user/fetchUserProfile',
-  async (phoneNumber: string) => {
-    const response = await axios.post('/api/auth/get-user-profile', { phoneNumber });
-    return response.data as UserProfile;
-  }
+  "user/fetchUserProfile",
+  async () => {
+    const response = await axios.get("/api/auth/get-user-profile", {
+      withCredentials: true,
+    }); // ✅ Ensures cookie is sent
+    return response.data.user as UserProfile;
+  },
 );
 
 const userSlice = createSlice({
-  name: 'user',
+  name: "user",
   initialState,
   reducers: {
-    setPhoneNumberSlice: (state, action: PayloadAction<string>) => {
-      state.phoneNumber = action.payload;
+    logoutUser: (state) => {
+      state.profile = null;
     },
   },
   extraReducers: (builder) => {
@@ -49,9 +50,10 @@ const userSlice = createSlice({
       })
       .addCase(fetchUserProfile.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch user profile';
+        state.error = action.error.message || "Failed to fetch user profile";
       });
   },
 });
-export const { setPhoneNumberSlice } = userSlice.actions;
+
+export const { logoutUser } = userSlice.actions;
 export default userSlice.reducer;
