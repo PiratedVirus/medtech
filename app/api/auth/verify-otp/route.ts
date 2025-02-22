@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import twilio from "twilio";
 import jwt from "jsonwebtoken";
-import { cookies } from "next/headers";
-
+import { checkUserExists } from "@/lib/check-user";
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const serviceSid = process.env.TWILIO_SERVICE_SID!;
@@ -18,11 +17,13 @@ export async function POST(request: Request) {
     //   .verificationChecks.create({ to: phoneNumber, code });
 
     if (true) {
-      console.log("Verification approved");
-      const token = jwt.sign({ phoneNumber }, jwtSecret, { expiresIn: "1h" });
+      const userExists = await checkUserExists(phoneNumber);
+      const token = jwt.sign({ phoneNumber, userExists }, jwtSecret, {
+        expiresIn: "1h",
+      });
       console.log("Token generated");
       // Use Next.js cookies helper instead
-      const response = NextResponse.json({ success: true });
+      const response = NextResponse.json({ success: true, userExists });
       response.cookies.set("token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",

@@ -9,7 +9,7 @@ import Link from "next/link";
 import RegistrationForm from "@/components/common/Registration";
 import { isValidPhoneNumber } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-
+import jwtDecode from "jwt-decode";
 // import jwt from "jsonwebtoken";
 
 export default function SignInForm() {
@@ -81,11 +81,7 @@ export default function SignInForm() {
         const data = response.data;
 
         if (data.success) {
-          const userExistsResponse = await axios.post("/api/auth/check-user", {
-            phoneNumber: formattedPhoneNumber,
-          });
-          console.log("user exisits ", userExistsResponse);
-          if (userExistsResponse.data.exists) {
+          if (data.userExists) {
             router.push("/dashboard");
           } else {
             setStep("register");
