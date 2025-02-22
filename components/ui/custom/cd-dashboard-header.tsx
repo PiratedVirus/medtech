@@ -1,8 +1,8 @@
-import Link from "next/link"
-import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, LogOut } from "lucide-react"
-
+import Link from "next/link";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Search, LogOut } from "lucide-react";
+import { useProfile } from "@/lib/ProfileContext";
 const navigation = [
   { name: "Home", href: "/", current: true },
   { name: "Doctors", href: "/doctors", current: false },
@@ -11,27 +11,32 @@ const navigation = [
   { name: "Prescriptions", href: "/prescriptions", current: false },
   { name: "Appointments", href: "/appointments", current: false },
   { name: "Plans", href: "/plans", current: false },
-]
+];
 
-export function DashboardHeader({profile}: any) {
+export function DashboardHeader() {
+  const { profile } = useProfile();
   return (
     <header className="w-full h-28 bg-background border-b">
       <div className="container flex items-center justify-between h-full gap-4">
         <div className="pl-20">
           <div className="relative w-80">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
-            <Input type="search" placeholder="Search" className="pl-12 bg-input h-12 text-muted-foreground rounded-lg" />
+            <Input
+              type="search"
+              placeholder="Search"
+              className="pl-12 bg-input h-12 text-muted-foreground rounded-lg"
+            />
           </div>
         </div>
-
 
         <nav className="flex items-center gap-9">
           {navigation.map((item) => (
             <Link
               key={item.name}
               href={item.href}
-              className={`relative text-sm font-medium mb-2 ${item.current ? "text-secondary" : "text-foreground"
-                } hover:text-primary transition-colors`}
+              className={`relative text-sm font-medium mb-2 ${
+                item.current ? "text-secondary" : "text-foreground"
+              } hover:text-primary transition-colors`}
             >
               {item.name}
               {item.current && (
@@ -47,11 +52,11 @@ export function DashboardHeader({profile}: any) {
               <AvatarImage src="https://c.animaapp.com/2DuHYCg5/img/ellipse-38-1@2x.png" />
               <AvatarFallback>MP</AvatarFallback>
             </Avatar>
-            <span className="text-sm text-foreground">{profile}</span>
+            <span className="text-sm text-foreground">{profile?.name}</span>
           </div>
           <LogOut className="h-6 w-6 text-foreground cursor-pointer" />
         </div>
       </div>
     </header>
-  )
+  );
 }

@@ -19,13 +19,13 @@ const initialState: UserState = {
   error: null,
 };
 
-// ✅ Fetch user profile from `/api/auth/get-user-profile`
+// Fetch user profile from `/api/auth/get-user-profile`
 export const fetchUserProfile = createAsyncThunk(
   "user/fetchUserProfile",
   async () => {
     const response = await axios.get("/api/auth/get-user-profile", {
       withCredentials: true,
-    }); // ✅ Ensures cookie is sent
+    }); // Ensures cookie is sent
     return response.data.user as UserProfile;
   },
 );
