@@ -23,9 +23,9 @@ export default function BookingCard({
 }: BookingCardProps) {
   return (
     <Card
-      className={`w-80 h-72 bg-gradient-to-b from-[${gradientFrom}] to-[${gradientTo}] border-0 rounded-lg flex flex-col justify-center items-center gap-2.5`}
+      className={`w-80 h-72 bg-gradient-to-b from-[#134F30] to-[#56A67C] border-0 rounded-lg flex flex-col justify-center items-center gap-2.5`}
     >
-      <div className="h-60 flex flex-col justify-start items-start gap-10">
+      <div className="h-60 flex flex-col justify-start items-start gap-10 pl-3">
         <div className="h-28 flex flex-col justify-start items-start gap-5">
           <div className="flex items-center gap-2.5">
             <div className="relative">

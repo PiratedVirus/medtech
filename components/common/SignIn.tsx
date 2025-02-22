@@ -83,7 +83,7 @@ export default function SignInForm() {
 
   const handleRegistrationSubmit = async (data: any) => {
     try {
-      const response = await axios.post('/api/auth/register', { ...data, phoneNumber });
+      const response = await axios.post('/api/auth/register', { ...data, phoneNumber: formatPhoneNumber(phoneNumber) });
       if (response.data.success) {
         alert("Registration Successful!");
         // Redirect or update state as needed
