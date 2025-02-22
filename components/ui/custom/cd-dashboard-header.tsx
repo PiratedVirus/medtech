@@ -2,7 +2,11 @@ import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, LogOut } from "lucide-react";
-import { useProfile } from "@/lib/ProfileContext";
+import { useDispatch } from "react-redux";
+import { logoutUser } from "@/store/userSlice";
+import { useProfile } from "@/hooks/context/ProfileContext";
+import { useRouter } from "next/navigation";
+import type { AppDispatch, RootState } from "@/store";
 const navigation = [
   { name: "Home", href: "/", current: true },
   { name: "Doctors", href: "/doctors", current: false },
@@ -15,6 +19,12 @@ const navigation = [
 
 export function DashboardHeader() {
   const { profile } = useProfile();
+  const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
+  const handleLogout = () => {
+    dispatch(logoutUser());
+    router.push("/login");
+  };
   return (
     <header className="w-full h-28 bg-background border-b">
       <div className="container flex items-center justify-between h-full gap-4">
@@ -54,7 +64,10 @@ export function DashboardHeader() {
             </Avatar>
             <span className="text-sm text-foreground">{profile?.name}</span>
           </div>
-          <LogOut className="h-6 w-6 text-foreground cursor-pointer" />
+          <LogOut
+            onClick={handleLogout}
+            className="h-6 w-6 text-foreground cursor-pointer"
+          />
         </div>
       </div>
     </header>

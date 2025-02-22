@@ -30,14 +30,14 @@ export const fetchUserProfile = createAsyncThunk(
   },
 );
 
+export const logoutUser = createAsyncThunk("user/logoutUser", async () => {
+  await axios.post("/api/auth/logout", {}, { withCredentials: true });
+});
+
 const userSlice = createSlice({
   name: "user",
   initialState,
-  reducers: {
-    logoutUser: (state) => {
-      state.profile = null;
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
       .addCase(fetchUserProfile.pending, (state) => {
@@ -55,5 +55,4 @@ const userSlice = createSlice({
   },
 });
 
-export const { logoutUser } = userSlice.actions;
 export default userSlice.reducer;

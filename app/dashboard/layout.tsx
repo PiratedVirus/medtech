@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUserProfile } from "@/store/userSlice";
 import { usePathname } from "next/navigation";
@@ -7,19 +7,16 @@ import { Lato } from "next/font/google";
 import { DashboardHeader } from "@/components/ui/custom/cd-dashboard-header";
 import "@/app/globals.css";
 import type { AppDispatch, RootState } from "@/store";
-import { ProfileProvider } from "@/lib/ProfileContext";
-
+import { ProfileProvider } from "@/hooks/context/ProfileContext";
 const lato = Lato({
   subsets: ["latin"],
   weight: ["400", "700"],
   variable: "--font-lato",
 });
-
-export default function DashboardLayout({
-  children,
-}: {
+interface DashboardLayoutProps {
   children: React.ReactNode;
-}) {
+}
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { profile, loading, error } = useSelector(
     (state: RootState) => state.user,
@@ -64,4 +61,5 @@ export default function DashboardLayout({
       </body>
     </html>
   );
-}
+};
+export default DashboardLayout;
