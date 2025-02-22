@@ -13,7 +13,7 @@ const navigation = [
   { name: "Plans", href: "/plans", current: false },
 ]
 
-export function DashboardHeader() {
+export function DashboardHeader({profile}: any) {
   return (
     <header className="w-full h-28 bg-background border-b">
       <div className="container flex items-center justify-between h-full gap-4">
@@ -47,7 +47,7 @@ export function DashboardHeader() {
               <AvatarImage src="https://c.animaapp.com/2DuHYCg5/img/ellipse-38-1@2x.png" />
               <AvatarFallback>MP</AvatarFallback>
             </Avatar>
-            <span className="text-sm text-foreground">My profile</span>
+            <span className="text-sm text-foreground">{profile}</span>
           </div>
           <LogOut className="h-6 w-6 text-foreground cursor-pointer" />
         </div>
