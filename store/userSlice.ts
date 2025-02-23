@@ -1,5 +1,6 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { encryptData, decryptData } from "@/lib/encryption";
 
 interface UserState {
   profile: any;
@@ -25,18 +26,34 @@ export const fetchUserProfile = createAsyncThunk(
   async () => {
     const response = await axios.get("/api/auth/get-user-profile", {
       withCredentials: true,
-    }); // Ensures cookie is sent
-    return response.data.user as UserProfile;
+    });
+
+    const userProfile = response.data.user as UserProfile;
+    const encryptedProfile = encryptData(userProfile);
+    sessionStorage.setItem("userProfile", encryptedProfile);
+
+    return userProfile;
   },
 );
 
+// Logout user & remove profile
 export const logoutUser = createAsyncThunk("user/logoutUser", async () => {
   await axios.post("/api/auth/logout", {}, { withCredentials: true });
+  sessionStorage.removeItem("userProfile");
 });
+
+// Load user profile from session storage
+const loadUserProfileFromSession = () => {
+  const encryptedProfile = sessionStorage.getItem("userProfile");
+  return encryptedProfile ? decryptData(encryptedProfile) : null;
+};
 
 const userSlice = createSlice({
   name: "user",
-  initialState,
+  initialState: {
+    ...initialState,
+    profile: loadUserProfileFromSession(),
+  },
   reducers: {},
   extraReducers: (builder) => {
     builder

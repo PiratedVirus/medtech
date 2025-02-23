@@ -1,30 +1,36 @@
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, LogOut } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { logoutUser } from "@/store/userSlice";
 import { useProfile } from "@/hooks/context/ProfileContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import type { AppDispatch, RootState } from "@/store";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 const navigation = [
-  { name: "Home", href: "/", current: true },
-  { name: "Doctors", href: "/doctors", current: false },
-  { name: "Dietician", href: "/dietician", current: false },
-  { name: "Lab Reports", href: "/lab-reports", current: false },
-  { name: "Prescriptions", href: "/prescriptions", current: false },
-  { name: "Appointments", href: "/appointments", current: false },
-  { name: "Plans", href: "/plans", current: false },
+  { name: "Home", href: "/dashboard", current: true },
+  { name: "Doctors", href: "/dashboard/doctors", current: false },
+  { name: "Dietician", href: "/dashboard/dietician", current: false },
+  { name: "Lab Reports", href: "/dashboard/lab-reports", current: false },
+  { name: "Prescriptions", href: "/dashboard/prescriptions", current: false },
+  { name: "Appointments", href: "/dashboard/appointments", current: false },
+  { name: "Plans", href: "/dashboard/plans", current: false },
 ];
 
 export function DashboardHeader() {
   const { profile } = useProfile();
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
+  const pathname = usePathname();
   const handleLogout = () => {
     dispatch(logoutUser());
     router.push("/login");
   };
+  const navigationItems = navigation.map((item) => ({
+    ...item,
+    current: pathname === item.href,
+  }));
   return (
     <header className="w-full h-28 bg-background border-b">
       <div className="container flex items-center justify-between h-full gap-4">
@@ -40,11 +46,11 @@ export function DashboardHeader() {
         </div>
 
         <nav className="flex items-center gap-9">
-          {navigation.map((item) => (
+          {navigationItems.map((item) => (
             <Link
               key={item.name}
               href={item.href}
-              className={`relative text-sm font-medium mb-2 ${
+              className={`relative text-sm font-medium mb-2 hover:text-secondary ${
                 item.current ? "text-secondary" : "text-foreground"
               } hover:text-primary transition-colors`}
             >
