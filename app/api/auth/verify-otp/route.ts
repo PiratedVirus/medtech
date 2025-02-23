@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     if (true) {
       const userExists = await checkUserExists(phoneNumber);
       const token = jwt.sign({ phoneNumber, userExists }, jwtSecret, {
-        expiresIn: "1h",
+        expiresIn: "24h",
       });
       console.log("Token generated");
       // Use Next.js cookies helper instead

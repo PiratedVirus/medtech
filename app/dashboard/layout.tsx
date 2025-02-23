@@ -8,6 +8,7 @@ import { DashboardHeader } from "@/components/ui/custom/cd-dashboard-header";
 import "@/app/globals.css";
 import type { AppDispatch, RootState } from "@/store";
 import { ProfileProvider } from "@/hooks/context/ProfileContext";
+import Footer from "@/components/common/Footer";
 
 const lato = Lato({
   subsets: ["latin"],
@@ -59,6 +60,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         <ProfileProvider profile={profile}>
           <DashboardHeader />
           {children}
+          <Footer />
         </ProfileProvider>
       </body>
     </html>
