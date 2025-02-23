@@ -1,6 +1,9 @@
+'use client'
 import type { Metadata } from "next";
 import { Lato } from 'next/font/google'
 import "./globals.css";
+import { Provider } from "react-redux";
+import store from "@/store";
 
 const lato = Lato({
   subsets: ['latin'],
@@ -9,16 +12,18 @@ const lato = Lato({
 })
 
 
-export const metadata: Metadata = {
-  title: "Care Diabetics",
-  description: "India’s leading virtual platform for diabetes care.",
-};
+// export const metadata: Metadata = {
+//   title: "Care Diabetics",
+//   description: "India’s leading virtual platform for diabetes care.",
+// };
 
 export default function RootLayout({children,}: Readonly<{children: React.ReactNode;}>) {
   return (
     <html lang="en">
       <body className={`${lato.variable} antialiased`}>
-        {children}
+        <Provider store={store}>
+          {children}
+        </Provider>
       </body>
     </html>
   );

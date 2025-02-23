@@ -3,19 +3,28 @@
 import { useState, useRef } from "react";
 import axios from "axios";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import LoadingButton from "@/components/ui/custom/cd-loading-button";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import RegistrationForm from "@/components/common/Registration";
 import { isValidPhoneNumber } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import jwtDecode from "jwt-decode";
+// import jwt from "jsonwebtoken";
 
 export default function SignInForm() {
-  const [step, setStep] = useState<"signIn" | "otp" | "register">("signIn");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [step, setStep] = useState<"signIn" | "otp" | "register">("otp");
+  const [phoneNumber, setPhoneNumber] = useState<string>("8149306224");
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [phoneError, setPhoneError] = useState("");
   const [otpError, setOtpError] = useState("");
-  const inputRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+  const inputRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+  ];
+  const router = useRouter();
 
   const handleOtpChange = (index: number, value: string) => {
     if (value.length <= 1) {
@@ -26,7 +35,10 @@ export default function SignInForm() {
     }
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
     if (e.key === "Backspace" && index > 0 && otp[index] === "") {
       inputRefs[index - 1].current?.focus();
     }
@@ -40,7 +52,9 @@ export default function SignInForm() {
     if (isValidPhoneNumber(phoneNumber)) {
       try {
         const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
-        const response = await axios.post('/api/auth/send-otp', { phoneNumber: formattedPhoneNumber });
+        const response = await axios.post("/api/auth/send-otp", {
+          phoneNumber: formattedPhoneNumber,
+        });
         const data = response.data;
         if (data.success) {
           setStep("otp");
@@ -60,12 +74,15 @@ export default function SignInForm() {
     if (otp.every((digit) => digit !== "")) {
       try {
         const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
-        const response = await axios.post('/api/auth/verify-otp', { phoneNumber: formattedPhoneNumber, code: otp.join('') });
+        const response = await axios.post("/api/auth/verify-otp", {
+          phoneNumber: formattedPhoneNumber,
+          code: otp.join(""),
+        });
         const data = response.data;
+
         if (data.success) {
-          const userExistsResponse = await axios.post('/api/auth/check-user', { phoneNumber: formattedPhoneNumber });
-          if (userExistsResponse.data.exists) {
-            alert("OTP Submitted!");
+          if (data.userExists) {
+            router.push("/dashboard");
           } else {
             setStep("register");
           }
@@ -83,7 +100,10 @@ export default function SignInForm() {
 
   const handleRegistrationSubmit = async (data: any) => {
     try {
-      const response = await axios.post('/api/auth/register', { ...data, phoneNumber });
+      const response = await axios.post("/api/auth/register", {
+        ...data,
+        phoneNumber: formatPhoneNumber(phoneNumber),
+      });
       if (response.data.success) {
         alert("Registration Successful!");
         // Redirect or update state as needed
@@ -107,7 +127,10 @@ export default function SignInForm() {
         ) : step === "otp" ? (
           // **OTP View**
           <div className="flex justify-between items-center">
-            <button className="flex items-center text-custom-green gap-1 text-[15px]" onClick={() => setStep("signIn")}>
+            <button
+              className="flex items-center text-custom-green gap-1 text-[15px]"
+              onClick={() => setStep("signIn")}
+            >
               <ChevronLeft className="w-5 h-5" />
               <span>Back</span>
             </button>
@@ -128,9 +151,13 @@ export default function SignInForm() {
         <div className="space-y-12">
           {step === "signIn" ? (
             <div>
-              <h2 className="text-[28px] text-gray-800 font-normal mb-8">Enter 10-Digit mobile number</h2>
+              <h2 className="text-[28px] text-gray-800 font-normal mb-8">
+                Enter 10-Digit mobile number
+              </h2>
               <div className="flex rounded-[16px] overflow-hidden border border-gray-200">
-                <div className="flex items-center px-6 bg-white text-gray-600 text-lg">+91</div>
+                <div className="flex items-center px-6 bg-white text-gray-600 text-lg">
+                  +91
+                </div>
                 <Input
                   type="tel"
                   required
@@ -140,11 +167,15 @@ export default function SignInForm() {
                   className="border-0 focus-visible:ring-0 text-lg bg-white placeholder:text-gray-300 h-14 px-6"
                 />
               </div>
-              {phoneError && <p className="text-red-500 text-sm mt-2">{phoneError}</p>}
+              {phoneError && (
+                <p className="text-red-500 text-sm mt-2">{phoneError}</p>
+              )}
             </div>
           ) : step === "otp" ? (
             <div>
-              <h2 className="text-[26px] text-gray-800 font-normal mb-8 text-center">Enter OTP</h2>
+              <h2 className="text-[26px] text-gray-800 font-normal mb-8 text-center">
+                Enter OTP
+              </h2>
               <div className="flex gap-4 justify-center mb-6">
                 {[0, 1, 2, 3].map((index) => (
                   <Input
@@ -159,21 +190,37 @@ export default function SignInForm() {
                   />
                 ))}
               </div>
-              {otpError && <p className="text-red-500 text-sm mt-2">{otpError}</p>}
-              <button className="text-custom-green text-[15px] text-center w-full">Resend OTP</button>
+              {otpError && (
+                <p className="text-red-500 text-sm mt-2">{otpError}</p>
+              )}
+              <button className="text-custom-green text-[15px] text-center w-full">
+                Resend OTP
+              </button>
             </div>
           ) : (
             <RegistrationForm onSubmit={handleRegistrationSubmit} />
           )}
 
-          {/* Button: Get OTP / Submit / Register */}
-          {step !== "register" && (
-            <Button
+          {/* Button: Get OTP */}
+          {step === "signIn" && (
+            <LoadingButton
               className="w-full h-14 bg-[#f28a2e] rounded-lg shadow-[0px_12px_21px_4px_rgba(224,126,41,0.33)]"
-              onClick={() => (step === "signIn" ? handleGetOtpClick() : handleOtpSubmit())}
+              onClick={handleGetOtpClick}
+              loadingText="Sending..."
             >
-              {step === "signIn" ? "Get OTP" : "Submit"}
-            </Button>
+              Get OTP
+            </LoadingButton>
+          )}
+
+          {/* Button: Verify OTP */}
+          {step === "otp" && (
+            <LoadingButton
+              className="w-full h-14 bg-[#f28a2e] rounded-lg shadow-[0px_12px_21px_4px_rgba(224,126,41,0.33)]"
+              onClick={handleOtpSubmit}
+              loadingText="Verifying..."
+            >
+              Verify OTP
+            </LoadingButton>
           )}
 
           {/* Terms and Privacy */}
