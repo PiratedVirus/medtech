@@ -84,7 +84,7 @@ export default function DoctorCard({ doctor }: { doctor: Doctor }) {
               <div className="flex items-center gap-2 text-[#56a67c]">
                 <Calendar className="text-green-500 h-4 w-4" />
                 <span className="text-green-500 text-sm">
-                  {doctor.doctorProfile.availability.length > 0 ? "Available Today" : "Not Available"}
+                  {doctor?.doctorProfile?.availability?.length > 0 ? "Available Today" : "Not Available"}
                 </span>
               </div>
             </div>

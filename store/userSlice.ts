@@ -1,9 +1,6 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
-import CryptoJS from "crypto-js";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { encryptData, decryptData } from "@/lib/encryption";
-
-const SECRET_KEY = process.env.NEXT_PUBLIC_SESSION_SECRET_KEY || "default_secret_key"; // Store this securely in env variables
 
 interface UserState {
   profile: any;
@@ -22,7 +19,6 @@ const initialState: UserState = {
   loading: false,
   error: null,
 };
-
 
 // Fetch user profile from `/api/auth/get-user-profile`
 export const fetchUserProfile = createAsyncThunk(

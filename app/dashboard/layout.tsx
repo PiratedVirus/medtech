@@ -1,40 +1,28 @@
 "use client";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUserProfile } from "@/store/userSlice";
-import { usePathname } from "next/navigation";
-import { Lato } from "next/font/google";
-import { DashboardHeader } from "@/components/ui/custom/cd-dashboard-header";
-import "@/app/globals.css";
-import type { AppDispatch, RootState } from "@/store";
-import { ProfileProvider } from "@/hooks/context/ProfileContext";
-import Footer from "@/components/common/Footer";
-import CryptoJS from "crypto-js";
 import { decryptData } from "@/lib/encryption";
-const lato = Lato({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-lato",
-});
+import { ProfileProvider } from "@/hooks/context/ProfileContext";
+import type { AppDispatch, RootState } from "@/store";
+import { DashboardHeader } from "@/components/common/DashboardHeader";
+import Footer from "@/components/common/Footer";
+import "@/app/globals.css";
+import { useDecryptedProfile } from "@/hooks/use-profile";
 
-const getDecryptedProfile = () => {
-  const encryptedProfile = sessionStorage.getItem("userProfile");
-  return encryptedProfile ? decryptData(encryptedProfile) : null;
-};
+
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const { profile: storedProfile } = useDecryptedProfile();
   const { profile, loading, error } = useSelector(
     (state: RootState) => state.user,
   );
-  const pathname = usePathname();
 
   useEffect(() => {
-    const storedProfile = getDecryptedProfile();
-
     if (storedProfile) {
       dispatch({
         type: "user/fetchUserProfile/fulfilled",
@@ -66,7 +54,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   return (
     <html lang="en">
-      <body className={`${lato.variable} antialiased`}>
+      <body className={`antialiased`}>
         <ProfileProvider profile={profile}>
           <DashboardHeader />
           {children}
