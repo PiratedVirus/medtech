@@ -1,5 +1,8 @@
+// ===========================================
+// DATABASE CONNECTION
+// ===========================================
 datasource db {
-  provider = "postgresql"  // Change to "mysql" if using MySQL
+  provider = "postgresql"  // or "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -7,10 +10,13 @@ generator client {
   provider = "prisma-client-js"
 }
 
-/// 📌 ENUMS: Standardized role & status values
+// ===========================================
+// ENUMS
+// ===========================================
 enum UserRole {
   PATIENT
   DOCTOR
+  DIETICIAN
   LAB_TECH
   ADMIN
   SUPER_ADMIN
@@ -23,97 +29,188 @@ enum UserStatus {
   DELETED
 }
 
-/// 📌 CLINIC TABLE: Represents SaaS tenants
+// ===========================================
+// CLINIC TABLE
+// ===========================================
 model Clinic {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  subdomain   String?  @unique
-  domain      String?  @unique
-  address     String?
-  contactInfo String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?  // Soft delete
+  id                Int                     @id @default(autoincrement())
+  name              String                  @unique
+  subdomain         String?                 @unique
+  domain            String?                 @unique
+  address           String?
+  contactInfo       String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  deletedAt         DateTime?
 
   // Relationships
-  users       User[]
+  users             User[]
+  specializations   ClinicSpecialization[]
 }
 
-/// 📌 USER TABLE: Centralized user management
+// ===========================================
+// SPECIALIZATION TABLE
+// ===========================================
+model ClinicSpecialization {
+  id       Int    @id @default(autoincrement())
+  clinicId Int
+  name     String
+
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+}
+
+// ===========================================
+// USER TABLE
+// ===========================================
 model User {
-  id          Int         @id @default(autoincrement())
+  id          Int             @id @default(autoincrement())
   clinicId    Int?
-  phoneNumber String      @unique
-  email       String?     @unique
-  password    String?     // Optional if using OTP only
+  phoneNumber String          @unique
+  email       String?         @unique
+  password    String?
   name        String
   role        UserRole
-  status      UserStatus  @default(ACTIVE)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  deletedAt   DateTime?   // Soft delete
+  status      UserStatus      @default(ACTIVE)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
 
-  // Relationships
-  clinic          Clinic? @relation(fields: [clinicId], references: [id])
-  patientProfile  PatientProfile?
-  doctorProfile   DoctorProfile?
-  labTechProfile  LabTechProfile?
-  
+  clinic           Clinic?            @relation(fields: [clinicId], references: [id])
+  patientProfile   PatientProfile?
+  doctorProfile    DoctorProfile?
+  labTechProfile   LabTechProfile?
+  dieticianProfile  DieticianProfile?
+
+  // If you want a single relation array for all appointments, you can keep this:
+  // appointments      Appointment[]    // But ensure it does not conflict with the specialized relations below
+
+  // Distinct relations for a patient's appointments vs. a doctor's appointments
+  patientAppointments Appointment[] @relation("Patient")
+  doctorAppointments  Appointment[] @relation("Doctor")
 }
 
-/// 📌 OTP TABLE: Manages OTP-based login
-model OtpRequest {
-  id         Int      @id @default(autoincrement())
-  phone      String
-  otpCode    String
-  isUsed     Boolean   @default(false)
-  createdAt  DateTime  @default(now())
-  expiresAt  DateTime
-}
-
-/// 📌 PATIENT PROFILE: Stores patient-specific details
+// ===========================================
+// PATIENT PROFILE
+// ===========================================
 model PatientProfile {
-  id              Int     @id @default(autoincrement())
-  userId          Int     @unique
-  age             Int
-  weight          Float?
-  height          Float?
-  gender          String
-  bloodGroup      String?
-  allergies       String?
-  medicalHistory  String?
+  id               Int      @id @default(autoincrement())
+  userId           Int      @unique
+  age              Int
+  weight           Float?
+  height           Float?
+  gender           String
+  bloodGroup       String?
+  allergies        String?
+  medicalHistory   String?
   emergencyContact String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user             User      @relation(fields: [userId], references: [id])
 }
 
-/// 📌 DOCTOR PROFILE: Stores doctor-specific details
+// ===========================================
+// DOCTOR PROFILE
+// ===========================================
 model DoctorProfile {
-  id                Int     @id @default(autoincrement())
-  userId            Int     @unique
+  id                Int                  @id @default(autoincrement())
+  userId            Int                  @unique
   specialty         String
   yearsOfExperience Int?
-  licenseNumber     String?  @unique
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  licenseNumber     String?              @unique
+  consultationFee   Int                  // Fee per consultation
+  rating            Float?               // Average rating
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user              User                 @relation(fields: [userId], references: [id])
+  availability      DoctorAvailability[]
+}
+// ===========================================
+// DIE PROFILE
+// ===========================================
+model DieticianProfile {
+  id                Int       @id @default(autoincrement())
+  userId            Int       @unique
+  specialty         String?
+  yearsOfExperience Int?
+  certifications    String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relation
+  user              User      @relation(fields: [userId], references: [id])
+  availability      DieticianAvailability[]
 }
 
-/// 📌 LAB TECH PROFILE: Stores lab technician details
+// ===========================================
+// LAB TECH PROFILE
+// ===========================================
 model LabTechProfile {
-  id              Int     @id @default(autoincrement())
-  userId          Int     @unique
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
   specialization  String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user            User     @relation(fields: [userId], references: [id])
 }
 
-/// 📌 MEDICINES TABLE: Stores available medicines
+// ===========================================
+// DOCTOR AVAILABILITY
+// ===========================================
+model DoctorAvailability {
+  id         Int            @id @default(autoincrement())
+  doctorId   Int
+  dayOfWeek  String         // e.g. "Monday"
+  startTime  String         // e.g. "09:00 AM"
+  endTime    String         // e.g. "05:00 PM"
+
+  doctor     DoctorProfile  @relation(fields: [doctorId], references: [id])
+}
+
+model DieticianAvailability {
+  id           Int              @id @default(autoincrement())
+  dieticianId  Int
+  dayOfWeek    String
+  startTime    String
+  endTime      String
+
+  // Relation
+  dietician    DieticianProfile @relation(fields: [dieticianId], references: [id])
+}
+
+// ===========================================
+// CONSULTATION TYPE
+// ===========================================
+model ConsultationType {
+  id            Int           @id @default(autoincrement())
+  type          String        // e.g. "Video" or "Physical"
+
+  // Back relation for appointments
+  appointments  Appointment[]
+}
+
+// ===========================================
+// APPOINTMENT BOOKING SYSTEM
+// ===========================================
+model Appointment {
+  id                   Int               @id @default(autoincrement())
+  patientId            Int
+  doctorId             Int
+  consultationTypeId   Int
+  appointmentDate      DateTime
+  status               String            // e.g. "Scheduled", "Completed", "Cancelled"
+
+  // Relations
+  patient              User              @relation("Patient", fields: [patientId], references: [id])
+  doctor               User              @relation("Doctor", fields: [doctorId], references: [id])
+  consultationType     ConsultationType  @relation(fields: [consultationTypeId], references: [id])
+}
+
+// ===========================================
+// MEDICINE TABLE
+// ===========================================
 model Medicine {
   id          Int      @id @default(autoincrement())
   name        String   @unique
@@ -122,17 +219,14 @@ model Medicine {
   price       Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
- 
 }
 
-/// 📌 COMPLAINTS TABLE: Stores common patient complaints
+// ===========================================
+// COMPLAINTS TABLE
+// ===========================================
 model Complaint {
   id          Int      @id @default(autoincrement())
   text        String   @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  
 }
-
