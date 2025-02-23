@@ -9,13 +9,18 @@ import "@/app/globals.css";
 import type { AppDispatch, RootState } from "@/store";
 import { ProfileProvider } from "@/hooks/context/ProfileContext";
 import Footer from "@/components/common/Footer";
-
+import CryptoJS from "crypto-js";
+import { decryptData } from "@/lib/encryption";
 const lato = Lato({
   subsets: ["latin"],
   weight: ["400", "700"],
   variable: "--font-lato",
 });
 
+const getDecryptedProfile = () => {
+  const encryptedProfile = sessionStorage.getItem("userProfile");
+  return encryptedProfile ? decryptData(encryptedProfile) : null;
+};
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
@@ -26,14 +31,19 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     (state: RootState) => state.user,
   );
   const pathname = usePathname();
-  const hasFetched = useRef(false); // ✅ Prevent double fetch
 
   useEffect(() => {
-    if (!profile && !loading && !hasFetched.current) {
-      hasFetched.current = true; // ✅ Mark as fetched to avoid duplicate calls
+    const storedProfile = getDecryptedProfile();
+
+    if (storedProfile) {
+      dispatch({
+        type: "user/fetchUserProfile/fulfilled",
+        payload: storedProfile,
+      });
+    } else {
       dispatch(fetchUserProfile());
     }
-  }, [dispatch, profile, loading]);
+  }, [dispatch]);
 
   if (loading) {
     return (
