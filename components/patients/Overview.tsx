@@ -1,6 +1,6 @@
 "use client";
 import { ArrowRight } from "lucide-react";
-import { AppointmentCard } from "@/components/patients/AppointmentCard";
+import { AppointmentOverview } from "@/components/patients/AppointmentOverview";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useProfile } from "@/hooks/context/ProfileContext";
@@ -98,7 +98,7 @@ export default function Overview() {
 
         {/* Right Section - Appointment & Apps */}
         <div className="lg:col-span-4 flex flex-col h-[423px] gap-6">
-          <AppointmentCard />
+          <AppointmentOverview />
 
           <Card className="mt-auto h-44 max-w-sm flex flex-col justify-end">
             <CardContent className="pt-2 pb-0 flex items-center justify-between">

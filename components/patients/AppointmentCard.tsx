@@ -1,37 +1,60 @@
-import { ArrowRight } from "lucide-react";
-
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+'use client'
+import { Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import Image from "next/image";
 
-export function AppointmentCard() {
+interface Appointment {
+  id: number;
+  appointmentDate: string;
+  status: string;
+  consultationType: { type: string };
+  doctor: { name: string; doctorProfile: { specialty: string } };
+}
+
+export default function AppointmentCard({ appointment }: { appointment: Appointment }) {
   return (
-    <Card className="max-w-sm">
-      <CardContent className="p-4">
-        <div className="flex flex-col gap-[15px]">
-          <div className="flex items-center gap-2.5">
-            <Avatar className="h-[58px] w-[58px]">
-              {/* <AvatarImage src="/image-14.png" alt="Appointment" /> */}
-              <AvatarFallback>AP</AvatarFallback>
-            </Avatar>
-            <h3 className="text-xl font-semibold">Upcoming Appointment</h3>
-          </div>
+    <Card className="w-full max-w-2xl bg-white border-0 shadow-md">
+      <CardContent className="p-4 flex items-center gap-4">
+        {/* Doctor Image */}
+        <div className="relative w-[100px] h-[100px] rounded-full overflow-hidden bg-gray-200">
+          <Image
+            src="/images/doc.png" // Static image, replace with real data if available
+            alt={appointment.doctor.name}
+            fill
+            className="object-cover"
+            priority
+          />
+        </div>
 
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-col gap-[11px]">
-              <div className="flex items-center gap-[9px]">
-                <span className="text-sm">Dr. Abhinav</span>
-                <span className="text-sm">|</span>
-                <span className="text-sm">Video Consultation</span>
-              </div>
-              <span className="text-sm">02:45 pm, Today</span>
-            </div>
-          </div>
+        {/* Appointment Info */}
+        <div className="flex flex-col flex-1">
+          <h1 className="text-[#56a67c] text-xl font-bold">
+             {appointment?.doctor?.name}
+          </h1>
+          <p className="text-gray-500 text-sm">
+            {appointment?.doctor?.doctorProfile?.specialty}
+          </p>
+          <p className="text-gray-400 text-sm flex items-center gap-1">
+            <Calendar className="h-4 w-4 text-gray-500" />
+            {new Date(appointment.appointmentDate).toLocaleString()}
+          </p>
+          <p className="text-gray-500 text-sm">
+            Consultation:{" "}
+            <span className="text-purple-600">{appointment.consultationType.type}</span>
+          </p>
+          <p className="text-gray-500 text-sm">
+            Status:{" "}
+            <span className={`font-semibold ${appointment.status === "Completed" ? "text-green-600" : "text-blue-600"}`}>
+              {appointment.status}
+            </span>
+          </p>
+        </div>
 
-          <Button className="h-[51px] w-[267px] rounded-[59px]  text-white hover:bg-popover">
-            <span className="mr-2">Join Video Consultation</span>
-            <ArrowRight className="h-5 w-5" />
-          </Button>
+        {/* Prescription Button */}
+        <div className="text-right">
+          <p className="text-gray-700 font-medium cursor-pointer hover:underline">
+            Prescription
+          </p>
         </div>
       </CardContent>
     </Card>
