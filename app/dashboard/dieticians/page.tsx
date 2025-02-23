@@ -5,6 +5,7 @@ import DoctorCard from "@/components/patients/DoctorCard";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, CircleCheckBig } from "lucide-react";
 import { useDecryptedProfile } from "@/hooks/use-profile";
+import CdLoader from "@/components/ui/custom/cd-loader";
 
 export default function Home() {
   const [doctors, setDoctors] = useState<any[]>([]);
@@ -39,10 +40,8 @@ export default function Home() {
 
   // Show loading state while either profile is loading or doctors are loading
   if (profileLoading || loading) {
-    return (
-      <div className="flex justify-center py-10">
-        <div className="w-10 h-10 border-4 border-gray-300 border-t-green-700 rounded-full animate-spin"></div>
-      </div>
+        return (
+      <CdLoader />
     );
   }
 
