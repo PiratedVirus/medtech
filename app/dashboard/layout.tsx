@@ -2,10 +2,9 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUserProfile } from "@/store/userSlice";
-import { decryptData } from "@/lib/encryption";
 import { ProfileProvider } from "@/hooks/context/ProfileContext";
 import type { AppDispatch, RootState } from "@/store";
-import { DashboardHeader } from "@/components/common/DashboardHeader";
+import { DashboardHeader as Header } from "@/components/common/DashboardHeader";
 import Footer from "@/components/common/Footer";
 import "@/app/globals.css";
 import { useDecryptedProfile } from "@/hooks/use-profile";
@@ -52,17 +51,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     );
   }
 
-  return (
-    <html lang="en">
-      <body className={`antialiased`}>
-        <ProfileProvider profile={profile}>
-          <DashboardHeader />
-          {children}
-          <Footer />
-        </ProfileProvider>
-      </body>
-    </html>
-  );
+    return (
+   
+          <ProfileProvider profile={profile}>
+            <Header />
+            <main className="flex-grow">
+              {children}
+            </main>
+            <Footer />
+          </ProfileProvider>
+    
+    );
 };
 
 export default DashboardLayout;

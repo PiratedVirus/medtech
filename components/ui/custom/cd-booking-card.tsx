@@ -1,8 +1,8 @@
 "use client"
 import React from "react";
 import { Card } from "@/components/ui/card";
-import { ArrowUpRight } from "lucide-react";
 import Image from "next/image";
+import ArrowButton from "./cd-arrow-button";
 
 interface BookingCardProps {
   title: string;
@@ -41,16 +41,7 @@ export default function BookingCard({
         </div>
 
         <div className="h-20 rounded-lg flex justify-center items-center">
-          <div className="w-64 h-20 pl-6 pr-1 bg-neutral-100 rounded-full flex items-center justify-between">
-            <span className="text-slate-500 text-lg font-semibold font-['Lato']">
-              {buttonText}
-            </span>
-            <div className="relative w-16 h-16">
-              <div className="w-16 h-16 absolute bg-orange-400 rounded-full flex items-center justify-center">
-                <ArrowUpRight className="w-8 h-8 text-white" strokeWidth={2} />
-              </div>
-            </div>
-          </div>
+          <ArrowButton buttonText={buttonText} />
         </div>
       </div>
     </Card>

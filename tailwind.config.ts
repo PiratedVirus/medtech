@@ -42,6 +42,7 @@ module.exports = {
         custom: {
           green: "#56A67C",
           orange: "#F28A2E",
+          mutedgreen: "#E6F4F1"
         },
       },
       fontFamily: {

@@ -18,7 +18,7 @@ export default function Home() {
         return;
       }
       try {
-        const response = await axios.get(`/api/doctors/get-doctors?clinicId=${clinicId}`, { withCredentials: true });
+        const response = await axios.get(`/api/doctors/get-dieticians?clinicId=${clinicId}`, { withCredentials: true });
 
         if (response.data.success) {
           setDoctors(response.data.doctors);
@@ -56,7 +56,7 @@ export default function Home() {
       <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
         <div>
           <p className="text-4xl font-bold text-gray-800">
-            {doctors.length} Doctors available for consultation
+            {doctors.length} dieticians available for consultation
           </p>
           <div className="flex items-center gap-2 mt-5">
             <CircleCheckBig className="text-green-700 h-6 w-6" />
