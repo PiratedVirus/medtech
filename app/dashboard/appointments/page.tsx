@@ -106,7 +106,7 @@ export default function AppointmentPage() {
       ) : (
         <AppointmentBooking
           doctor={bookingData?.doctor}
-          consultationType={bookingData?.type}
+          consultationType={bookingData?.type ?? null}
           onBack={() => {
             setAppointmentState("viewAppointments");
             dispatch(clearBookingData());
