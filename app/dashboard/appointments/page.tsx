@@ -6,7 +6,7 @@ import ArrowButton from "@/components/ui/custom/cd-arrow-button";
 import AppointmentCard from "@/components/patients/AppointmentCard";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
-import AppointmentBooking from "@/components/patients/AppointmentBook";
+import AppointmentBooking from "@/components/patients/AppointmentBooking";
 import { useSelector, useDispatch } from "react-redux";
 import { clearBookingData } from "@/store/appointmentSlice";
 import { RootState } from "@/store";

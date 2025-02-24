@@ -163,7 +163,7 @@ model LabTechProfile {
 model DoctorAvailability {
   id         Int            @id @default(autoincrement())
   doctorId   Int
-  dayOfWeek  String         // e.g. "Monday"
+  date       DateTime         // e.g. "Monday"
   startTime  String         // e.g. "09:00 AM"
   endTime    String         // e.g. "05:00 PM"
 
