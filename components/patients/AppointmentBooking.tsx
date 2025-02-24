@@ -1,12 +1,9 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { ArrowLeft, ArrowRight, ThumbsUp, MapPin, Clock, CreditCard } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { addDays, startOfDay } from "date-fns";
-import Image from "next/image"
-import Link from "next/link";
-
+import { DoctorInfo } from "@/custom/cd-doctor-info";
+import { DateNavigator } from "@/custom/cd-date-navigator";
+import { TimeSlots } from "@/custom/cd-time-slot";
+import { Sidebar } from "@/custom/cd-sidebar";
 
 interface AppointmentBookingProps {
   doctor: any;
@@ -15,9 +12,9 @@ interface AppointmentBookingProps {
 }
 
 interface Availability {
-  date: string;      // e.g. "2025-02-27T19:07:34.079Z"
-  startTime: string; // e.g. "09:00 AM"
-  endTime: string;   // e.g. "09:30 AM"
+  date: string;      
+  startTime: string;
+  endTime: string;
 }
 
 export default function AppointmentBooking({
@@ -25,26 +22,16 @@ export default function AppointmentBooking({
   consultationType,
   onBack,
 }: AppointmentBookingProps) {
-  // Which 3-day chunk are we on?
+  // 3-day chunk state
   const [page, setPage] = useState(1);
-
-  // We store all 3 days' data in these:
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [slotCounts, setSlotCounts] = useState<{ date: string; count: number }[]>([]);
-
-  // Which of the 3 days is selected? (0 => first day, 1 => second, 2 => third)
   const [dayIndex, setDayIndex] = useState(0);
-
-  // For smooth fetch. Keep old data until new chunk arrives
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState("");
 
-  // =======================
-  // Fetch chunk
-  // =======================
   useEffect(() => {
     if (!doctor?.id) return;
-
     let isMounted = true;
     setFetching(true);
 
@@ -52,11 +39,9 @@ export default function AppointmentBooking({
       .get(`/api/doctors/${doctor.id}/availability?page=${page}`)
       .then((res) => {
         if (!isMounted) return;
-
         if (res.data.success) {
-          setAvailability(res.data.availability); // all 3 days combined
-          setSlotCounts(res.data.slotCounts);     // day-based counts
-          // reset dayIndex to 0 (first day in the chunk)
+          setAvailability(res.data.availability);
+          setSlotCounts(res.data.slotCounts);
           setDayIndex(0);
           setError("");
         } else {
@@ -76,59 +61,36 @@ export default function AppointmentBooking({
     };
   }, [doctor, page]);
 
-  // =======================
-  // Navigation
-  // =======================
+  // Navigation functions
   function goToPreviousDay() {
-    // If we can move within the chunk
     if (dayIndex > 0) {
       setDayIndex(dayIndex - 1);
-      return;
-    }
-
-    // If dayIndex===0 => we need the previous chunk (unless page=1)
-    if (page > 1) {
+    } else if (page > 1) {
       setPage(page - 1);
-      // We want to highlight the last day (index 2) of the previous chunk
-      // after it loads. So let's do a small delay or a "pending" state:
       setTimeout(() => {
         setDayIndex(2);
       }, 100);
     }
-    // If page=1 & dayIndex=0 => can't go back further
   }
 
   function goToNextDay() {
-    // If we can move within the current chunk
     if (dayIndex < 2) {
       setDayIndex(dayIndex + 1);
-      return;
+    } else {
+      setPage(page + 1);
     }
-
-    // If dayIndex===2 => fetch next chunk
-    setPage(page + 1);
-    // We'll default to dayIndex=0 for the new chunk
   }
 
-  // If the user clicks on one of the 3 day boxes directly:
   function selectDay(index: number) {
     setDayIndex(index);
   }
 
-  // =======================
-  // Figure out which day the user is currently viewing
-  // =======================
-  // E.g. slotCounts[0], slotCounts[1], slotCounts[2]
+  // Determine the currently selected day's ISO date and count
   const currentDayInfo = slotCounts[dayIndex];
-  let currentDayDateISO: string | null = null;
-  let currentDayCount = 0;
+  const currentDayDateISO = currentDayInfo ? currentDayInfo.date : "";
+  const currentDayCount = currentDayInfo ? currentDayInfo.count : 0;
 
-  if (currentDayInfo) {
-    currentDayDateISO = currentDayInfo.date; // "2025-02-27T00:00:00.000Z", etc.
-    currentDayCount = currentDayInfo.count;
-  }
-
-  // Filter availability to just this day
+  // Filter slots for the selected day (comparing only the date part)
   const displayedSlots = currentDayDateISO
     ? availability.filter(
         (slot) =>
@@ -137,302 +99,25 @@ export default function AppointmentBooking({
       )
     : [];
 
-  // =======================
-  // "Today"/"Tomorrow" logic
-  // =======================
-  function formatDateString(dateStr: string) {
-    const d = new Date(dateStr);
-    const today = startOfDay(new Date());
-    const tomorrow = startOfDay(addDays(new Date(), 1));
-
-    if (
-      d.getFullYear() === today.getFullYear() &&
-      d.getMonth() === today.getMonth() &&
-      d.getDate() === today.getDate()
-    ) {
-      return "Today";
-    }
-    if (
-      d.getFullYear() === tomorrow.getFullYear() &&
-      d.getMonth() === tomorrow.getMonth() &&
-      d.getDate() === tomorrow.getDate()
-    ) {
-      return "Tomorrow";
-    }
-    return d.toDateString(); // e.g. "Thu Feb 27 2025"
-  }
-
-  // =======================
-  // Grouping: morning/afternoon/evening
-  // =======================
-  function parseTimeTo24Hour(time12h: string): number {
-    // "09:30 AM" => [ "09:30", "AM" ]
-    const [time, meridiem] = time12h.split(" ");
-    const [hourStr, minuteStr] = time.split(":");
-    let hour = parseInt(hourStr, 10);
-    const minute = parseInt(minuteStr, 10);
-
-    if (meridiem === "PM" && hour < 12) {
-      hour += 12;
-    }
-    if (meridiem === "AM" && hour === 12) {
-      hour = 0;
-    }
-    return hour + minute / 60;
-  }
-
-  function getTimeSegment(time12h: string) {
-    const hour24 = parseTimeTo24Hour(time12h);
-    if (hour24 < 12) return "morning";
-    if (hour24 < 17) return "afternoon";
-    return "evening";
-  }
-
-  const morningSlots = displayedSlots.filter(
-    (slot) => getTimeSegment(slot.startTime) === "morning"
-  );
-  const afternoonSlots = displayedSlots.filter(
-    (slot) => getTimeSegment(slot.startTime) === "afternoon"
-  );
-  const eveningSlots = displayedSlots.filter(
-    (slot) => getTimeSegment(slot.startTime) === "evening"
-  );
-
-  // =======================
-  // Render
-  // =======================
   return (
     <div className="container mx-auto p-4">
-           <div className="grid lg:grid-cols-[1fr_400px] gap-8">
-        {/* Main Content */}
-        <div className="space-y-8">
-          {/* Back Button */}
-          <Link href="#" className="inline-flex items-center text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Link>
-          {/* Doctor Info */}
-          <div className="flex justify-between items-start border-b-2 mb-10">
-            <div className="space-y-4">
-              <h1 className="text-3xl font-bold">{doctor?.name}</h1>
-              <p className="text-gray-600">{doctor?.doctorProfile.specialty}</p>
-              <p className="text-gray-500">{` ${doctor?.doctorProfile.yearsOfExperience} years overall experience`}</p>
-              <p className="text-gray-600">{`₹ ${doctor?.doctorProfile.consultationFee} Consultation fee at clinic`}</p>
-              <div className="flex items-center gap-4">
-                <ThumbsUp className="h-4 w-4 text-green-400" />
-                <span className="text-green-600 font-semibold">{doctor?.doctorProfile.rating}</span>
-                {/* <span className="text-gray-500">69 Patient stories</span> */}
-              </div>
-            </div>
-            <div className="relative w-48 h-48 rounded-lg overflow-hidden">
-              <Image
-                src="/images/doc.png?height=192&width=192"
-                alt="doctor"
-                fill
-                className="object-cover"
-              />
-            </div>
-          </div>
-
-          <div className="slotRender" >
-      {/* BACK BUTTON */}
-      <Button
-        variant="ghost"
-        onClick={onBack}
-        className="inline-flex items-center text-gray-600 hover:text-gray-900"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back
-      </Button>
-
-      <h1 className="text-3xl font-bold">{doctor?.name}</h1>
-
-      {/* Error label, but keep old data if any */}
-      {error && <p className="text-red-500 text-center py-2">{error}</p>}
-
-      {/* Date Navigator: 3 days from slotCounts[] */}
-      <Card className="bg-[#e6f4f1] p-4 mt-4">
-        <div className="flex items-center justify-between">
-          {/* PREV DAY */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={goToPreviousDay}
-            disabled={(page === 1 && dayIndex === 0) || fetching}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-
-          {/* 3 day boxes */}
-          <div className="grid grid-cols-3 gap-8">
-            {slotCounts.map((info, i) => {
-              const isSelected = i === dayIndex;
-              return (
-                <button
-                  key={i}
-                  onClick={() => selectDay(i)}
-                  className={`text-center p-2 rounded-lg transition-colors duration-300
-                    ${
-                      isSelected
-                        ? "bg-green-400 text-white"
-                        : "hover:bg-green-50"
-                    }
-                  `}
-                >
-                  <h3 className="font-semibold">
-                    {formatDateString(info.date)}
-                  </h3>
-                  <p
-                    className={
-                      info.count > 0 ? "text-green-900" : "text-gray-500"
-                    }
-                  >
-                    {info.count} slot{info.count !== 1 ? "s" : ""} available
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* NEXT DAY */}
-          <Button variant="ghost" size="icon" onClick={goToNextDay} disabled={fetching}>
-            <ArrowRight className="h-4 w-4" />
-          </Button>
+      <div className="grid lg:grid-cols-[1fr_400px] gap-8">
+        <div>
+          <DoctorInfo doctor={doctor} onBack={onBack} />
+          <DateNavigator
+            slotCounts={slotCounts}
+            dayIndex={dayIndex}
+            onSelectDay={selectDay}
+            onPrev={goToPreviousDay}
+            onNext={goToNextDay}
+            fetching={fetching}
+          />
+          {currentDayDateISO && (
+            <TimeSlots currentDayDate={currentDayDateISO} displayedSlots={displayedSlots} />
+          )}
         </div>
-      </Card>
-
-      {/* TIME SLOTS for the currently selected day */}
-      <div className="mt-6 space-y-4">
-        {currentDayDateISO && (
-          <h2 className="text-xl font-semibold">
-            {formatDateString(currentDayDateISO)}
-          </h2>
-        )}
-
-        {/* If no slots */}
-        {displayedSlots.length === 0 && !fetching && (
-          <p className="text-gray-500">No slots available for this date.</p>
-        )}
-
-        {/* Grouped morning/afternoon/evening */}
-        {displayedSlots.length > 0 && (
-          <div className="space-y-6">
-            {/* Morning */}
-            {morningSlots.length > 0 && (
-              <div>
-                <h4 className="font-semibold mb-2">Morning</h4>
-                <div className="flex flex-wrap gap-3">
-                  {morningSlots.map((slot, i) => (
-                    <Button
-                      key={i}
-                      variant="outline"
-                      className="border-green-600 text-green-600 hover:bg-green-50"
-                    >
-                      {slot.startTime} - {slot.endTime}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Afternoon */}
-            {afternoonSlots.length > 0 && (
-              <div>
-                <h4 className="font-semibold mb-2">Afternoon</h4>
-                <div className="flex flex-wrap gap-3">
-                  {afternoonSlots.map((slot, i) => (
-                    <Button
-                      key={i}
-                      variant="outline"
-                      className="border-green-600 text-green-600 hover:bg-green-50"
-                    >
-                      {slot.startTime} - {slot.endTime}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Evening */}
-            {eveningSlots.length > 0 && (
-              <div>
-                <h4 className="font-semibold mb-2">Evening</h4>
-                <div className="flex flex-wrap gap-3">
-                  {eveningSlots.map((slot, i) => (
-                    <Button
-                      key={i}
-                      variant="outline"
-                      className="border-green-600 text-green-600 hover:bg-green-50"
-                    >
-                      {slot.startTime} - {slot.endTime}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        <Sidebar />
       </div>
-      </div>
-
-
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          <Card className="p-4">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-green-600" />
-              Hospital address
-            </h2>
-            <div className="relative h-48 rounded-lg overflow-hidden mb-4">
-              <Image
-                src="/placeholder.svg?height=192&width=400"
-                alt="Hospital location"
-                fill
-                className="object-cover"
-              />
-            </div>
-            <Link href="#" className="text-green-600 hover:underline">
-              Get Directions
-            </Link>
-            <p className="mt-4 text-gray-600">
-              AIIMS Hospital, Sector-9, Noida,
-              <br />
-              Opposite ICICI Bank, Road-1, Delhi
-            </p>
-            <div className="mt-4 flex items-center gap-2 text-gray-600">
-              <Clock className="h-4 w-4" />
-              <div>
-                <p>MON - SAT</p>
-                <p>10:00 AM - 8:00 PM</p>
-              </div>
-            </div>
-            <div className="mt-4 flex items-center gap-2 text-gray-600">
-              <CreditCard className="h-4 w-4" />
-              <p>Online Payment Mode Available</p>
-            </div>
-
-            {/* Hospital Images */}
-            <div className="mt-6 grid grid-cols-3 gap-2">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="relative aspect-square rounded-lg overflow-hidden">
-                  <Image
-                    src={`/placeholder.svg?height=100&width=100`}
-                    alt={`Hospital facility ${i + 1}`}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-
-            <Button className="w-full mt-6 bg-orange-500 hover:bg-orange-600">Instant Pay Available</Button>
-          </Card>
-        </div>
-      </div>
-      
-
     </div>
   );
 }
