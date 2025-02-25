@@ -1,14 +1,14 @@
-"use client";
-import { useEffect, useState } from "react";
+'use client'; 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import axios from "axios";
-import DoctorCard from "@/components/patients/DoctorCard";
-import { Button } from "@/components/ui/button";
-import { CalendarIcon, CircleCheckBig } from "lucide-react";
-import { useDecryptedProfile } from "@/hooks/use-profile";
-import CdLoader from "@/components/ui/custom/cd-loader";
 import { useDispatch } from 'react-redux';
 import { setBookingData } from '@/store/appointmentSlice';
+import { useDecryptedProfile } from '@/hooks/use-profile';
+import axios from 'axios';
+import CdLoader from '@/components/ui/custom/cd-loader';
+import {CircleCheckBig, CalendarIcon} from "lucide-react";
+import DoctorCard from '@/components/patients/DoctorCard';
+import {Button} from '@/components/ui/button';
 
 export default function DoctorsPage() {
   const router = useRouter();
@@ -19,9 +19,8 @@ export default function DoctorsPage() {
   const { clinicId, isLoading: profileLoading } = useDecryptedProfile();
 
   const handleBookAppointment = (doctor: any, type: 'video' | 'clinic') => {
-    console.log("Setting doctor into redux store", doctor);
     dispatch(setBookingData({ doctor, type }));
-    router.push('/dashboard/appointments');
+    router.push(`/dashboard/appointments/${doctor.id}`);
   };
 
   useEffect(() => {
@@ -49,14 +48,10 @@ export default function DoctorsPage() {
     }
   }, [clinicId, profileLoading]);
 
-  // Show loading state while either profile is loading or doctors are loading
   if (profileLoading || loading) {
-    return (
-      <CdLoader />
-    );
+    return <CdLoader />;
   }
 
-  // Show error state
   if (error) {
     return <p className="text-red-500 text-center py-5">{error}</p>;
   }

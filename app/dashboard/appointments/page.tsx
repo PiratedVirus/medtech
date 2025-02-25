@@ -6,7 +6,6 @@ import ArrowButton from "@/components/ui/custom/cd-arrow-button";
 import AppointmentCard from "@/components/patients/AppointmentCard";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
-import AppointmentBooking from "@/components/patients/AppointmentBooking";
 import { useSelector, useDispatch } from "react-redux";
 import { clearBookingData } from "@/store/appointmentSlice";
 import { RootState } from "@/store";
@@ -17,19 +16,10 @@ export default function AppointmentPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { clinicId, isLoading: profileLoading } = useDecryptedProfile();
-  const [appointmentState, setAppointmentState] = useState("bookAppointments");
-  const [selectedDoctor, setSelectedDoctor] = useState(null);
-  const [consultationType, setConsultationType] = useState<"video" | "clinic" | null>(null);
   const dispatch = useDispatch();
   const bookingData = useSelector(
     (state: RootState) => state.appointment.bookingData,
   );
-  console.log("Booking data fetched from appointments is", bookingData);
-  // useEffect(() => {
-  //   return () => {
-  //     dispatch(clearBookingData());
-  //   };
-  // }, [dispatch]);
 
   useEffect(() => {
     async function fetchAppointments() {
@@ -65,53 +55,41 @@ export default function AppointmentPage() {
   if (error) {
     return <p className="text-red-500 text-center py-5">{error}</p>;
   }
+
   return (
     <div className="py-7 md:px-20 bg-muted">
-      {appointmentState === "displayAppointments" ? (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 py-7">
-            <div className="md:col-span-8 ">
-              <UpcomingAppointment appointment={upcoming} />
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 py-7">
+        <div className="md:col-span-8 ">
+          <UpcomingAppointment appointment={upcoming} />
+        </div>
 
-            <div className="md:col-span-4 p-6 rounded-3xl relative overflow-hidden bg-custom-mutedgreen flex items-center justify-center">
-              <ArrowButton buttonText="Book an Appointment" />
-            </div>
-          </div>
-          <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
-            <div>
-              <p className="text-4xl font-bold text-gray-800">
-                Past Appointments
-              </p>
-              <div className="flex items-center gap-2 mt-5">
-                <p className="text-lg">
-                  Here you can view your previous appointments
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {appointments.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {appointments.map((appointment) => (
-                <AppointmentCard key={appointment} appointment={appointment} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-gray-600 py-10">
-              No dieticians available at the moment.
+        <div className="md:col-span-4 p-6 rounded-3xl relative overflow-hidden bg-custom-mutedgreen flex items-center justify-center">
+          <ArrowButton buttonText="Book an Appointment" />
+        </div>
+      </div>
+      <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
+        <div>
+          <p className="text-4xl font-bold text-gray-800">
+            Past Appointments
+          </p>
+          <div className="flex items-center gap-2 mt-5">
+            <p className="text-lg">
+              Here you can view your previous appointments
             </p>
-          )}
-        </>
+          </div>
+        </div>
+      </div>
+
+      {appointments.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {appointments.map((appointment) => (
+            <AppointmentCard key={appointment.id} appointment={appointment} />
+          ))}
+        </div>
       ) : (
-        <AppointmentBooking
-          doctor={bookingData?.doctor}
-          consultationType={bookingData?.type ?? null}
-          onBack={() => {
-            setAppointmentState("viewAppointments");
-            dispatch(clearBookingData());
-          }}
-        />
+        <p className="text-center text-gray-600 py-10">
+          No appointments available at the moment.
+        </p>
       )}
     </div>
   );

@@ -1,5 +1,3 @@
-// app/api/doctors/[doctorId]/availability/route.ts
-
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { addDays, startOfDay, endOfDay } from "date-fns";
@@ -24,11 +22,6 @@ export async function GET(request: Request, context: { params: { doctorId: strin
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get("page") || "1", 10);
     // e.g. page=1 → first chunk, page=2 → second chunk, etc.
-
-    // 3) Calculate which days to show
-    //    If page=1 → offset=0
-    //    If page=2 → offset=3
-    //    If page=3 → offset=6
     const dayOffset = (page - 1) * DAYS_PER_PAGE;
     const today = startOfDay(new Date());
 
@@ -42,7 +35,7 @@ export async function GET(request: Request, context: { params: { doctorId: strin
       };
     });
 
-    // 4) Fetch all availability that falls in these day ranges
+    // 3) Fetch all availability that falls in these day ranges
     const availability = await prisma.doctorAvailability.findMany({
       where: {
         doctorId: doctorIdNum,
@@ -56,7 +49,7 @@ export async function GET(request: Request, context: { params: { doctorId: strin
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     });
 
-    // 5) For each day in our chunk, count how many slots exist
+    // 4) For each day in our chunk, count how many slots exist
     const slotCounts = await Promise.all(
       dayRanges.map(async ({ start, end, dateObj }) => {
         const count = await prisma.doctorAvailability.count({
@@ -68,7 +61,6 @@ export async function GET(request: Request, context: { params: { doctorId: strin
             },
           },
         });
-
         return {
           date: dateObj.toISOString().split("T")[0], // e.g. "2025-02-25"
           count,
@@ -76,11 +68,15 @@ export async function GET(request: Request, context: { params: { doctorId: strin
       })
     );
 
-    // You might also want to return how many total pages exist in the future,
-    // but that depends on your business logic (e.g., 60 days out, 100 days out, etc.)
+    // 5) Fetch the doctor details, including the doctor's profile
+    const doctorDetails = await prisma.user.findUnique({
+      where: { id: doctorIdNum },
+      include: { doctorProfile: true },
+    });
 
     return NextResponse.json({
       success: true,
+      doctor: doctorDetails,
       availability,
       slotCounts,
       pagination: {
