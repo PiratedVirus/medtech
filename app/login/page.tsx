@@ -1,6 +1,6 @@
-import Header from "@/components/ui/custom/cd-header"
+import Header from "@/components/common/Header"
 import SignIn from "@/components/common/SignIn"
-import HeroSection from "@/components/ui/custom/cd-hero-section"
+import HeroSection from "@/components/common/HeroSection"
 
 export default function Page() {
   return (

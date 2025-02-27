@@ -2,9 +2,9 @@
 import React from "react";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
-import ArrowButton from "./cd-arrow-button";
+import ArrowButton from "../../ui/custom/cd-arrow-button";
 
-interface BookingCardProps {
+interface HomeServiceBookingCardProps {
   title: string;
   description: string;
   iconSrc: string;
@@ -13,14 +13,14 @@ interface BookingCardProps {
   gradientTo?: string;
 }
 
-export default function BookingCard({
+export default function HomeServiceBookingCard({
   title,
   description,
   iconSrc,
   buttonText,
   gradientFrom = "#134F30",
   gradientTo = "#56A67C",
-}: BookingCardProps) {
+}: HomeServiceBookingCardProps) {
   return (
     <Card
       className={`w-80 h-72 bg-gradient-to-b from-[#134F30] to-[#56A67C] border-0 rounded-lg flex flex-col justify-center items-center gap-2.5`}

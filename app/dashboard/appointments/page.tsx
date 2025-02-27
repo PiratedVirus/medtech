@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import UpcomingAppointment from "@/components/ui/custom/cd-upcoming-appointment-card";
+import UpcomingAppointment from "@/components/patients/appointments/AppointmentHomeupcomingAppointmentCard";
 import ArrowButton from "@/components/ui/custom/cd-arrow-button";
 import AppointmentListCard from "@/patients/appointments/AppointmentListCard";
 import { useDecryptedProfile } from "@/hooks/use-profile";

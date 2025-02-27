@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { DoctorInfo } from "@/custom/cd-doctor-info";
+import { DoctorInfo } from "@/components/patients/appointments/AppointmentDoctorInfo";
 import { DateNavigator } from "@/custom/cd-date-navigator";
 import { TimeSlots } from "@/custom/cd-time-slot";
-import { Sidebar } from "@/custom/cd-sidebar";
+import { Sidebar } from "@/components/patients/appointments/AppointmentSidebar";
 import CdLoader from "@/custom/cd-loader";
 import AppointmentBookingTimeSlot from "@/patients/appointments/AppointmentBookingTimeSlot";
 

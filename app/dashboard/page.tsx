@@ -1,6 +1,6 @@
 import HomeOverview from "@/components/patients/home/HomeOverview";
-import BookingCard from "@/components/ui/custom/cd-booking-card";
-import HealthInsightsCard from "@/components/ui/custom/cd-health-insights-card";
+import HomeServiceBookingCard from "@/components/patients/home/HomeServiceBookingCard";
+import HealthInsightsCard from "@/components/patients/home/cd-health-insights-card";
 
 
 export default function Home() {
@@ -9,25 +9,25 @@ export default function Home() {
             <HomeOverview />
             <div className="pr-20 bg-muted py-4 flex flex-wrap justify-center gap-6">
                 {/* <HealthInsightsCard /> */}
-                <BookingCard 
+                <HomeServiceBookingCard 
                     title="GDM Care"
                     description="You can book the appointment from here.."
                     buttonText="Explore our Plans"
                     iconSrc="/icons/mother.svg"
                 />
-                <BookingCard 
+                <HomeServiceBookingCard 
                     title="Lab Test"
                     description="You can book the appointment from here.."
                     buttonText="Book a Lab Test"
                     iconSrc="/images/lab-test.png"
                 />
-                <BookingCard 
+                <HomeServiceBookingCard 
                     title="Consultation"
                     description="You can book the appointment from here.."
                     buttonText="Book Consultation"
                     iconSrc="/images/consultation.png"
                 />
-                <BookingCard 
+                <HomeServiceBookingCard 
                     title="Medicine Delivery"
                     description="You can book the appointment from here.."
                     buttonText="Book Medicines"

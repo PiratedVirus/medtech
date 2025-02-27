@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import BookingCard from "../components/ui/custom/cd-booking-card"; // Adjusted path to be consistent
+import BookingCard from "../components/patients/home/HomeServiceBookingCard"; // Adjusted path to be consistent
 
 const meta: Meta<typeof BookingCard> = {
   title: "Components/BookingCard",
