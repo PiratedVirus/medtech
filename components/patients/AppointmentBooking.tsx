@@ -4,6 +4,8 @@ import { DoctorInfo } from "@/custom/cd-doctor-info";
 import { DateNavigator } from "@/custom/cd-date-navigator";
 import { TimeSlots } from "@/custom/cd-time-slot";
 import { Sidebar } from "@/custom/cd-sidebar";
+import CdLoader from "../ui/custom/cd-loader";
+import TimeSlotBooking from "@/components/patients/TimeSlotBooking";
 
 interface AppointmentBookingProps {
   doctor: any;
@@ -12,7 +14,7 @@ interface AppointmentBookingProps {
 }
 
 interface Availability {
-  date: string;      
+  date: string;
   startTime: string;
   endTime: string;
 }
@@ -29,6 +31,7 @@ export default function AppointmentBooking({
   const [dayIndex, setDayIndex] = useState(0);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState<Availability | null>(null);
 
   useEffect(() => {
     if (!doctor?.id) return;
@@ -99,21 +102,41 @@ export default function AppointmentBooking({
       )
     : [];
 
+  if (selectedSlot) {
+    return (
+      <TimeSlotBooking
+        slot={selectedSlot}
+        doctor={doctor}
+        onBack={() => setSelectedSlot(null)}
+      />
+    );
+  }
+
   return (
     <div className="container mx-auto p-4">
       <div className="grid lg:grid-cols-[1fr_400px] gap-8">
         <div>
           <DoctorInfo doctor={doctor} onBack={onBack} />
-          <DateNavigator
-            slotCounts={slotCounts}
-            dayIndex={dayIndex}
-            onSelectDay={selectDay}
-            onPrev={goToPreviousDay}
-            onNext={goToNextDay}
-            fetching={fetching}
-          />
-          {currentDayDateISO && (
-            <TimeSlots currentDayDate={currentDayDateISO} displayedSlots={displayedSlots} />
+          {(fetching || !doctor) ? (
+            <CdLoader />
+          ) : (
+            <>
+              <DateNavigator
+                slotCounts={slotCounts}
+                dayIndex={dayIndex}
+                onSelectDay={selectDay}
+                onPrev={goToPreviousDay}
+                onNext={goToNextDay}
+                fetching={fetching}
+              />
+              {currentDayDateISO && (
+                <TimeSlots
+                  currentDayDate={currentDayDateISO}
+                  displayedSlots={displayedSlots}
+                  onSlotSelect={(slot) => setSelectedSlot(slot)}
+                />
+              )}
+            </>
           )}
         </div>
         <Sidebar />

@@ -1,4 +1,3 @@
-// components/TimeSlots.tsx
 import { Button } from "@/components/ui/button";
 import { getTimeSegment, formatDateString } from "@/lib/utils";
 
@@ -11,9 +10,10 @@ interface Availability {
 interface TimeSlotsProps {
   currentDayDate: string;
   displayedSlots: Availability[];
+  onSlotSelect: (slot: Availability) => void;
 }
 
-export function TimeSlots({ currentDayDate, displayedSlots }: TimeSlotsProps) {
+export function TimeSlots({ currentDayDate, displayedSlots, onSlotSelect }: TimeSlotsProps) {
   // Group slots into segments
   const morningSlots = displayedSlots.filter(
     (slot) => getTimeSegment(slot.startTime) === "morning"
@@ -41,7 +41,8 @@ export function TimeSlots({ currentDayDate, displayedSlots }: TimeSlotsProps) {
                   <Button
                     key={i}
                     variant="outline"
-                    className="border-green-600 text-green-600 hover:bg-green-50"
+                    className="border-green-600 text-green-600 hover:bg-green-50 rounded-full"
+                    onClick={() => onSlotSelect(slot)}
                   >
                     {slot.startTime} - {slot.endTime}
                   </Button>
@@ -57,7 +58,8 @@ export function TimeSlots({ currentDayDate, displayedSlots }: TimeSlotsProps) {
                   <Button
                     key={i}
                     variant="outline"
-                    className="border-green-600 text-green-600 hover:bg-green-50"
+                    className="border-green-600 text-green-600 hover:bg-green-50 rounded-full"
+                    onClick={() => onSlotSelect(slot)}
                   >
                     {slot.startTime} - {slot.endTime}
                   </Button>
@@ -73,7 +75,8 @@ export function TimeSlots({ currentDayDate, displayedSlots }: TimeSlotsProps) {
                   <Button
                     key={i}
                     variant="outline"
-                    className="border-green-600 text-green-600 hover:bg-green-50"
+                    className="border-green-600 text-green-600 hover:bg-green-50 rounded-full"
+                    onClick={() => onSlotSelect(slot)}
                   >
                     {slot.startTime} - {slot.endTime}
                   </Button>

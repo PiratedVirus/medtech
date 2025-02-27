@@ -17,8 +17,8 @@ export function DoctorInfo({ doctor, onBack }: DoctorInfoProps) {
         Back
       </Link>
       {/* Doctor Info */}
-      <div className="flex justify-between items-start border-b-2 mb-10">
-        <div className="space-y-4">
+      <div className="flex justify-between items-start border-b-2 mb-20">
+        <div className="space-y-4 pb-8">
           <h1 className="text-3xl font-bold">{doctor?.name}</h1>
           <p className="text-gray-600">{doctor?.doctorProfile.specialty}</p>
           <p className="text-gray-500">{doctor?.doctorProfile.yearsOfExperience} years overall experience</p>

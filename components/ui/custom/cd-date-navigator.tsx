@@ -41,7 +41,7 @@ export function DateNavigator({
                 key={i}
                 onClick={() => onSelectDay(i)}
                 className={`text-center p-2 rounded-lg transition-colors duration-300
-                  ${isSelected ? "bg-green-400 text-white" : "hover:bg-green-50"}`}
+                  ${isSelected ? "bg-secondary text-white" : "hover:bg-green-50"}`}
               >
                 <h3 className="font-semibold">{formatDateString(info.date)}</h3>
                 <p className={info.count > 0 ? "text-green-900" : "text-gray-500"}>
