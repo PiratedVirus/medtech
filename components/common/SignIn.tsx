@@ -9,8 +9,6 @@ import Link from "next/link";
 import RegistrationForm from "@/components/common/Registration";
 import { isValidPhoneNumber } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import jwtDecode from "jwt-decode";
-// import jwt from "jsonwebtoken";
 
 export default function SignInForm() {
   const [step, setStep] = useState<"signIn" | "otp" | "register">("otp");

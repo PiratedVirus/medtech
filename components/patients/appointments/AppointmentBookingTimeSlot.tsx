@@ -1,10 +1,9 @@
 "use client";
-import AppointmentForm from "../ui/custom/cd-appointment-form";
-import PaymentSelection from "../ui/custom/cd-appointment-payment";
-import AppointmentDoctorInfo from "../ui/custom/cd-appointment-doctor-info";
-import { ArrowLeft } from "lucide-react";
+import AppointmentForm from "@/patients/appointments/AppointmentBookingPatientForm";
+import PaymentSelection from "@/patients/appointments/AppointmentBookingPayment";
+import AppointmentDoctorInfo from "@/patients/appointments/AppointmentBookingDoctorInfo";
 
-interface TimeSlotBookingProps {
+interface AppointmentBookingTimeSlotProps {
   slot: {
     date: string;
     startTime: string;
@@ -14,11 +13,11 @@ interface TimeSlotBookingProps {
   onBack: () => void;
 }
 
-export default function TimeSlotBooking({
+export default function AppointmentBookingTimeSlot({
   slot,
   doctor,
   onBack,
-}: TimeSlotBookingProps) {
+}: AppointmentBookingTimeSlotProps) {
   return (
     <>
       <AppointmentDoctorInfo doctor={doctor} onBack={onBack} />

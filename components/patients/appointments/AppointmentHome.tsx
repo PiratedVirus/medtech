@@ -4,10 +4,10 @@ import { DoctorInfo } from "@/custom/cd-doctor-info";
 import { DateNavigator } from "@/custom/cd-date-navigator";
 import { TimeSlots } from "@/custom/cd-time-slot";
 import { Sidebar } from "@/custom/cd-sidebar";
-import CdLoader from "../ui/custom/cd-loader";
-import TimeSlotBooking from "@/components/patients/TimeSlotBooking";
+import CdLoader from "@/custom/cd-loader";
+import AppointmentBookingTimeSlot from "@/patients/appointments/AppointmentBookingTimeSlot";
 
-interface AppointmentBookingProps {
+interface AppointmentHomeProps {
   doctor: any;
   consultationType: "video" | "clinic" | null;
   onBack: () => void;
@@ -19,11 +19,11 @@ interface Availability {
   endTime: string;
 }
 
-export default function AppointmentBooking({
+export default function AppointmentHome({
   doctor,
   consultationType,
   onBack,
-}: AppointmentBookingProps) {
+}: AppointmentHomeProps) {
   // 3-day chunk state
   const [page, setPage] = useState(1);
   const [availability, setAvailability] = useState<Availability[]>([]);
@@ -104,7 +104,7 @@ export default function AppointmentBooking({
 
   if (selectedSlot) {
     return (
-      <TimeSlotBooking
+      <AppointmentBookingTimeSlot
         slot={selectedSlot}
         doctor={doctor}
         onBack={() => setSelectedSlot(null)}

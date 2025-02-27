@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import UpcomingAppointment from "@/components/ui/custom/cd-upcoming-appointment-card";
 import ArrowButton from "@/components/ui/custom/cd-arrow-button";
-import AppointmentCard from "@/components/patients/AppointmentCard";
+import AppointmentListCard from "@/patients/appointments/AppointmentListCard";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { useSelector, useDispatch } from "react-redux";
@@ -83,7 +83,7 @@ export default function AppointmentPage() {
       {appointments.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {appointments.map((appointment) => (
-            <AppointmentCard key={appointment.id} appointment={appointment} />
+            <AppointmentListCard key={appointment} appointment={appointment} />
           ))}
         </div>
       ) : (

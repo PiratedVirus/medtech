@@ -1,10 +1,10 @@
 import { ArrowRight } from "lucide-react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-export function AppointmentOverview() {
+export function HomeAppointmentOverview() {
   return (
     <Card className="max-w-sm">
       <CardContent className="p-4">

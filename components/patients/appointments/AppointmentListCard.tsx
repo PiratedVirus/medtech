@@ -11,7 +11,7 @@ interface Appointment {
   doctor: { name: string; doctorProfile: { specialty: string } };
 }
 
-export default function AppointmentCard({ appointment }: { appointment: Appointment }) {
+export default function AppointmentListCard({ appointment }: { appointment: Appointment }) {
   return (
     <Card className="w-full max-w-2xl bg-white border-0 shadow-md">
       <CardContent className="p-4 flex items-center gap-4">
