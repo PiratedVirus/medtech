@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { DoctorInfo } from "@/components/patients/appointments/AppointmentDoctorInfo";
+import { DoctorInfo } from "@/components/patients/appointments/DoctorInfoAppointment";
 import { DateNavigator } from "@/custom/cd-date-navigator";
 import { TimeSlots } from "@/custom/cd-time-slot";
 import { Sidebar } from "@/components/patients/appointments/AppointmentSidebar";
 import CdLoader from "@/custom/cd-loader";
-import AppointmentBookingTimeSlot from "@/patients/appointments/AppointmentBookingTimeSlot";
+import AppointmentBookingTimeSlot from "@/components/patients/appointments/TimeSlotAppointmentBooking";
 
 interface AppointmentHomeProps {
   doctor: any;

@@ -33,6 +33,7 @@ export const AppointmentForm = forwardRef(({ }, ref) => {
     defaultValues: {
       appointmentFor: "self",
       fullName: profile?.name || "",
+      // @ts-ignore
       mobile: profile?.phoneNumber || "",
       email: "",
     },

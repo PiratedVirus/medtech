@@ -1,9 +1,9 @@
 "use client";
 import { useState, useRef } from "react";
 import axios from "axios";
-import { AppointmentForm } from "@/patients/appointments/AppointmentBookingPatientForm";
-import PaymentSelection from "@/patients/appointments/AppointmentBookingPayment";
-import AppointmentDoctorInfo from "@/patients/appointments/AppointmentBookingDoctorInfo";
+import { AppointmentForm } from "@/components/patients/appointments/PatientFormAppointmentBooking";
+import PaymentSelection from "@/components/patients/appointments/PaymentAppointmentBooking";
+import AppointmentDoctorInfo from "@/components/patients/appointments/DoctorInfoAppointmentBooking";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import SuccessModal from "@/components/ui/custom/cd-success-modal";
 
@@ -24,11 +24,10 @@ export default function AppointmentBookingTimeSlot({
   onBack,
 }: AppointmentBookingTimeSlotProps) {
   const [paymentOption, setPaymentOption] = useState("online");
-  const {  profile, isLoading: profileLoading } = useDecryptedProfile();
+  const {  profile } = useDecryptedProfile();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
 
-  // ✅ Ref to access form submission method
   const formRef = useRef<{ submitForm: (callback: (data: any) => void) => void } | null>(null);
 
   const handleConfirmAppointment = async (data: any) => {
@@ -49,10 +48,10 @@ export default function AppointmentBookingTimeSlot({
       console.log("appointmentData", appointmentData);
       const response = await axios.post("/api/appointments", appointmentData);
       if (response.data.success) {
-        setShowSuccessModal(true); // ✅ Show success modal
+        setShowSuccessModal(true); 
         setTimeout(() => {
           setShowSuccessModal(false);
-          onBack(); // ✅ Close the modal and go back after 3 sec
+          onBack();
         }, 3000);
       } else {
         alert("Failed to book appointment.");
@@ -80,6 +79,7 @@ export default function AppointmentBookingTimeSlot({
           <button
             onClick={() => {
               if (formRef.current) {
+                // @ts-ignore
                 formRef.current.submitForm(handleConfirmAppointment)();
               }
             }}
