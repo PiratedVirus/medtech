@@ -1,4 +1,3 @@
-// components/DoctorInfo.tsx
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ThumbsUp } from "lucide-react";
@@ -8,7 +7,7 @@ interface DoctorInfoProps {
   onBack: () => void;
 }
 
-export function DoctorInfo({ doctor, onBack }: DoctorInfoProps) {
+export function DoctorInfoOne({ doctor, onBack }: DoctorInfoProps) {
   const router = useRouter();
   const onBackClick = () => {
     router.push("/dashboard/doctors");

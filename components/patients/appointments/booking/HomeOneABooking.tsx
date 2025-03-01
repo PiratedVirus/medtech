@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { DoctorInfo } from "@/components/patients/appointments/DoctorInfoAppointment";
+import { DoctorInfoOne } from "@/appointment-book/DoctorInfoOneABooking";
 import { DateNavigator } from "@/custom/cd-date-navigator";
 import { TimeSlots } from "@/custom/cd-time-slot";
-import { Sidebar } from "@/components/patients/appointments/AppointmentSidebar";
+import { Sidebar } from "@/appointment-book/SidebarABooking";
 import CdLoader from "@/custom/cd-loader";
-import AppointmentBookingTimeSlot from "@/components/patients/appointments/TimeSlotAppointmentBooking";
+import HomeTwoAppointmentBooking from "@/appointment-book/HomeTwoABooking";
 
 interface AppointmentHomeProps {
   doctor: any;
@@ -19,7 +19,7 @@ interface Availability {
   endTime: string;
 }
 
-export default function AppointmentHome({
+export default function AppointmentBookingHomeOne({
   doctor,
   consultationType,
   onBack,
@@ -104,7 +104,7 @@ export default function AppointmentHome({
 
   if (selectedSlot) {
     return (
-      <AppointmentBookingTimeSlot
+      <HomeTwoAppointmentBooking
         slot={selectedSlot}
         doctor={doctor}
         onBack={() => setSelectedSlot(null)}
@@ -116,7 +116,7 @@ export default function AppointmentHome({
     <div className="container mx-auto p-4">
       <div className="grid lg:grid-cols-[1fr_400px] gap-8">
         <div>
-          <DoctorInfo doctor={doctor} onBack={onBack} />
+          <DoctorInfoOne doctor={doctor} onBack={onBack} />
           {(fetching || !doctor) ? (
             <CdLoader />
           ) : (

@@ -1,9 +1,9 @@
 "use client";
 import { useState, useRef } from "react";
 import axios from "axios";
-import { AppointmentForm } from "@/components/patients/appointments/PatientFormAppointmentBooking";
-import PaymentSelection from "@/components/patients/appointments/PaymentAppointmentBooking";
-import AppointmentDoctorInfo from "@/components/patients/appointments/DoctorInfoAppointmentBooking";
+import { PatientForm } from "@/appointment-book/PatientFormABooking";
+import PaymentSelection from "@/appointment-book/PaymentABooking";
+import DoctorInfoTwo from "@/appointment-book/DoctorInfoTwoABooking";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import SuccessModal from "@/components/ui/custom/cd-success-modal";
 
@@ -18,7 +18,7 @@ interface AppointmentBookingTimeSlotProps {
   onBack: () => void;
 }
 
-export default function AppointmentBookingTimeSlot({
+export default function HomeTwoAppointmentBooking({
   slot,
   doctor,
   onBack,
@@ -64,12 +64,12 @@ export default function AppointmentBookingTimeSlot({
 
   return (
     <>
-      <AppointmentDoctorInfo slot={slot} doctor={doctor} onBack={onBack} />
+      <DoctorInfoTwo slot={slot} doctor={doctor} onBack={onBack} />
       <div className="flex flex-col px-20">
         <div className="text-3xl pt-3">Patient Details</div>
         <div className="flex flex-row">
           <div className="w-1/2">
-            <AppointmentForm ref={formRef} />
+            <PatientForm ref={formRef} />
           </div>
           <div className="w-1/2">
             <PaymentSelection selectedOption={paymentOption} onOptionChange={setPaymentOption} />

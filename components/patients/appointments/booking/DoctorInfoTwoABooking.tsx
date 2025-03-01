@@ -9,7 +9,7 @@ interface AppointmentDoctorInfoProps {
   onBack: () => void;
 }
 
-export default function AppointmentDoctorInfo({
+export default function DoctorInfoTwo({
   slot,
   doctor,
   onBack,

@@ -25,7 +25,7 @@ const formSchema = z.object({
 });
 
 // ✅ Use `forwardRef` to expose form actions to the parent
-export const AppointmentForm = forwardRef(({ }, ref) => {
+export const PatientForm = forwardRef(({ }, ref) => {
   const { profile } = useProfile();
 
   const form = useForm<z.infer<typeof formSchema>>({
