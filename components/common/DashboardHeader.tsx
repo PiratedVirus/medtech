@@ -29,7 +29,10 @@ export function DashboardHeader() {
   };
   const navigationItems = navigation.map((item) => ({
     ...item,
-    current: pathname === item.href,
+    current:
+    item.href === "/dashboard/appointments"
+      ? pathname.startsWith("/dashboard/appointments")
+      : pathname === item.href,
   }));
   return (
     <header className="w-full h-28 bg-background border-b">
