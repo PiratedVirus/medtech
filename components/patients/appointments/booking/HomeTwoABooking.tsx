@@ -24,7 +24,7 @@ export default function HomeTwoAppointmentBooking({
   onBack,
 }: AppointmentBookingTimeSlotProps) {
   const [paymentOption, setPaymentOption] = useState("online");
-  const {  profile } = useDecryptedProfile();
+  const { profile } = useDecryptedProfile();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
 
@@ -40,7 +40,7 @@ export default function HomeTwoAppointmentBooking({
       ...data,
       slot,
       doctorId: doctor.id,
-      patientId: profile?.id, 
+      patientId: profile?.id,
       paymentOption,
     };
 
@@ -48,7 +48,7 @@ export default function HomeTwoAppointmentBooking({
       console.log("appointmentData", appointmentData);
       const response = await axios.post("/api/appointments", appointmentData);
       if (response.data.success) {
-        setShowSuccessModal(true); 
+        setShowSuccessModal(true);
         setTimeout(() => {
           setShowSuccessModal(false);
           onBack();
@@ -65,31 +65,39 @@ export default function HomeTwoAppointmentBooking({
   return (
     <>
       <DoctorInfoTwo slot={slot} doctor={doctor} onBack={onBack} />
-      <div className="flex flex-col px-20">
-        <div className="text-3xl pt-3">Patient Details</div>
-        <div className="flex flex-row">
-          <div className="w-1/2">
+      <div className="flex flex-col px-20 pb-5">
+        <div className="text-3xl pt-4">Patient Details</div>
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 h-full">
+          {/* Left column - Patient Form */}
+          <div className="bg-white flex pt-0 pl-0 p-6">
             <PatientForm ref={formRef} />
           </div>
-          <div className="w-1/2">
-            <PaymentSelection selectedOption={paymentOption} onOptionChange={setPaymentOption} />
+
+          {/* Right column - Payment Selection and Button */}
+          <div className="flex flex-col gap-1 pt-0 h-full">
+            {/* Payment Selection */}
+            <div className="bg-white flex-grow flex items-center justify-center p-6">
+              <PaymentSelection selectedOption={paymentOption} onOptionChange={setPaymentOption} />
+            </div>
+
+            {/* Button */}
+            <div className="bg-white rounded-lg mb-2 flex items-center justify-center">
+              <button
+                onClick={() => {
+                  if (formRef.current) {
+                    // @ts-ignore
+                    formRef.current.submitForm(handleConfirmAppointment)()
+                  }
+                }}
+                className="bg-[#f28a2e] hover:bg-[#e07a20] text-white text-lg py-6 px-8 rounded-full w-full md:w-auto"
+              >
+                Confirm Clinic Visit
+              </button>
+            </div>
           </div>
         </div>
-        <div className="flex justify-center mt-6 mb-4">
-          <button
-            onClick={() => {
-              if (formRef.current) {
-                // @ts-ignore
-                formRef.current.submitForm(handleConfirmAppointment)();
-              }
-            }}
-            className="bg-[#f28a2e] hover:bg-[#e07a20] text-white text-lg py-6 px-8 rounded-full"
-          >
-            Confirm Clinic Visit
-          </button>
-        </div>
       </div>
-            <SuccessModal open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
+      <SuccessModal open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
     </>
   );
 }

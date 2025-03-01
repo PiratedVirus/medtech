@@ -118,7 +118,7 @@ export default function AppointmentBookingHomeOne({
         <div>
           <DoctorInfoOne doctor={doctor} onBack={onBack} />
           {(fetching || !doctor) ? (
-            <CdLoader />
+            <CdLoader  height="60vh"/>
           ) : (
             <>
               <DateNavigator
@@ -139,7 +139,7 @@ export default function AppointmentBookingHomeOne({
             </>
           )}
         </div>
-        <Sidebar />
+        <Sidebar consultationType={consultationType} />
       </div>
     </div>
   );

@@ -2,6 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { Calendar, Clock, ArrowLeft } from "lucide-react";
 import { formatDateString } from "@/lib/utils";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
+
 
 interface AppointmentDoctorInfoProps {
   slot: any;
@@ -14,6 +17,7 @@ export default function DoctorInfoTwo({
   doctor,
   onBack,
 }: AppointmentDoctorInfoProps) {
+  const bookingData = useSelector((state: RootState) => state.appointment.bookingData);
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px]">
@@ -39,7 +43,7 @@ export default function DoctorInfoTwo({
             <div className="relative w-24 h-24 hidden sm:block rounded-full overflow-hidden shrink-0">
               <Image
                 src="/images/doc.png"
-                alt="Dr. Manish Ghansala"
+                alt=""
                 fill
                 className="object-cover"
               />
@@ -87,12 +91,12 @@ export default function DoctorInfoTwo({
             </div>
           </div>
 
-          <a className="w-full  text-[14px] sm:text-[15px] font-medium text-white  hover:bg-white/10 transition-colors mb-1">
+          <a onClick={onBack} className="w-full cursor-pointer text-[14px] sm:text-[15px] font-medium text-white  hover:bg-white/10 transition-colors mb-1">
             Change Date & Time
           </a>
 
           <h2 className="text-[16px] sm:text-[18px] font-medium">
-            In-clinic Appointment
+            { (bookingData?.type === 'clinic') ? ('In-clinic Appointment') : ('Video Consultation') }
           </h2>
         </div>
       </div>
