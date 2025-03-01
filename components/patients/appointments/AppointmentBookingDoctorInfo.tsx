@@ -1,20 +1,23 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Calendar, Clock, ArrowLeft } from "lucide-react";
+import { formatDateString } from "@/lib/utils";
 
 interface AppointmentDoctorInfoProps {
+  slot: any;
   doctor: any;
   onBack: () => void;
 }
 
 export default function AppointmentDoctorInfo({
+  slot,
   doctor,
   onBack,
 }: AppointmentDoctorInfoProps) {
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px]">
-        <div className="bg-muted px-4 pt-4 pb-0 sm:p-6 lg:p-8 lg:pb-0">
+        <div className="bg-muted pt-4 pb-0 sm:p-4 lg:px-20 lg:pb-0">
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-[#2C2E38] mb-4 lg:mb-6 hover:text-[#56A67C] transition-colors"
@@ -23,17 +26,17 @@ export default function AppointmentDoctorInfo({
             <span className="text-[15px]">Back</span>
           </button>
 
-          <div className="flex flex-col sm:flex-row items-start gap-6 sm:gap-8 justify-around">
+          <div className="flex flex-col sm:flex-row items-start gap-6 sm:gap-8 justify-between">
             <div className="">
               <h1 className="text-[22px] sm:text-[28px] font-bold text-[#2C2E38] mb-2">
                 {doctor?.name}
               </h1>
               <p className="text-[14px] sm:text-[15px] text-[#5F6377] mb-4 sm:mb-6">
-                {doctor?.doctorProfile.speciality}
+                {doctor?.doctorProfile?.specialty}
               </p>
             </div>
 
-            <div className="relative h-20 sm:w-24 sm:h-24 hidden sm:block rounded-full overflow-hidden shrink-0">
+            <div className="relative w-24 h-24 hidden sm:block rounded-full overflow-hidden shrink-0">
               <Image
                 src="/images/doc.png"
                 alt="Dr. Manish Ghansala"
@@ -73,13 +76,13 @@ export default function AppointmentDoctorInfo({
             <div className="flex items-center gap-3">
               <Calendar className="h-5 w-5" />
               <span className="text-[14px] sm:text-[15px] font-medium">
-                On Nov 09, 2024
+                On {formatDateString(slot?.date)}
               </span>
             </div>
             <div className="flex items-center gap-3">
               <Clock className="h-5 w-5" />
               <span className="text-[14px] sm:text-[15px] font-medium">
-                At 1:30 PM
+                At {slot?.startTime} - {slot?.endTime}
               </span>
             </div>
           </div>

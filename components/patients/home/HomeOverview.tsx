@@ -22,7 +22,7 @@ export default function HomeOverview() {
         <div className="lg:col-span-3">
           <div className="relative w- h-[423px] bg-cover bg-center rounded-lg overflow-hidden">
             <img
-              src="/images/Home-col.png"
+              src="/images/overview-col.png"
               alt="Doctor consultation"
               className="w-80 h-[423px] object-cover rounded-lg"
             />

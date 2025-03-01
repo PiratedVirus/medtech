@@ -1,14 +1,11 @@
-"use client"
+"use client";
+import { useState } from "react";
+import { Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
-import { useState } from "react"
-import { Check } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-
-export default function PaymentSelection() {
-  const [selectedOption, setSelectedOption] = useState<"online" | "clinic">("online")
-
+export default function PaymentSelection({ selectedOption, onOptionChange }: { selectedOption: string, onOptionChange: (option: string) => void }) {
   return (
     <div className="max-w-3xl mx-auto p-6 font-sans">
       <h1 className="text-[#2c2e38] text-lg font-medium mb-6">Choose a payment option to Book Appointment</h1>
@@ -16,10 +13,10 @@ export default function PaymentSelection() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         <Card
           className={cn(
-            "p-6 flex flex-col items-center justify-center cursor-pointer transition-all",
+            "p-4 flex flex-col items-center justify-center cursor-pointer transition-all",
             selectedOption === "online" ? "border-[#f28a2e] border-2" : "border hover:border-[#f28a2e]",
           )}
-          onClick={() => setSelectedOption("online")}
+          onClick={() => onOptionChange("online")}
         >
           <p className="text-[#f28a2e] text-lg font-medium mb-2">₹ 500</p>
           <p className="text-[#f28a2e] text-lg">Pay online</p>
@@ -27,12 +24,12 @@ export default function PaymentSelection() {
 
         <Card
           className={cn(
-            "p-6 flex flex-col items-center justify-center cursor-pointer transition-all",
+            "p-4 flex flex-col items-center justify-center cursor-pointer transition-all",
             selectedOption === "clinic"
               ? "border-[#f28a2e] border-2 bg-[#f5f7f9]"
               : "border bg-[#f5f7f9] hover:border-[#f28a2e]",
           )}
-          onClick={() => setSelectedOption("clinic")}
+          onClick={() => onOptionChange("clinic")}
         >
           <p className="text-[#2c2e38] text-lg font-medium mb-2">₹ 500</p>
           <p className="text-[#2c2e38] text-lg">Pay later at the clinic</p>
@@ -72,13 +69,6 @@ export default function PaymentSelection() {
           </div>
         </div>
       </div>
-
-      <div className="flex justify-center">
-        <Button className="bg-[#f28a2e] hover:bg-[#e07a20] text-white text-lg py-6 px-8 rounded-full">
-          Confirm Clinic Visit
-        </Button>
-      </div>
     </div>
-  )
+  );
 }
-

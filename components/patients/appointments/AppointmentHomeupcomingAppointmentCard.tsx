@@ -3,15 +3,7 @@ import { Card } from "@/components/ui/card";
 import Image from "next/image";
 
 interface UpcomingAppointmentProps {
-  appointment: {
-    doctor: {
-      name: string;
-    };
-    consultationType: {
-      type: string;
-    };
-    appointmentDate: string;
-  } | null;
+  appointment: any;
 }
 
 export default function UpcomingAppointment({ appointment }: UpcomingAppointmentProps) {
@@ -20,11 +12,12 @@ export default function UpcomingAppointment({ appointment }: UpcomingAppointment
       <div className="p-6 rounded-3xl bg-custom-mutedgreen">
         <h2 className="text-2xl font-semibold text-gray-800">Upcoming Appointment</h2>
         <p className="text-gray-600">No upcoming appointments scheduled.</p>
+        <p>{JSON.stringify(appointment)}</p>
       </div>
     );
   }
-
-  const appointmentDate = new Date(appointment.appointmentDate);
+  // const appointment = appointments[0];
+  const appointmentDate = new Date(appointment[0].doctorAvailability?.date);
   const formattedDate = appointmentDate.toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "2-digit",
@@ -54,7 +47,7 @@ export default function UpcomingAppointment({ appointment }: UpcomingAppointment
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold text-gray-800">Upcoming Appointment</h2>
           <p className="text-gray-600 flex items-center gap-2">
-            Session starts at {formattedTime}
+            Session starts at {appointment[0].doctorAvailability?.startTime}
           </p>
         </div>
 
@@ -63,20 +56,20 @@ export default function UpcomingAppointment({ appointment }: UpcomingAppointment
           <div className="flex items-center gap-4">
             {/* Doctor Image */}
             <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
-              <Image src="/images/doc.png?height=48&width=48" alt={appointment.doctor.name} fill className="object-cover" />
+              <Image src="/images/doc.png?height=48&width=48" alt={appointment[0].doctor.name} fill className="object-cover" />
             </div>
 
             {/* Appointment Details */}
             <div className="flex-grow">
-              <h3 className="font-semibold text-lg">{appointment.doctor.name}</h3>
-              <p className="text-sm text-white/90">{appointment.consultationType.type} consultation</p>
+              <h3 className="font-semibold text-lg">{appointment[0].doctor.name}</h3>
+              <p className="text-sm text-white/90">{appointment[0].consultationType} consultation</p>
             </div>
 
             {/* Time and Date */}
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <Clock className="h-4 w-4" />
-                <span>{formattedTime}</span>
+                <span>{appointment[0].doctorAvailability.startTime}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4" />

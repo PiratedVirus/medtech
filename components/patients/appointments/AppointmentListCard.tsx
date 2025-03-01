@@ -12,6 +12,12 @@ interface Appointment {
 }
 
 export default function AppointmentListCard({ appointment }: { appointment: Appointment }) {
+  const appointmentDate = new Date(appointment.appointmentDate);
+  const formattedDate = appointmentDate.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
   return (
     <Card className="w-full max-w-2xl bg-white border-0 shadow-md">
       <CardContent className="p-4 flex items-center gap-4">
@@ -25,7 +31,6 @@ export default function AppointmentListCard({ appointment }: { appointment: Appo
             priority
           />
         </div>
-
         {/* Appointment Info */}
         <div className="flex flex-col flex-1">
           <h1 className="text-[#56a67c] text-xl font-bold">
@@ -36,11 +41,11 @@ export default function AppointmentListCard({ appointment }: { appointment: Appo
           </p>
           <p className="text-gray-400 text-sm flex items-center gap-1">
             <Calendar className="h-4 w-4 text-gray-500" />
-            {new Date(appointment.appointmentDate).toLocaleString()}
+            {formattedDate} - {appointment.doctorAvailability.startTime}
           </p>
           <p className="text-gray-500 text-sm">
             Consultation:{" "}
-            <span className="text-purple-600">{appointment.consultationType.type}</span>
+            <span className="text-purple-600">{appointment?.consultationType}</span>
           </p>
           <p className="text-gray-500 text-sm">
             Status:{" "}

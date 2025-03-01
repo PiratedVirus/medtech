@@ -10,7 +10,7 @@ const DAYS_PER_PAGE = 3;
 export async function GET(request: Request, context: { params: { doctorId: string } }) {
   try {
     // 1) Get doctorId
-    const doctorIdNum = parseInt(context.params.doctorId, 10);
+    const doctorIdNum = parseInt(context.params?.doctorId, 10);
     if (isNaN(doctorIdNum)) {
       return NextResponse.json(
         { success: false, error: "Invalid doctor ID" },

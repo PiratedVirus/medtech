@@ -15,7 +15,7 @@ export default function AppointmentPage() {
   const [upcoming, setUpcoming] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const { clinicId, isLoading: profileLoading } = useDecryptedProfile();
+  const { clinicId, profile, isLoading: profileLoading } = useDecryptedProfile();
   const dispatch = useDispatch();
   const bookingData = useSelector(
     (state: RootState) => state.appointment.bookingData,
@@ -28,12 +28,14 @@ export default function AppointmentPage() {
       }
       try {
         const response = await axios.get(
-          `/api/appointments?clinicId=${clinicId}`,
+          `/api/appointments?clinicId=${clinicId}&patientId=${profile?.id}`,
           { withCredentials: true },
         );
         if (response.data.success) {
-          setAppointments(response.data.past);
-          setUpcoming(response.data.upcoming);
+          // console.log(`all appointments: ${JSON.stringify(response?.data)}`);
+          // console.log(`upcoming appointments: ${response?.data?.data.upcoming}`);
+          setAppointments(response.data.data.past);
+          setUpcoming(response.data.data.upcoming);
         } else {
           setError("Failed to load appointments");
         }
@@ -80,7 +82,7 @@ export default function AppointmentPage() {
         </div>
       </div>
 
-      {appointments.length > 0 ? (
+      {appointments?.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {appointments.map((appointment) => (
             <AppointmentListCard key={appointment} appointment={appointment} />

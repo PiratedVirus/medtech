@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import DoctorCard from "@/components/patients/DoctorCard";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, CircleCheckBig } from "lucide-react";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
+import DoctorCard from "@/components/patients/doctors/DoctorCard";
 
 export default function Home() {
   const [doctors, setDoctors] = useState<any[]>([]);
@@ -79,8 +79,8 @@ export default function Home() {
       {doctors.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {doctors.map((doctor) => (
-            <DoctorCard key={doctor.id} doctor={doctor} />
-            <
+            // <DoctorCard key={doctor.id} doctor={doctor} />
+            <DoctorCard key={doctor.id} doctor={doctor} />  
           ))}
         </div>
       ) : (
