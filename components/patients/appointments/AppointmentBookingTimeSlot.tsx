@@ -5,6 +5,7 @@ import { AppointmentForm } from "@/patients/appointments/AppointmentBookingPatie
 import PaymentSelection from "@/patients/appointments/AppointmentBookingPayment";
 import AppointmentDoctorInfo from "@/patients/appointments/AppointmentBookingDoctorInfo";
 import { useDecryptedProfile } from "@/hooks/use-profile";
+import SuccessModal from "@/components/ui/custom/cd-success-modal";
 
 
 interface AppointmentBookingTimeSlotProps {
@@ -24,6 +25,7 @@ export default function AppointmentBookingTimeSlot({
 }: AppointmentBookingTimeSlotProps) {
   const [paymentOption, setPaymentOption] = useState("online");
   const {  profile, isLoading: profileLoading } = useDecryptedProfile();
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
 
   // ✅ Ref to access form submission method
@@ -39,7 +41,7 @@ export default function AppointmentBookingTimeSlot({
       ...data,
       slot,
       doctorId: doctor.id,
-      patientId: profile?.id, // ✅ Hardcoded patient ID
+      patientId: profile?.id, 
       paymentOption,
     };
 
@@ -47,8 +49,11 @@ export default function AppointmentBookingTimeSlot({
       console.log("appointmentData", appointmentData);
       const response = await axios.post("/api/appointments", appointmentData);
       if (response.data.success) {
-        alert("Appointment booked successfully!");
-        onBack();
+        setShowSuccessModal(true); // ✅ Show success modal
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          onBack(); // ✅ Close the modal and go back after 3 sec
+        }, 3000);
       } else {
         alert("Failed to book appointment.");
       }
@@ -71,7 +76,7 @@ export default function AppointmentBookingTimeSlot({
             <PaymentSelection selectedOption={paymentOption} onOptionChange={setPaymentOption} />
           </div>
         </div>
-        <div className="flex justify-center mt-6">
+        <div className="flex justify-center mt-6 mb-4">
           <button
             onClick={() => {
               if (formRef.current) {
@@ -84,6 +89,7 @@ export default function AppointmentBookingTimeSlot({
           </button>
         </div>
       </div>
+            <SuccessModal open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
     </>
   );
 }
