@@ -21,9 +21,20 @@
     "paths": {
       "@/*": ["./*"],
       "@/components/*": ["./components/*"],
+      "@/patients/*": ["./components/patients/*"],
+      "@/doctors/*": ["./components/doctors/*"],
+      "@/home/*": ["./components/home/*"],
+
+      "@/custom/*": ["./components/ui/custom/*"],
       "@/app/*": ["./app/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "**/*.cjs", "prisma/seed.js"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "**/*.cjs"
+  ],
   "exclude": ["node_modules"]
 }

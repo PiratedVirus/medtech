@@ -20,7 +20,7 @@ const lato = Lato({
 export default function RootLayout({children,}: Readonly<{children: React.ReactNode;}>) {
   return (
     <html lang="en">
-      <body className={`${lato.variable} antialiased`}>
+      <body className={`${lato.variable} antialiased min-h-screen flex flex-col`}>
         <Provider store={store}>
           {children}
         </Provider>

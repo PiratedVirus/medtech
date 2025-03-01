@@ -3,7 +3,8 @@
 // ===========================================
 datasource db {
   provider = "postgresql"  // or "mysql"
-  url      = env("DATABASE_URL")
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -162,11 +163,12 @@ model LabTechProfile {
 model DoctorAvailability {
   id         Int            @id @default(autoincrement())
   doctorId   Int
-  dayOfWeek  String         // e.g. "Monday"
+  date       DateTime         // e.g. "Monday"
   startTime  String         // e.g. "09:00 AM"
   endTime    String         // e.g. "05:00 PM"
-
+  status     String         // e.g. "Available", "Booked"
   doctor     DoctorProfile  @relation(fields: [doctorId], references: [id])
+  appointments  Appointment[] 
 }
 
 model DieticianAvailability {
@@ -199,13 +201,26 @@ model Appointment {
   patientId            Int
   doctorId             Int
   consultationTypeId   Int
-  appointmentDate      DateTime
-  status               String            // e.g. "Scheduled", "Completed", "Cancelled"
+  doctorAvailabilityId Int
+
+  // Optional fields for booking details
+  appointmentFor       String?          // e.g. "self" or "other"
+  fullName             String?          // If booking for someone else, store their name
+  mobile               String?          // If booking for someone else
+  email                String?          // If booking for someone else
+
+  // You can store the date/time from the availability as well (to preserve historical data)
+  appointmentDate      DateTime?
+
+  status               String           // e.g. "Scheduled", "Completed", "Cancelled"
+  createdAt            DateTime?         @default(now())
+  updatedAt            DateTime?        @updatedAt
 
   // Relations
   patient              User              @relation("Patient", fields: [patientId], references: [id])
   doctor               User              @relation("Doctor", fields: [doctorId], references: [id])
   consultationType     ConsultationType  @relation(fields: [consultationTypeId], references: [id])
+  doctorAvailability   DoctorAvailability @relation(fields: [doctorAvailabilityId], references: [id])
 }
 
 // ===========================================

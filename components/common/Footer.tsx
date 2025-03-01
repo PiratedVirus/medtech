@@ -6,7 +6,7 @@ import Image from "next/image";
 
 export default function Footer() {
   return (
-    <footer className="text-black">
+    <footer className="text-black border-t-2">
       <div className="container px-4 py-12 mx-auto">
         {/* ✅ Responsive Grid */}
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-4">

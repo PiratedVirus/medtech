@@ -1,10 +1,10 @@
 "use client"
 import React from "react";
 import { Card } from "@/components/ui/card";
-import { ArrowUpRight } from "lucide-react";
 import Image from "next/image";
+import ArrowButton from "../../ui/custom/cd-arrow-button";
 
-interface BookingCardProps {
+interface HomeServiceBookingCardProps {
   title: string;
   description: string;
   iconSrc: string;
@@ -13,14 +13,14 @@ interface BookingCardProps {
   gradientTo?: string;
 }
 
-export default function BookingCard({
+export default function HomeServiceBookingCard({
   title,
   description,
   iconSrc,
   buttonText,
   gradientFrom = "#134F30",
   gradientTo = "#56A67C",
-}: BookingCardProps) {
+}: HomeServiceBookingCardProps) {
   return (
     <Card
       className={`w-80 h-72 bg-gradient-to-b from-[#134F30] to-[#56A67C] border-0 rounded-lg flex flex-col justify-center items-center gap-2.5`}
@@ -41,16 +41,7 @@ export default function BookingCard({
         </div>
 
         <div className="h-20 rounded-lg flex justify-center items-center">
-          <div className="w-64 h-20 pl-6 pr-1 bg-neutral-100 rounded-full flex items-center justify-between">
-            <span className="text-slate-500 text-lg font-semibold font-['Lato']">
-              {buttonText}
-            </span>
-            <div className="relative w-16 h-16">
-              <div className="w-16 h-16 absolute bg-orange-400 rounded-full flex items-center justify-center">
-                <ArrowUpRight className="w-8 h-8 text-white" strokeWidth={2} />
-              </div>
-            </div>
-          </div>
+          <ArrowButton buttonText={buttonText} />
         </div>
       </div>
     </Card>

@@ -17,8 +17,11 @@ interface Doctor {
   name: string;
   doctorProfile: DoctorProfile;
 }
-
-export default function DoctorCard({ doctor }: { doctor: Doctor }) {
+interface DoctorCardProps {
+  doctor: Doctor;
+  onBookAppointment: (doctor: Doctor, type: 'video' | 'clinic') => void;
+}
+export default function DoctorCard({ doctor, onBookAppointment }: DoctorCardProps) {
   return (
     <Card className="w-full max-w-2xl bg-white border-0">
       <CardContent className="p-0">
@@ -96,6 +99,7 @@ export default function DoctorCard({ doctor }: { doctor: Doctor }) {
           <div className="flex flex-col sm:flex-row gap-3 justify-center px-4">
             <Button
               size="lg"
+              onClick={() => onBookAppointment(doctor, 'video')}
               className="bg-[#f28a2e] hover:bg-[#f28a2e]/90 text-white rounded-full px-6"
             >
               Book video visit
@@ -103,6 +107,7 @@ export default function DoctorCard({ doctor }: { doctor: Doctor }) {
             <Button
               size="lg"
               variant="outline"
+              onClick={() => onBookAppointment(doctor, 'clinic')}
               className="border-[#f28a2e] text-[#f28a2e] hover:bg-[#f28a2e]/10 rounded-full px-6"
             >
               Book clinic visit
