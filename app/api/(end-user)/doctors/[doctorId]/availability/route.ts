@@ -7,14 +7,14 @@ const prisma = new PrismaClient();
 const DAYS_PER_PAGE = 3;
 const TIMEZONE = "Asia/Kolkata";
 
-export async function GET(request: Request, context: { params: { doctorId: string } }) {
+export async function GET(request: Request, { params }: { params: { doctorId: string } }) {
   try {
     console.log("Received request for doctor availability");
 
-    // 1) Get doctorId
-    const doctorIdNum = parseInt(context.params?.doctorId, 10);
+    // 1) Extract and validate doctorId from route params
+    const doctorIdNum = parseInt(params.doctorId, 10);
     if (isNaN(doctorIdNum)) {
-      console.error("Invalid doctor ID:", context.params?.doctorId);
+      console.error("Invalid doctor ID:", params.doctorId);
       return NextResponse.json(
         { success: false, error: "Invalid doctor ID" },
         { status: 400 }
@@ -22,55 +22,46 @@ export async function GET(request: Request, context: { params: { doctorId: strin
     }
     console.log("Doctor ID:", doctorIdNum);
 
-    // 2) Get current page from query string
+    // 2) Determine current page and compute day offset
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get("page") || "1", 10);
-
     const dayOffset = (page - 1) * DAYS_PER_PAGE;
 
-    const nowIST = toZonedTime(new Date(), TIMEZONE); // Convert to IST
-    const todayIST = startOfDay(nowIST); // Get start of the day in IST
-
+    // Convert current date/time to IST and get today's start in UTC
+    const nowIST = toZonedTime(new Date(), TIMEZONE);
+    const todayIST = startOfDay(nowIST);
     const todayUTC = new Date(todayIST.getTime() - todayIST.getTimezoneOffset() * 60000);
 
-
+    // 3) Generate day ranges for the days per page
     const dayRanges = Array.from({ length: DAYS_PER_PAGE }, (_, i) => {
       const d = addDays(todayUTC, dayOffset + i);
       return {
-        dateObj: d, // Corrected Date object
+        dateObj: d,
         start: startOfDay(d),
         end: endOfDay(d),
       };
     });
 
-    // console.log("Day ranges:", dayRanges);
-
-    // 3) Fetch availability
+    // 4) Fetch available slots for the doctor within the generated day ranges
     const availability = await prisma.doctorAvailability.findMany({
       where: {
         doctorId: doctorIdNum,
         status: "available",
         OR: dayRanges.map(({ start, end }) => ({
-          date: {
-            gte: start,
-            lte: end,
-          },
+          date: { gte: start, lte: end },
         })),
       },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     });
 
-    // 4) Count slot availability for each day
+    // 5) Count available slots per day
     const slotCounts = await Promise.all(
       dayRanges.map(async ({ start, end, dateObj }) => {
         const count = await prisma.doctorAvailability.count({
           where: {
             doctorId: doctorIdNum,
             status: "available",
-            date: {
-              gte: start,
-              lte: end,
-            },
+            date: { gte: start, lte: end },
           },
         });
         return {
@@ -80,15 +71,11 @@ export async function GET(request: Request, context: { params: { doctorId: strin
       })
     );
 
-    // console.log("Slot counts:", slotCounts);
-
-    // 5) Fetch doctor details
+    // 6) Fetch doctor details with associated profile
     const doctorDetails = await prisma.user.findUnique({
       where: { id: doctorIdNum },
       include: { doctorProfile: true },
     });
-
-    // console.log("Doctor details:", doctorDetails);
 
     return NextResponse.json({
       success: true,
@@ -102,6 +89,9 @@ export async function GET(request: Request, context: { params: { doctorId: strin
     });
   } catch (error) {
     console.error("Error fetching doctor availability:", error);
-    return NextResponse.json({ success: false, error: "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Server error" },
+      { status: 500 }
+    );
   }
 }

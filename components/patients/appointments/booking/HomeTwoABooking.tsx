@@ -10,8 +10,6 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { loadRazorpay } from "@/lib/utils";
 
-
-
 interface AppointmentBookingTimeSlotProps {
   slot: {
     date: string;
@@ -42,25 +40,33 @@ export default function HomeTwoAppointmentBooking({
         alert("Failed to load payment gateway.");
         return;
       }
+      const amount = 1 * 100; // ₹500 in paisa
+      const currency = "INR";
+      const receipt = `order_${Date.now()}`;
       const paymentResponse = await axios.post("/api/payments/create", {
-        amount: 1 * 100, // ₹500 in paisa
-        currency: "INR",
-        receipt: `order_${Date.now()}`,
+        amount,
+        currency,
+        receipt,
       });
 
-      const { orderId } = paymentResponse.data;
+      const { orderId} = paymentResponse.data;
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-        amount: 1 * 100, // ₹500
-        currency: "INR",
+        amount,
+        currency,
         name: "Care Diabetic",
         description: "Appointment Payment",
         order_id: orderId,
         handler: async function (response: any) {
           console.log("Payment Successful:", response);
-
-          await handleConfirmAppointment(appointmentData, response.razorpay_payment_id);
+          const razorpayResponse = {
+            ...response,
+            ...paymentResponse.data,
+            amount,
+            receipt
+          }
+          await handleConfirmAppointment(appointmentData, razorpayResponse );
         },
         prefill: {
           name: profile?.name || "",
@@ -82,11 +88,12 @@ export default function HomeTwoAppointmentBooking({
     }
   };
 
-  const handleConfirmAppointment = async (data: any, paymentId?: string) => {
+  const handleConfirmAppointment = async (data: any, razorpayResponse?: any) => {
     if (!data) {
       alert("Please fill out the form.");
       return;
     }
+    console.log("RazoePay Response", razorpayResponse);
 
     const appointmentData = {
       ...data,
@@ -94,12 +101,13 @@ export default function HomeTwoAppointmentBooking({
       doctorId: doctor.id,
       patientId: profile?.id,
       paymentOption,
-      paymentId, // ✅ Store Payment ID if paid online
+      razorpayResponse, // Store Payment ID if paid online
       consultationTypeId: consultationType === "clinic" ? 1 : 2,
     };
+    
 
-    if (paymentOption === "online" && !paymentId) {
-      // ✅ If payment failed, do not proceed with appointment booking
+    if (paymentOption === "online" && !razorpayResponse.success) {
+      // If payment failed, do not proceed with appointment booking
       alert("Payment not completed. Please try again.");
       return;
     }
@@ -112,7 +120,7 @@ export default function HomeTwoAppointmentBooking({
         setTimeout(() => {
           setShowSuccessModal(false);
           // onBack();
-        }, 3000);
+        }, 30000);
       } else {
         alert("Failed to book appointment.");
       }
@@ -149,7 +157,7 @@ export default function HomeTwoAppointmentBooking({
                     // @ts-ignore
                     formRef.current.submitForm((data) => {
                       if (paymentOption === "online") {
-                        handlePayment(data); // ✅ Trigger Razorpay first
+                        handlePayment(data);
                       } else {
                         handleConfirmAppointment(data);
                       }

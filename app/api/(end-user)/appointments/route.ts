@@ -184,40 +184,43 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log("Creating appointment with data:", body);
 
-    // Destructure your needed fields
+    // Destructure needed fields
     const {
       appointmentFor,
       fullName,
       mobile,
       email,
-      slot,             // { id, doctorId, date, startTime, endTime }
+      slot, // { id, doctorId, date, startTime, endTime }
       doctorId,
       patientId,
       consultationTypeId,
       paymentOption,
+      razorpayResponse,
     } = body;
 
-    // Validate required fields for your schema
-    // In your schema: patientId, doctorId, consultationTypeId, doctorAvailabilityId, and status are required
     if (!patientId || !doctorId || !slot?.id) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Missing required fields: patientId, doctorId, slot.id",
-        },
+        { success: false, error: "Missing required fields: patientId, doctorId, slot.id" },
         { status: 400 }
       );
     }
 
-    // If no consultationType is provided, default to 1 or some known ID
+    // Set default consultation type
     const finalConsultationTypeId = consultationTypeId ?? 1;
+    
+    // Create Google Meet link if the consultation type is not a clinic visit
     let meetLink = null;
-    if (consultationTypeId !== 1) { // Assuming 1 = Clinic Visit, adjust as needed
+    if (finalConsultationTypeId !== 1) {
       meetLink = await createGoogleMeetLink(slot, doctorId, patientId);
     }
-    // Create the new appointment in Prisma
-    const [newAppointment, updatedAvailability] = await prisma.$transaction([
-      prisma.appointment.create({
+
+    // Use Prisma Transaction to:
+    //    1. Create Appointment
+    //    2. Update Doctor Availability (set status to "booked")
+    //    3. If online payment, create a Payment record
+    const result = await prisma.$transaction(async (prisma) => {
+      // Create Appointment
+      const newAppointment = await prisma.appointment.create({
         data: {
           patientId,
           doctorId,
@@ -231,23 +234,35 @@ export async function POST(request: Request) {
           appointmentLink: meetLink,
           status: "Scheduled",
         },
-        include: {
-          doctorAvailability: true,
-        },
-      }),
-      prisma.doctorAvailability.update({
-        where: { id: slot.id },
-        data: { status: "booked" }, // ✅ Update the status of the doctor’s availability
-      }),
-    ]);
+      });
 
-    return NextResponse.json({ success: true, data: newAppointment });
+      // Update Doctor Availability status
+      await prisma.doctorAvailability.update({
+        where: { id: slot.id },
+        data: { status: "booked" },
+      });
+
+      // Create Payment record only if paymentOption is "online"
+      if (paymentOption === "online" && razorpayResponse) {
+        await prisma.payment.create({
+          data: {
+            appointmentId: newAppointment.id, // Pass newly created appointment ID
+            razorpayOrderId: razorpayResponse.razorpay_order_id, // Razorpay Order ID
+            razorpayPaymentId: razorpayResponse.razorpay_payment_id, // Payment ID
+            amount: razorpayResponse.amount, // Amount in paisa (50000 for ₹500)
+            currency: razorpayResponse.currency || "INR",
+            paymentStatus: "Paid", // Set status as "Paid" since payment was successful
+            paymentMethod: razorpayResponse.method, // Payment method (UPI, Card, Netbanking)
+          },
+        });
+      }
+
+      return newAppointment; // Return the newly created appointment
+    });
+
+    return NextResponse.json({ success: true, data: result });
   } catch (error) {
     console.error("Error creating appointment:", error);
-
-    return NextResponse.json(
-      { success: false, error: "Failed to create appointment" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "Failed to create appointment" }, { status: 500 });
   }
 }

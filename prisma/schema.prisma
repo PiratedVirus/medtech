@@ -202,7 +202,6 @@ model Appointment {
   doctorId             Int
   consultationTypeId   Int
   doctorAvailabilityId Int
-
   // Optional fields for booking details
   appointmentFor       String?          // e.g. "self" or "other"
   fullName             String?          // If booking for someone else, store their name
@@ -251,14 +250,13 @@ model Complaint {
 
 model Payment {
   id            Int       @id @default(autoincrement())
-  appointmentId Int       @unique   // ✅ One-to-One with Appointment
+  appointmentId Int       @unique   // One-to-One with Appointment
   razorpayOrderId String?  // Razorpay Order ID
   razorpayPaymentId String? // Razorpay Payment ID
   amount        Int       // Store amount in paisa (50000 for ₹500)
   currency      String    @default("INR")
-  paymentStatus String    // ✅ e.g. "Pending", "Paid", "Failed", "Refunded"
-  paymentMethod String?   // ✅ e.g. "UPI", "Credit Card", "Net Banking"
-  transactionDetails Json? // ✅ Store raw transaction response from Razorpay
+  paymentStatus String    // e.g. "Pending", "Paid", "Failed", "Refunded"
+  paymentMethod String?   // e.g. "UPI", "Credit Card", "Net Banking"
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
