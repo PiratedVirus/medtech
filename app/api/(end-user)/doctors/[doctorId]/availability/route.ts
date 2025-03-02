@@ -7,9 +7,10 @@ const prisma = new PrismaClient();
 const DAYS_PER_PAGE = 3;
 const TIMEZONE = "Asia/Kolkata";
 
-export async function GET(request: Request, { params }: { params: { doctorId: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ doctorId: string }> }) {
+  const params = await props.params;
   try {
-    console.log("Received request for doctor availability");
+    // console.log("Received request for doctor availability");
 
     // 1) Extract and validate doctorId from route params
     const doctorIdNum = parseInt(params.doctorId, 10);
@@ -20,7 +21,7 @@ export async function GET(request: Request, { params }: { params: { doctorId: st
         { status: 400 }
       );
     }
-    console.log("Doctor ID:", doctorIdNum);
+    // console.log("Doctor ID:", doctorIdNum);
 
     // 2) Determine current page and compute day offset
     const url = new URL(request.url);

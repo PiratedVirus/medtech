@@ -84,7 +84,8 @@ export default function AppointmentViewHome() {
       {appointments?.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {appointments.map((appointment) => (
-            <AppointmentListCard key={appointment} appointment={appointment} />
+            //@ts-ignore
+            <AppointmentListCard key={appointment.id} appointment={appointment} />
           ))}
         </div>
       ) : (
