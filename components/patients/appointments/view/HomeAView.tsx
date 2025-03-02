@@ -65,7 +65,7 @@ export default function AppointmentViewHome() {
         </div>
 
         <div className="md:col-span-4 p-6 rounded-3xl relative overflow-hidden bg-custom-mutedgreen flex items-center justify-center">
-          <ArrowButton buttonText="Book an Appointment" />
+          <ArrowButton buttonText="Book an Appointment" href="/dashboard/doctors" />
         </div>
       </div>
       <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">

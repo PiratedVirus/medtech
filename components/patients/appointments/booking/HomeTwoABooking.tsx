@@ -6,6 +6,9 @@ import PaymentSelection from "@/appointment-book/PaymentABooking";
 import DoctorInfoTwo from "@/appointment-book/DoctorInfoTwoABooking";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import SuccessModal from "@/components/ui/custom/cd-success-modal";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
+
 
 
 interface AppointmentBookingTimeSlotProps {
@@ -26,7 +29,8 @@ export default function HomeTwoAppointmentBooking({
   const [paymentOption, setPaymentOption] = useState("online");
   const { profile } = useDecryptedProfile();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-
+  const bookingData = useSelector((state: RootState) => state.appointment.bookingData);
+  const consultationType = bookingData?.type;
 
   const formRef = useRef<{ submitForm: (callback: (data: any) => void) => void } | null>(null);
 
@@ -42,6 +46,7 @@ export default function HomeTwoAppointmentBooking({
       doctorId: doctor.id,
       patientId: profile?.id,
       paymentOption,
+      consultationTypeId: (consultationType === "clinic") ? 1 : 2,
     };
 
     try {
@@ -51,7 +56,7 @@ export default function HomeTwoAppointmentBooking({
         setShowSuccessModal(true);
         setTimeout(() => {
           setShowSuccessModal(false);
-          onBack();
+          // onBack();
         }, 3000);
       } else {
         alert("Failed to book appointment.");
@@ -61,6 +66,7 @@ export default function HomeTwoAppointmentBooking({
       alert("An error occurred while booking the appointment.");
     }
   };
+
 
   return (
     <>
@@ -77,7 +83,7 @@ export default function HomeTwoAppointmentBooking({
           <div className="flex flex-col gap-1 pt-0 h-full">
             {/* Payment Selection */}
             <div className="bg-white flex-grow flex items-center justify-center p-6">
-              <PaymentSelection selectedOption={paymentOption} onOptionChange={setPaymentOption} />
+              <PaymentSelection selectedOption={paymentOption} onOptionChange={setPaymentOption} consultationType={consultationType || ''} />
             </div>
 
             {/* Button */}
@@ -91,7 +97,7 @@ export default function HomeTwoAppointmentBooking({
                 }}
                 className="bg-[#f28a2e] hover:bg-[#e07a20] text-white text-lg py-6 px-8 rounded-full w-full md:w-auto"
               >
-                Confirm Clinic Visit
+                {(consultationType === "clinic") ? ('Confirm Clinic Visit') : ('Confirm Video Consultation')}
               </button>
             </div>
           </div>

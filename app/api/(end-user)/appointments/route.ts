@@ -1,16 +1,57 @@
 import { NextResponse, NextRequest } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { google } from "googleapis";
 
 const prisma = new PrismaClient();
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
+const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN!;
+const REDIRECT_URI = "https://developers.google.com/oauthplayground";
+
+const oauth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
+
+async function createGoogleMeetLink(slot: any, doctorId: number, patientId: number) {
+  try {
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+    const startDateTime = new Date(slot.date);
+    startDateTime.setHours(parseInt(slot.startTime.split(":")[0]), parseInt(slot.startTime.split(":")[1]));
+
+    const endDateTime = new Date(slot.date);
+    endDateTime.setHours(parseInt(slot.endTime.split(":")[0]), parseInt(slot.endTime.split(":")[1]));
+
+    const event = {
+      summary: "Doctor Consultation",
+      description: `Consultation with Doctor ID: ${doctorId}`,
+      start: { dateTime: startDateTime.toISOString(), timeZone: "Asia/Kolkata" },
+      end: { dateTime: endDateTime.toISOString(), timeZone: "Asia/Kolkata" },
+      conferenceData: {
+        createRequest: {
+          requestId: `meet-${Date.now()}`,
+          conferenceSolutionKey: { type: "hangoutsMeet" },
+        },
+      },
+      attendees: [{ email: "patient@example.com" }], // Optional
+    };
+
+    const response = await calendar.events.insert({
+      calendarId: "primary",
+      conferenceDataVersion: 1,
+      requestBody: event,
+    });
+
+    return response.data.hangoutLink || null;
+  } catch (error) {
+    console.error("Error creating Google Meet link:", error);
+    return null;
+  }
+}
 
 /**
  * GET /api/appointments
  * Retrieves all appointments, including nested data.
  */
-
-
-
-
 export async function GET(request: NextRequest) {
   try {
     // 1) Parse Query Params
@@ -170,7 +211,10 @@ export async function POST(request: Request) {
 
     // If no consultationType is provided, default to 1 or some known ID
     const finalConsultationTypeId = consultationTypeId ?? 1;
-
+    let meetLink = null;
+    if (consultationTypeId !== 1) { // Assuming 1 = Clinic Visit, adjust as needed
+      meetLink = await createGoogleMeetLink(slot, doctorId, patientId);
+    }
     // Create the new appointment in Prisma
     const newAppointment = await prisma.appointment.create({
       data: {
@@ -178,16 +222,14 @@ export async function POST(request: Request) {
         doctorId: doctorId,
         consultationTypeId: finalConsultationTypeId,
         doctorAvailabilityId: slot.id,
-
         // Additional optional fields
         appointmentFor,
         fullName,
         mobile,
         email,
-
         // For historical data, store the chosen date/time from the slot
         appointmentDate: slot.date ? new Date(slot.date) : null,
-
+        appointmentLink: meetLink,
         // Set default "Scheduled" status if not otherwise determined
         status: "Scheduled",
       },

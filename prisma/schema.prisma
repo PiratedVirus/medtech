@@ -211,6 +211,7 @@ model Appointment {
 
   // You can store the date/time from the availability as well (to preserve historical data)
   appointmentDate      DateTime?
+  appointmentLink      String?          // e.g. "Zoom" link for video consultations
 
   status               String           // e.g. "Scheduled", "Completed", "Cancelled"
   createdAt            DateTime?         @default(now())
