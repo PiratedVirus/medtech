@@ -258,7 +258,7 @@ model Payment {
   paymentStatus String    // e.g. "Pending", "Paid", "Failed", "Refunded"
   paymentMethod String?   // e.g. "UPI", "Credit Card", "Net Banking"
   createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  updatedAt     DateTime?  @updatedAt
 
   // Relation
   appointment   Appointment  @relation(fields: [appointmentId], references: [id])
