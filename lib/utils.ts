@@ -40,3 +40,18 @@ export function getTimeSegment(time12h: string): "morning" | "afternoon" | "even
   if (hour24 < 17) return "afternoon";
   return "evening";
 }
+
+export async function loadRazorpay() {
+  return new Promise((resolve) => {
+    if ((window as any).Razorpay) {
+      resolve((window as any).Razorpay);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve((window as any).Razorpay);
+    script.onerror = () => resolve(null);
+    document.body.appendChild(script);
+  });
+}
