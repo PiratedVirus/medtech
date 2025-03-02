@@ -25,22 +25,15 @@ export async function GET(request: Request, context: { params: { doctorId: strin
     // 2) Get current page from query string
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get("page") || "1", 10);
-    // console.log("Page number:", page);
 
     const dayOffset = (page - 1) * DAYS_PER_PAGE;
-    // console.log("Day offset:", dayOffset);
 
-    // ✅ Fix: Convert local time to IST and shift it to UTC manually
     const nowIST = toZonedTime(new Date(), TIMEZONE); // Convert to IST
     const todayIST = startOfDay(nowIST); // Get start of the day in IST
 
-    // ✅ Convert todayIST to UTC manually by subtracting IST timezone offset
     const todayUTC = new Date(todayIST.getTime() - todayIST.getTimezoneOffset() * 60000);
 
-    // console.log("Today's date in IST:", todayIST.toLocaleString("en-IN"));
-    // console.log("Today's date in UTC:", todayUTC.toISOString());
 
-    // ✅ Fix: Use todayUTC as base for addDays()
     const dayRanges = Array.from({ length: DAYS_PER_PAGE }, (_, i) => {
       const d = addDays(todayUTC, dayOffset + i);
       return {
@@ -56,6 +49,7 @@ export async function GET(request: Request, context: { params: { doctorId: strin
     const availability = await prisma.doctorAvailability.findMany({
       where: {
         doctorId: doctorIdNum,
+        status: "available",
         OR: dayRanges.map(({ start, end }) => ({
           date: {
             gte: start,
@@ -72,6 +66,7 @@ export async function GET(request: Request, context: { params: { doctorId: strin
         const count = await prisma.doctorAvailability.count({
           where: {
             doctorId: doctorIdNum,
+            status: "available",
             date: {
               gte: start,
               lte: end,

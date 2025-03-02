@@ -2,7 +2,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { forwardRef, useImperativeHandle } from "react"; // ✅ Import these hooks
+import { forwardRef, useImperativeHandle } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +24,6 @@ const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email" }),
 });
 
-// ✅ Use `forwardRef` to expose form actions to the parent
 export const PatientForm = forwardRef(({ }, ref) => {
   const { profile } = useProfile();
 
@@ -33,15 +32,17 @@ export const PatientForm = forwardRef(({ }, ref) => {
     defaultValues: {
       appointmentFor: "self",
       fullName: profile?.name || "",
-      // @ts-ignore
       mobile: profile?.phoneNumber || "",
       email: "",
     },
   });
 
-  // ✅ Expose `handleSubmit` to the parent via `ref`
+  // ✅ Watch appointmentFor value
+  const appointmentFor = form.watch("appointmentFor");
+  const isSelf = appointmentFor === "self";
+
   useImperativeHandle(ref, () => ({
-    submitForm: form.handleSubmit, // Expose handleSubmit so parent can trigger it
+    submitForm: form.handleSubmit,
   }));
 
   return (
@@ -52,6 +53,7 @@ export const PatientForm = forwardRef(({ }, ref) => {
 
       <Form {...form}>
         <form className="space-y-8">
+          {/* ✅ Radio Group: Choose Appointment For */}
           <FormField
             control={form.control}
             name="appointmentFor"
@@ -64,21 +66,13 @@ export const PatientForm = forwardRef(({ }, ref) => {
                     className="flex items-center gap-8 mb-12"
                   >
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem
-                        value="self"
-                        id="self"
-                        className="h-6 w-6 border-0"
-                      />
+                      <RadioGroupItem value="self" id="self" className="h-6 w-6 border-0" />
                       <Label htmlFor="self" className="text-[#2c2e38] text-lg">
                         {profile?.name}
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem
-                        value="other"
-                        id="other"
-                        className="h-6 w-6 border-0"
-                      />
+                      <RadioGroupItem value="other" id="other" className="h-6 w-6 border-0" />
                       <Label htmlFor="other" className="text-[#2c2e38] text-lg">
                         Someone else
                       </Label>
@@ -90,7 +84,7 @@ export const PatientForm = forwardRef(({ }, ref) => {
           />
 
           <h2 className="text-[#2c2e38] text-lg font-medium mb-8">
-            Please provide following information about the patient:
+            Please provide the following information about the patient:
           </h2>
 
           <FormField
@@ -104,7 +98,8 @@ export const PatientForm = forwardRef(({ }, ref) => {
                 <FormControl>
                   <Input
                     {...field}
-                    className="w-full p-4 bg-[#f5f7f9] rounded-md text-lg h-auto border-0"
+                    disabled={isSelf} 
+                    className="w-full p-4 bg-[#f5f7f9] rounded-md text-lg h-auto border-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </FormControl>
                 <FormMessage />
@@ -124,7 +119,8 @@ export const PatientForm = forwardRef(({ }, ref) => {
                   <Input
                     {...field}
                     type="tel"
-                    className="w-full p-4 bg-[#f5f7f9] rounded-md text-lg h-auto border-0"
+                    disabled={isSelf}
+                    className="w-full p-4 bg-[#f5f7f9] rounded-md text-lg h-auto border-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </FormControl>
                 <FormMessage />
@@ -144,8 +140,9 @@ export const PatientForm = forwardRef(({ }, ref) => {
                   <Input
                     {...field}
                     type="email"
+                    disabled={isSelf} 
                     placeholder="Enter your mail id here"
-                    className="w-full p-4 bg-[#f5f7f9] rounded-md text-lg h-auto border-0 placeholder:text-gray-400"
+                    className="w-full p-4 bg-[#f5f7f9] rounded-md text-lg h-auto border-0 placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </FormControl>
                 <FormMessage />

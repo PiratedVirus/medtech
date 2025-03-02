@@ -12,9 +12,13 @@ export default function PaymentSelection({
   onOptionChange: (option: string) => void, 
   consultationType: string 
 }) {
+  const isVideoConsultation = consultationType === "video";
+
   return (
     <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-[#2c2e38] text-lg font-medium mb-6">Choose a payment option to Book Appointment</h1>
+      <h1 className="text-[#2c2e38] text-lg font-medium mb-6">
+        Choose a payment option to Book Appointment
+      </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {/* ✅ Pay Online Option */}
@@ -33,33 +37,34 @@ export default function PaymentSelection({
         <Card
           className={cn(
             "p-2 flex flex-col items-center justify-center transition-all",
-            consultationType === "video" 
+            isVideoConsultation 
               ? "border-gray-300 bg-gray-200 opacity-50 cursor-not-allowed" // ✅ Disabled Styling
               : selectedOption === "clinic"
               ? "border-[#f28a2e] border-2 bg-[#f5f7f9]"
               : "border bg-[#f5f7f9] hover:border-[#f28a2e]"
           )}
           onClick={() => {
-            if (consultationType !== "video") {
+            if (!isVideoConsultation) {
               onOptionChange("clinic");
             }
           }}
+          tabIndex={isVideoConsultation ? -1 : 0} // ✅ Prevent keyboard focus on disabled option
         >
-          <p className="text-gray-300 text-lg font-medium mb-1">₹ 500</p>
-          <p className="text-gray-300 text-lg">Pay later at the clinic</p>
+          <p className={cn("text-lg font-medium mb-1", isVideoConsultation ? "text-gray-400" : "text-[#2c2e38]")}>
+            ₹ 500
+          </p>
+          <p className={cn("text-lg", isVideoConsultation ? "text-gray-400" : "text-[#2c2e38]")}>
+            Pay later at the clinic
+          </p>
         </Card>
       </div>
 
       <div className="text-center mb-8 text-[#2c2e38] text-lg">
         <p className="mb-4">
           By booking this appointment, you agree to Care Diabetic's{" "}
-          <a href="#" className="text-[#56a67c] hover:underline">
-            Terms and Conditions.
-          </a>{" "}
+          <a href="#" className="text-[#56a67c] hover:underline">Terms and Conditions.</a>{" "}
           You can also Pre-pay for this appointment by selecting Pay Online option. You can read our{" "}
-          <a href="#" className="text-[#56a67c] hover:underline">
-            payment FAQs.
-          </a>
+          <a href="#" className="text-[#56a67c] hover:underline">payment FAQs.</a>
         </p>
       </div>
 

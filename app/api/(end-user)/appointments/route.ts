@@ -216,27 +216,30 @@ export async function POST(request: Request) {
       meetLink = await createGoogleMeetLink(slot, doctorId, patientId);
     }
     // Create the new appointment in Prisma
-    const newAppointment = await prisma.appointment.create({
-      data: {
-        patientId: patientId,
-        doctorId: doctorId,
-        consultationTypeId: finalConsultationTypeId,
-        doctorAvailabilityId: slot.id,
-        // Additional optional fields
-        appointmentFor,
-        fullName,
-        mobile,
-        email,
-        // For historical data, store the chosen date/time from the slot
-        appointmentDate: slot.date ? new Date(slot.date) : null,
-        appointmentLink: meetLink,
-        // Set default "Scheduled" status if not otherwise determined
-        status: "Scheduled",
-      },
-      include: {
-        doctorAvailability: true, // Include related availability if you want in response
-      },
-    });
+    const [newAppointment, updatedAvailability] = await prisma.$transaction([
+      prisma.appointment.create({
+        data: {
+          patientId,
+          doctorId,
+          consultationTypeId: finalConsultationTypeId,
+          doctorAvailabilityId: slot.id,
+          appointmentFor,
+          fullName,
+          mobile,
+          email,
+          appointmentDate: slot.date ? new Date(slot.date) : null,
+          appointmentLink: meetLink,
+          status: "Scheduled",
+        },
+        include: {
+          doctorAvailability: true,
+        },
+      }),
+      prisma.doctorAvailability.update({
+        where: { id: slot.id },
+        data: { status: "booked" }, // ✅ Update the status of the doctor’s availability
+      }),
+    ]);
 
     return NextResponse.json({ success: true, data: newAppointment });
   } catch (error) {

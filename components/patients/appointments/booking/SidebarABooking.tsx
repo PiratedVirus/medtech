@@ -73,8 +73,8 @@ export function Sidebar({ consultationType }: any) {
               </div>
         
             </div>
-            <Link href="#" className="text-green-600 hover:underline">
-              Get Link
+            <Link href="#" className="text-secondary hover:underline">
+              A Google Meet link will be shared for video consultation.
             </Link>
            
             <div className="mt-4 flex items-center gap-2 text-gray-600">
