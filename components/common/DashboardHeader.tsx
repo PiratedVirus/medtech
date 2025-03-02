@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 const navigation = [
   { name: "Home", href: "/dashboard", current: true },
   { name: "Doctors", href: "/dashboard/doctors", current: false },
-  { name: "Dietician", href: "/dashboard/dietician", current: false },
+  { name: "Dietician", href: "/dashboard/dieticians", current: false },
   { name: "Lab Reports", href: "/dashboard/lab-reports", current: false },
   { name: "Prescriptions", href: "/dashboard/prescriptions", current: false },
   { name: "Appointments", href: "/dashboard/appointments", current: false },
@@ -29,7 +29,10 @@ export function DashboardHeader() {
   };
   const navigationItems = navigation.map((item) => ({
     ...item,
-    current: pathname === item.href,
+    current:
+    item.href === "/dashboard/appointments"
+      ? pathname.startsWith("/dashboard/appointments")
+      : pathname === item.href,
   }));
   return (
     <header className="w-full h-28 bg-background border-b">

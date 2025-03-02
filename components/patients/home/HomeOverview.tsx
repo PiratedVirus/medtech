@@ -1,11 +1,11 @@
 "use client";
 import { ArrowRight } from "lucide-react";
-import { AppointmentCard } from "@/components/patients/AppointmentCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useProfile } from "@/hooks/context/ProfileContext";
+import { HomeAppointmentOverview } from "@/patients/home/HomeAppointmentOverview";
 
-export default function Overview() {
+export default function HomeOverview() {
   const { profile } = useProfile();
   return (
     <div className="bg-muted px-10 pt-5">
@@ -98,7 +98,7 @@ export default function Overview() {
 
         {/* Right Section - Appointment & Apps */}
         <div className="lg:col-span-4 flex flex-col h-[423px] gap-6">
-          <AppointmentCard />
+          <HomeAppointmentOverview />
 
           <Card className="mt-auto h-44 max-w-sm flex flex-col justify-end">
             <CardContent className="pt-2 pb-0 flex items-center justify-between">
