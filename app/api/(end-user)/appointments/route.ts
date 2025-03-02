@@ -125,7 +125,10 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      orderBy: { appointmentDate: "asc" },
+      orderBy: [
+        { appointmentDate: "asc" },  // First, sort by appointment date
+        { doctorAvailability: { startTime: "asc" } },  // Then, sort by startTime
+      ],
     });
     console.log("Raw appointments fetched:", rawAppointments.length);
 
