@@ -2,7 +2,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from "react";
 import axios from "axios";
-import AppointmentHome from "@/patients/appointments/AppointmentHome";
+import AppointmentBookingHomeOne from "@/appointment-book/HomeOneABooking";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/store";
 import { setBookingData, clearBookingData } from "@/store/appointmentSlice";
@@ -51,7 +51,7 @@ export default function AppointmentPage() {
   }
 
   return (
-    <AppointmentHome
+    <AppointmentBookingHomeOne
       doctor={bookingData?.doctor}
       consultationType={bookingData?.type ?? null}
       onBack={() => {

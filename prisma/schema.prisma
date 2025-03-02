@@ -202,7 +202,6 @@ model Appointment {
   doctorId             Int
   consultationTypeId   Int
   doctorAvailabilityId Int
-
   // Optional fields for booking details
   appointmentFor       String?          // e.g. "self" or "other"
   fullName             String?          // If booking for someone else, store their name
@@ -211,6 +210,7 @@ model Appointment {
 
   // You can store the date/time from the availability as well (to preserve historical data)
   appointmentDate      DateTime?
+  appointmentLink      String?          // e.g. "Zoom" link for video consultations
 
   status               String           // e.g. "Scheduled", "Completed", "Cancelled"
   createdAt            DateTime?         @default(now())
@@ -221,6 +221,8 @@ model Appointment {
   doctor               User              @relation("Doctor", fields: [doctorId], references: [id])
   consultationType     ConsultationType  @relation(fields: [consultationTypeId], references: [id])
   doctorAvailability   DoctorAvailability @relation(fields: [doctorAvailabilityId], references: [id])
+    // Payment Relation (One-to-One)
+  payment              Payment?          
 }
 
 // ===========================================
@@ -244,4 +246,20 @@ model Complaint {
   text        String   @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Payment {
+  id            Int       @id @default(autoincrement())
+  appointmentId Int       @unique   // One-to-One with Appointment
+  razorpayOrderId String?  // Razorpay Order ID
+  razorpayPaymentId String? // Razorpay Payment ID
+  amount        Int       // Store amount in paisa (50000 for ₹500)
+  currency      String    @default("INR")
+  paymentStatus String    // e.g. "Pending", "Paid", "Failed", "Refunded"
+  paymentMethod String?   // e.g. "UPI", "Credit Card", "Net Banking"
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime?  @updatedAt
+
+  // Relation
+  appointment   Appointment  @relation(fields: [appointmentId], references: [id])
 }

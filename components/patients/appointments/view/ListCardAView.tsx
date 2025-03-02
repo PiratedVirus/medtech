@@ -7,8 +7,9 @@ interface Appointment {
   id: number;
   appointmentDate: string;
   status: string;
-  consultationType: { type: string };
+  consultationType: string;
   doctor: { name: string; doctorProfile: { specialty: string } };
+  doctorAvailability: { startTime: string };
 }
 
 export default function AppointmentListCard({ appointment }: { appointment: Appointment }) {

@@ -24,6 +24,8 @@
       "@/patients/*": ["./components/patients/*"],
       "@/doctors/*": ["./components/doctors/*"],
       "@/home/*": ["./components/home/*"],
+      "@/appointment-book/*": ["./components/patients/appointments/booking/*"],
+      "@/appointment-view/*": ["./components/patients/appointments/view/*"],
 
       "@/custom/*": ["./components/ui/custom/*"],
       "@/app/*": ["./app/*"]
