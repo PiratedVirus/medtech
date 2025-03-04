@@ -8,7 +8,6 @@ import { useDecryptedProfile } from "@/hooks/use-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/store";
-import { set } from "date-fns";
 
 export default function AppointmentViewHome() {
   const [pastAppointments, setPastAppointments] = useState([]);
@@ -98,7 +97,7 @@ export default function AppointmentViewHome() {
           </p>
         )}
       </div>
-      
+
       <div className="pastAppointments">
         <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
           <div>

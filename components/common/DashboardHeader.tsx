@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 const navigation = [
   { name: "Home", href: "/dashboard", current: true },
   { name: "Doctors", href: "/dashboard/doctors", current: false },
-  { name: "Dietician", href: "/dashboard/dieticians", current: false },
+  { name: "Dieticians", href: "/dashboard/dieticians", current: false },
   { name: "Lab Reports", href: "/dashboard/lab-reports", current: false },
   { name: "Prescriptions", href: "/dashboard/prescriptions", current: false },
   { name: "Appointments", href: "/dashboard/appointments", current: false },
