@@ -31,6 +31,7 @@ export default function AppointmentViewHome() {
           `/api/appointments?clinicId=${clinicId}&patientId=${profile?.id}`,
           { withCredentials: true },
         );
+        console.log("response", response);
         if (response.data.success) {
           // console.log(`all appointments: ${JSON.stringify(response?.data)}`);
           // console.log(`upcoming appointments: ${response?.data?.data.upcoming}`);
@@ -54,7 +55,8 @@ export default function AppointmentViewHome() {
   if (profileLoading || loading) {
     return <CdLoader />;
   }
-
+  console.log("upcoming", upcoming);
+  console.log("futureAppointments", futureAppointments);
   if (error) {
     return <p className="text-red-500 text-center py-5">{error}</p>;
   }
@@ -71,7 +73,7 @@ export default function AppointmentViewHome() {
         </div>
       </div>
 
-      <div className="futureAppointments">
+       <div className="futureAppointments">
         <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
           <div>
             <p className="text-4xl font-bold text-gray-800">
@@ -96,7 +98,7 @@ export default function AppointmentViewHome() {
             No appointments available at the moment.
           </p>
         )}
-      </div>
+      </div> 
 
       <div className="pastAppointments">
         <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
