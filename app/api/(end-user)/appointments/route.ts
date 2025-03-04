@@ -127,8 +127,9 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: [
-        { appointmentDate: "asc" },  // First, sort by appointment date
-        { doctorAvailability: { startTime: "asc" } },  // Then, sort by startTime
+        { doctor: { id: "asc" } }, // Then order by doctor ID
+        { appointmentDate: "asc" }, // Order by date first
+        { doctorAvailability: { startTime: "asc" } } // Finally, order by start time
       ],
     });
     console.log("Raw appointments fetched:", rawAppointments.length);

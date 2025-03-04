@@ -99,7 +99,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
       patientId: profile?.id,
       paymentOption,
       razorpayResponse,
-      consultationTypeId: consultationType === "clinic" ? 1 : 2,
+      consultationTypeId: consultationType === "clinic" ? 2 : 1,
     };
 
     if (paymentOption === "online" && (!razorpayResponse || !razorpayResponse.success)) {
