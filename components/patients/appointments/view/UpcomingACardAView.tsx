@@ -1,6 +1,7 @@
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, VideoIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
+import Link from "next/link";
 
 interface UpcomingAppointmentProps {
   appointment: any;
@@ -12,7 +13,7 @@ export default function UpcomingAppointment({ appointment }: UpcomingAppointment
       <div className="p-6 rounded-3xl bg-custom-mutedgreen">
         <h2 className="text-2xl font-semibold text-gray-800">Upcoming Appointment</h2>
         <p className="text-gray-600">No upcoming appointments scheduled.</p>
-        <p>{JSON.stringify(appointment)}</p>
+        {/* <p>{JSON.stringify(appointment)}</p> */}
       </div>
     );
   }
@@ -35,8 +36,7 @@ export default function UpcomingAppointment({ appointment }: UpcomingAppointment
       <div
         className="absolute top-0 right-0 w-1/2 h-full"
         style={{
-          backgroundImage:
-            "url(https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bg-layer-M2yo7sLPwBebAL59BiUsCsMf421zu4.png)",
+          backgroundImage: "url('/images/bg-green-pattern.png')",
           backgroundSize: "cover",
           backgroundPosition: "center right",
         }}
@@ -47,12 +47,43 @@ export default function UpcomingAppointment({ appointment }: UpcomingAppointment
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold text-gray-800">Upcoming Appointment</h2>
           <p className="text-gray-600 flex items-center gap-2">
-            Session starts at {appointment[0].doctorAvailability?.startTime}
+            Session starts at {appointment[0].doctorAvailability?.startTime} with <b>{appointment[0].doctor.name}</b>
           </p>
         </div>
 
         {/* Right Section - Appointment Card */}
-        <Card className="bg-gradient-to-tr from-[#134F30] to-[#56A67C] text-white p-4 rounded-2xl w-full md:w-auto">
+        {(appointment[0].consultationType !== 'Physical') ? (
+          <Card className="bg-gradient-to-r to-[#134F30] from-[#56A67C] text-white p-4 rounded-2xl w-full md:w-auto">
+            <Link
+              href={`${appointment[0].appointmentLink}`}
+            >
+              <div className="flex items-center gap-4">
+                {/* Doctor Image */}
+                <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+                  {/* <VideoIcon className="absolute top-0 left-0 w-full h-full" /> */}
+                  <Image src="/images/gmeet.png?height=48&width=48" alt="gmeet" fill className="object-cover" />
+                </div>
+
+                {/* Appointment Details */}
+                <div className="flex-grow">
+                  <h3 className="font-semibold text-lg">JOIN</h3>
+                </div>
+
+                {/* Time and Date */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="h-4 w-4" />
+                    <span><b>{appointment[0].doctorAvailability.startTime}</b></span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4" />
+                    <span><b>{formattedDate}</b></span>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          </Card>
+        ) : (<Card className="bg-gradient-to-tr from-[#134F30] to-[#56A67C] text-white p-4 rounded-2xl w-full md:w-auto">
           <div className="flex items-center gap-4">
             {/* Doctor Image */}
             <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
@@ -78,6 +109,8 @@ export default function UpcomingAppointment({ appointment }: UpcomingAppointment
             </div>
           </div>
         </Card>
+        )}
+
       </div>
     </div>
   );

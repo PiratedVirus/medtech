@@ -100,6 +100,7 @@ export async function GET(request: NextRequest) {
         consultationType: {
           select: { type: true },
         },
+        appointmentLink: true,
         patient: {
           select: {
             id: true,
@@ -145,6 +146,7 @@ export async function GET(request: NextRequest) {
       appointmentDate: appt.appointmentDate,
       status: appt.status,
       consultationType: appt.consultationType?.type || null,
+      appointmentLink: appt.appointmentLink,
     }));
     console.log("Transformed appointments:", transformed);
 

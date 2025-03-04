@@ -10,8 +10,10 @@ import SuccessModal from "@/components/ui/custom/cd-success-modal";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { loadRazorpay } from "@/lib/utils";
+import {useRouter} from "next/navigation";
 
 export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any) {
+  const router = useRouter();
   const [paymentOption, setPaymentOption] = useState("online");
   const { profile } = useDecryptedProfile();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -114,7 +116,9 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
         setTimeout(() => {
           setShowSuccessModal(false);
           setStatusMessage(""); // Reset status
+          router.push("/dashboard/appointments");
         }, 3000);
+
       } else {
         alert("Failed to book appointment.");
       }
