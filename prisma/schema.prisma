@@ -88,6 +88,9 @@ model User {
   // Distinct relations for a patient's appointments vs. a doctor's appointments
   patientAppointments Appointment[] @relation("Patient")
   doctorAppointments  Appointment[] @relation("Doctor")
+  labPatientBookings         LabBooking[] @relation("LabPatient")
+  labTechBookings            LabBooking[] @relation("LabTech")
+
 }
 
 // ===========================================
@@ -263,4 +266,35 @@ model Payment {
 
   // Relation
   appointment   Appointment  @relation(fields: [appointmentId], references: [id])
+}
+
+model LabPackage {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  price       Int
+  parameters  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  labBookings LabBooking[]
+}
+
+model LabBooking {
+  id          Int      @id @default(autoincrement())
+  patientId   Int
+  labTechId   Int?
+  labPackageId Int
+  status      String
+  labDate     DateTime
+  labResult   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  patient     User      @relation("LabPatient", fields: [patientId], references: [id])
+  labTech     User?      @relation("LabTech", fields: [labTechId], references: [id])
+  labPackage  LabPackage @relation(fields: [labPackageId], references: [id])
+
 }
