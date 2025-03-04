@@ -14,24 +14,28 @@ export default function Home() {
                     description="You can book the appointment from here.."
                     buttonText="Explore our Plans"
                     iconSrc="/icons/mother.svg"
+                    href="/dashboard/plans"
                 />
                 <HomeServiceBookingCard 
                     title="Lab Test"
                     description="You can book the appointment from here.."
                     buttonText="Book a Lab Test"
                     iconSrc="/images/lab-test.png"
+                    href="/dashboard/labs"
                 />
                 <HomeServiceBookingCard 
                     title="Consultation"
                     description="You can book the appointment from here.."
                     buttonText="Book Consultation"
                     iconSrc="/images/consultation.png"
+                    href="/dashboard/doctors"
                 />
                 <HomeServiceBookingCard 
                     title="Medicine Delivery"
                     description="You can book the appointment from here.."
                     buttonText="Book Medicines"
                     iconSrc="/images/medicines-delivery.png"
+                    href="/dashboard/medicines"
                 />
             </div>
         </div>

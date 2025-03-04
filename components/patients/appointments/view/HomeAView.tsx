@@ -10,7 +10,8 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/store";
 
 export default function AppointmentViewHome() {
-  const [appointments, setAppointments] = useState([]);
+  const [pastAppointments, setPastAppointments] = useState([]);
+  const [futureAppointments, setFutureAppointments] = useState([]);
   const [upcoming, setUpcoming] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -30,10 +31,12 @@ export default function AppointmentViewHome() {
           `/api/appointments?clinicId=${clinicId}&patientId=${profile?.id}`,
           { withCredentials: true },
         );
+        console.log("response", response);
         if (response.data.success) {
           // console.log(`all appointments: ${JSON.stringify(response?.data)}`);
           // console.log(`upcoming appointments: ${response?.data?.data.upcoming}`);
-          setAppointments(response.data.data.past);
+          setPastAppointments(response.data.data.past);
+          setFutureAppointments(response.data.data.upcoming);
           setUpcoming(response.data.data.upcoming);
         } else {
           setError("Failed to load appointments");
@@ -52,7 +55,8 @@ export default function AppointmentViewHome() {
   if (profileLoading || loading) {
     return <CdLoader />;
   }
-
+  console.log("upcoming", upcoming);
+  console.log("futureAppointments", futureAppointments);
   if (error) {
     return <p className="text-red-500 text-center py-5">{error}</p>;
   }
@@ -68,31 +72,66 @@ export default function AppointmentViewHome() {
           <ArrowButton buttonText="Book an Appointment" href="/dashboard/doctors" />
         </div>
       </div>
-      <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
-        <div>
-          <p className="text-4xl font-bold text-gray-800">
-            Past Appointments
-          </p>
-          <div className="flex items-center gap-2 mt-5">
-            <p className="text-lg">
-              Here you can view your previous appointments
+
+       <div className="futureAppointments">
+        <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
+          <div>
+            <p className="text-4xl font-bold text-gray-800">
+              Future Appointments
             </p>
+            <div className="flex items-center gap-2 mt-5">
+              <p className="text-lg">
+                Here you can view your previous appointments
+              </p>
+            </div>
           </div>
         </div>
+        {futureAppointments?.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {futureAppointments.map((appointment) => (
+              //@ts-ignore
+              <AppointmentListCard key={appointment.id} appointment={appointment} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-gray-600 py-10">
+            No appointments available at the moment.
+          </p>
+        )}
+      </div> 
+
+      <div className="pastAppointments">
+        <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
+          <div>
+            <p className="text-4xl font-bold text-gray-800">
+              Past Appointments
+            </p>
+            <div className="flex items-center gap-2 mt-5">
+              <p className="text-lg">
+                Here you can view your previous appointments
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {pastAppointments?.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {pastAppointments.map((appointment) => (
+              //@ts-ignore
+              <AppointmentListCard key={appointment.id} appointment={appointment} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-gray-600 py-10">
+            No appointments available at the moment.
+          </p>
+        )}
       </div>
 
-      {appointments?.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {appointments.map((appointment) => (
-            //@ts-ignore
-            <AppointmentListCard key={appointment.id} appointment={appointment} />
-          ))}
-        </div>
-      ) : (
-        <p className="text-center text-gray-600 py-10">
-          No appointments available at the moment.
-        </p>
-      )}
+    
+
+
+
     </div>
   );
 }

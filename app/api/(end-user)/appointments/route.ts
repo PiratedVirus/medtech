@@ -62,33 +62,32 @@ async function createGoogleMeetLink(slot: any, doctorId: number, patientId: numb
  * GET /api/appointments
  * Retrieves all appointments, including nested data.
  */
+
+
 export async function GET(request: NextRequest) {
   try {
     console.log("GET /api/appointments called");
 
-    // 1) Parse Query Params
+    // Parse Query Params
     const { searchParams } = new URL(request.url);
     const clinicIdParam = searchParams.get("clinicId");
     const patientIdParam = searchParams.get("patientId");
-    console.log("Query Params:", { clinicIdParam, patientIdParam });
+    const upcomingOnly = searchParams.get("upcomingOnly") === "true"; // Convert to boolean
 
-    // Convert them to numbers if they exist
+    console.log("Query Params:", { clinicIdParam, patientIdParam, upcomingOnly });
+
+    // Convert params to numbers if they exist
     const clinicId = clinicIdParam ? parseInt(clinicIdParam, 10) : undefined;
     const patientId = patientIdParam ? parseInt(patientIdParam, 10) : undefined;
 
-    // 2) Build 'where' clause for filtering
-    const where: any = {};
-    if (patientId) {
-      where.patientId = patientId;
-    }
-    if (clinicId) {
-      where.doctor = { clinicId };
-    }
-    console.log("Constructed where clause for Prisma:", where);
+    // Build 'where' clause for filtering
+    const baseWhere: any = {};
+    if (patientId) baseWhere.patientId = patientId;
+    if (clinicId) baseWhere.doctor = { clinicId };
 
-    // 3) Query the fields we need
-    const rawAppointments = await prisma.appointment.findMany({
-      where,
+    // Fetch upcoming appointments
+    const upcomingAppointments = await prisma.appointment.findMany({
+      where: { ...baseWhere, appointmentDate: { gte: new Date() } },
       select: {
         id: true,
         appointmentFor: true,
@@ -97,76 +96,84 @@ export async function GET(request: NextRequest) {
         email: true,
         appointmentDate: true,
         status: true,
-        consultationType: {
-          select: { type: true },
-        },
-        patient: {
-          select: {
-            id: true,
-            name: true,
-            phoneNumber: true,
-            clinicId: true,
-          },
-        },
-        doctor: {
-          select: {
-            id: true,
-            name: true,
-            clinicId: true,
-          },
-        },
+        consultationType: { select: { type: true } },
+        appointmentLink: true,
+        patient: { select: { id: true, name: true, phoneNumber: true, clinicId: true } },
+        doctor: { select: { id: true, name: true, clinicId: true } },
         doctorAvailability: {
-          select: {
-            id: true,
-            doctorId: true,
-            date: true,
-            startTime: true,
-            endTime: true,
-          },
+          select: { id: true, doctorId: true, date: true, startTime: true, endTime: true },
         },
       },
-      orderBy: { appointmentDate: "asc" },
+      orderBy: [{ appointmentDate: "asc" }, { doctorAvailability: { date: "asc" } }],
     });
-    console.log("Raw appointments fetched:", rawAppointments.length);
 
-    // 4) Transform each record to the shape you want
-    const transformed = rawAppointments.map((appt) => ({
-      id: appt.id,
-      patient: appt.patient,
-      doctor: appt.doctor,
-      doctorAvailability: appt.doctorAvailability,
-      appointmentFor: appt.appointmentFor,
-      fullName: appt.fullName,
-      mobile: appt.mobile,
-      email: appt.email,
-      appointmentDate: appt.appointmentDate,
-      status: appt.status,
-      consultationType: appt.consultationType?.type || null,
-    }));
-    console.log("Transformed appointments:", transformed);
+    // Convert and sort upcoming appointments by time correctly
+    const sortedUpcoming = upcomingAppointments.sort((a, b) => {
+      const dateA = a.appointmentDate ? new Date(a.appointmentDate) : new Date();
+      const dateB = b.appointmentDate ? new Date(b.appointmentDate) : new Date();
 
-    // 5) Separate into 'past' vs 'upcoming' based on current time
-    const now = new Date();
-    const past = transformed.filter(
-      (appt) => appt.appointmentDate && new Date(appt.appointmentDate) < now
-    );
-    const upcoming = transformed.filter(
-      (appt) => appt.appointmentDate && new Date(appt.appointmentDate) >= now
-    );
-    console.log("Appointments split - Past:", past.length, "Upcoming:", upcoming.length);
+      // If dates are different, sort by date
+      if (dateA.getTime() !== dateB.getTime()) {
+        return dateA.getTime() - dateB.getTime();
+      }
 
-    // 6) Return the final result with both arrays
+      // Convert startTime (e.g., "10:00 AM") to total minutes for sorting
+      const convertTo24Hour = (timeStr: string) => {
+        const [time, modifier] = timeStr.split(" ");
+        let [hours, minutes] = time.split(":").map(Number);
+        if (modifier === "PM" && hours !== 12) hours += 12;
+        if (modifier === "AM" && hours === 12) hours = 0;
+        return hours * 60 + minutes; // Convert to total minutes
+      };
+
+      const timeA = convertTo24Hour(a.doctorAvailability.startTime);
+      const timeB = convertTo24Hour(b.doctorAvailability.startTime);
+
+      return timeA - timeB; // Sort by startTime within the same date
+    });
+
+    // If `upcomingOnly=true`, return only the first upcoming appointment but keep the same response structure
+    if (upcomingOnly) {
+      return NextResponse.json({
+        success: true,
+        data: sortedUpcoming.length > 0 ? sortedUpcoming[0] : null,
+      });
+    }
+
+    // Fetch past appointments
+    const pastAppointments = await prisma.appointment.findMany({
+      where: { ...baseWhere, appointmentDate: { lt: new Date() } }, // Past appointments
+      select: {
+        id: true,
+        appointmentFor: true,
+        fullName: true,
+        mobile: true,
+        email: true,
+        appointmentDate: true,
+        status: true,
+        consultationType: { select: { type: true } },
+        appointmentLink: true,
+        patient: { select: { id: true, name: true, phoneNumber: true, clinicId: true } },
+        doctor: { select: { id: true, name: true, clinicId: true } },
+        doctorAvailability: {
+          select: { id: true, doctorId: true, date: true, startTime: true, endTime: true },
+        },
+      },
+      orderBy: [{ appointmentDate: "desc" }], // Most recent past appointment first
+    });
+
     return NextResponse.json({
       success: true,
       data: {
-        past,
-        upcoming,
+        past: pastAppointments,
+        upcoming: sortedUpcoming,
       },
     });
+
   } catch (error) {
     console.error("Error fetching appointments:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch appointments" },
+      { success: false, error: "Failed to fetch appointments", details: error },
       { status: 500 }
     );
   }

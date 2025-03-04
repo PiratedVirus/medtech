@@ -3,6 +3,7 @@ import React from "react";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
 import ArrowButton from "../../ui/custom/cd-arrow-button";
+import { Link } from "lucide-react";
 
 interface HomeServiceBookingCardProps {
   title: string;
@@ -11,6 +12,7 @@ interface HomeServiceBookingCardProps {
   buttonText: string;
   gradientFrom?: string;
   gradientTo?: string;
+  href?: string;
 }
 
 export default function HomeServiceBookingCard({
@@ -20,6 +22,7 @@ export default function HomeServiceBookingCard({
   buttonText,
   gradientFrom = "#134F30",
   gradientTo = "#56A67C",
+  href,
 }: HomeServiceBookingCardProps) {
   return (
     <Card
@@ -41,7 +44,7 @@ export default function HomeServiceBookingCard({
         </div>
 
         <div className="h-20 rounded-lg flex justify-center items-center">
-          <ArrowButton buttonText={buttonText} />
+          <ArrowButton buttonText={buttonText} href={href}/>
         </div>
       </div>
     </Card>

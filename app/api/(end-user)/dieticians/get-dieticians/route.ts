@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Fetch all dieticians along with their profile & availability
+// Fetch all doctors along with their profile & availability
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -15,21 +15,24 @@ export async function GET(request: Request) {
         { status: 400 }
       );
     }
-    const dieticians = await prisma.user.findMany({
+    const doctors = await prisma.user.findMany({
       where: {
         role: "DIETICIAN",
         status: "ACTIVE",
         clinicId: Number(clinicId),
+        doctorProfile: {
+          type: "dietician", 
+        },
       },
       include: {
         doctorProfile: true,
       },
     });
 
-    return NextResponse.json({ success: true, dieticians });
+    return NextResponse.json({ success: true, doctors });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Failed to fetch dieticians with error " + error },
+      { success: false, error: "Failed to fetch doctors with error " + error },
       { status: 500 }
     );
   }

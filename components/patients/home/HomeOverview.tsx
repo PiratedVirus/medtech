@@ -53,7 +53,7 @@ export default function HomeOverview() {
           </div>
 
           <Button className="h-[51px] w-[267px] rounded-[59px]  text-white hover:bg-popover">
-            <span className="mr-2">Join Video Consultation</span>
+            <span className="mr-2">Buy Care Diabetics Care+</span>
             <ArrowRight className="h-5 w-5" />
           </Button>
 

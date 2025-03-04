@@ -123,6 +123,7 @@ model DoctorProfile {
   rating            Float?               // Average rating
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
+  type              String?               // DOCTOR, DIETICIAN
 
   user              User                 @relation(fields: [userId], references: [id])
   availability      DoctorAvailability[]

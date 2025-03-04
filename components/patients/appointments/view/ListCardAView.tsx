@@ -46,7 +46,7 @@ export default function AppointmentListCard({ appointment }: { appointment: Appo
           </p>
           <p className="text-gray-500 text-sm">
             Consultation:{" "}
-            <span className="text-purple-600">{appointment?.consultationType}</span>
+            <span className="text-purple-600">{appointment?.consultationType?.type}</span>
           </p>
           <p className="text-gray-500 text-sm">
             Status:{" "}
