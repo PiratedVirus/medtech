@@ -14,14 +14,16 @@ export const useDecryptedProfile = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const getDecryptedProfile = () => {
-      const encryptedProfile = sessionStorage.getItem("userProfile");
-      return encryptedProfile ? decryptData(encryptedProfile) : null;
-    };
+    if (typeof window !== "undefined") { // ✅ Ensure it's running in the browser
+      const getDecryptedProfile = () => {
+        const encryptedProfile = sessionStorage.getItem("userProfile");
+        return encryptedProfile ? decryptData(encryptedProfile) : null;
+      };
 
-    const decryptedProfile = getDecryptedProfile();
-    setProfile(decryptedProfile);
-    setIsLoading(false);
+      const decryptedProfile = getDecryptedProfile();
+      setProfile(decryptedProfile);
+      setIsLoading(false);
+    }
   }, []);
 
   return {

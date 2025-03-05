@@ -44,6 +44,7 @@ export const logoutUser = createAsyncThunk("user/logoutUser", async () => {
 
 // Load user profile from session storage
 const loadUserProfileFromSession = () => {
+  if (typeof window === "undefined") return null;
   const encryptedProfile = sessionStorage.getItem("userProfile");
   return encryptedProfile ? decryptData(encryptedProfile) : null;
 };
