@@ -5,6 +5,8 @@ import "./globals.css";
 import { Provider } from "react-redux";
 import store from "@/store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { useState } from "react";
 
 const lato = Lato({
@@ -21,14 +23,16 @@ const lato = Lato({
 
 export default function RootLayout({children,}: Readonly<{children: React.ReactNode;}>) {
   const [queryClient] = useState(() => new QueryClient());
+    // Persist cache using localStorage (so it stays across navigation)
+    const persister = createSyncStoragePersister({ storage: window.localStorage });
   return (
     <html lang="en">
       <body className={`${lato.variable} antialiased min-h-screen flex flex-col`}>
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
           <Provider store={store}>
             {children}
           </Provider>
-        </QueryClientProvider>
+        </PersistQueryClientProvider>
       </body>
     </html>
   );
