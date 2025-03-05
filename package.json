@@ -6,7 +6,6 @@
     "dev": "NODE_OPTIONS='--inspect' next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
     "storybook": "concurrently \"npm run watch:storybook\" \"npm run watch:build:css\"",
     "watch:storybook": "storybook dev -p 6006",
     "watch:build:css": "tailwindcss -i ./app/globals.css -o ./styles/globals.css",

@@ -66,13 +66,13 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
         prefill: {
           name: profile?.name || "",
           email: profile?.email || "",
-          // @ts-ignore
+          // @ts-expect-error
           contact: profile?.phoneNumber || "",
         },
         theme: { color: "#f28a2e" },
       };
 
-      // @ts-ignore
+      // @ts-expect-error
       const paymentObject = razorpay(options);
       paymentObject.open();
     } catch (error) {
@@ -158,7 +158,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
               <Button
                 onClick={async () => {
                   if (formRef.current) {
-                    // @ts-ignore
+                    // @ts-expect-error
                     formRef.current.submitForm(async (data) => {
                       if (paymentOption === "online") {
                         await handlePayment(data);
