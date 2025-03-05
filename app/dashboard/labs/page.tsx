@@ -9,6 +9,8 @@ import CdLoader from "@/components/ui/custom/cd-loader";
 import { CircleCheckBig } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import LabCard from "@/components/patients/labs/view/LabCard";
+import labResult from "@/lib/labResults.json";
+import LabResultCard from "@/components/patients/labs/view/LabResultCard";
 
 export default function LabsPage() {
   const router = useRouter();
@@ -47,31 +49,57 @@ export default function LabsPage() {
     return <p className="text-red-500 text-center py-5">Something went wrong. Failed to load labs.</p>;
   }
 
-  if (labs?.length === 0) {
-    return <p className="text-center text-gray-600 py-10">No labs available at the moment.</p>;
-  }
-
   return (
-    <div className="bg-muted min-h-screen px-4 sm:px-8 md:px-12 lg:px-20 pb-10">
-      <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
-        <div>
-          <p className="text-4xl font-bold text-gray-800">
-            {labs.length} packages available for booking
-          </p>
-          <div className="flex items-center gap-2 mt-5">
-            <CircleCheckBig className="text-green-700 h-6 w-6" />
-            <p className="text-lg">
-              Book Lab package with certified Lab Technicians
-            </p>
+    <>
+      {/* Lab Booking Section */}
+      <div className="bookPackages">
+        <div className="bg-muted h-fit px-4 sm:px-8 md:px-12 lg:px-20 pb-4">
+          <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
+            <div>
+              <p className="text-4xl font-bold text-gray-800">
+                {labs.length} packages available for booking
+              </p>
+              <div className="flex items-center gap-2 mt-5">
+                <CircleCheckBig className="text-green-700 h-6 w-6" />
+                <p className="text-lg">
+                  Book Lab package with certified Lab Technicians
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-start flex-wrap gap-6 mt-10">
+            {labs.map((lab: any) => (
+              <LabCard key={lab.id} labPackage={lab} handleBookAppointment={handleBookAppointment} />
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="flex items-start flex-wrap gap-6 mt-10">
-        {labs.map((lab: any) => (
-          <LabCard key={lab.id} labPackage={lab} handleBookAppointment={handleBookAppointment} />
-        ))}
+      {/* Past Lab Bookings Section */}
+      <div className="pastPackages">
+      <div className="bg-muted h-fit px-4 sm:px-8 md:px-12 lg:px-20 pb-10">
+          <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
+            <div>
+              <p className="text-4xl font-bold text-gray-800">
+                {labResult.length} reports available from past bookings
+              </p>
+              <div className="flex items-center gap-2 mt-5">
+                <p className="text-lg">
+                  Here you can view your past bookings
+                </p>
+              </div>
+            </div>
+          </div>
+   
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {labResult.map((result: any) => (
+            <LabResultCard key={result.id} result={result} />
+          ))}
+        </div> {/* ✅ Closing div added here */}
       </div>
     </div>
+    </>
   );
 }
