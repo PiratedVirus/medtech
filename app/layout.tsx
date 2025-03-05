@@ -4,6 +4,8 @@ import { Lato } from 'next/font/google'
 import "./globals.css";
 import { Provider } from "react-redux";
 import store from "@/store";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
 
 const lato = Lato({
   subsets: ['latin'],
@@ -18,12 +20,15 @@ const lato = Lato({
 // };
 
 export default function RootLayout({children,}: Readonly<{children: React.ReactNode;}>) {
+  const [queryClient] = useState(() => new QueryClient());
   return (
     <html lang="en">
       <body className={`${lato.variable} antialiased min-h-screen flex flex-col`}>
-        <Provider store={store}>
-          {children}
-        </Provider>
+        <QueryClientProvider client={queryClient}>
+          <Provider store={store}>
+            {children}
+          </Provider>
+        </QueryClientProvider>
       </body>
     </html>
   );
