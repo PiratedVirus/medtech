@@ -28,9 +28,9 @@ export default function LabResultCard({ result }: { result: LabResult }) {
 
       <div className="mt-6">
         <p className="text-lg font-bold text-gray-800">Reports</p>
-        <div className="flex overflow-x-auto space-x-4 mt-4 pb-2 scrollbar-hide">
+        <div className="flex  overflow-x-auto space-x-4 mt-4 pb-2 scrollbar-hide">
           {result.reports.map((report, index) => (
-            <div key={index} className="bg-gray-100 p-4 rounded-lg flex flex-col items-center min-w-[200px]">
+            <div key={index} className="bg-custom-mutedgreen p-4 rounded-lg flex flex-col items-center min-w-[200px]">
               <p className="text-lg font-bold text-gray-800 text-center">{report.name}</p>
               <p className="text-sm text-gray-500 text-center">Values: {report.values}</p>
               <a

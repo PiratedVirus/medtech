@@ -1,4 +1,6 @@
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge"
+
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { InfoIcon } from "lucide-react";
 
@@ -19,7 +21,7 @@ export default function LabCard({ labPackage, handleBookAppointment }: LabCardPr
         <div className="flex  bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 w-fit">
             {/* Left Column: Rotated Package Name */}
             
-            <div className=" text-white px-3 py-5 flex items-center justify-center w-12 md:w-16">
+            <div className=" text-white bg-custom-mutedgreen px-3 py-5 flex items-center justify-center w-12 md:w-16">
                 <p className="bg-gradient-to-r from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent text-3xl transform -rotate-90 whitespace-nowrap">
                     {labPackage.name}
                 </p>
@@ -34,6 +36,8 @@ export default function LabCard({ labPackage, handleBookAppointment }: LabCardPr
 
                 {/* Row 2: Package Description */}
                 <p className="text-gray-600 text-sm">{labPackage.description}</p>
+                <Badge variant="outline" className="bg-red-400 text-white">Fasting Required</Badge>
+
 
                 {/* Row 3: Parameters with Tooltip */}
                 <div className="flex items-center gap-2 text-gray-700 text-sm">

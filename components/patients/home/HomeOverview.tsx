@@ -8,7 +8,7 @@ import { HomeAppointmentOverview } from "@/patients/home/HomeAppointmentOverview
 export default function HomeOverview() {
   const { profile } = useProfile();
   return (
-    <div className="bg-muted px-10 pt-5">
+    <div className="bg-muted px-20 pt-5">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl">
@@ -97,13 +97,13 @@ export default function HomeOverview() {
         </div>
 
         {/* Right Section - Appointment & Apps */}
-        <div className="lg:col-span-4 flex flex-col h-[423px] gap-6">
+        <div className="lg:col-span-4 flex flex-col items-end h-[423px] gap-6">
           <HomeAppointmentOverview />
 
-          <Card className="mt-auto h-44 max-w-sm flex flex-col justify-end">
+          <Card className=" bg-custom-mutedgreen mt-auto h-52 w-full flex flex-col justify-end">
             <CardContent className="pt-2 pb-0 flex items-center justify-between">
               {/* Left - App Preview Image (Aligned at Bottom) */}
-              <div className="relative w-[188px] flex items-end">
+              <div className="relative w-52 flex items-end">
                 <img
                   src="/images/iphone-large.png"
                   alt="App preview"

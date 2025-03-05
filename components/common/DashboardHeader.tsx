@@ -35,17 +35,8 @@ export function DashboardHeader() {
   return (
     <header className="w-full h-28 bg-background border-b">
       <div className="container flex items-center justify-between h-full gap-4">
-        <div className="pl-20">
-          <div className="relative w-80">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
-            <Input
-              type="search"
-              placeholder="Search"
-              className="pl-12 bg-input h-12 text-muted-foreground rounded-lg"
-            />
-          </div>
-        </div>
 
+<div className="pl-20">
         <nav className="flex items-center gap-9">
           {navigationItems.map((item) => (
             <Link
@@ -62,6 +53,7 @@ export function DashboardHeader() {
             </Link>
           ))}
         </nav>
+        </div>
 
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3 px-4 py-2 rounded-xl border border-border">

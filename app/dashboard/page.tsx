@@ -7,7 +7,11 @@ export default function Home() {
     return (
         <div className="">
             <HomeOverview />
-            <div className="pr-20 bg-muted py-4 flex flex-wrap justify-center gap-6">
+            
+            <div className="px-20 bg-muted py-4 flex justify-center w-full">
+                <div className="flex gap-6">
+              
+
                 {/* <HealthInsightsCard /> */}
                 <HomeServiceBookingCard 
                     title="GDM Care"
@@ -37,6 +41,8 @@ export default function Home() {
                     iconSrc="/images/medicines-delivery.png"
                     href="/dashboard/medicines"
                 />
+                </div>
+
             </div>
         </div>
     )
