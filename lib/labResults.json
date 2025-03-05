@@ -1,0 +1,58 @@
+[
+    {
+    "id": 123,
+    "resultDate": "2025-03-06T10:30:00Z",
+    "resultGeneratedBy": "Dr. Anjali Menon",
+    "resultName": "Sara Ali - Basic Health Checkup - 06/03/2025",
+    "reports": [
+      {
+        "name": "Blood Test Report",
+        "pdfUrl": "https://example.com/reports/blood-test.pdf",
+        "values": "Hemoglobin: 13.5 g/dL, WBC: 6,500/uL"
+      },
+      {
+        "name": "Urine Analysis",
+        "pdfUrl": "https://example.com/reports/urine-analysis.pdf",
+        "values": "pH: 6.0, Glucose: Normal"
+      },
+      {
+        "name": "Lipid Profile",
+        "pdfUrl": "https://example.com/reports/lipid-profile.pdf",
+        "values": "Cholesterol: 180 mg/dL, LDL: 90 mg/dL"
+      }
+    ]
+  },
+  {
+    "id": 143,
+    "resultDate": "2025-03-09T10:30:00Z",
+    "resultGeneratedBy": "Dr. Ravi Kapoor",
+    "resultName": "Sara Ali - Care + Health Checkup - 09/03/2025",
+    "reports": [
+      {
+        "name": "Blood Test Report",
+        "pdfUrl": "https://example.com/reports/blood-test.pdf",
+        "values": "Hemoglobin: 13.5 g/dL, WBC: 6,500/uL"
+      },
+      {
+        "name": "Urine Analysis",
+        "pdfUrl": "https://example.com/reports/urine-analysis.pdf",
+        "values": "pH: 6.0, Glucose: Normal"
+      },
+      {
+        "name": "Lipid Profile",
+        "pdfUrl": "https://example.com/reports/lipid-profile.pdf",
+        "values": "Cholesterol: 180 mg/dL, LDL: 90 mg/dL"
+      },
+      {
+        "name": "CBC",
+        "pdfUrl": "https://example.com/reports/lipid-profile.pdf",
+        "values": "Cholesterol: 180 mg/dL, LDL: 90 mg/dL"
+      },
+      {
+        "name": "MRI Scans",
+        "pdfUrl": "https://example.com/reports/lipid-profile.pdf",
+        "values": "Cholesterol: 180 mg/dL, LDL: 90 mg/dL"
+      }
+    ]
+  }
+]
