@@ -20,7 +20,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState(""); // Status messages
   const [loading, setLoading] = useState(false); // Loader state
-  const labBbookingData = useSelector((state: RootState) => state.labBooking.labBookingData);
+  const labBbookingData = packageInfo;
   console.log("labBbookingData", labBbookingData);
 
   const formRef = useRef<{ submitForm: (callback: (data: any) => void) => void } | null>(null);
@@ -95,7 +95,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
 
     const bookingData = {
       ...data,
-      packageId: 1,
+      packageId: labBbookingData.id,
       patientId: profile?.id,
       paymentOption,
       razorpayResponse,

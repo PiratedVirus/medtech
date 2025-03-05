@@ -286,6 +286,14 @@ model LabBooking {
   patientId   Int
   labTechId   Int?
   labPackageId Int
+
+  appointmentFor       String?          // e.g. "self" or "other"
+  fullName             String?          // If booking for someone else, store their name
+  mobile               String?          // If booking for someone else
+  email                String?          // If booking for someone else
+  address              String?
+  paymentOption        String?          // e.g. "Online", "Cash"
+
   status      String
   labDate     DateTime
   labResult   String?

@@ -36,7 +36,7 @@ export const LabBookingForm = forwardRef(({ }, ref) => {
       appointmentFor: "self",
       fullName: profile?.name || "",
       mobile: profile?.phoneNumber || "",
-      email: "",
+      email: profile?.email || "",
       date: "",
       address: "",
     },

@@ -34,8 +34,13 @@ export async function POST(request: Request) {
     const newLabBooking = await prisma.labBooking.create({
       data: {
         patientId,
-        labTechId: 1,
-        labPackageId: 1,
+        labPackageId: packageId,
+        appointmentFor,
+        fullName,
+        mobile,
+        email,
+        address,
+        paymentOption,
         labDate: new Date(date),
         status: "Scheduled",
       },
