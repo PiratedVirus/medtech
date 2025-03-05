@@ -18,17 +18,18 @@ export default function UpcomingAppointment({ appointment }: UpcomingAppointment
     );
   }
   // const appointment = appointments[0];
-  const appointmentDate = new Date(appointment[0].doctorAvailability?.date);
-  const formattedDate = appointmentDate.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-  const formattedTime = appointmentDate.toLocaleTimeString("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  let appointmentDate
+  let formattedDate
+
+  if(appointment.doctorAvailability){
+    appointmentDate = new Date(appointment.doctorAvailability?.date);
+    formattedDate = appointmentDate.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  }
+
 
   return (
     <div className="p-6 rounded-3xl relative overflow-hidden bg-custom-mutedgreen">
@@ -47,15 +48,15 @@ export default function UpcomingAppointment({ appointment }: UpcomingAppointment
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold text-gray-800">Upcoming Appointment</h2>
           <p className="text-gray-600 flex items-center gap-2">
-            Session starts at {appointment[0].doctorAvailability?.startTime} with <b>{appointment[0].doctor.name}</b>
+            Session starts at {appointment.doctorAvailability?.startTime} with <b>{appointment.doctor.name}</b>
           </p>
         </div>
 
         {/* Right Section - Appointment Card */}
-        {(appointment[0].consultationType !== 'Physical') ? (
+        {(appointment.consultationType !== 'Physical') ? (
           <Card className="bg-gradient-to-r to-[#134F30] from-[#56A67C] text-white p-4 rounded-2xl w-full md:w-auto">
             <Link
-              href={`${appointment[0].appointmentLink}`}
+              href={`${appointment.appointmentLink}`}
             >
               <div className="flex items-center gap-4">
                 {/* Doctor Image */}
@@ -73,7 +74,7 @@ export default function UpcomingAppointment({ appointment }: UpcomingAppointment
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="h-4 w-4" />
-                    <span><b>{appointment[0].doctorAvailability.startTime}</b></span>
+                    <span><b>{appointment.doctorAvailability.startTime}</b></span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="h-4 w-4" />
@@ -87,20 +88,20 @@ export default function UpcomingAppointment({ appointment }: UpcomingAppointment
           <div className="flex items-center gap-4">
             {/* Doctor Image */}
             <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
-              <Image src="/images/doc.png?height=48&width=48" alt={appointment[0].doctor.name} fill className="object-cover" />
+              <Image src="/images/doc.png?height=48&width=48" alt={appointment.doctor.name} fill className="object-cover" />
             </div>
 
             {/* Appointment Details */}
             <div className="flex-grow">
-              <h3 className="font-semibold text-lg">{appointment[0].doctor.name}</h3>
-              <p className="text-sm text-white/90">{appointment[0].consultationType} consultation</p>
+              <h3 className="font-semibold text-lg">{appointment.doctor.name}</h3>
+              <p className="text-sm text-white/90">{appointment.consultationType} consultation</p>
             </div>
 
             {/* Time and Date */}
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <Clock className="h-4 w-4" />
-                <span>{appointment[0].doctorAvailability.startTime}</span>
+                <span>{appointment.doctorAvailability.startTime}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4" />
