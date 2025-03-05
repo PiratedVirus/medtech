@@ -206,6 +206,7 @@ model Appointment {
   doctorId             Int
   consultationTypeId   Int
   doctorAvailabilityId Int
+  prescriptionLink     String?          // e.g. "Google Drive" link for prescriptions
   // Optional fields for booking details
   appointmentFor       String?          // e.g. "self" or "other"
   fullName             String?          // If booking for someone else, store their name
