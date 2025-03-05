@@ -1,30 +1,31 @@
+'use client'
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import axios from "axios";
-import { PatientForm } from "@/appointment-book/PatientFormABooking";
+import { LabBookingForm } from "@/patients/labs/booking/LabBookingForm";
 import PaymentSelection from "@/appointment-book/PaymentABooking";
-import DoctorInfoTwo from "@/appointment-book/DoctorInfoTwoABooking";
+import PackageInfo from "@/patients/labs/booking/PackageInfo";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import SuccessModal from "@/components/ui/custom/cd-success-modal";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { loadRazorpay } from "@/lib/utils";
-import {useRouter} from "next/navigation";
+import { useRouter } from "next/navigation";
 
-export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any) {
+export default function LabBookingHome({ packageInfo, onBack }: any) {
   const router = useRouter();
   const [paymentOption, setPaymentOption] = useState("online");
   const { profile } = useDecryptedProfile();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState(""); // Status messages
   const [loading, setLoading] = useState(false); // Loader state
-  const bookingData = useSelector((state: RootState) => state.appointment.bookingData);
-  const consultationType = bookingData?.type;
+  const labBbookingData = packageInfo;
+  console.log("labBbookingData", labBbookingData);
 
   const formRef = useRef<{ submitForm: (callback: (data: any) => void) => void } | null>(null);
 
-  const handlePayment = async (appointmentData: any) => {
+  const handlePayment = async (bookingData: any) => {
     try {
       setLoading(true);
       setStatusMessage("Loading Razorpay...");
@@ -35,7 +36,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
         return;
       }
 
-      const amount = 500 * 100; // ₹500 in paisa
+      const amount = packageInfo.price * 100; // Price in paisa
       const currency = "INR";
       const receipt = `order_${Date.now()}`;
 
@@ -49,7 +50,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
         amount,
         currency,
         name: "Care Diabetic",
-        description: "Appointment Payment",
+        description: "Lab Booking Payment",
         order_id: orderId,
         handler: async function (response: any) {
           console.log("Payment Successful:", response);
@@ -60,7 +61,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
             amount,
             receipt,
           };
-          await handleConfirmAppointment(appointmentData, razorpayResponse);
+          await handleConfirmBooking(bookingData, razorpayResponse);
         },
         prefill: {
           name: profile?.name || "",
@@ -82,7 +83,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
     }
   };
 
-  const handleConfirmAppointment = async (data: any, razorpayResponse?: any) => {
+  const handleConfirmBooking = async (data: any, razorpayResponse?: any) => {
     if (!data) {
       alert("Please fill out the form.");
       return;
@@ -90,16 +91,14 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
 
     console.log("Razorpay Response", razorpayResponse);
     setLoading(true);
-    setStatusMessage("Creating appointment...");
+    setStatusMessage("Creating booking...");
 
-    const appointmentData = {
+    const bookingData = {
       ...data,
-      slot,
-      doctorId: doctor.id,
+      packageId: labBbookingData.id,
       patientId: profile?.id,
       paymentOption,
       razorpayResponse,
-      consultationTypeId: consultationType === "clinic" ? 2 : 1,
     };
 
     if (paymentOption === "online" && (!razorpayResponse || !razorpayResponse.success)) {
@@ -109,22 +108,22 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
     }
 
     try {
-      const response = await axios.post("/api/appointments", appointmentData);
+      const response = await axios.post("/api/labs", bookingData);
       if (response.data.success) {
-        setStatusMessage("Appointment confirmed!");
+        setStatusMessage("Booking confirmed!");
         setShowSuccessModal(true);
         setTimeout(() => {
           setShowSuccessModal(false);
           setStatusMessage(""); // Reset status
-          router.push("/dashboard/appointments");
+          router.push("/dashboard/labs");
         }, 3000);
 
       } else {
-        alert("Failed to book appointment.");
+        alert("Failed to book lab package.");
       }
     } catch (error) {
-      console.error("Error booking appointment:", error);
-      alert("An error occurred while booking the appointment.");
+      console.error("Error booking lab package:", error);
+      alert("An error occurred while booking the lab package.");
     } finally {
       setLoading(false);
     }
@@ -132,13 +131,13 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
 
   return (
     <>
-      <DoctorInfoTwo slot={slot} doctor={doctor} onBack={onBack} />
+      <PackageInfo labPackage={labBbookingData} onBack={onBack} />
       <div className="flex flex-col px-20 pb-5">
         <div className="text-3xl pt-4">Patient Details</div>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 h-full">
           {/* Left column - Patient Form */}
           <div className="bg-white flex pt-0 pl-0 p-6">
-            <PatientForm ref={formRef} />
+            <LabBookingForm ref={formRef} />
           </div>
 
           {/* Right column - Payment Selection and Button */}
@@ -148,7 +147,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
               <PaymentSelection
                 selectedOption={paymentOption}
                 onOptionChange={setPaymentOption}
-                consultationType={consultationType || ""}
+                consultationType=""
               />
             </div>
 
@@ -164,7 +163,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
                       if (paymentOption === "online") {
                         await handlePayment(data);
                       } else {
-                        await handleConfirmAppointment(data);
+                        await handleConfirmBooking(data);
                       }
                     })();
                   }
@@ -175,7 +174,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
                 {loading ? (
                     <Loader2 className="animate-spin w-5 h-5 mr-2" />
                 ) : (
-                  consultationType === "clinic" ? "Confirm Clinic Visit" : "Confirm Video Consultation"
+                  "Confirm Lab Booking"
                 )}
               </Button>
             </div>

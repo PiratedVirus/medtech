@@ -9,7 +9,7 @@ import CdLoader from "@/components/ui/custom/cd-loader";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 
-export default function AppointmentViewHome() {
+export default function PrescriptionViewHome() {
   const { clinicId, profile, isLoading: profileLoading } = useDecryptedProfile();
   const bookingData = useSelector((state: RootState) => state.appointment.bookingData);
 
@@ -46,44 +46,12 @@ export default function AppointmentViewHome() {
 
   return (
     <div className="py-7 md:px-20 bg-muted">
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 py-7">
-        <div className="md:col-span-8">
-          <UpcomingAppointment appointment={upcoming} />
-        </div>
-
-        <div className="md:col-span-4 p-6 rounded-3xl relative overflow-hidden bg-custom-mutedgreen flex items-center justify-center">
-          <ArrowButton buttonText="Book an Appointment" href="/dashboard/doctors" />
-        </div>
-      </div>
-
-      {/* Future Appointments Section */}
-      <div className="futureAppointments">
-        <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
-          <div>
-            <p className="text-4xl font-bold text-gray-800">Future Appointments</p>
-            <div className="flex items-center gap-2 mt-5">
-              <p className="text-lg">Here you can view your upcoming appointments</p>
-            </div>
-          </div>
-        </div>
-        {futureAppointments.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {futureAppointments.map((appointment: any) => (
-              <AppointmentListCard key={appointment.id} appointment={appointment} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-center text-gray-600 py-10">No future appointments available at the moment.</p>
-        )}
-      </div>
-
-      {/* Past Appointments Section */}
       <div className="pastAppointments">
         <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
           <div>
-            <p className="text-4xl font-bold text-gray-800">Past Appointments</p>
+            <p className="text-4xl font-bold text-gray-800">View Prescriptions from past Appointments</p>
             <div className="flex items-center gap-2 mt-5">
-              <p className="text-lg">Here you can view your previous appointments</p>
+              <p className="text-lg">Here you can view your previous Prescriptions</p>
             </div>
           </div>
         </div>

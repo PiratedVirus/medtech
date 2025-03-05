@@ -2,6 +2,7 @@
 import { Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
+import Link from "next/link";
 
 interface Appointment {
   id: number;
@@ -10,6 +11,7 @@ interface Appointment {
   consultationType: { type: string };
   doctor: { name: string; doctorProfile: { specialty: string } };
   doctorAvailability: { startTime: string };
+  prescriptionLink: string;
 }
 
 export default function AppointmentListCard({ appointment }: { appointment: Appointment }) {
@@ -58,9 +60,11 @@ export default function AppointmentListCard({ appointment }: { appointment: Appo
 
         {/* Prescription Button */}
         <div className="text-right">
+          <Link href={appointment?.prescriptionLink || "/#"}>
           <p className="text-gray-700 font-medium cursor-pointer hover:underline">
             Prescription
           </p>
+          </Link>
         </div>
       </CardContent>
     </Card>

@@ -150,6 +150,7 @@ export async function GET(request: NextRequest) {
         mobile: true,
         email: true,
         appointmentDate: true,
+        prescriptionLink: true,
         status: true,
         consultationType: { select: { type: true } },
         appointmentLink: true,
