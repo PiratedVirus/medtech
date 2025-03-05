@@ -1,75 +1,62 @@
 "use client";
-import { useEffect, useState } from "react";
+
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { setBookingData } from "@/store/appointmentSlice";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import axios from "axios";
 import CdLoader from "@/components/ui/custom/cd-loader";
-import { CircleCheckBig, CalendarIcon } from "lucide-react";
-import DoctorCard from "@/components/patients/doctors/DoctorCard";
-import { Button } from "@/components/ui/button";
+import { CircleCheckBig } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import LabCard from "@/components/patients/labs/LabCard";
 
-export default function DoctorsPage() {
+export default function LabsPage() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const [labs, setlabs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const { clinicId, isLoading: profileLoading } = useDecryptedProfile();
 
   const handleBookAppointment = (lab: any) => {
-    dispatch(setBookingData(lab ));
+    dispatch(setBookingData(lab));
     router.push(`/dashboard/labs/${lab.id}`);
   };
 
-  useEffect(() => {
-    const fetchLabs = async () => {
-      if (!clinicId) {
-        return;
-      }
-      try {
-        const response = await axios.get(
-          `/api/labs/get-labs?clinicId=${clinicId}`,
-          { withCredentials: true },
-        );
+  // Fetch labs using React Query
+  const { data: labs, isLoading, isError } = useQuery({
+    queryKey: ["labs", clinicId], // Unique cache key
+    queryFn: async () => {
+      if (!clinicId) return [];
+      const response = await axios.get(
+        `/api/labs/get-labs?clinicId=${clinicId}`,
+        { withCredentials: true }
+      );
+      return response.data.success ? response.data.packages : [];
+    },
+    staleTime: 10 * 60 * 1000, // ✅ Cache valid for 10 minutes
+    gcTime: 60 * 60 * 1000, // ✅ Keeps cache for 1 hour
+    refetchOnWindowFocus: false, // ✅ Prevents re-fetching on tab switch
+    refetchOnMount: false, // ✅ Prevents re-fetching when navigating back
+    refetchOnReconnect: true, // ✅ Fetches only if internet reconnects
+    enabled: !!clinicId, // ✅ Runs only when clinicId exists
+  });
 
-        if (response.data.success) {
-          setlabs(response.data.packages);
-        } else {
-          setError("Failed to load labs");
-        }
-      } catch (error) {
-        setError("Something went wrong");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (!profileLoading) {
-      fetchLabs();
-    }
-  }, [clinicId, profileLoading]);
-
-  if (profileLoading || loading) {
+  if (profileLoading || isLoading) {
     return <CdLoader />;
   }
 
-  if (error) {
-    return <p className="text-red-500 text-center py-5">{error}</p>;
+  if (isError) {
+    return <p className="text-red-500 text-center py-5">Something went wrong. Failed to load labs.</p>;
   }
 
-  if(labs?.length === 0) {
+  if (labs?.length === 0) {
     return <p className="text-center text-gray-600 py-10">No labs available at the moment.</p>;
-    }
+  }
 
   return (
     <div className="bg-muted min-h-screen px-4 sm:px-8 md:px-12 lg:px-20 pb-10">
       <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
         <div>
           <p className="text-4xl font-bold text-gray-800">
-            {labs?.length ?? 0} packages available for booking
+            {labs.length} packages available for booking
           </p>
           <div className="flex items-center gap-2 mt-5">
             <CircleCheckBig className="text-green-700 h-6 w-6" />
@@ -80,20 +67,11 @@ export default function DoctorsPage() {
         </div>
       </div>
 
-      {labs?.length > 0 ? (
-        <div className="flex items-start flex-wrap gap-6 mt-10">
-          {labs.map((lab) => (
-            <LabCard
-              key={lab.id}
-              labPackage={lab}
-            />
-          ))}
-        </div>
-      ) : (
-        <p className="text-center text-gray-600 py-10">
-          No packages available at the moment.
-        </p>
-      )}
+      <div className="flex items-start flex-wrap gap-6 mt-10">
+        {labs.map((lab: any) => (
+          <LabCard key={lab.id} labPackage={lab} />
+        ))}
+      </div>
     </div>
   );
 }
