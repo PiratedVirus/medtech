@@ -2,13 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
-import { setBookingData } from "@/store/appointmentSlice";
+import { setLabBookingData } from "@/store/labSlice";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import axios from "axios";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { CircleCheckBig } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import LabCard from "@/components/patients/labs/LabCard";
+import LabCard from "@/components/patients/labs/view/LabCard";
 
 export default function LabsPage() {
   const router = useRouter();
@@ -16,7 +16,7 @@ export default function LabsPage() {
   const { clinicId, isLoading: profileLoading } = useDecryptedProfile();
 
   const handleBookAppointment = (lab: any) => {
-    dispatch(setBookingData(lab));
+    dispatch(setLabBookingData(lab));
     router.push(`/dashboard/labs/${lab.id}`);
   };
 
@@ -69,7 +69,7 @@ export default function LabsPage() {
 
       <div className="flex items-start flex-wrap gap-6 mt-10">
         {labs.map((lab: any) => (
-          <LabCard key={lab.id} labPackage={lab} />
+          <LabCard key={lab.id} labPackage={lab} handleBookAppointment={handleBookAppointment} />
         ))}
       </div>
     </div>
