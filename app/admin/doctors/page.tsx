@@ -23,28 +23,47 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useForm, FormProvider } from "react-hook-form";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
 const fetchDoctors = async () => {
-  const response = await axios.get("/api/admin/doctors");
-  return response.data;
+  try {
+    const response = await axios.get("/api/admin/doctors");
+    return response.data;
+  } catch (error) {
+    console.error("Failed to fetch doctors:", error);
+    return [];
+  }
 };
 
 const createDoctor = async (data) => {
-  const response = await axios.post("/api/admin/doctors", data);
-  return response.data;
+  try {
+    const response = await axios.post("/api/admin/doctors", data);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to create doctor:", error);
+    return null;
+  }
 };
 
 const updateDoctor = async (id, data) => {
-  const response = await axios.put(`/api/admin/doctors/${id}`, data);
-  return response.data;
+  try {
+    const response = await axios.put(`/api/admin/doctors/${id}`, data);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to update doctor:", error);
+    return null;
+  }
 };
 
 const deleteDoctor = async (id) => {
-  const response = await axios.delete(`/api/admin/doctors/${id}`);
-  return response.data;
+  try {
+    const response = await axios.delete(`/api/admin/doctors/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to delete doctor:", error);
+    return null;
+  }
 };
 
 export default function DoctorsPage() {
@@ -63,21 +82,27 @@ export default function DoctorsPage() {
   }, []);
 
   const handleCreateDoctor = async (data) => {
-    await createDoctor(data);
-    fetchAndSetDoctors();
-    setIsDialogOpen(false);
+    const result = await createDoctor(data);
+    if (result) {
+      fetchAndSetDoctors();
+      setIsDialogOpen(false);
+    }
   };
 
   const handleUpdateDoctor = async (data) => {
-    await updateDoctor(selectedDoctor.id, data);
-    fetchAndSetDoctors();
-    setSelectedDoctor(null);
-    setIsDialogOpen(false);
+    const result = await updateDoctor(selectedDoctor.id, data);
+    if (result) {
+      fetchAndSetDoctors();
+      setSelectedDoctor(null);
+      setIsDialogOpen(false);
+    }
   };
 
   const handleDeleteDoctor = async (id) => {
-    await deleteDoctor(id);
-    fetchAndSetDoctors();
+    const result = await deleteDoctor(id);
+    if (result) {
+      fetchAndSetDoctors();
+    }
   };
 
   const handleDialogOpen = (doctor = null) => {

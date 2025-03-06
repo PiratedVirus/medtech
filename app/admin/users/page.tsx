@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/router";
 import axios from "axios";
 import {
   Table,
@@ -24,28 +23,47 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useForm, FormProvider } from "react-hook-form";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
 const fetchUsers = async () => {
-  const response = await axios.get("/api/admin/users");
-  return response.data;
+  try {
+    const response = await axios.get("/api/admin/users");
+    return response.data;
+  } catch (error) {
+    console.error("Failed to fetch users:", error);
+    return [];
+  }
 };
 
 const createUser = async (data) => {
-  const response = await axios.post("/api/admin/users", data);
-  return response.data;
+  try {
+    const response = await axios.post("/api/admin/users", data);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to create user:", error);
+    return null;
+  }
 };
 
 const updateUser = async (id, data) => {
-  const response = await axios.put(`/api/admin/users/${id}`, data);
-  return response.data;
+  try {
+    const response = await axios.put(`/api/admin/users/${id}`, data);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to update user:", error);
+    return null;
+  }
 };
 
 const deleteUser = async (id) => {
-  const response = await axios.delete(`/api/admin/users/${id}`);
-  return response.data;
+  try {
+    const response = await axios.delete(`/api/admin/users/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to delete user:", error);
+    return null;
+  }
 };
 
 export default function UsersPage() {
@@ -64,21 +82,27 @@ export default function UsersPage() {
   }, []);
 
   const handleCreateUser = async (data) => {
-    await createUser(data);
-    fetchAndSetUsers();
-    setIsDialogOpen(false);
+    const result = await createUser(data);
+    if (result) {
+      fetchAndSetUsers();
+      setIsDialogOpen(false);
+    }
   };
 
   const handleUpdateUser = async (data) => {
-    await updateUser(selectedUser.id, data);
-    fetchAndSetUsers();
-    setSelectedUser(null);
-    setIsDialogOpen(false);
+    const result = await updateUser(selectedUser.id, data);
+    if (result) {
+      fetchAndSetUsers();
+      setSelectedUser(null);
+      setIsDialogOpen(false);
+    }
   };
 
   const handleDeleteUser = async (id) => {
-    await deleteUser(id);
-    fetchAndSetUsers();
+    const result = await deleteUser(id);
+    if (result) {
+      fetchAndSetUsers();
+    }
   };
 
   const handleDialogOpen = (user = null) => {

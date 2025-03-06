@@ -23,28 +23,47 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useForm, FormProvider } from "react-hook-form";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
 const fetchAppointments = async () => {
-  const response = await axios.get("/api/admin/appointments");
-  return response.data;
+  try {
+    const response = await axios.get("/api/admin/appointments");
+    return response.data;
+  } catch (error) {
+    console.error("Failed to fetch appointments:", error);
+    return [];
+  }
 };
 
 const createAppointment = async (data) => {
-  const response = await axios.post("/api/admin/appointments", data);
-  return response.data;
+  try {
+    const response = await axios.post("/api/admin/appointments", data);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to create appointment:", error);
+    return null;
+  }
 };
 
 const updateAppointment = async (id, data) => {
-  const response = await axios.put(`/api/admin/appointments/${id}`, data);
-  return response.data;
+  try {
+    const response = await axios.put(`/api/admin/appointments/${id}`, data);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to update appointment:", error);
+    return null;
+  }
 };
 
 const deleteAppointment = async (id) => {
-  const response = await axios.delete(`/api/admin/appointments/${id}`);
-  return response.data;
+  try {
+    const response = await axios.delete(`/api/admin/appointments/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to delete appointment:", error);
+    return null;
+  }
 };
 
 export default function AppointmentsPage() {
@@ -63,21 +82,27 @@ export default function AppointmentsPage() {
   }, []);
 
   const handleCreateAppointment = async (data) => {
-    await createAppointment(data);
-    fetchAndSetAppointments();
-    setIsDialogOpen(false);
+    const result = await createAppointment(data);
+    if (result) {
+      fetchAndSetAppointments();
+      setIsDialogOpen(false);
+    }
   };
 
   const handleUpdateAppointment = async (data) => {
-    await updateAppointment(selectedAppointment.id, data);
-    fetchAndSetAppointments();
-    setSelectedAppointment(null);
-    setIsDialogOpen(false);
+    const result = await updateAppointment(selectedAppointment.id, data);
+    if (result) {
+      fetchAndSetAppointments();
+      setSelectedAppointment(null);
+      setIsDialogOpen(false);
+    }
   };
 
   const handleDeleteAppointment = async (id) => {
-    await deleteAppointment(id);
-    fetchAndSetAppointments();
+    const result = await deleteAppointment(id);
+    if (result) {
+      fetchAndSetAppointments();
+    }
   };
 
   const handleDialogOpen = (appointment = null) => {

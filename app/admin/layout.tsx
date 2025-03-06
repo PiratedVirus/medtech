@@ -4,8 +4,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchUserProfile } from "@/store/userSlice";
 import { ProfileProvider } from "@/hooks/context/ProfileContext";
 import type { AppDispatch, RootState } from "@/store";
-import { DashboardHeader as Header } from "@/components/common/DashboardHeader";
-import Footer from "@/components/common/Footer";
 import "@/app/globals.css";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
@@ -51,11 +49,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   return (
     <ProfileProvider profile={profile}>
-      <Header />
-      <main className="flex-grow">
+      <main className="flex-grow p-4">
         {children}
       </main>
-      <Footer />
     </ProfileProvider>
   );
 };
