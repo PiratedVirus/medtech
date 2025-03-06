@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { useForm } from "react-hook-form";
 import {
   Table,
   TableHeader,
@@ -9,179 +10,253 @@ import {
   TableRow,
   TableHead,
   TableCell,
-  TableCaption,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
-  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { useForm, FormProvider } from "react-hook-form";
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
-const fetchUsers = async () => {
-  try {
-    const response = await axios.get("/api/admin/users");
-    return response.data;
-  } catch (error) {
-    console.error("Failed to fetch users:", error);
-    return [];
-  }
-};
+// Add these to your API routes
+// /api/clinics:
+/*
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-const createUser = async (data) => {
+export async function GET() {
   try {
-    const response = await axios.post("/api/admin/users", data);
-    return response.data;
+    const clinics = await prisma.clinic.findMany();
+    return NextResponse.json(clinics);
   } catch (error) {
-    console.error("Failed to create user:", error);
-    return null;
+    return NextResponse.json({ error: "Failed to fetch clinics" }, { status: 500 });
   }
-};
-
-const updateUser = async (id, data) => {
-  try {
-    const response = await axios.put(`/api/admin/users/${id}`, data);
-    return response.data;
-  } catch (error) {
-    console.error("Failed to update user:", error);
-    return null;
-  }
-};
-
-const deleteUser = async (id) => {
-  try {
-    const response = await axios.delete(`/api/admin/users/${id}`);
-    return response.data;
-  } catch (error) {
-    console.error("Failed to delete user:", error);
-    return null;
-  }
-};
+}
+*/
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
+  const [clinics, setClinics] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const methods = useForm();
-
-  const fetchAndSetUsers = async () => {
-    const data = await fetchUsers();
-    setUsers(data);
-  };
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const { register, handleSubmit, reset, setValue } = useForm();
 
   useEffect(() => {
-    fetchAndSetUsers();
+    const fetchData = async () => {
+      try {
+        const [usersRes, clinicsRes] = await Promise.all([
+          axios.get("/api/admin/users"),
+          axios.get("/api/admin/clinics")
+        ]);
+        setUsers(usersRes.data);
+        setClinics(clinicsRes.data);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+    fetchData();
   }, []);
 
-  const handleCreateUser = async (data) => {
-    const result = await createUser(data);
-    if (result) {
-      fetchAndSetUsers();
-      setIsDialogOpen(false);
+  useEffect(() => {
+    if (selectedUser) {
+      setValue("name", selectedUser.name);
+      setValue("phoneNumber", selectedUser.phoneNumber);
+      setValue("email", selectedUser.email);
+      setValue("role", selectedUser.role);
+      setValue("clinicId", selectedUser.clinicId);
+      setValue("status", selectedUser.status);
+    } else {
+      reset();
+    }
+  }, [selectedUser, setValue, reset]);
+
+  const onSubmit = async (data) => {
+    try {
+      const payload = {
+        ...data,
+        clinicId: data.clinicId ? Number(data.clinicId) : null,
+        status: data.status || "ACTIVE",
+      };
+  
+      if (selectedUser) {
+        // Send ID in request body for PUT
+        await axios.put("/api/admin/users", { 
+          id: selectedUser.id,
+          ...payload
+        });
+      } else {
+        await axios.post("/api/admin/users", payload);
+      }
+  
+      setDialogOpen(false);
+      const response = await axios.get("/api/admin/users");
+      setUsers(response.data);
+    } catch (error) {
+      console.error("Error saving user:", error);
     }
   };
 
-  const handleUpdateUser = async (data) => {
-    const result = await updateUser(selectedUser.id, data);
-    if (result) {
-      fetchAndSetUsers();
-      setSelectedUser(null);
-      setIsDialogOpen(false);
+  const deleteUser = async (id) => {
+    try {
+      // Send ID in request body for DELETE
+      await axios.delete("/api/admin/users", { 
+        data: { id } 
+      });
+      setUsers(users.filter(user => user.id !== id));
+    } catch (error) {
+      console.error("Error deleting user:", error);
     }
-  };
-
-  const handleDeleteUser = async (id) => {
-    const result = await deleteUser(id);
-    if (result) {
-      fetchAndSetUsers();
-    }
-  };
-
-  const handleDialogOpen = (user = null) => {
-    setSelectedUser(user);
-    setIsDialogOpen(true);
-  };
-
-  const handleDialogClose = () => {
-    setSelectedUser(null);
-    setIsDialogOpen(false);
   };
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Users</h1>
-      <Button onClick={() => handleDialogOpen()}>Add User</Button>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Users</h1>
+        <Button className="bg-slate-800 text-white" onClick={() => {
+          setSelectedUser(null);
+          setDialogOpen(true);
+        }}>Add User</Button>
+      </div>
+
       <Table>
-        <TableCaption>A list of users.</TableCaption>
         <TableHeader>
           <TableRow>
-            <TableHead>ID</TableHead>
             <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Phone</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {users.map((user) => (
             <TableRow key={user.id}>
-              <TableCell>{user.id}</TableCell>
               <TableCell>{user.name}</TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>
-                <Button onClick={() => handleDialogOpen(user)}>Edit</Button>
-                <Button onClick={() => handleDeleteUser(user.id)}>Delete</Button>
+              <TableCell>{user.role}</TableCell>
+              <TableCell>{user.status}</TableCell>
+              <TableCell>{user.phoneNumber}</TableCell>
+              <TableCell className="space-x-2">
+                <Button className="bg-slate-800 text-white" size="sm" onClick={() => {
+                  setSelectedUser(user);
+                  setDialogOpen(true);
+                }}>
+                  Edit
+                </Button>
+                <Button
+                 
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => deleteUser(user.id)}
+                >
+                  Delete
+                </Button>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{selectedUser ? "Edit User" : "Add User"}</DialogTitle>
-            <DialogDescription>
-              {selectedUser ? "Update the user details below." : "Fill in the details to add a new user."}
-            </DialogDescription>
+            <DialogTitle>
+              {selectedUser ? "Edit User" : "Create New User"}
+            </DialogTitle>
           </DialogHeader>
-          <FormProvider {...methods}>
-            <Form onSubmit={methods.handleSubmit(selectedUser ? handleUpdateUser : handleCreateUser)}>
-              <FormField name="name" defaultValue={selectedUser?.name || ""}>
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              </FormField>
-              <FormField name="email" defaultValue={selectedUser?.email || ""}>
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              </FormField>
-              <DialogFooter>
-                <Button type="submit">{selectedUser ? "Update" : "Create"}</Button>
-                <DialogClose asChild>
-                  <Button type="button" variant="outline" onClick={handleDialogClose}>
-                    Cancel
-                  </Button>
-                </DialogClose>
-              </DialogFooter>
-            </Form>
-          </FormProvider>
+          
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <Input
+              {...register("name", { required: true })}
+              placeholder="Full Name"
+            />
+            
+            <Input
+              {...register("phoneNumber", { required: true })}
+              placeholder="Phone Number"
+            />
+            
+            <Input
+              {...register("email")}
+              type="email"
+              placeholder="Email"
+            />
+            
+            <Input
+              {...register("password")}
+              type="password"
+              placeholder="Password"
+            />
+
+            <Select 
+              onValueChange={(value) => setValue("role", value)}
+              defaultValue={selectedUser?.role}
+              required
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PATIENT">Patient</SelectItem>
+                <SelectItem value="DOCTOR">Doctor</SelectItem>
+                <SelectItem value="LAB_TECH">Lab Technician</SelectItem>
+                <SelectItem value="DIETICIAN">Dietician</SelectItem>
+                <SelectItem value="ADMIN">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              onValueChange={(value) => setValue("status", value)}
+              defaultValue={selectedUser?.status || "ACTIVE"}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="INACTIVE">Inactive</SelectItem>
+                <SelectItem value="SUSPENDED">Suspended</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              onValueChange={(value) => setValue("clinicId", value)}
+              defaultValue={selectedUser?.clinicId?.toString()}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Clinic" />
+              </SelectTrigger>
+              <SelectContent>
+                {clinics.map((clinic) => (
+                  <SelectItem key={clinic.id} value={clinic.id.toString()}>
+                    {clinic.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button className="bg-slate-800 text-white" type="submit">
+                {selectedUser ? "Save Changes" : "Create User"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
