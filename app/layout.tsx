@@ -1,5 +1,5 @@
 'use client'
-import type { Metadata } from "next";
+
 import { Lato } from 'next/font/google'
 import "./globals.css";
 import { Provider } from "react-redux";
@@ -7,7 +7,8 @@ import store from "@/store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { initializeUserProfile } from "@/store/userSlice"; // Update this path as needed
 
 const lato = Lato({
   subsets: ['latin'],
@@ -15,24 +16,51 @@ const lato = Lato({
   variable: '--font-lato',
 })
 
-
-// export const metadata: Metadata = {
-//   title: "Care Diabetics",
-//   description: "India’s leading virtual platform for diabetes care.",
-// };
-
-export default function RootLayout({children,}: Readonly<{children: React.ReactNode;}>) {
+// Client-side only component to wrap children once localStorage is available
+function ClientSideWrapper({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
-    // Persist cache using localStorage (so it stays across navigation)
-    const persister = createSyncStoragePersister({ storage: window.localStorage });
+  const [persister, setPersister] = useState<any>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    // Only run once the component is mounted on the client
+    setPersister(createSyncStoragePersister({ 
+      storage: window.localStorage 
+    }));
+    setIsReady(true);
+    
+    // Initialize user profile from sessionStorage if available
+    store.dispatch(initializeUserProfile());
+  }, []);
+
+  if (!isReady) {
+    // Return a simple loading state or skeleton
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  return (
+    <PersistQueryClientProvider 
+      client={queryClient} 
+      persistOptions={{ persister }}
+    >
+      <Provider store={store}>
+        {children}
+      </Provider>
+    </PersistQueryClientProvider>
+  );
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en">
       <body className={`${lato.variable} antialiased min-h-screen flex flex-col`}>
-        <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
-          <Provider store={store}>
-            {children}
-          </Provider>
-        </PersistQueryClientProvider>
+        <ClientSideWrapper>
+          {children}
+        </ClientSideWrapper>
       </body>
     </html>
   );

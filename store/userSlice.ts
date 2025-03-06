@@ -12,12 +12,27 @@ interface UserProfile {
   id: string;
   name: string;
   email: string;
+  clinicId?: string;
+  role: string;
 }
 
 const initialState: UserState = {
   profile: null,
   loading: false,
   error: null,
+};
+
+// Safe storage functions
+const safeSetItem = (key: string, value: string) => {
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem(key, value);
+  }
+};
+
+const safeRemoveItem = (key: string) => {
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem(key);
+  }
 };
 
 // Fetch user profile from `/api/auth/get-user-profile`
@@ -27,11 +42,11 @@ export const fetchUserProfile = createAsyncThunk(
     const response = await axios.get("/api/auth/get-user-profile", {
       withCredentials: true,
     });
-
+    
     const userProfile = response.data.user as UserProfile;
     const encryptedProfile = encryptData(userProfile);
-    sessionStorage.setItem("userProfile", encryptedProfile);
-
+    safeSetItem("userProfile", encryptedProfile);
+    
     return userProfile;
   },
 );
@@ -39,22 +54,26 @@ export const fetchUserProfile = createAsyncThunk(
 // Logout user & remove profile
 export const logoutUser = createAsyncThunk("user/logoutUser", async () => {
   await axios.post("/api/auth/logout", {}, { withCredentials: true });
-  sessionStorage.removeItem("userProfile");
+  safeRemoveItem("userProfile");
 });
 
-// Load user profile from session storage
-const loadUserProfileFromSession = () => {
-  if (typeof window === "undefined") return null;
-  const encryptedProfile = sessionStorage.getItem("userProfile");
-  return encryptedProfile ? decryptData(encryptedProfile) : null;
-};
+// Create an initialization thunk to load from storage
+export const initializeUserProfile = createAsyncThunk(
+  "user/initializeProfile",
+  async (_, { dispatch }) => {
+    if (typeof window === "undefined") return null;
+    
+    const encryptedProfile = sessionStorage.getItem("userProfile");
+    if (encryptedProfile) {
+      return decryptData(encryptedProfile);
+    }
+    return null;
+  }
+);
 
 const userSlice = createSlice({
   name: "user",
-  initialState: {
-    ...initialState,
-    profile: loadUserProfileFromSession(),
-  },
+  initialState,
   reducers: {},
   extraReducers: (builder) => {
     builder
@@ -69,6 +88,9 @@ const userSlice = createSlice({
       .addCase(fetchUserProfile.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || "Failed to fetch user profile";
+      })
+      .addCase(initializeUserProfile.fulfilled, (state, action) => {
+        state.profile = action.payload;
       });
   },
 });
