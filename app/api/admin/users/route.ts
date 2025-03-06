@@ -1,10 +1,30 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+// Enhanced GET endpoint with filtering
+export async function GET(request: Request) {
   try {
-    const users = await prisma.user.findMany();
-    return NextResponse.json(users);
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const pageSize = parseInt(searchParams.get('pageSize') || '10');
+    
+    const [users, total] = await prisma.$transaction([
+      prisma.user.findMany({
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { clinic: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.user.count()
+    ]);
+
+    return NextResponse.json({
+      data: users,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }

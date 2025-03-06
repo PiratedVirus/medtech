@@ -76,4 +76,24 @@ input::placeholder {
   color: #e5e5e5;
   opacity: 1;
 }
+.th-sortable {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
 
+.th-sortable:hover {
+  background-color: hsl(var(--muted));
+}
+
+.sort-arrow {
+  transition: transform 0.2s;
+  opacity: 0.4;
+}
+
+.th-sorted .sort-arrow {
+  opacity: 1;
+}
+
+.th-sorted-asc .sort-arrow {
+  transform: rotate(180deg);
+}
