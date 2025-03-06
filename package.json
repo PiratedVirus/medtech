@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "NODE_OPTIONS='--inspect' next dev",
-    "build": "next build",
+    "build": "prisma generate && next build --no-lint",
     "start": "next start",
     "storybook": "concurrently \"npm run watch:storybook\" \"npm run watch:build:css\"",
     "watch:storybook": "storybook dev -p 6006",
@@ -101,7 +101,6 @@
     "eslint-plugin-storybook": "^0.11.3",
     "postcss": "^8",
     "prisma": "^6.4.1",
-    "storybook": "^8.5.6",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   },

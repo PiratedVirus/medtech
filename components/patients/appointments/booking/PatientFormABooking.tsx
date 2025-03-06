@@ -32,8 +32,10 @@ export const PatientForm = forwardRef(({ }, ref) => {
     defaultValues: {
       appointmentFor: "self",
       fullName: profile?.name || "",
+      // @ts-expect-error
       mobile: profile?.phoneNumber || "",
-      email: "",
+      // @ts-expect-error
+      email: profile?.email || "",
     },
   });
 

@@ -3,7 +3,6 @@
 .env
 .DS_Store
 node_modules
-public
 next-env.d.ts
 prisma/migrations
 prisma/seeds

@@ -8,7 +8,7 @@ interface Appointment {
   id: number;
   appointmentDate: string;
   status: string;
-  consultationType: string;
+  consultationType: { type: string };
   doctor: { name: string; doctorProfile: { specialty: string } };
   doctorAvailability: { startTime: string };
   prescriptionLink: string;
