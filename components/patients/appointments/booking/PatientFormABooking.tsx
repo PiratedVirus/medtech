@@ -34,7 +34,8 @@ export const PatientForm = forwardRef(({ }, ref) => {
       fullName: profile?.name || "",
       // @ts-expect-error
       mobile: profile?.phoneNumber || "",
-      email: "",
+      // @ts-expect-error
+      email: profile?.email || "",
     },
   });
 
