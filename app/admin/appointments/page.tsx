@@ -89,11 +89,21 @@ const deleteAppointment = async (id) => {
   }
 };
 
+const fetchAvailableSlots = async (doctorId) => {
+  try {
+    const response = await axios.get(`/api/admin/appointments/available-slots?doctorId=${doctorId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to fetch available slots:", error);
+    return [];
+  }
+};
+
 export default function AppointmentsPage() {
   const [data, setData] = useState({ appointments: [], total: 0 });
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const { register, handleSubmit, reset, setValue, control, watch } = useForm();
   const [sorting, setSorting] = useState<SortingState>([{ id: "appointmentDate", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -102,6 +112,15 @@ export default function AppointmentsPage() {
     pageIndex: 0,
     pageSize: 10,
   });
+  const [availableSlots, setAvailableSlots] = useState([]);
+
+  const selectedDoctorId = watch("doctor");
+
+  useEffect(() => {
+    if (selectedDoctorId) {
+      fetchAvailableSlots(selectedDoctorId).then((slots) => setAvailableSlots(slots));
+    }
+  }, [selectedDoctorId]);
 
   const columns: ColumnDef<any>[] = [
     {
@@ -172,7 +191,7 @@ export default function AppointmentsPage() {
               setSelectedAppointment(row.original);
               setValue("patient", row.original.fullName);
               setValue("doctor", row.original.doctor.name);
-              setValue("appointmentDate", row.original.appointmentDate);
+              setValue("slot", row.original.doctorAvailability.id);
               setValue("status", row.original.status);
               setDialogOpen(true);
             }}
@@ -223,7 +242,7 @@ export default function AppointmentsPage() {
     if (selectedAppointment) {
       setValue("patient", selectedAppointment.fullName);
       setValue("doctor", selectedAppointment.doctor.name);
-      setValue("appointmentDate", selectedAppointment.appointmentDate);
+      setValue("slot", selectedAppointment.doctorAvailability.id);
       setValue("status", selectedAppointment.status);
     } else {
       reset();
@@ -400,7 +419,24 @@ export default function AppointmentsPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Input {...register("patient", { required: true })} placeholder="Patient" />
             <Input {...register("doctor", { required: true })} placeholder="Doctor" />
-            <Input {...register("appointmentDate", { required: true })} type="datetime-local" placeholder="Appointment Date" />
+            <Controller
+              name="slot"
+              control={control}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Slot" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSlots.map((slot) => (
+                      <SelectItem key={slot.id} value={slot.id}>
+                        {slot.date} {slot.startTime} - {slot.endTime}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
             <Input {...register("status", { required: true })} placeholder="Status" />
             <DialogFooter>
               <Button
