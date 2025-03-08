@@ -2,7 +2,7 @@
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import UsersPage from "@/app/admin/users/page"; 
-import ClincsPafe from "@/app/admin/clinics/page";
+import ClincsPage from "@/app/admin/clinics/page";
 import AppointmentsPage from "@/app/admin/appointments/page";
 import DieticiansPage from "@/app/admin/dieticians/page";
 import DoctorsPage from "@/app/admin/doctors/page";
@@ -32,28 +32,28 @@ export default function AdminPage() {
           <UsersPage />
         </TabsContent>
         <TabsContent value="clinics">
-          <p>Clinics page content goes here.</p>
+          <ClincsPage/>
         </TabsContent>
         <TabsContent value="appointments">
-          <p>Appointments page content goes here.</p>
+          <AppointmentsPage/>
         </TabsContent>
         <TabsContent value="dieticians">
-          <p>Dieticians page content goes here.</p>
+          <DieticiansPage/>
         </TabsContent>
         <TabsContent value="doctors">
           <DoctorsPage />
         </TabsContent>
         <TabsContent value="labs">
-          <p>Labs page content goes here.</p>
+          <LabsPage/>
         </TabsContent>
         <TabsContent value="medicines">
-          <p>Medicines page content goes here.</p>
+          <MedicinesPage/>
         </TabsContent>
         <TabsContent value="payments">
-          <p>Payments page content goes here.</p>
+          <PaymentsPage/>
         </TabsContent>
         <TabsContent value="prescriptions">
-          <p>Prescriptions page content goes here.</p>
+          <PrescriptionsPage/>
         </TabsContent>
       </Tabs>
     </div>

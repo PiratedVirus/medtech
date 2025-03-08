@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   try {
     const data = await request.json();
     const user = await prisma.user.create({ data });
-    return NextResponse.json(user);
+    return NextResponse.json({ data: user, message: "User created successfully" });
   } catch (error) {
     return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
   }
@@ -58,7 +58,7 @@ export async function PUT(request: Request) {
       where: { id },
       data,
     });
-    return NextResponse.json(user);
+    return NextResponse.json({ data: user, message: "User updated successfully" });
   } catch (error) {
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }

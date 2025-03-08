@@ -209,7 +209,7 @@ export default function UsersPage() {
     try {
       const [usersRes, clinicsRes] = await Promise.all([
         axios.get(`/api/admin/users?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`),
-        axios.get("/api/admin/clinics"),
+        axios.get("/api/admin/clinics/clinics-list"),
       ]);
       setData({ users: usersRes.data.data, total: usersRes.data.total });
       setClinics(clinicsRes.data);

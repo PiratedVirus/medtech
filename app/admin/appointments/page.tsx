@@ -124,7 +124,8 @@ export default function AppointmentsPage() {
       ),
     },
     {
-      accessorKey: "patient.name",
+      accessorKey: "fullName",
+      id: "fullName",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Patient <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -169,7 +170,7 @@ export default function AppointmentsPage() {
             className="bg-transparent text-primary border-0 shadow-none"
             onClick={() => {
               setSelectedAppointment(row.original);
-              setValue("patient", row.original.patient.name);
+              setValue("patient", row.original.fullName);
               setValue("doctor", row.original.doctor.name);
               setValue("appointmentDate", row.original.appointmentDate);
               setValue("status", row.original.status);
@@ -220,7 +221,7 @@ export default function AppointmentsPage() {
 
   useEffect(() => {
     if (selectedAppointment) {
-      setValue("patient", selectedAppointment.patient.name);
+      setValue("patient", selectedAppointment.fullName);
       setValue("doctor", selectedAppointment.doctor.name);
       setValue("appointmentDate", selectedAppointment.appointmentDate);
       setValue("status", selectedAppointment.status);
@@ -270,9 +271,9 @@ export default function AppointmentsPage() {
         <div className="flex items-center gap-4">
           <Input
             placeholder="Search appointments..."
-            value={(table.getColumn("patient.name")?.getFilterValue() as string) ?? ""}
+            value={(table.getColumn("fullName")?.getFilterValue() as string) ?? ""}
             onChange={(event) =>
-              table.getColumn("patient.name")?.setFilterValue(event.target.value)
+              table.getColumn("fullName")?.setFilterValue(event.target.value)
             }
             className="max-w-sm"
           />
