@@ -1,19 +1,13 @@
-// ===========================================
-// DATABASE CONNECTION
-// ===========================================
-datasource db {
-  provider = "postgresql"  // or "mysql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
-// ===========================================
-// ENUMS
-// ===========================================
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
 enum UserRole {
   PATIENT
   DOCTOR
@@ -30,75 +24,65 @@ enum UserStatus {
   DELETED
 }
 
-// ===========================================
-// CLINIC TABLE
-// ===========================================
 model Clinic {
-  id                Int                     @id @default(autoincrement())
-  name              String                  @unique
-  subdomain         String?                 @unique
-  domain            String?                 @unique
+  id                Int    @id @default(autoincrement())
+  name              String @unique
+  subdomain         String? @unique
+  domain            String? @unique
   address           String?
   contactInfo       String?
-  createdAt         DateTime                @default(now())
-  updatedAt         DateTime                @updatedAt
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
   deletedAt         DateTime?
 
   // Relationships
   users             User[]
   specializations   ClinicSpecialization[]
+
+  @@index([deletedAt])
 }
 
-// ===========================================
-// SPECIALIZATION TABLE
-// ===========================================
 model ClinicSpecialization {
-  id       Int    @id @default(autoincrement())
-  clinicId Int
-  name     String
+  id        Int @id @default(autoincrement())
+  clinicId  Int
+  name      String
+  deletedAt DateTime?
 
-  clinic   Clinic @relation(fields: [clinicId], references: [id])
+  clinic    Clinic @relation(fields: [clinicId], references: [id])
+
+  @@index([deletedAt])
 }
 
-// ===========================================
-// USER TABLE
-// ===========================================
 model User {
-  id          Int             @id @default(autoincrement())
+  id          Int    @id @default(autoincrement())
   clinicId    Int?
-  phoneNumber String          @unique
-  email       String?         @unique
+  phoneNumber String @unique
+  email       String? @unique
   password    String?
   name        String
   role        UserRole
-  status      UserStatus      @default(ACTIVE)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  status      UserStatus @default(ACTIVE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   deletedAt   DateTime?
 
-  clinic           Clinic?            @relation(fields: [clinicId], references: [id])
+  // Relationships
+  clinic           Clinic? @relation(fields: [clinicId], references: [id])
   patientProfile   PatientProfile?
   doctorProfile    DoctorProfile?
   labTechProfile   LabTechProfile?
-  dieticianProfile  DieticianProfile?
-
-  // If you want a single relation array for all appointments, you can keep this:
-  // appointments      Appointment[]    // But ensure it does not conflict with the specialized relations below
-
-  // Distinct relations for a patient's appointments vs. a doctor's appointments
+  dieticianProfile DieticianProfile?
   patientAppointments Appointment[] @relation("Patient")
   doctorAppointments  Appointment[] @relation("Doctor")
-  labPatientBookings         LabBooking[] @relation("LabPatient")
-  labTechBookings            LabBooking[] @relation("LabTech")
+  labPatientBookings LabBooking[]   @relation("LabPatient")
+  labTechBookings    LabBooking[]   @relation("LabTech")
 
+  @@index([deletedAt])
 }
 
-// ===========================================
-// PATIENT PROFILE
-// ===========================================
 model PatientProfile {
-  id               Int      @id @default(autoincrement())
-  userId           Int      @unique
+  id               Int    @id @default(autoincrement())
+  userId           Int    @unique
   age              Int
   weight           Float?
   height           Float?
@@ -107,203 +91,205 @@ model PatientProfile {
   allergies        String?
   medicalHistory   String?
   emergencyContact String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
 
-  user             User      @relation(fields: [userId], references: [id])
+  user             User @relation(fields: [userId], references: [id])
+
+  @@index([deletedAt])
 }
 
-// ===========================================
-// DOCTOR PROFILE
-// ===========================================
 model DoctorProfile {
-  id                Int                  @id @default(autoincrement())
-  userId            Int                  @unique
+  id                Int    @id @default(autoincrement())
+  userId            Int    @unique
   specialty         String
   yearsOfExperience Int?
-  licenseNumber     String?              @unique
-  consultationFee   Int                  // Fee per consultation
-  rating            Float?               // Average rating
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  type              String?               // DOCTOR, DIETICIAN
+  licenseNumber     String? @unique
+  consultationFee   Int
+  rating            Float?
+  type              String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
 
-  user              User                 @relation(fields: [userId], references: [id])
+  user              User @relation(fields: [userId], references: [id])
   availability      DoctorAvailability[]
+
+  @@index([deletedAt])
 }
-// ===========================================
-// DIE PROFILE
-// ===========================================
+
 model DieticianProfile {
-  id                Int       @id @default(autoincrement())
-  userId            Int       @unique
+  id                Int    @id @default(autoincrement())
+  userId            Int    @unique
   specialty         String?
   yearsOfExperience Int?
   certifications    String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
 
-  // Relation
-  user              User      @relation(fields: [userId], references: [id])
+  user              User @relation(fields: [userId], references: [id])
   availability      DieticianAvailability[]
+
+  @@index([deletedAt])
 }
 
-// ===========================================
-// LAB TECH PROFILE
-// ===========================================
 model LabTechProfile {
-  id              Int      @id @default(autoincrement())
-  userId          Int      @unique
+  id              Int    @id @default(autoincrement())
+  userId          Int    @unique
   specialization  String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
 
-  user            User     @relation(fields: [userId], references: [id])
+  user            User @relation(fields: [userId], references: [id])
+
+  @@index([deletedAt])
 }
 
-// ===========================================
-// DOCTOR AVAILABILITY
-// ===========================================
 model DoctorAvailability {
-  id         Int            @id @default(autoincrement())
+  id         Int    @id @default(autoincrement())
   doctorId   Int
-  date       DateTime         // e.g. "Monday"
-  startTime  String         // e.g. "09:00 AM"
-  endTime    String         // e.g. "05:00 PM"
-  status     String         // e.g. "Available", "Booked"
-  doctor     DoctorProfile  @relation(fields: [doctorId], references: [id])
-  appointments  Appointment[] 
+  date       DateTime
+  startTime  String
+  endTime    String
+  status     String
+  deletedAt  DateTime?
+
+  doctor     DoctorProfile @relation(fields: [doctorId], references: [id])
+  appointments Appointment[]
+
+  @@index([deletedAt])
 }
 
 model DieticianAvailability {
-  id           Int              @id @default(autoincrement())
+  id           Int    @id @default(autoincrement())
   dieticianId  Int
   dayOfWeek    String
   startTime    String
   endTime      String
+  deletedAt    DateTime?
 
-  // Relation
   dietician    DieticianProfile @relation(fields: [dieticianId], references: [id])
+
+  @@index([deletedAt])
 }
 
-// ===========================================
-// CONSULTATION TYPE
-// ===========================================
 model ConsultationType {
-  id            Int           @id @default(autoincrement())
-  type          String        // e.g. "Video" or "Physical"
+  id            Int    @id @default(autoincrement())
+  type          String
+  deletedAt     DateTime?
 
-  // Back relation for appointments
   appointments  Appointment[]
+
+  @@index([deletedAt])
 }
 
-// ===========================================
-// APPOINTMENT BOOKING SYSTEM
-// ===========================================
 model Appointment {
-  id                   Int               @id @default(autoincrement())
+  id                   Int    @id @default(autoincrement())
   patientId            Int
   doctorId             Int
   consultationTypeId   Int
   doctorAvailabilityId Int
-  prescriptionLink     String?          // e.g. "Google Drive" link for prescriptions
-  // Optional fields for booking details
-  appointmentFor       String?          // e.g. "self" or "other"
-  fullName             String?          // If booking for someone else, store their name
-  mobile               String?          // If booking for someone else
-  email                String?          // If booking for someone else
-
-  // You can store the date/time from the availability as well (to preserve historical data)
+  prescriptionLink     String?
+  appointmentFor       String?
+  fullName             String?
+  mobile               String?
+  email                String?
   appointmentDate      DateTime?
-  appointmentLink      String?          // e.g. "Zoom" link for video consultations
+  appointmentLink      String?
+  status               String
+  createdAt            DateTime? @default(now())
+  updatedAt            DateTime? @updatedAt
+  deletedAt            DateTime?
 
-  status               String           // e.g. "Scheduled", "Completed", "Cancelled"
-  createdAt            DateTime?         @default(now())
-  updatedAt            DateTime?        @updatedAt
-
-  // Relations
-  patient              User              @relation("Patient", fields: [patientId], references: [id])
-  doctor               User              @relation("Doctor", fields: [doctorId], references: [id])
-  consultationType     ConsultationType  @relation(fields: [consultationTypeId], references: [id])
+  patient              User @relation("Patient", fields: [patientId], references: [id])
+  doctor               User @relation("Doctor", fields: [doctorId], references: [id])
+  consultationType     ConsultationType @relation(fields: [consultationTypeId], references: [id])
   doctorAvailability   DoctorAvailability @relation(fields: [doctorAvailabilityId], references: [id])
-    // Payment Relation (One-to-One)
-  payment              Payment?          
+  payment              Payment?
+
+  @@index([deletedAt])
 }
 
-// ===========================================
-// MEDICINE TABLE
-// ===========================================
 model Medicine {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
+  id          Int    @id @default(autoincrement())
+  name        String @unique
   category    String?
   description String?
   price       Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@index([deletedAt])
 }
 
-// ===========================================
-// COMPLAINTS TABLE
-// ===========================================
 model Complaint {
-  id          Int      @id @default(autoincrement())
-  text        String   @unique
+  id          Int    @id @default(autoincrement())
+  text        String @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@index([deletedAt])
 }
 
 model Payment {
-  id            Int       @id @default(autoincrement())
-  appointmentId Int       @unique   // One-to-One with Appointment
-  razorpayOrderId String?  // Razorpay Order ID
-  razorpayPaymentId String? // Razorpay Payment ID
-  amount        Int       // Store amount in paisa (50000 for ₹500)
-  currency      String    @default("INR")
-  paymentStatus String    // e.g. "Pending", "Paid", "Failed", "Refunded"
-  paymentMethod String?   // e.g. "UPI", "Credit Card", "Net Banking"
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime?  @updatedAt
+  id              Int    @id @default(autoincrement())
+  appointmentId   Int    @unique
+  razorpayOrderId String?
+  razorpayPaymentId String?
+  amount          Int
+  currency        String @default("INR")
+  paymentStatus   String
+  paymentMethod   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime? @updatedAt
+  deletedAt       DateTime?
 
-  // Relation
-  appointment   Appointment  @relation(fields: [appointmentId], references: [id])
+  appointment     Appointment @relation(fields: [appointmentId], references: [id])
+
+  @@index([deletedAt])
 }
 
 model LabPackage {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
+  id          Int    @id @default(autoincrement())
+  name        String @unique
   description String?
   price       Int
   parameters  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
 
-  // Relations
   labBookings LabBooking[]
+
+  @@index([deletedAt])
 }
 
 model LabBooking {
-  id          Int      @id @default(autoincrement())
-  patientId   Int
-  labTechId   Int?
-  labPackageId Int
+  id            Int    @id @default(autoincrement())
+  patientId     Int
+  labTechId     Int?
+  labPackageId  Int
+  appointmentFor String?
+  fullName      String?
+  mobile        String?
+  email         String?
+  address       String?
+  paymentOption String?
+  status        String
+  labDate       DateTime
+  labResult     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
 
-  appointmentFor       String?          // e.g. "self" or "other"
-  fullName             String?          // If booking for someone else, store their name
-  mobile               String?          // If booking for someone else
-  email                String?          // If booking for someone else
-  address              String?
-  paymentOption        String?          // e.g. "Online", "Cash"
+  patient       User @relation("LabPatient", fields: [patientId], references: [id])
+  labTech       User? @relation("LabTech", fields: [labTechId], references: [id])
+  labPackage    LabPackage @relation(fields: [labPackageId], references: [id])
 
-  status      String
-  labDate     DateTime
-  labResult   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  patient     User      @relation("LabPatient", fields: [patientId], references: [id])
-  labTech     User?      @relation("LabTech", fields: [labTechId], references: [id])
-  labPackage  LabPackage @relation(fields: [labPackageId], references: [id])
-
+  @@index([deletedAt])
 }

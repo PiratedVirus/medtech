@@ -54,13 +54,15 @@ type User = {
   phoneNumber: string;
   role: string;
   status: string;
-  clinic?: { name: string };
+  clinic?: { name: string; id: number };
   createdAt: string;
 };
 
 export default function UsersPage() {
   const [data, setData] = useState<{ users: User[]; total: number }>({ users: [], total: 0 });
   const [clinics, setClinics] = useState([]);
+  // New state for role counts
+  const [roleCounts, setRoleCounts] = useState<{ [key: string]: number }>({});
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { register, handleSubmit, reset, setValue } = useForm();
@@ -96,12 +98,8 @@ export default function UsersPage() {
     {
       accessorKey: "name",
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Name <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       enableSorting: true,
@@ -109,12 +107,8 @@ export default function UsersPage() {
     {
       accessorKey: "email",
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Email
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Email <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       enableSorting: true,
@@ -122,12 +116,8 @@ export default function UsersPage() {
     {
       accessorKey: "phoneNumber",
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Phone
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Phone <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       enableSorting: true,
@@ -135,12 +125,8 @@ export default function UsersPage() {
     {
       accessorKey: "role",
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Role
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Role <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       enableSorting: true,
@@ -148,12 +134,8 @@ export default function UsersPage() {
     {
       accessorKey: "status",
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Status
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Status <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       enableSorting: true,
@@ -161,12 +143,8 @@ export default function UsersPage() {
     {
       accessorKey: "clinic.name",
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Clinic
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Clinic <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       enableSorting: true,
@@ -174,12 +152,8 @@ export default function UsersPage() {
     {
       accessorKey: "createdAt",
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Created At
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Created At <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleString(),
@@ -198,11 +172,7 @@ export default function UsersPage() {
           >
             Edit
           </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => deleteUser(row.original.id)}
-          >
+          <Button size="sm" variant="destructive" onClick={() => deleteUser(row.original.id)}>
             Delete
           </Button>
         </div>
@@ -241,6 +211,8 @@ export default function UsersPage() {
       ]);
       setData({ users: usersRes.data.data, total: usersRes.data.total });
       setClinics(clinicsRes.data);
+      // Extract roleCounts from the GET response
+      setRoleCounts(usersRes.data.roleCounts || {});
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -310,11 +282,33 @@ export default function UsersPage() {
 
   return (
     <div className="container mx-auto p-4 space-y-4">
+      {/* Header Section */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">User Management</h1>
         <Button onClick={() => setDialogOpen(true)}>Add User</Button>
       </div>
 
+      {/* Stats Section - Cards for role counts */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="p-4 border rounded shadow">
+          <h3 className="text-lg font-semibold">Total Doctors</h3>
+          <p className="text-2xl">{roleCounts.DOCTOR || 0}</p>
+        </div>
+        <div className="p-4 border rounded shadow">
+          <h3 className="text-lg font-semibold">Total Lab Technicians</h3>
+          <p className="text-2xl">{roleCounts.LAB_TECH || 0}</p>
+        </div>
+        <div className="p-4 border rounded shadow">
+          <h3 className="text-lg font-semibold">Total Patients</h3>
+          <p className="text-2xl">{roleCounts.PATIENT || 0}</p>
+        </div>
+        <div className="p-4 border rounded shadow">
+          <h3 className="text-lg font-semibold">Total Users</h3>
+          <p className="text-2xl">{data.total}</p>
+        </div>
+      </div>
+
+      {/* Table & Controls */}
       <div className="flex items-center gap-4">
         <Input
           placeholder="Search users..."
@@ -359,10 +353,7 @@ export default function UsersPage() {
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id}>
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
+                    {flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
@@ -371,26 +362,17 @@ export default function UsersPage() {
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
+                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
+                <TableCell colSpan={columns.length} className="h-24 text-center">
                   No results.
                 </TableCell>
               </TableRow>
@@ -402,8 +384,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between px-2">
         <div className="text-sm text-muted-foreground">
           Showing {pagination.pageIndex * pagination.pageSize + 1}-
-          {Math.min((pagination.pageIndex + 1) * pagination.pageSize, data.total)} of{" "}
-          {data.total} users
+          {Math.min((pagination.pageIndex + 1) * pagination.pageSize, data.total)} of {data.total} users
         </div>
         <div className="flex items-center space-x-6 lg:space-x-8">
           <div className="flex items-center space-x-2">
@@ -454,35 +435,15 @@ export default function UsersPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {selectedUser ? "Edit User" : "Create New User"}
-            </DialogTitle>
+            <DialogTitle>{selectedUser ? "Edit User" : "Create New User"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <Input
-              {...register("name", { required: true })}
-              placeholder="Full Name"
-            />
-            <Input
-              {...register("phoneNumber", { required: true })}
-              placeholder="Phone Number"
-            />
-            <Input
-              {...register("email")}
-              type="email"
-              placeholder="Email"
-            />
-            <Input
-              {...register("password")}
-              type="password"
-              placeholder="Password"
-            />
+            <Input {...register("name", { required: true })} placeholder="Full Name" />
+            <Input {...register("phoneNumber", { required: true })} placeholder="Phone Number" />
+            <Input {...register("email")} type="email" placeholder="Email" />
+            <Input {...register("password")} type="password" placeholder="Password" />
 
-            <Select
-              onValueChange={(value) => setValue("role", value)}
-              defaultValue={selectedUser?.role}
-              required
-            >
+            <Select onValueChange={(value) => setValue("role", value)} defaultValue={selectedUser?.role} required>
               <SelectTrigger>
                 <SelectValue placeholder="Select Role" />
               </SelectTrigger>
@@ -495,10 +456,7 @@ export default function UsersPage() {
               </SelectContent>
             </Select>
 
-            <Select
-              onValueChange={(value) => setValue("status", value)}
-              defaultValue={selectedUser?.status || "ACTIVE"}
-            >
+            <Select onValueChange={(value) => setValue("status", value)} defaultValue={selectedUser?.status || "ACTIVE"}>
               <SelectTrigger>
                 <SelectValue placeholder="Select Status" />
               </SelectTrigger>
@@ -509,10 +467,7 @@ export default function UsersPage() {
               </SelectContent>
             </Select>
 
-            <Select
-              onValueChange={(value) => setValue("clinicId", value)}
-              defaultValue={selectedUser?.clinic?.id?.toString()}
-            >
+            <Select onValueChange={(value) => setValue("clinicId", value)} defaultValue={selectedUser?.clinic?.id?.toString()}>
               <SelectTrigger>
                 <SelectValue placeholder="Select Clinic" />
               </SelectTrigger>
@@ -526,19 +481,13 @@ export default function UsersPage() {
             </Select>
 
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setDialogOpen(false);
-                  setSelectedUser(null);
-                }}
-              >
+              <Button type="button" variant="outline" onClick={() => {
+                setDialogOpen(false);
+                setSelectedUser(null);
+              }}>
                 Cancel
               </Button>
-              <Button type="submit">
-                {selectedUser ? "Save Changes" : "Create User"}
-              </Button>
+              <Button type="submit">{selectedUser ? "Save Changes" : "Create User"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
