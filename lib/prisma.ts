@@ -1,11 +1,52 @@
+// lib/prisma.ts
 import { PrismaClient } from '@prisma/client'
+import { Prisma } from '@prisma/client'
+const prisma = new PrismaClient().$extends({
+  name: 'SoftDelete',
+  model: {
+    $allModels: {
+      async delete<T>(this: T, args: any) {
+        const context = Prisma.getExtensionContext(this)
+        return (context as any).update({
+          ...args,
+          data: {
+            deletedAt: new Date(),
+            status: 'DELETED' // For User model
+          }
+        })
+      },
+      async deleteMany<T>(this: T, args: any) {
+        const context = Prisma.getExtensionContext(this)
+        return (context as any).updateMany({
+          ...args,
+          data: {
+            deletedAt: new Date(),
+            status: 'DELETED' // For User model
+          }
+        })
+      }
+    }
+  },
+  query: {
+    $allModels: {
+      async findMany({ model, operation, args, query }) {
+        args.where = { ...args.where, deletedAt: null }
+        return query(args)
+      },
+      async findUnique({ model, operation, args, query }) {
+        args.where = { ...args.where, deletedAt: null }
+        return query(args)
+      },
+      async findFirst({ model, operation, args, query }) {
+        args.where = { ...args.where, deletedAt: null }
+        return query(args)
+      },
+      async count({ model, operation, args, query }) {
+        args.where = { ...args.where, deletedAt: null }
+        return query(args)
+      }
+    }
+  }
+})
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient }
-
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    // log: ['query', 'info', 'warn', 'error'], // uncomment for debugging
-  })
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+export default prisma
