@@ -2,37 +2,60 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { useForm, Controller } from "react-hook-form";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  getFilteredRowModel,
+  type ColumnDef,
+  type SortingState,
+  type ColumnFiltersState,
+  type VisibilityState,
+  flexRender,
+} from "@tanstack/react-table";
 import {
   Table,
   TableHeader,
-  TableBody,
   TableRow,
   TableHead,
+  TableBody,
   TableCell,
-  TableCaption,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
-  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { useForm, FormProvider } from "react-hook-form";
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-const fetchAppointments = async () => {
+const fetchAppointments = async (pageIndex, pageSize) => {
   try {
-    const response = await axios.get("/api/admin/appointments");
+    const response = await axios.get(`/api/admin/appointments?page=${pageIndex + 1}&pageSize=${pageSize}`);
     return response.data;
   } catch (error) {
     console.error("Failed to fetch appointments:", error);
-    return [];
+    return { data: [], total: 0 };
   }
 };
 
@@ -67,143 +90,331 @@ const deleteAppointment = async (id) => {
 };
 
 export default function AppointmentsPage() {
-  const [appointments, setAppointments] = useState([]);
+  const [data, setData] = useState({ appointments: [], total: 0 });
   const [selectedAppointment, setSelectedAppointment] = useState(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const methods = useForm();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const { register, handleSubmit, reset, setValue } = useForm();
+  const [sorting, setSorting] = useState<SortingState>([{ id: "appointmentDate", desc: true }]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState({});
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
-  const fetchAndSetAppointments = async () => {
-    const data = await fetchAppointments();
-    setAppointments(data);
+  const columns: ColumnDef<any>[] = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <input
+          type="checkbox"
+          checked={table.getIsAllPageRowsSelected()}
+          onChange={table.getToggleAllPageRowsSelectedHandler()}
+          className="w-4 h-4"
+        />
+      ),
+      cell: ({ row }) => (
+        <input
+          type="checkbox"
+          checked={row.getIsSelected()}
+          onChange={row.getToggleSelectedHandler()}
+          className="w-4 h-4"
+        />
+      ),
+    },
+    {
+      accessorKey: "patient.name",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Patient <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "doctor.name",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Doctor <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "appointmentDate",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Date <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => new Date(row.getValue("appointmentDate")).toLocaleString(),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Status <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <div className="space-x-2">
+          <Button
+            size="sm"
+            className="bg-transparent text-primary border-0 shadow-none"
+            onClick={() => {
+              setSelectedAppointment(row.original);
+              setValue("patient", row.original.patient.name);
+              setValue("doctor", row.original.doctor.name);
+              setValue("appointmentDate", row.original.appointmentDate);
+              setValue("status", row.original.status);
+              setDialogOpen(true);
+            }}
+          >
+            <EditIcon className="h-4 w-4" />
+          </Button>
+          <Button size="sm" variant="destructive" onClick={() => deleteAppointment(row.original.id)}>
+            <Trash className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  const table = useReactTable({
+    data: data.appointments,
+    columns,
+    pageCount: Math.ceil(data.total / pagination.pageSize),
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+      pagination,
+    },
+    manualPagination: true,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  const fetchData = async () => {
+    const { data, total } = await fetchAppointments(pagination.pageIndex, pagination.pageSize);
+    setData({ appointments: data, total });
   };
 
   useEffect(() => {
-    fetchAndSetAppointments();
-  }, []);
+    fetchData();
+  }, [pagination.pageIndex, pagination.pageSize, sorting]);
 
-  const handleCreateAppointment = async (data) => {
-    const result = await createAppointment(data);
-    if (result) {
-      fetchAndSetAppointments();
-      setIsDialogOpen(false);
+  useEffect(() => {
+    if (selectedAppointment) {
+      setValue("patient", selectedAppointment.patient.name);
+      setValue("doctor", selectedAppointment.doctor.name);
+      setValue("appointmentDate", selectedAppointment.appointmentDate);
+      setValue("status", selectedAppointment.status);
+    } else {
+      reset();
     }
-  };
+  }, [selectedAppointment, setValue, reset]);
 
-  const handleUpdateAppointment = async (data) => {
-    const result = await updateAppointment(selectedAppointment.id, data);
-    if (result) {
-      fetchAndSetAppointments();
+  const onSubmit = async (formData) => {
+    try {
+      if (selectedAppointment) {
+        await updateAppointment(selectedAppointment.id, formData);
+        toast.success("Appointment updated successfully");
+      } else {
+        await createAppointment(formData);
+        toast.success("Appointment created successfully");
+      }
+      await fetchData();
+      setDialogOpen(false);
+      reset();
       setSelectedAppointment(null);
-      setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Error saving appointment:", error);
+      toast.error("Failed to save appointment");
     }
   };
 
-  const handleDeleteAppointment = async (id) => {
-    const result = await deleteAppointment(id);
-    if (result) {
-      fetchAndSetAppointments();
+  const deleteSelected = async () => {
+    const selectedIds = Object.keys(rowSelection).map(
+      (index) => data.appointments[parseInt(index)].id
+    );
+    try {
+      await axios.delete("/api/admin/appointments", { data: { ids: selectedIds } });
+      toast.success("Selected appointments deleted successfully");
+      await fetchData();
+      setRowSelection({});
+    } catch (error) {
+      console.error("Error deleting appointments:", error);
+      toast.error("Failed to delete selected appointments");
     }
-  };
-
-  const handleDialogOpen = (appointment = null) => {
-    setSelectedAppointment(appointment);
-    setIsDialogOpen(true);
-  };
-
-  const handleDialogClose = () => {
-    setSelectedAppointment(null);
-    setIsDialogOpen(false);
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Appointments</h1>
-      <Button onClick={() => handleDialogOpen()}>Add Appointment</Button>
-      <Table>
-        <TableCaption>A list of appointments.</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Patient</TableHead>
-            <TableHead>Doctor</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {appointments.map((appointment) => (
-            <TableRow key={appointment.id}>
-              <TableCell>{appointment.id}</TableCell>
-              <TableCell>{appointment.patient.name}</TableCell>
-              <TableCell>{appointment.doctor.name}</TableCell>
-              <TableCell>{appointment.appointmentDate}</TableCell>
-              <TableCell>{appointment.status}</TableCell>
-              <TableCell>
-                <Button onClick={() => handleDialogOpen(appointment)}>Edit</Button>
-                <Button onClick={() => handleDeleteAppointment(appointment.id)}>Delete</Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+    <div className="container mx-auto p-4 space-y-4">
+      <ToastContainer />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Input
+            placeholder="Search appointments..."
+            value={(table.getColumn("patient.name")?.getFilterValue() as string) ?? ""}
+            onChange={(event) =>
+              table.getColumn("patient.name")?.setFilterValue(event.target.value)
+            }
+            className="max-w-sm"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                Columns <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-white text-black" align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    checked={column.getIsVisible()}
+                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                  >
+                    {column.id}
+                  </DropdownMenuCheckboxItem>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {Object.keys(rowSelection).length > 0 && (
+            <Button variant="destructive" onClick={deleteSelected}>
+              Delete Selected
+            </Button>
+          )}
+        </div>
+        <div>
+          <Button onClick={() => setDialogOpen(true)}>Add Appointment</Button>
+        </div>
+      </div>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader className="bg-custom-mutedgreen text-gray-950">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} className="text-black">
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex items-center justify-between px-2">
+        <div className="text-sm text-muted-foreground">
+          Showing {pagination.pageIndex * pagination.pageSize + 1}-
+          {Math.min((pagination.pageIndex + 1) * pagination.pageSize, data.total)} of {data.total} appointments
+        </div>
+        <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex items-center space-x-2">
+            <p className="text-sm font-medium">Rows per page</p>
+            <Select
+              value={`${pagination.pageSize}`}
+              onValueChange={(value) => {
+                setPagination((prev) => ({
+                  ...prev,
+                  pageSize: Number(value),
+                  pageIndex: 0,
+                }));
+              }}
+            >
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue placeholder={pagination.pageSize} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 20, 30, 40, 50].map((pageSize) => (
+                  <SelectItem key={pageSize} value={`${pageSize}`}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      </div>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{selectedAppointment ? "Edit Appointment" : "Add Appointment"}</DialogTitle>
-            <DialogDescription>
-              {selectedAppointment ? "Update the appointment details below." : "Fill in the details to add a new appointment."}
-            </DialogDescription>
+            <DialogTitle>{selectedAppointment ? "Edit Appointment" : "Create New Appointment"}</DialogTitle>
           </DialogHeader>
-          <FormProvider {...methods}>
-            <Form onSubmit={methods.handleSubmit(selectedAppointment ? handleUpdateAppointment : handleCreateAppointment)}>
-              <FormField name="patient" defaultValue={selectedAppointment?.patient || ""}>
-                <FormItem>
-                  <FormLabel>Patient</FormLabel>
-                  <FormControl>
-                    <Input />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              </FormField>
-              <FormField name="doctor" defaultValue={selectedAppointment?.doctor || ""}>
-                <FormItem>
-                  <FormLabel>Doctor</FormLabel>
-                  <FormControl>
-                    <Input />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              </FormField>
-              <FormField name="appointmentDate" defaultValue={selectedAppointment?.appointmentDate || ""}>
-                <FormItem>
-                  <FormLabel>Appointment Date</FormLabel>
-                  <FormControl>
-                    <Input />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              </FormField>
-              <FormField name="status" defaultValue={selectedAppointment?.status || ""}>
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <FormControl>
-                    <Input />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              </FormField>
-              <DialogFooter>
-                <Button type="submit">{selectedAppointment ? "Update" : "Create"}</Button>
-                <DialogClose asChild>
-                  <Button type="button" variant="outline" onClick={handleDialogClose}>
-                    Cancel
-                  </Button>
-                </DialogClose>
-              </DialogFooter>
-            </Form>
-          </FormProvider>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <Input {...register("patient", { required: true })} placeholder="Patient" />
+            <Input {...register("doctor", { required: true })} placeholder="Doctor" />
+            <Input {...register("appointmentDate", { required: true })} type="datetime-local" placeholder="Appointment Date" />
+            <Input {...register("status", { required: true })} placeholder="Status" />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDialogOpen(false);
+                  setSelectedAppointment(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">{selectedAppointment ? "Save Changes" : "Create Appointment"}</Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
