@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import {
   useReactTable,
   getCoreRowModel,
@@ -49,25 +49,54 @@ import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+// Types for doctor profile data and related user
 type Doctor = {
+  id: number;
+  specialty: string;
+  yearsOfExperience: number;
+  consultationFee: number;
+  createdAt: string;
+  // Relation from doctorProfile to user
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    phoneNumber: string;
+    status: string;
+    clinic?: { id: number; name: string };
+  };
+};
+
+type User = {
   id: number;
   name: string;
   email: string;
-  phoneNumber: string;
+};
+
+type DoctorsPageFormData = {
+  userId: number;
   specialty: string;
   yearsOfExperience: number;
+  consultationFee: number;
   status: string;
-  clinic?: { name: string; id: number };
-  createdAt: string;
+  clinicId: number;
 };
 
 export default function DoctorsPage() {
   const [data, setData] = useState<{ doctors: Doctor[]; total: number }>({ doctors: [], total: 0 });
   const [clinics, setClinics] = useState([]);
+  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [roleCounts, setRoleCounts] = useState<{ [key: string]: number }>({});
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    control,
+    watch,
+  } = useForm<DoctorsPageFormData>();
   const [sorting, setSorting] = useState<SortingState>([{ id: "createdAt", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -76,6 +105,28 @@ export default function DoctorsPage() {
     pageIndex: 0,
     pageSize: 10,
   });
+
+  // Watch clinicId to filter available users
+  const selectedClinicId = watch("clinicId");
+
+  const fetchAvailableUsers = async (clinicId: number) => {
+    try {
+      // This endpoint should return users for the specified clinic
+      const res = await axios.get(`/api/admin/users?clinicId=${clinicId}`);
+      setAvailableUsers(res.data.data);
+    } catch (error) {
+      console.error("Error fetching available users:", error);
+      toast.error("Failed to fetch users for selected clinic");
+    }
+  };
+
+  useEffect(() => {
+    if (selectedClinicId) {
+      fetchAvailableUsers(selectedClinicId);
+    } else {
+      setAvailableUsers([]);
+    }
+  }, [selectedClinicId]);
 
   const columns: ColumnDef<Doctor>[] = [
     {
@@ -98,7 +149,8 @@ export default function DoctorsPage() {
       ),
     },
     {
-      accessorKey: "name",
+      accessorFn: (row) => row.user?.name,
+      id: "user.name",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Name <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -107,7 +159,8 @@ export default function DoctorsPage() {
       enableSorting: true,
     },
     {
-      accessorKey: "email",
+      accessorFn: (row) => row.user?.email,
+      id: "user.email",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Email <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -116,7 +169,8 @@ export default function DoctorsPage() {
       enableSorting: true,
     },
     {
-      accessorKey: "phoneNumber",
+      accessorFn: (row) => row.user?.phoneNumber,
+      id: "user.phoneNumber",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Phone <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -143,7 +197,17 @@ export default function DoctorsPage() {
       enableSorting: true,
     },
     {
-      accessorKey: "status",
+      accessorKey: "consultationFee",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Consultation Fee <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorFn: (row) => row.user?.status,
+      id: "user.status",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Status <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -152,7 +216,8 @@ export default function DoctorsPage() {
       enableSorting: true,
     },
     {
-      accessorKey: "clinic.name",
+      accessorFn: (row) => row.user?.clinic?.name,
+      id: "user.clinic.name",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Clinic <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -179,6 +244,13 @@ export default function DoctorsPage() {
             className="bg-transparent text-primary border-0 shadow-none"
             onClick={() => {
               setSelectedDoctor(row.original);
+              // Pre-fill form with existing data
+              setValue("specialty", row.original.specialty);
+              setValue("yearsOfExperience", row.original.yearsOfExperience);
+              setValue("consultationFee", row.original.consultationFee);
+              setValue("status", row.original.user.status);
+              setValue("clinicId", row.original.user.clinic?.id);
+              setValue("userId", row.original.user.id);
               setDialogOpen(true);
             }}
           >
@@ -223,7 +295,6 @@ export default function DoctorsPage() {
       ]);
       setData({ doctors: doctorsRes.data.data, total: doctorsRes.data.total });
       setClinics(clinicsRes.data);
-      // Extract roleCounts from the GET response
       setRoleCounts(doctorsRes.data.roleCounts || {});
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -237,24 +308,25 @@ export default function DoctorsPage() {
 
   useEffect(() => {
     if (selectedDoctor) {
-      setValue("name", selectedDoctor.name);
-      setValue("phoneNumber", selectedDoctor.phoneNumber);
-      setValue("email", selectedDoctor.email);
       setValue("specialty", selectedDoctor.specialty);
       setValue("yearsOfExperience", selectedDoctor.yearsOfExperience);
-      setValue("clinicId", selectedDoctor.clinic?.id);
-      setValue("status", selectedDoctor.status);
+      setValue("consultationFee", selectedDoctor.consultationFee);
+      setValue("status", selectedDoctor.user.status);
+      setValue("clinicId", selectedDoctor.user.clinic?.id);
+      setValue("userId", selectedDoctor.user.id);
     } else {
       reset();
     }
   }, [selectedDoctor, setValue, reset]);
 
-  const onSubmit = async (formData: any) => {
+  const onSubmit = async (formData: DoctorsPageFormData) => {
+    console.log("submitting with form data:", formData);
     try {
       const payload = {
         ...formData,
         clinicId: formData.clinicId ? Number(formData.clinicId) : null,
-        status: formData.status || "ACTIVE",
+        yearsOfExperience: Number(formData.yearsOfExperience),
+        consultationFee: Number(formData.consultationFee),
       };
 
       if (selectedDoctor) {
@@ -303,12 +375,8 @@ export default function DoctorsPage() {
 
   return (
     <div className="container mx-auto p-4 space-y-4">
-      {/* ToastContainer renders the toasts */}
       <ToastContainer />
       {/* Header Section */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-primary">Doctors</h1>
-      </div>
 
       {/* Stats Section - Cards for role counts */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -329,16 +397,15 @@ export default function DoctorsPage() {
           <p className="text-3xl text-primary">{data.total}</p>
         </div>
       </div>
-
       {/* Table & Controls */}
       <div className="flex items-center justify-between">
         {/* Left group */}
         <div className="flex items-center gap-4">
           <Input
             placeholder="Search doctors..."
-            value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+            value={(table.getColumn("user.name")?.getFilterValue() as string) ?? ""}
             onChange={(event) =>
-              table.getColumn("name")?.setFilterValue(event.target.value)
+              table.getColumn("user.name")?.setFilterValue(event.target.value)
             }
             className="max-w-sm"
           />
@@ -374,7 +441,6 @@ export default function DoctorsPage() {
           <Button onClick={() => setDialogOpen(true)}>Add Doctor</Button>
         </div>
       </div>
-
       <div className="rounded-md border">
         <Table>
           <TableHeader className="bg-custom-mutedgreen text-gray-950">
@@ -409,7 +475,6 @@ export default function DoctorsPage() {
           </TableBody>
         </Table>
       </div>
-
       <div className="flex items-center justify-between px-2">
         <div className="text-sm text-muted-foreground">
           Showing {pagination.pageIndex * pagination.pageSize + 1}-
@@ -460,45 +525,96 @@ export default function DoctorsPage() {
           </div>
         </div>
       </div>
-
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{selectedDoctor ? "Edit Doctor" : "Create New Doctor"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <Input {...register("name", { required: true })} placeholder="Full Name" />
-            <Input {...register("phoneNumber", { required: true })} placeholder="Phone Number" />
-            <Input {...register("email")} type="email" placeholder="Email" />
+            {/* Clinic Dropdown */}
+            <div>
+              <label className="block font-medium">Select Clinic</label>
+              <Controller
+                control={control}
+                name="clinicId"
+                rules={{ required: true }}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value ? field.value.toString() : ""}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Clinic" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white text-black">
+                      {clinics.map((clinic) => (
+                        <SelectItem key={clinic.id} value={clinic.id.toString()}>
+                          {clinic.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            {/* User Dropdown (filtered by clinic) */}
+            <div>
+              <label className="block font-medium">Select User</label>
+              <Controller
+                control={control}
+                name="userId"
+                rules={{ required: true }}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value ? field.value.toString() : ""}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select User" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white text-black">
+                      {availableUsers.map((user) => (
+                        <SelectItem key={user.id} value={user.id.toString()}>
+                          {user.name} ({user.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
             <Input {...register("specialty", { required: true })} placeholder="Specialty" />
-            <Input {...register("yearsOfExperience", { required: true })} type="number" placeholder="Years of Experience" />
-            <Select onValueChange={(value) => setValue("status", value)} defaultValue={selectedDoctor?.status || "ACTIVE"}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select Status" />
-              </SelectTrigger>
-              <SelectContent className="bg-white text-black">
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="INACTIVE">Inactive</SelectItem>
-                <SelectItem value="SUSPENDED">Suspended</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select onValueChange={(value) => setValue("clinicId", value)} defaultValue={selectedDoctor?.clinic?.id?.toString()}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select Clinic" />
-              </SelectTrigger>
-              <SelectContent className="bg-white text-black">
-                {clinics.map((clinic) => (
-                  <SelectItem key={clinic.id} value={clinic.id.toString()}>
-                    {clinic.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              {...register("yearsOfExperience", { required: true })}
+              type="number"
+              placeholder="Years of Experience"
+            />
+            <Input
+              {...register("consultationFee", { required: true })}
+              type="number"
+              placeholder="Consultation Fee"
+            />
+            <Controller
+              control={control}
+              name="status"
+              defaultValue="ACTIVE"
+              rules={{ required: true }}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white text-black">
+                    <SelectItem value="ACTIVE">Active</SelectItem>
+                    <SelectItem value="INACTIVE">Inactive</SelectItem>
+                    <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => {
-                setDialogOpen(false);
-                setSelectedDoctor(null);
-              }}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDialogOpen(false);
+                  setSelectedDoctor(null);
+                }}
+              >
                 Cancel
               </Button>
               <Button type="submit">{selectedDoctor ? "Save Changes" : "Create Doctor"}</Button>

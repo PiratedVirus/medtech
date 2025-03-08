@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-// Enhanced GET endpoint with filtering and role counts
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -12,7 +11,11 @@ export async function GET(request: Request) {
       prisma.doctorProfile.findMany({
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { user: true },
+        include: {
+          user: {
+            include: { clinic: true },
+          },
+        },
         orderBy: { createdAt: "desc" },
       }),
       prisma.doctorProfile.count(),
@@ -22,7 +25,6 @@ export async function GET(request: Request) {
       }),
     ]);
 
-    // Transform the group data into an object: { DOCTOR: X, LAB_TECH: Y, PATIENT: Z, ... }
     const roleCounts = groupData.reduce((acc, cur) => {
       acc[cur.role] = cur._count.role;
       return acc;
@@ -34,7 +36,7 @@ export async function GET(request: Request) {
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
-      roleCounts, // Added role counts here
+      roleCounts,
     });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch doctors" }, { status: 500 });
@@ -44,9 +46,33 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    const doctor = await prisma.doctorProfile.create({ data });
+    // Validate that userId is provided and fetch the user with clinic info
+    const user = await prisma.user.findUnique({
+      where: { id: Number(data.userId) },
+      include: { clinic: true },
+    });
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 400 });
+    }
+    // Validate that the user belongs to the selected clinic
+    if (data.clinicId && user.clinic?.id !== Number(data.clinicId)) {
+      return NextResponse.json(
+        { error: "Selected user does not belong to the chosen clinic" },
+        { status: 400 }
+      );
+    }
+
+    const doctor = await prisma.doctorProfile.create({
+      data: {
+        specialty: data.specialty,
+        yearsOfExperience: data.yearsOfExperience,
+        consultationFee: data.consultationFee,
+        user: { connect: { id: Number(data.userId) } },
+      },
+    });
     return NextResponse.json(doctor);
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: "Failed to create doctor" }, { status: 500 });
   }
 }
@@ -54,12 +80,33 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const { id, ...data } = await request.json();
+    if (data.userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: Number(data.userId) },
+        include: { clinic: true },
+      });
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 400 });
+      }
+      if (data.clinicId && user.clinic?.id !== Number(data.clinicId)) {
+        return NextResponse.json(
+          { error: "Selected user does not belong to the chosen clinic" },
+          { status: 400 }
+        );
+      }
+    }
     const doctor = await prisma.doctorProfile.update({
       where: { id },
-      data,
+      data: {
+        specialty: data.specialty,
+        yearsOfExperience: data.yearsOfExperience,
+        status: data.status,
+        ...(data.userId && { user: { connect: { id: Number(data.userId) } } }),
+      },
     });
     return NextResponse.json(doctor);
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: "Failed to update doctor" }, { status: 500 });
   }
 }
@@ -68,7 +115,6 @@ export async function DELETE(request: Request) {
   try {
     const body = await request.json();
     if (body.ids && Array.isArray(body.ids)) {
-      // Use deleteMany for bulk deletion
       await prisma.doctorProfile.deleteMany({
         where: { id: { in: body.ids } },
       });
@@ -82,6 +128,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "No valid identifier provided" }, { status: 400 });
     }
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: "Failed to delete doctor(s)" }, { status: 500 });
   }
 }
