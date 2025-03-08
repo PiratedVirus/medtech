@@ -1,56 +1,61 @@
-import Link from "next/link";
+"use client";
 
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import UsersPage from "@/app/admin/users/page"; 
+import ClincsPafe from "@/app/admin/clinics/page";
+import AppointmentsPage from "@/app/admin/appointments/page";
+import DieticiansPage from "@/app/admin/dieticians/page";
+import DoctorsPage from "@/app/admin/doctors/page";
+import LabsPage from "@/app/admin/labs/page";
+import MedicinesPage from "@/app/admin/medicines/page";
+import PaymentsPage from "@/app/admin/payments/page";
+import PrescriptionsPage from "@/app/admin/prescriptions/page";
 export default function AdminPage() {
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Admin Panel</h1>
-      <ul className="space-y-2">
-        <li>
-          <Link href="/admin/users" className="text-blue-500 hover:underline">
-            Users
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/clinics" className="text-blue-500 hover:underline">
-            Clinics
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/appointments" className="text-blue-500 hover:underline">
-            Appointments
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/dieticians" className="text-blue-500 hover:underline">
-            Dieticians
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/doctors" className="text-blue-500 hover:underline">
-            Doctors
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/labs" className="text-blue-500 hover:underline">
-            Labs
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/medicines" className="text-blue-500 hover:underline">
-            Medicines
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/payments" className="text-blue-500 hover:underline">
-            Payments
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/prescriptions" className="text-blue-500 hover:underline">
-            Prescriptions
-          </Link>
-        </li>
-      </ul>
+      <Tabs defaultValue="users">
+        <div className="flex justify-center">
+
+          <TabsList className="mb-4">
+            <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="clinics">Clinics</TabsTrigger>
+            <TabsTrigger value="appointments">Appointments</TabsTrigger>
+            <TabsTrigger value="dieticians">Dieticians</TabsTrigger>
+            <TabsTrigger value="doctors">Doctors</TabsTrigger>
+            <TabsTrigger value="labs">Labs</TabsTrigger>
+            <TabsTrigger value="medicines">Medicines</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
+            <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="users">
+          <UsersPage />
+        </TabsContent>
+        <TabsContent value="clinics">
+          <p>Clinics page content goes here.</p>
+        </TabsContent>
+        <TabsContent value="appointments">
+          <p>Appointments page content goes here.</p>
+        </TabsContent>
+        <TabsContent value="dieticians">
+          <p>Dieticians page content goes here.</p>
+        </TabsContent>
+        <TabsContent value="doctors">
+          <DoctorsPage />
+        </TabsContent>
+        <TabsContent value="labs">
+          <p>Labs page content goes here.</p>
+        </TabsContent>
+        <TabsContent value="medicines">
+          <p>Medicines page content goes here.</p>
+        </TabsContent>
+        <TabsContent value="payments">
+          <p>Payments page content goes here.</p>
+        </TabsContent>
+        <TabsContent value="prescriptions">
+          <p>Prescriptions page content goes here.</p>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
