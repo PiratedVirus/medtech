@@ -45,7 +45,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ChevronDown, ArrowUpDown } from "lucide-react";
+import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 type User = {
   id: number;
@@ -61,7 +63,6 @@ type User = {
 export default function UsersPage() {
   const [data, setData] = useState<{ users: User[]; total: number }>({ users: [], total: 0 });
   const [clinics, setClinics] = useState([]);
-  // New state for role counts
   const [roleCounts, setRoleCounts] = useState<{ [key: string]: number }>({});
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -165,15 +166,16 @@ export default function UsersPage() {
         <div className="space-x-2">
           <Button
             size="sm"
+            className="bg-transparent text-primary border-0 shadow-none"
             onClick={() => {
               setSelectedUser(row.original);
               setDialogOpen(true);
             }}
           >
-            Edit
+            <EditIcon className="h-4 w-4" />
           </Button>
           <Button size="sm" variant="destructive" onClick={() => deleteUser(row.original.id)}>
-            Delete
+            <Trash className="h-4 w-4" />
           </Button>
         </div>
       ),
@@ -207,7 +209,7 @@ export default function UsersPage() {
     try {
       const [usersRes, clinicsRes] = await Promise.all([
         axios.get(`/api/admin/users?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`),
-        axios.get("/api/admin/clinics")
+        axios.get("/api/admin/clinics"),
       ]);
       setData({ users: usersRes.data.data, total: usersRes.data.total });
       setClinics(clinicsRes.data);
@@ -215,6 +217,7 @@ export default function UsersPage() {
       setRoleCounts(usersRes.data.roleCounts || {});
     } catch (error) {
       console.error("Error fetching data:", error);
+      toast.error("Failed to fetch data");
     }
   };
 
@@ -245,8 +248,10 @@ export default function UsersPage() {
 
       if (selectedUser) {
         await axios.put("/api/admin/users", { id: selectedUser.id, ...payload });
+        toast.success("User updated successfully");
       } else {
         await axios.post("/api/admin/users", payload);
+        toast.success("User created successfully");
       }
 
       await fetchData();
@@ -255,15 +260,18 @@ export default function UsersPage() {
       setSelectedUser(null);
     } catch (error) {
       console.error("Error saving user:", error);
+      toast.error("Failed to save user");
     }
   };
 
   const deleteUser = async (id: number) => {
     try {
       await axios.delete("/api/admin/users", { data: { id } });
+      toast.success("User deleted successfully");
       await fetchData();
     } catch (error) {
       console.error("Error deleting user:", error);
+      toast.error("Failed to delete user");
     }
   };
 
@@ -273,86 +281,96 @@ export default function UsersPage() {
     );
     try {
       await axios.delete("/api/admin/users", { data: { ids: selectedIds } });
+      toast.success("Selected users deleted successfully");
       await fetchData();
       setRowSelection({});
     } catch (error) {
       console.error("Error deleting users:", error);
+      toast.error("Failed to delete selected users");
     }
   };
 
   return (
     <div className="container mx-auto p-4 space-y-4">
+      {/* ToastContainer renders the toasts */}
+      <ToastContainer />
       {/* Header Section */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">User Management</h1>
-        <Button onClick={() => setDialogOpen(true)}>Add User</Button>
+        <h1 className="text-3xl font-bold text-primary">Users</h1>
       </div>
 
       {/* Stats Section - Cards for role counts */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-4 border rounded shadow">
+        <div className="p-4 border rounded-lg bg-custom-mutedgreen items-end flex flex-col">
           <h3 className="text-lg font-semibold">Total Doctors</h3>
-          <p className="text-2xl">{roleCounts.DOCTOR || 0}</p>
+          <p className="text-3xl text-primary">{roleCounts.DOCTOR || 0}</p>
         </div>
-        <div className="p-4 border rounded shadow">
+        <div className="p-4 border rounded-lg bg-custom-mutedgreen items-end flex flex-col">
           <h3 className="text-lg font-semibold">Total Lab Technicians</h3>
-          <p className="text-2xl">{roleCounts.LAB_TECH || 0}</p>
+          <p className="text-3xl text-primary">{roleCounts.LAB_TECH || 0}</p>
         </div>
-        <div className="p-4 border rounded shadow">
+        <div className="p-4 border rounded-lg bg-custom-mutedgreen items-end flex flex-col">
           <h3 className="text-lg font-semibold">Total Patients</h3>
-          <p className="text-2xl">{roleCounts.PATIENT || 0}</p>
+          <p className="text-3xl text-primary">{roleCounts.PATIENT || 0}</p>
         </div>
-        <div className="p-4 border rounded shadow">
+        <div className="p-4 border rounded-lg bg-custom-mutedgreen items-end flex flex-col">
           <h3 className="text-lg font-semibold">Total Users</h3>
-          <p className="text-2xl">{data.total}</p>
+          <p className="text-3xl text-primary">{data.total}</p>
         </div>
       </div>
 
       {/* Table & Controls */}
-      <div className="flex items-center gap-4">
-        <Input
-          placeholder="Search users..."
-          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("name")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
+      <div className="flex items-center justify-between">
+        {/* Left group */}
+        <div className="flex items-center gap-4">
+          <Input
+            placeholder="Search users..."
+            value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+            onChange={(event) =>
+              table.getColumn("name")?.setFilterValue(event.target.value)
+            }
+            className="max-w-sm"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                Columns <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-white text-black" align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    checked={column.getIsVisible()}
+                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                  >
+                    {column.id}
+                  </DropdownMenuCheckboxItem>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {Object.keys(rowSelection).length > 0 && (
+            <Button variant="destructive" onClick={deleteSelected}>
+              Delete Selected
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  checked={column.getIsVisible()}
-                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                >
-                  {column.id}
-                </DropdownMenuCheckboxItem>
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {Object.keys(rowSelection).length > 0 && (
-          <Button variant="destructive" onClick={deleteSelected}>
-            Delete Selected
-          </Button>
-        )}
+          )}
+        </div>
+        {/* Right group */}
+        <div>
+          <Button onClick={() => setDialogOpen(true)}>Add User</Button>
+        </div>
       </div>
 
       <div className="rounded-md border">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-custom-mutedgreen text-gray-950">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead key={header.id} className="text-black">
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
@@ -392,10 +410,10 @@ export default function UsersPage() {
             <Select
               value={`${pagination.pageSize}`}
               onValueChange={(value) => {
-                setPagination(prev => ({
+                setPagination((prev) => ({
                   ...prev,
                   pageSize: Number(value),
-                  pageIndex: 0
+                  pageIndex: 0,
                 }));
               }}
             >
@@ -442,12 +460,11 @@ export default function UsersPage() {
             <Input {...register("phoneNumber", { required: true })} placeholder="Phone Number" />
             <Input {...register("email")} type="email" placeholder="Email" />
             <Input {...register("password")} type="password" placeholder="Password" />
-
             <Select onValueChange={(value) => setValue("role", value)} defaultValue={selectedUser?.role} required>
               <SelectTrigger>
                 <SelectValue placeholder="Select Role" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white text-black">
                 <SelectItem value="PATIENT">Patient</SelectItem>
                 <SelectItem value="DOCTOR">Doctor</SelectItem>
                 <SelectItem value="LAB_TECH">Lab Technician</SelectItem>
@@ -455,23 +472,21 @@ export default function UsersPage() {
                 <SelectItem value="ADMIN">Admin</SelectItem>
               </SelectContent>
             </Select>
-
             <Select onValueChange={(value) => setValue("status", value)} defaultValue={selectedUser?.status || "ACTIVE"}>
               <SelectTrigger>
                 <SelectValue placeholder="Select Status" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white text-black">
                 <SelectItem value="ACTIVE">Active</SelectItem>
                 <SelectItem value="INACTIVE">Inactive</SelectItem>
                 <SelectItem value="SUSPENDED">Suspended</SelectItem>
               </SelectContent>
             </Select>
-
             <Select onValueChange={(value) => setValue("clinicId", value)} defaultValue={selectedUser?.clinic?.id?.toString()}>
               <SelectTrigger>
                 <SelectValue placeholder="Select Clinic" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white text-black">
                 {clinics.map((clinic) => (
                   <SelectItem key={clinic.id} value={clinic.id.toString()}>
                     {clinic.name}
@@ -479,7 +494,6 @@ export default function UsersPage() {
                 ))}
               </SelectContent>
             </Select>
-
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => {
                 setDialogOpen(false);
