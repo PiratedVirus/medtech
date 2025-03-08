@@ -102,7 +102,7 @@ export default function DieticiansPage() {
     pageIndex: 0,
     pageSize: 10,
   });
-
+  console.log("data", data);
   const columns: ColumnDef<any>[] = [
     {
       id: "select",
@@ -124,7 +124,8 @@ export default function DieticiansPage() {
       ),
     },
     {
-      accessorKey: "name",
+      accessorFn: (row) => row.user?.name,
+      id: "name",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Name <ArrowUpDown className="ml-2 h-4 w-4" />

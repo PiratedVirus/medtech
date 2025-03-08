@@ -11,6 +11,11 @@ export async function GET(request: Request) {
       prisma.dieticianProfile.findMany({
         skip: (page - 1) * pageSize,
         take: pageSize,
+        include: {
+          user: {
+            include: { clinic: true },
+          },
+        },
         orderBy: { createdAt: "desc" },
       }),
       prisma.dieticianProfile.count(),
