@@ -267,7 +267,7 @@ export default function DoctorAvailabilityPage() {
 
   useEffect(() => {
     if (selectedAvailability) {
-      setValue("doctor", selectedAvailability.doctorName);
+      setValue("doctorId", selectedAvailability.doctorId); // Use doctorId instead of doctorName
       setValue("date", selectedAvailability.date);
       setValue("startTime", selectedAvailability.startTime);
       setValue("endTime", selectedAvailability.endTime);
