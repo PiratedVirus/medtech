@@ -45,17 +45,34 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
+import { ChevronDown, ArrowUpDown, EditIcon, Trash, CalendarIcon } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+
+// Import the new TimePicker component
+import { TimeInput } from "@/components/ui/custom/cd-date-time-picker";
 
 const fetchDoctorAvailability = async (pageIndex, pageSize) => {
   try {
-    const response = await axios.get(`/api/admin/doctorsavailability?page=${pageIndex + 1}&pageSize=${pageSize}`);
+    const response = await axios.get(`/api/admin/slots?page=${pageIndex + 1}&pageSize=${pageSize}`);
     return response.data;
   } catch (error) {
     console.error("Failed to fetch doctor availability:", error);
     return { data: [], total: 0 };
+  }
+};
+
+const fetchDoctors = async () => {
+  try {
+    const response = await axios.get("/api/admin/doctors");
+    return response.data.data;
+  } catch (error) {
+    console.error("Failed to fetch doctors:", error);
+    return [];
   }
 };
 
@@ -91,6 +108,8 @@ const deleteDoctorAvailability = async (id) => {
 
 export default function DoctorAvailabilityPage() {
   const [data, setData] = useState({ availabilities: [], total: 0 });
+  const [doctors, setDoctors] = useState([]);
+
   const [selectedAvailability, setSelectedAvailability] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { register, handleSubmit, reset, setValue, control } = useForm();
@@ -124,7 +143,18 @@ export default function DoctorAvailabilityPage() {
       ),
     },
     {
-      accessorKey: "doctor.name",
+      accessorKey: "id",
+      id: "id",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          ID <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true
+    },
+    {
+      accessorKey: "doctorName",
+      id: "doctor.name",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Doctor <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -178,7 +208,7 @@ export default function DoctorAvailabilityPage() {
             className="bg-transparent text-primary border-0 shadow-none"
             onClick={() => {
               setSelectedAvailability(row.original);
-              setValue("doctor", row.original.doctor.name);
+              setValue("doctor", row.original.doctorName);
               setValue("date", row.original.date);
               setValue("startTime", row.original.startTime);
               setValue("endTime", row.original.endTime);
@@ -229,8 +259,15 @@ export default function DoctorAvailabilityPage() {
   }, [pagination.pageIndex, pagination.pageSize, sorting]);
 
   useEffect(() => {
+    fetchDoctors().then((docs) => {
+      console.log("Doctors loaded", docs);
+      setDoctors(docs);
+    });
+  }, []);
+
+  useEffect(() => {
     if (selectedAvailability) {
-      setValue("doctor", selectedAvailability.doctor.name);
+      setValue("doctor", selectedAvailability.doctorName);
       setValue("date", selectedAvailability.date);
       setValue("startTime", selectedAvailability.startTime);
       setValue("endTime", selectedAvailability.endTime);
@@ -315,7 +352,7 @@ export default function DoctorAvailabilityPage() {
           )}
         </div>
         <div>
-          <Button onClick={() => setDialogOpen(true)}>Add Availability</Button>
+          <Button onClick={() => setDialogOpen(true)}>Add Slots</Button>
         </div>
       </div>
       <div className="rounded-md border">
@@ -408,10 +445,76 @@ export default function DoctorAvailabilityPage() {
             <DialogTitle>{selectedAvailability ? "Edit Availability" : "Create New Availability"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <Input {...register("doctor", { required: true })} placeholder="Doctor" />
-            <Input {...register("date", { required: true })} type="date" placeholder="Date" />
-            <Input {...register("startTime", { required: true })} type="time" placeholder="Start Time" />
-            <Input {...register("endTime", { required: true })} type="time" placeholder="End Time" />
+            {/* Doctor Dropdown */}
+            <Controller
+              control={control}
+              name="doctorId"
+              rules={{ required: true }}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value?.toString()}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Doctor" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white text-black">
+                    {doctors.map((doctor) => (
+                      <SelectItem key={doctor.id.toString()} value={doctor.id.toString()}>
+                        {doctor.user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {/* Date Picker remains unchanged */}
+            <Controller
+              control={control}
+              name="date"
+              rules={{ required: true }}
+              render={({ field }) => (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
+                      className="bg-white text-black"
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
+            />
+            {/* Use TimePicker for startTime */}
+            <Controller
+              name="startTime"
+              control={control}
+              rules={{ required: true }}
+              render={({ field }) => (
+                <TimeInput
+                  value={field.value} // expects a string like "10:00 AM"
+                  onChange={(newTime) => field.onChange(newTime)}
+                />
+              )}
+            />
+            {/* Use TimePInputfor endTime */}
+            <Controller
+              name="endTime"
+              control={control}
+              rules={{ required: true }}
+              render={({ field }) => (
+                <TimeInput
+                  value={field.value} // expects a string like "10:00 AM"
+                  onChange={(newTime) => field.onChange(newTime)}
+                />
+              )}
+            />
             <Controller
               name="status"
               control={control}
@@ -439,7 +542,9 @@ export default function DoctorAvailabilityPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit">{selectedAvailability ? "Save Changes" : "Create Availability"}</Button>
+              <Button type="submit">
+                {selectedAvailability ? "Save Changes" : "Create Availability"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

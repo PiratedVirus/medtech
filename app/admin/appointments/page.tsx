@@ -121,7 +121,6 @@ const updateAppointment = async (id: number, data: AppointmentsFormData) => {
 const fetchDoctors = async () => {
   try {
     const response = await axios.get("/api/admin/doctors");
-    // Assume the endpoint returns { data: Doctor[], total: number }
     return response.data.data;
   } catch (error) {
     console.error("Failed to fetch doctors:", error);
