@@ -13,15 +13,26 @@ export async function GET(request: Request) {
         take: pageSize,
         include: {
           doctor: { select: { name: true } },
-          doctorAvailability: { select: { date: true, startTime: true, endTime: true } }
+          doctorAvailability: { select: { startTime: true, endTime: true } }
         },
         orderBy: { createdAt: "desc" },
       }),
       prisma.appointment.count(),
     ]);
 
+    // Transform the data structure
+    const transformedAppointments = appointments.map(appointment => {
+      const { doctor, doctorAvailability, ...rest } = appointment;
+      return {
+        ...rest,
+        doctorName: doctor.name,
+        startTime: doctorAvailability.startTime,
+        endTime: doctorAvailability.endTime
+      };
+    });
+
     return NextResponse.json({
-      data: appointments,
+      data: transformedAppointments,
       total,
       page,
       pageSize,
@@ -81,7 +92,8 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const { id } = await request.json();
+    const { searchParams } = new URL(request.url);
+    const id = parseInt(searchParams.get("id") || "0");
     await prisma.appointment.delete({ where: { id } });
     return NextResponse.json({ message: "Appointment deleted successfully" });
   } catch (error) {
