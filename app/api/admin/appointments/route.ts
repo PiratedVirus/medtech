@@ -70,23 +70,59 @@ export async function PUT(request: Request) {
   try {
     const { id, ...data } = await request.json();
 
-    // Ensure doctorAvailabilityId exists and is available
-    const availability = await prisma.doctorAvailability.findUnique({
-      where: { id: data.doctorAvailabilityId, status: "available" }
+    // Get existing appointment
+    const existingAppointment = await prisma.appointment.findUnique({
+      where: { id },
+      include: { doctorAvailability: true }
     });
 
-    if (!availability) {
-      return NextResponse.json({ error: "Invalid or unavailable appointment slot" }, { status: 400 });
+    if (!existingAppointment) {
+      return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
     }
 
-    const appointment = await prisma.appointment.update({
-      where: { id },
-      data
+    // Transaction for slot updates and appointment update
+    const result = await prisma.$transaction(async (tx) => {
+      // If changing time slot
+      if (data.doctorAvailabilityId && 
+          data.doctorAvailabilityId !== existingAppointment.doctorAvailabilityId) {
+        // Mark old slot as available
+        await tx.doctorAvailability.update({
+          where: { id: existingAppointment.doctorAvailabilityId },
+          data: { status: "available" }
+        });
+
+        // Check and update new slot
+        const newAvailability = await tx.doctorAvailability.findUnique({
+          where: { id: data.doctorAvailabilityId }
+        });
+
+        if (!newAvailability || newAvailability.status !== "available") {
+          throw new Error("New slot is not available");
+        }
+
+        await tx.doctorAvailability.update({
+          where: { id: data.doctorAvailabilityId },
+          data: { status: "booked" }
+        });
+      }
+
+      // Update appointment
+      return await tx.appointment.update({
+        where: { id },
+        data: {
+          ...data,
+          // Ensure consultationTypeId is valid
+          consultationTypeId: data.consultationTypeId ? Number(data.consultationTypeId) : undefined
+        }
+      });
     });
 
-    return NextResponse.json({ data: appointment, message: "Appointment updated successfully" });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to update appointment" }, { status: 500 });
+    return NextResponse.json({ data: result, message: "Appointment updated successfully" });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to update appointment" },
+      { status: 500 }
+    );
   }
 }
 

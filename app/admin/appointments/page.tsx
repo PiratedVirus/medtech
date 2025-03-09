@@ -91,6 +91,7 @@ type AppointmentsFormData = {
   doctorId: number;
   doctorAvailabilityId: number;
   status: string;
+  consultationTypeId: number;
 };
 
 // --- API Functions ---
@@ -368,11 +369,11 @@ export default function AppointmentsPage() {
         return (
           (row.original.consultationTypeId === 1 ? (
             <>
-            <Link href={row.original.appointmentLink} >
-              <Badge className="bg-green-700 shadow-none text-white">
-                JOIN MEET
-              </Badge>
-            </Link>
+              <Link href={row.original.appointmentLink} >
+                <Badge className="bg-green-700 shadow-none text-white">
+                  JOIN MEET
+                </Badge>
+              </Link>
             </>
           ) : "Physical")
         );
@@ -490,7 +491,9 @@ export default function AppointmentsPage() {
           )}
         </div>
         <div>
-          <Button onClick={() => setDialogOpen(true)}>Add Appointment</Button>
+          <Button onClick={() => { setSelectedAppointment(null); reset(); setDialogOpen(true); }}>
+            Add Appointment
+          </Button>        
         </div>
       </div>
       {/* Table */}
@@ -646,11 +649,11 @@ export default function AppointmentsPage() {
 
                         <SelectItem className="cursor-pointer" disabled={(slot.status === "available") ? false : true} key={slot.id.toString()} value={slot.id.toString()}>
                           <div className="flex justify-between items-center w-full">
-                          <Badge variant="outline" className="border-primary text-primary">
+                            <Badge variant="outline" className="border-primary text-primary">
                               #{slot.id}
                             </Badge>
                             <span className="mx-2">{formatSlotDisplay(slot.id)}</span>
-       
+
                             <Badge
                               variant="outline"
                               className={slot.status === "available"
@@ -668,6 +671,25 @@ export default function AppointmentsPage() {
                         No available slots
                       </SelectItem>
                     )}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <Controller
+              control={control}
+              name="consultationTypeId"
+              rules={{ required: true }}
+              render={({ field }) => (
+                <Select
+                  value={field.value?.toString()}
+                  onValueChange={(value) => field.onChange(Number(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Consultation Type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white text-black">
+                    <SelectItem value="1">Video Consultation</SelectItem>
+                    <SelectItem value="2">Physical Visit</SelectItem>
                   </SelectContent>
                 </Select>
               )}
