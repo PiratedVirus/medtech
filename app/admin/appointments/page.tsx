@@ -50,6 +50,7 @@ import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { set } from "date-fns";
+import Link from "next/link";
 
 // --- Types ---
 type Appointment = {
@@ -64,6 +65,8 @@ type Appointment = {
   endTime: string;
   appointmentDate: string;
   fullName: string;
+  consultationTypeId: number;
+  appointmentLink: string;
   // Relations
 
 };
@@ -91,19 +94,6 @@ type AppointmentsFormData = {
 };
 
 // --- API Functions ---
-const fetchAppointments = async (pageIndex: number, pageSize: number) => {
-  try {
-    const response = await axios.get(
-      `/api/admin/appointments?page=${pageIndex + 1}&pageSize=${pageSize}`
-    );
-    setDataState({ appointments: response.data, total: response.total });
-
-    return response.data;
-  } catch (error) {
-    console.error("Failed to fetch appointments:", error);
-    return { data: [], total: 0 };
-  }
-};
 
 const createAppointment = async (data: AppointmentsFormData) => {
   try {
@@ -366,6 +356,27 @@ export default function AppointmentsPage() {
         );
       },
       enableSorting: true,
+    },
+    {
+      accessorKey: "consultationTypeId",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Consultation Type <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        return (
+          (row.original.consultationTypeId === 1 ? (
+            <>
+            <Link href={row.original.appointmentLink} >
+              <Badge className="bg-green-700 shadow-none text-white">
+                JOIN MEET
+              </Badge>
+            </Link>
+            </>
+          ) : "Physical")
+        );
+      }
     },
     {
       accessorKey: "status",
@@ -632,7 +643,6 @@ export default function AppointmentsPage() {
                   <SelectContent className="bg-white text-black">
                     {availableSlots?.length > 0 ? (
                       availableSlots.map((slot) => (
-                        // show cursour as pointer if slot is available
 
                         <SelectItem className="cursor-pointer" disabled={(slot.status === "available") ? false : true} key={slot.id.toString()} value={slot.id.toString()}>
                           <div className="flex justify-between items-center w-full">
