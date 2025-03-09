@@ -352,7 +352,12 @@ export default function DoctorAvailabilityPage() {
           )}
         </div>
         <div>
-          <Button onClick={() => setDialogOpen(true)}>Add Slots</Button>
+          <Button onClick={() => {
+            setSelectedAvailability(null);
+            reset();  // optional: clear form state
+            setDialogOpen(true);
+          }
+          }>Add Slots</Button>
         </div>
       </div>
       <div className="rounded-md border">
@@ -524,9 +529,9 @@ export default function DoctorAvailabilityPage() {
                   <SelectTrigger>
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white text-black">
                     <SelectItem value="available">Available</SelectItem>
-                    <SelectItem value="unavailable">Unavailable</SelectItem>
+                    <SelectItem value="booked">booked</SelectItem>
                   </SelectContent>
                 </Select>
               )}
