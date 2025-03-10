@@ -51,6 +51,8 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { set } from "date-fns";
 import Link from "next/link";
+import { useQuery, useMutation, useQueryClient } from 'react-query';
+import CdLoader from "@/components/ui/custom/cd-loader";
 
 // --- Types ---
 type Appointment = {
@@ -149,12 +151,7 @@ const fetchAvailableSlots = async (doctorId: number) => {
 
 // --- Component ---
 export default function AppointmentsPage() {
-  const [dataState, setDataState] = useState<{ appointments: Appointment[]; total: number }>({
-    appointments: [],
-    total: 0,
-  });
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [availableSlots, setAvailableSlots] = useState<Slot[]>([]);
+  const queryClient = useQueryClient();
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -229,8 +226,6 @@ export default function AppointmentsPage() {
       const response = await axios.get(
         `/api/admin/appointments?page=${pageIndex + 1}&pageSize=${pageSize}`
       );
-      setDataState({ appointments: response.data.data, total: response.data.total });
-
       return response.data;
     } catch (error) {
       console.error("Failed to fetch appointments:", error);
@@ -242,11 +237,7 @@ export default function AppointmentsPage() {
       await axios.delete(`/api/admin/appointments?id=${id}`);
       toast.success("Appointment deleted successfully");
       // Immediately update local state by filtering out the deleted appointment
-      setDataState((data) => ({
-        ...data,
-        appointments: data.appointments.filter((appt) => appt.id !== id),
-        total: data.total - 1,
-      }));
+      queryClient.invalidateQueries('appointments');
     } catch (error) {
       console.error("Error deleting appointment:", error);
       toast.error("Failed to delete appointment");
@@ -285,22 +276,10 @@ export default function AppointmentsPage() {
   }, [selectedDoctorId]);
 
   // Load doctors on mount
-  useEffect(() => {
-    fetchDoctors().then((docs) => {
-      console.log("Doctors loaded", docs);
-      setDoctors(docs);
-    });
-  }, []);
+  const { data: doctors, isLoading: doctorsLoading } = useQuery('doctors', fetchDoctors);
 
   // Fetch appointments data
-  const fetchData = async () => {
-    const result = await fetchAppointments(pagination.pageIndex, pagination.pageSize);
-    setDataState({ appointments: result.data, total: result.total });
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [pagination.pageIndex, pagination.pageSize, sorting]);
+  const { data: dataState, isLoading: appointmentsLoading } = useQuery(['appointments', pagination.pageIndex, pagination.pageSize], () => fetchAppointments(pagination.pageIndex, pagination.pageSize));
 
   // When editing an appointment, pre-fill form values
   useEffect(() => {
@@ -341,7 +320,7 @@ export default function AppointmentsPage() {
         await createAppointment(formData, availableSlots);
         toast.success("Appointment created successfully");
       }
-      await fetchData();
+      queryClient.invalidateQueries('appointments');
       setDialogOpen(false);
       reset();
       setSelectedAppointment(null);
@@ -358,7 +337,7 @@ export default function AppointmentsPage() {
     try {
       await axios.delete("/api/admin/appointments", { data: { ids: selectedIds } });
       toast.success("Selected appointments deleted successfully");
-      await fetchData();
+      queryClient.invalidateQueries('appointments');
       setRowSelection({});
     } catch (error) {
       console.error("Error deleting appointments:", error);
@@ -536,6 +515,10 @@ export default function AppointmentsPage() {
       year: 'numeric'
     })} • ${slot.startTime} - ${slot.endTime}`;
   };
+
+  if (appointmentsLoading || doctorsLoading) {
+    return <CdLoader />;
+  }
 
   return (
     <div className="container mx-auto p-4 space-y-4">
