@@ -146,6 +146,11 @@ export async function POST(request: Request) {
     }
   });
 
+  await prisma.doctorAvailability.update({
+    where: { id: data.doctorAvailabilityId },
+    data: { status: "booked" }
+  });
+
     return NextResponse.json({ data: appointment, message: "Appointment created successfully" });
   } catch (error) {
     return NextResponse.json({ error: "Failed to create appointment: " + error }, { status: 500 });
