@@ -310,9 +310,9 @@ export default function PaymentsPage() {
         <Table>
           <TableHeader className="bg-custom-mutedgreen text-gray-950">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow className="text-center" key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="text-black">
+                  <TableHead key={header.id} className="text-black text-center">
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
@@ -322,7 +322,7 @@ export default function PaymentsPage() {
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                <TableRow className="text-center" key={row.id} data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -331,7 +331,7 @@ export default function PaymentsPage() {
                 </TableRow>
               ))
             ) : (
-              <TableRow>
+              <TableRow className="text-center">
                 <TableCell colSpan={columns.length} className="h-24 text-center">
                   No results.
                 </TableCell>

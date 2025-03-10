@@ -417,7 +417,8 @@ export default function AppointmentsPage() {
         const date = new Date(row.original.appointmentDate);
         const options = { day: '2-digit', month: 'short', year: 'numeric' };
         return (
-          <div className="flex items-center gap-2">
+          <>
+          {/* <div className="flex items-center gap-2">
             <span>
               {date.toLocaleDateString('en-US', options)} •
               {row.original.startTime} - {row.original.endTime}
@@ -425,7 +426,19 @@ export default function AppointmentsPage() {
             <Badge variant="outline" className="border-primary text-primary">
               #{row.original.doctorAvailabilityId}
             </Badge>
+          </div> */}
+          <div className="flex item-center justify-center">
+            <div className="flex m-3">
+            <Badge variant="outline" className="border-primary text-primary">
+              #{row.original.doctorAvailabilityId}
+            </Badge>
+            </div>
+            <div className="flex flex-col items-end">
+              <p className="text-muted-foreground">{date.toLocaleDateString('en-US', options)}</p>
+              <p className="font-bold"> {row.original.startTime} - {row.original.endTime}</p>
+            </div>
           </div>
+          </>
         );
       },
       enableSorting: true,
@@ -573,9 +586,9 @@ export default function AppointmentsPage() {
         <Table>
           <TableHeader className="bg-custom-mutedgreen text-gray-950">
             {tableInstance.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow className="text-center" key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="text-black">
+                  <TableHead key={header.id} className="text-black text-center">
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
@@ -585,7 +598,7 @@ export default function AppointmentsPage() {
           <TableBody>
             {tableInstance.getRowModel().rows?.length ? (
               tableInstance.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                <TableRow className="text-center" className="text-center" key={row.id} data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -594,7 +607,7 @@ export default function AppointmentsPage() {
                 </TableRow>
               ))
             ) : (
-              <TableRow>
+              <TableRow className="text-center">
                 <TableCell colSpan={columns.length} className="h-24 text-center">
                   No results.
                 </TableCell>
