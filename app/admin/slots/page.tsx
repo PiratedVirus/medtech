@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import {
   useReactTable,
   getCoreRowModel,
@@ -45,29 +45,76 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
+import { ChevronDown, ArrowUpDown, EditIcon, Trash, CalendarIcon, DoorClosedIcon } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
 
-type User = {
-  id: number;
-  name: string;
-  email: string;
-  phoneNumber: string;
-  role: string;
-  status: string;
-  clinic?: { name: string; id: number };
-  createdAt: string;
+// Import the new TimePicker component
+import { TimeInput } from "@/components/ui/custom/cd-date-time-picker";
+
+const fetchDoctorAvailability = async (pageIndex, pageSize) => {
+  try {
+    const response = await axios.get(`/api/admin/slots?page=${pageIndex + 1}&pageSize=${pageSize}`);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to fetch doctor availability:", error);
+    return { data: [], total: 0 };
+  }
 };
 
-export default function UsersPage() {
-  const [data, setData] = useState<{ users: User[]; total: number }>({ users: [], total: 0 });
-  const [clinics, setClinics] = useState([]);
-  const [roleCounts, setRoleCounts] = useState<{ [key: string]: number }>({});
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+const fetchDoctors = async () => {
+  try {
+    const response = await axios.get("/api/admin/doctors");
+    return response.data.data;
+  } catch (error) {
+    console.error("Failed to fetch doctors:", error);
+    return [];
+  }
+};
+
+const createDoctorAvailability = async (data) => {
+  console.log("Data for booking is ", data);
+  try {
+    const response = await axios.post("/api/admin/slots", data);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to create doctor availability:", error);
+    return null;
+  }
+};
+
+const updateDoctorAvailability = async (id, data) => {
+  try {
+    const response = await axios.put(`/api/admin/slots?id=${id}`, data);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to update doctor availability:", error);
+    return null;
+  }
+};
+
+const deleteDoctorAvailability = async (id) => {
+  try {
+    const response = await axios.delete(`/api/admin/slots?id=${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to delete doctor availability:", error);
+    return null;
+  }
+};
+
+export default function DoctorAvailabilityPage() {
+  const [data, setData] = useState({ availabilities: [], total: 0 });
+  const [doctors, setDoctors] = useState([]);
+
+  const [selectedAvailability, setSelectedAvailability] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { register, handleSubmit, reset, setValue } = useForm();
-  const [sorting, setSorting] = useState<SortingState>([{ id: "createdAt", desc: true }]);
+  const { register, handleSubmit, reset, setValue, control } = useForm();
+  const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
@@ -76,7 +123,7 @@ export default function UsersPage() {
     pageSize: 10,
   });
 
-  const columns: ColumnDef<User>[] = [
+  const columns: ColumnDef<any>[] = [
     {
       id: "select",
       header: ({ table }) => (
@@ -97,37 +144,49 @@ export default function UsersPage() {
       ),
     },
     {
-      accessorKey: "name",
+      accessorKey: "id",
+      id: "id",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Name <ArrowUpDown className="ml-2 h-4 w-4" />
+          ID <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true
+    },
+    {
+      accessorKey: "doctorName",
+      id: "doctor.name",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Doctor <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       enableSorting: true,
     },
     {
-      accessorKey: "email",
+      accessorKey: "date",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Email <ArrowUpDown className="ml-2 h-4 w-4" />
+          Date <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => new Date(row.getValue("date")).toLocaleDateString(),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "startTime",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Start Time <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       enableSorting: true,
     },
     {
-      accessorKey: "phoneNumber",
+      accessorKey: "endTime",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Phone <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      enableSorting: true,
-    },
-    {
-      accessorKey: "role",
-      header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Role <ArrowUpDown className="ml-2 h-4 w-4" />
+          End Time <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       enableSorting: true,
@@ -142,25 +201,6 @@ export default function UsersPage() {
       enableSorting: true,
     },
     {
-      accessorKey: "clinic.name",
-      header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Clinic <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      enableSorting: true,
-    },
-    {
-      accessorKey: "createdAt",
-      header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Created At <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleString(),
-      enableSorting: true,
-    },
-    {
       id: "actions",
       cell: ({ row }) => (
         <div className="space-x-2">
@@ -168,13 +208,18 @@ export default function UsersPage() {
             size="sm"
             className="bg-transparent text-primary border-0 shadow-none"
             onClick={() => {
-              setSelectedUser(row.original);
+              setSelectedAvailability(row.original);
+              setValue("doctor", row.original.doctorName);
+              setValue("date", row.original.date);
+              setValue("startTime", row.original.startTime);
+              setValue("endTime", row.original.endTime);
+              setValue("status", row.original.status);
               setDialogOpen(true);
             }}
           >
             <EditIcon className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="destructive" onClick={() => deleteUser(row.original.id)}>
+          <Button size="sm" variant="destructive" onClick={() => deleteDoctorAvailability(row.original.id)}>
             <Trash className="h-4 w-4" />
           </Button>
         </div>
@@ -183,7 +228,7 @@ export default function UsersPage() {
   ];
 
   const table = useReactTable({
-    data: data.users,
+    data: data.availabilities,
     columns,
     pageCount: Math.ceil(data.total / pagination.pageSize),
     state: {
@@ -206,19 +251,8 @@ export default function UsersPage() {
   });
 
   const fetchData = async () => {
-    try {
-      const [usersRes, clinicsRes] = await Promise.all([
-        axios.get(`/api/admin/users?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`),
-        axios.get("/api/admin/clinics/clinics-list"),
-      ]);
-      setData({ users: usersRes.data.data, total: usersRes.data.total });
-      setClinics(clinicsRes.data);
-      // Extract roleCounts from the GET response
-      setRoleCounts(usersRes.data.roleCounts || {});
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast.error("Failed to fetch data");
-    }
+    const { data, total } = await fetchDoctorAvailability(pagination.pageIndex, pagination.pageSize);
+    setData({ availabilities: data, total });
   };
 
   useEffect(() => {
@@ -226,106 +260,68 @@ export default function UsersPage() {
   }, [pagination.pageIndex, pagination.pageSize, sorting]);
 
   useEffect(() => {
-    if (selectedUser) {
-      setValue("name", selectedUser.name);
-      setValue("phoneNumber", selectedUser.phoneNumber);
-      setValue("email", selectedUser.email);
-      setValue("role", selectedUser.role);
-      setValue("clinicId", selectedUser.clinic?.id);
-      setValue("status", selectedUser.status);
+    fetchDoctors().then((docs) => {
+      console.log("Doctors loaded", docs);
+      setDoctors(docs);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (selectedAvailability) {
+      setValue("doctorId", selectedAvailability.doctorId); // Use doctorId instead of doctorName
+      setValue("date", selectedAvailability.date);
+      setValue("startTime", selectedAvailability.startTime);
+      setValue("endTime", selectedAvailability.endTime);
+      setValue("status", selectedAvailability.status);
     } else {
       reset();
     }
-  }, [selectedUser, setValue, reset]);
+  }, [selectedAvailability, setValue, reset]);
 
-  const onSubmit = async (formData: any) => {
+  const onSubmit = async (formData) => {
     try {
-      const payload = {
-        ...formData,
-        clinicId: formData.clinicId ? Number(formData.clinicId) : null,
-        status: formData.status || "ACTIVE",
-      };
-
-      if (selectedUser) {
-        await axios.put("/api/admin/users", { id: selectedUser.id, ...payload });
-        toast.success("User updated successfully");
+      if (selectedAvailability) {
+        await updateDoctorAvailability(selectedAvailability.id, formData);
+        toast.success("Doctor availability updated successfully");
       } else {
-        await axios.post("/api/admin/users", payload);
-        toast.success("User created successfully");
+        await createDoctorAvailability(formData);
+        toast.success("Doctor availability created successfully");
       }
-
       await fetchData();
       setDialogOpen(false);
       reset();
-      setSelectedUser(null);
+      setSelectedAvailability(null);
     } catch (error) {
-      console.error("Error saving user:", error);
-      toast.error("Failed to save user");
-    }
-  };
-
-  const deleteUser = async (id: number) => {
-    try {
-      await axios.delete("/api/admin/users", { data: { id } });
-      toast.success("User deleted successfully");
-      await fetchData();
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      toast.error("Failed to delete user");
+      console.error("Error saving doctor availability:", error);
+      toast.error("Failed to save doctor availability");
     }
   };
 
   const deleteSelected = async () => {
     const selectedIds = Object.keys(rowSelection).map(
-      (index) => data.users[parseInt(index)].id
+      (index) => data.availabilities[parseInt(index)].id
     );
     try {
-      await axios.delete("/api/admin/users", { data: { ids: selectedIds } });
-      toast.success("Selected users deleted successfully");
+      await axios.delete("/api/admin/doctorsavailability", { data: { ids: selectedIds } });
+      toast.success("Selected availabilities deleted successfully");
       await fetchData();
       setRowSelection({});
     } catch (error) {
-      console.error("Error deleting users:", error);
-      toast.error("Failed to delete selected users");
+      console.error("Error deleting availabilities:", error);
+      toast.error("Failed to delete selected availabilities");
     }
   };
 
   return (
     <div className="container mx-auto p-4 space-y-4">
-      {/* ToastContainer renders the toasts */}
       <ToastContainer />
-      {/* Header Section */}
-
-
-      {/* Stats Section - Cards for role counts */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-4 border rounded-lg bg-custom-mutedgreen items-end flex flex-col">
-          <h3 className="text-lg font-semibold">Total Doctors</h3>
-          <p className="text-3xl text-primary">{roleCounts.DOCTOR || 0}</p>
-        </div>
-        <div className="p-4 border rounded-lg bg-custom-mutedgreen items-end flex flex-col">
-          <h3 className="text-lg font-semibold">Total Lab Technicians</h3>
-          <p className="text-3xl text-primary">{roleCounts.LAB_TECH || 0}</p>
-        </div>
-        <div className="p-4 border rounded-lg bg-custom-mutedgreen items-end flex flex-col">
-          <h3 className="text-lg font-semibold">Total Patients</h3>
-          <p className="text-3xl text-primary">{roleCounts.PATIENT || 0}</p>
-        </div>
-        <div className="p-4 border rounded-lg bg-custom-mutedgreen items-end flex flex-col">
-          <h3 className="text-lg font-semibold">Total Users</h3>
-          <p className="text-3xl text-primary">{data.total}</p>
-        </div>
-      </div>
-
-      {/* Table & Controls */}
       <div className="flex items-center justify-between">
-        {/* Left group */}
         <div className="flex items-center gap-4">
           <Input
-            placeholder="Search users..."
-            value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+            placeholder="Search availabilities..."
+            value={(table.getColumn("doctor.name")?.getFilterValue() as string) ?? ""}
             onChange={(event) =>
-              table.getColumn("name")?.setFilterValue(event.target.value)
+              table.getColumn("doctor.name")?.setFilterValue(event.target.value)
             }
             className="max-w-sm"
           />
@@ -356,12 +352,15 @@ export default function UsersPage() {
             </Button>
           )}
         </div>
-        {/* Right group */}
         <div>
-          <Button onClick={() => setDialogOpen(true)}>Add User</Button>
+          <Button onClick={() => {
+            setSelectedAvailability(null);
+            reset();  // optional: clear form state
+            setDialogOpen(true);
+          }
+          }>Add Slots</Button>
         </div>
       </div>
-
       <div className="rounded-md border">
         <Table>
           <TableHeader className="bg-custom-mutedgreen text-gray-950">
@@ -396,11 +395,10 @@ export default function UsersPage() {
           </TableBody>
         </Table>
       </div>
-
       <div className="flex items-center justify-between px-2">
         <div className="text-sm text-muted-foreground">
           Showing {pagination.pageIndex * pagination.pageSize + 1}-
-          {Math.min((pagination.pageIndex + 1) * pagination.pageSize, data.total)} of {data.total} users
+          {Math.min((pagination.pageIndex + 1) * pagination.pageSize, data.total)} of {data.total} availabilities
         </div>
         <div className="flex items-center space-x-6 lg:space-x-8">
           <div className="flex items-center space-x-2">
@@ -447,59 +445,113 @@ export default function UsersPage() {
           </div>
         </div>
       </div>
-
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{selectedUser ? "Edit User" : "Create New User"}</DialogTitle>
+            <DialogTitle>{selectedAvailability ? "Edit Availability" : "Create New Availability"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <Input {...register("name", { required: true })} placeholder="Full Name" />
-            <Input {...register("phoneNumber", { required: true })} placeholder="Phone Number" />
-            <Input {...register("email")} type="email" placeholder="Email" />
-            <Input {...register("password")} type="password" placeholder="Password" />
-            <Select onValueChange={(value) => setValue("role", value)} defaultValue={selectedUser?.role} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select Role" />
-              </SelectTrigger>
-              <SelectContent className="bg-white text-black">
-                <SelectItem value="PATIENT">Patient</SelectItem>
-                <SelectItem value="DOCTOR">Doctor</SelectItem>
-                <SelectItem value="LAB_TECH">Lab Technician</SelectItem>
-                <SelectItem value="DIETICIAN">Dietician</SelectItem>
-                <SelectItem value="ADMIN">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select onValueChange={(value) => setValue("status", value)} defaultValue={selectedUser?.status || "ACTIVE"}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select Status" />
-              </SelectTrigger>
-              <SelectContent className="bg-white text-black">
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="INACTIVE">Inactive</SelectItem>
-                <SelectItem value="SUSPENDED">Suspended</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select onValueChange={(value) => setValue("clinicId", value)} defaultValue={selectedUser?.clinic?.id?.toString()}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select Clinic" />
-              </SelectTrigger>
-              <SelectContent className="bg-white text-black">
-                {clinics.map((clinic) => (
-                  <SelectItem key={clinic.id} value={clinic.id.toString()}>
-                    {clinic.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Doctor Dropdown */}
+            <Controller
+              control={control}
+              name="doctorId"
+              rules={{ required: true }}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value?.toString()}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Doctor" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white text-black">
+                    {doctors.map((doctor) => (
+                      <SelectItem key={doctor.userId} value={doctor.id}>
+                        {doctor.user.name}
+                        {/* <p>{JSON.stringify(doctor)}</p> */}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {/* Date Picker remains unchanged */}
+            <Controller
+              control={control}
+              name="date"
+              rules={{ required: true }}
+              render={({ field }) => (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
+                      className="bg-white text-black"
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
+            />
+            {/* Use TimePicker for startTime */}
+            <Controller
+              name="startTime"
+              control={control}
+              rules={{ required: true }}
+              render={({ field }) => (
+                <TimeInput
+                  value={field.value} // expects a string like "10:00 AM"
+                  onChange={(newTime) => field.onChange(newTime)}
+                />
+              )}
+            />
+            {/* Use TimePInputfor endTime */}
+            <Controller
+              name="endTime"
+              control={control}
+              rules={{ required: true }}
+              render={({ field }) => (
+                <TimeInput
+                  value={field.value} // expects a string like "10:00 AM"
+                  onChange={(newTime) => field.onChange(newTime)}
+                />
+              )}
+            />
+            <Controller
+              name="status"
+              control={control}
+              defaultValue="available"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white text-black">
+                    <SelectItem value="available">Available</SelectItem>
+                    <SelectItem value="booked">booked</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => {
-                setDialogOpen(false);
-                setSelectedUser(null);
-              }}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDialogOpen(false);
+                  setSelectedAvailability(null);
+                }}
+              >
                 Cancel
               </Button>
-              <Button type="submit">{selectedUser ? "Save Changes" : "Create User"}</Button>
+              <Button type="submit">
+                {selectedAvailability ? "Save Changes" : "Create Availability"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

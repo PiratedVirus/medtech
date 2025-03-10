@@ -2,172 +2,406 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { useForm, Controller } from "react-hook-form";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  getFilteredRowModel,
+  type ColumnDef,
+  type SortingState,
+  type ColumnFiltersState,
+  type VisibilityState,
+  flexRender,
+} from "@tanstack/react-table";
 import {
   Table,
   TableHeader,
-  TableBody,
   TableRow,
   TableHead,
+  TableBody,
   TableCell,
-  TableCaption,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
-  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useForm, FormProvider } from "react-hook-form";
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-const fetchClinics = async () => {
-  const response = await axios.get("/api/admin/clinics");
-  return response.data;
+const fetchClinics = async (pageIndex, pageSize) => {
+  try {
+    const response = await axios.get(`/api/admin/clinics?page=${pageIndex + 1}&pageSize=${pageSize}`);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to fetch clinics:", error);
+    return { data: [], total: 0 };
+  }
 };
 
 const createClinic = async (data) => {
-  const response = await axios.post("/api/admin/clinics", data);
-  return response.data;
+  try {
+    const response = await axios.post("/api/admin/clinics", data);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to create clinic:", error);
+    return null;
+  }
 };
 
 const updateClinic = async (id, data) => {
-  const response = await axios.put(`/api/admin/clinics/${id}`, data);
-  return response.data;
+  try {
+    const response = await axios.put(`/api/admin/clinics/${id}`, data);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to update clinic:", error);
+    return null;
+  }
 };
 
 const deleteClinic = async (id) => {
-  const response = await axios.delete(`/api/admin/clinics/${id}`);
-  return response.data;
+  try {
+    const response = await axios.delete(`/api/admin/clinics/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to delete clinic:", error);
+    return null;
+  }
 };
 
 export default function ClinicsPage() {
-  const [clinics, setClinics] = useState([]);
+  const [data, setData] = useState({ clinics: [], total: 0 });
   const [selectedClinic, setSelectedClinic] = useState(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const methods = useForm();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const { register, handleSubmit, reset, setValue } = useForm();
+  const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: true }]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState({});
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
-  const fetchAndSetClinics = async () => {
-    const data = await fetchClinics();
-    setClinics(data);
+  const columns: ColumnDef<any>[] = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <input
+          type="checkbox"
+          checked={table.getIsAllPageRowsSelected()}
+          onChange={table.getToggleAllPageRowsSelectedHandler()}
+          className="w-4 h-4"
+        />
+      ),
+      cell: ({ row }) => (
+        <input
+          type="checkbox"
+          checked={row.getIsSelected()}
+          onChange={row.getToggleSelectedHandler()}
+          className="w-4 h-4"
+        />
+      ),
+    },
+    {
+      accessorKey: "name",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Name <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "address",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Address <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "contactInfo",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Contact Info <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <div className="space-x-2">
+          <Button
+            size="sm"
+            className="bg-transparent text-primary border-0 shadow-none"
+            onClick={() => {
+              setSelectedClinic(row.original);
+              setValue("name", row.original.name);
+              setValue("address", row.original.address);
+              setValue("contactInfo", row.original.contactInfo);
+              setDialogOpen(true);
+            }}
+          >
+            <EditIcon className="h-4 w-4" />
+          </Button>
+          <Button size="sm" variant="destructive" onClick={() => deleteClinic(row.original.id)}>
+            <Trash className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  const table = useReactTable({
+    data: data.clinics,
+    columns,
+    pageCount: Math.ceil(data.total / pagination.pageSize),
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+      pagination,
+    },
+    manualPagination: true,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  const fetchData = async () => {
+    const { data, total } = await fetchClinics(pagination.pageIndex, pagination.pageSize);
+    setData({ clinics: data, total });
   };
 
   useEffect(() => {
-    fetchAndSetClinics();
-  }, []);
+    fetchData();
+  }, [pagination.pageIndex, pagination.pageSize, sorting]);
 
-  const handleCreateClinic = async (data) => {
-    await createClinic(data);
-    fetchAndSetClinics();
-    setIsDialogOpen(false);
+  useEffect(() => {
+    if (selectedClinic) {
+      setValue("name", selectedClinic.name);
+      setValue("address", selectedClinic.address);
+      setValue("contactInfo", selectedClinic.contactInfo);
+    } else {
+      reset();
+    }
+  }, [selectedClinic, setValue, reset]);
+
+  const onSubmit = async (formData) => {
+    try {
+      if (selectedClinic) {
+        await updateClinic(selectedClinic.id, formData);
+        toast.success("Clinic updated successfully");
+      } else {
+        await createClinic(formData);
+        toast.success("Clinic created successfully");
+      }
+      await fetchData();
+      setDialogOpen(false);
+      reset();
+      setSelectedClinic(null);
+    } catch (error) {
+      console.error("Error saving clinic:", error);
+      toast.error("Failed to save clinic");
+    }
   };
 
-  const handleUpdateClinic = async (data) => {
-    await updateClinic(selectedClinic.id, data);
-    fetchAndSetClinics();
-    setSelectedClinic(null);
-    setIsDialogOpen(false);
-  };
-
-  const handleDeleteClinic = async (id) => {
-    await deleteClinic(id);
-    fetchAndSetClinics();
-  };
-
-  const handleDialogOpen = (clinic = null) => {
-    setSelectedClinic(clinic);
-    setIsDialogOpen(true);
-  };
-
-  const handleDialogClose = () => {
-    setSelectedClinic(null);
-    setIsDialogOpen(false);
+  const deleteSelected = async () => {
+    const selectedIds = Object.keys(rowSelection).map(
+      (index) => data.clinics[parseInt(index)].id
+    );
+    try {
+      await axios.delete("/api/admin/clinics", { data: { ids: selectedIds } });
+      toast.success("Selected clinics deleted successfully");
+      await fetchData();
+      setRowSelection({});
+    } catch (error) {
+      console.error("Error deleting clinics:", error);
+      toast.error("Failed to delete selected clinics");
+    }
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Clinics</h1>
-      <Button onClick={() => handleDialogOpen()}>Add Clinic</Button>
-      <Table>
-        <TableCaption>A list of clinics.</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Address</TableHead>
-            <TableHead>Contact Info</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {clinics.map((clinic) => (
-            <TableRow key={clinic.id}>
-              <TableCell>{clinic.id}</TableCell>
-              <TableCell>{clinic.name}</TableCell>
-              <TableCell>{clinic.address}</TableCell>
-              <TableCell>{clinic.contactInfo}</TableCell>
-              <TableCell>
-                <Button onClick={() => handleDialogOpen(clinic)}>Edit</Button>
-                <Button onClick={() => handleDeleteClinic(clinic.id)}>Delete</Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+    <div className="container mx-auto p-4 space-y-4">
+      <ToastContainer />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Input
+            placeholder="Search clinics..."
+            value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+            onChange={(event) =>
+              table.getColumn("name")?.setFilterValue(event.target.value)
+            }
+            className="max-w-sm"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                Columns <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-white text-black" align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    checked={column.getIsVisible()}
+                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                  >
+                    {column.id}
+                  </DropdownMenuCheckboxItem>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {Object.keys(rowSelection).length > 0 && (
+            <Button variant="destructive" onClick={deleteSelected}>
+              Delete Selected
+            </Button>
+          )}
+        </div>
+        <div>
+          <Button onClick={() => setDialogOpen(true)}>Add Clinic</Button>
+        </div>
+      </div>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader className="bg-custom-mutedgreen text-gray-950">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow className="text-center" key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} className="text-black text-center">
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow className="text-center" key={row.id} data-state={row.getIsSelected() && "selected"}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow className="text-center">
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex items-center justify-between px-2">
+        <div className="text-sm text-muted-foreground">
+          Showing {pagination.pageIndex * pagination.pageSize + 1}-
+          {Math.min((pagination.pageIndex + 1) * pagination.pageSize, data.total)} of {data.total} clinics
+        </div>
+        <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex items-center space-x-2">
+            <p className="text-sm font-medium">Rows per page</p>
+            <Select
+              value={`${pagination.pageSize}`}
+              onValueChange={(value) => {
+                setPagination((prev) => ({
+                  ...prev,
+                  pageSize: Number(value),
+                  pageIndex: 0,
+                }));
+              }}
+            >
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue placeholder={pagination.pageSize} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 20, 30, 40, 50].map((pageSize) => (
+                  <SelectItem key={pageSize} value={`${pageSize}`}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      </div>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{selectedClinic ? "Edit Clinic" : "Add Clinic"}</DialogTitle>
-            <DialogDescription>
-              {selectedClinic ? "Update the clinic details below." : "Fill in the details to add a new clinic."}
-            </DialogDescription>
+            <DialogTitle>{selectedClinic ? "Edit Clinic" : "Create New Clinic"}</DialogTitle>
           </DialogHeader>
-          <FormProvider {...methods}>
-            <Form onSubmit={methods.handleSubmit(selectedClinic ? handleUpdateClinic : handleCreateClinic)}>
-              <FormField name="name" defaultValue={selectedClinic?.name || ""}>
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              </FormField>
-              <FormField name="address" defaultValue={selectedClinic?.address || ""}>
-                <FormItem>
-                  <FormLabel>Address</FormLabel>
-                  <FormControl>
-                    <Input />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              </FormField>
-              <FormField name="contactInfo" defaultValue={selectedClinic?.contactInfo || ""}>
-                <FormItem>
-                  <FormLabel>Contact Info</FormLabel>
-                  <FormControl>
-                    <Input />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              </FormField>
-              <DialogFooter>
-                <Button type="submit">{selectedClinic ? "Update" : "Create"}</Button>
-                <DialogClose asChild>
-                  <Button type="button" variant="outline" onClick={handleDialogClose}>
-                    Cancel
-                  </Button>
-                </DialogClose>
-              </DialogFooter>
-            </Form>
-          </FormProvider>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <Input {...register("name", { required: true })} placeholder="Name" />
+            <Input {...register("address", { required: true })} placeholder="Address" />
+            <Input {...register("contactInfo", { required: true })} placeholder="Contact Info" />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDialogOpen(false);
+                  setSelectedClinic(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">{selectedClinic ? "Save Changes" : "Create Clinic"}</Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

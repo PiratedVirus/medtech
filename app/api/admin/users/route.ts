@@ -7,6 +7,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
+    const role = searchParams.get("role");
+
+    // If a role is passed, return a simplified response (user id and name only)
+    if (role) {
+      const usersForRole = await prisma.user.findMany({
+        where: { role }
+      });
+      return NextResponse.json({ data: usersForRole });
+    }
 
     const [users, total, groupData] = await prisma.$transaction([
       prisma.user.findMany({
@@ -45,7 +54,7 @@ export async function POST(request: Request) {
   try {
     const data = await request.json();
     const user = await prisma.user.create({ data });
-    return NextResponse.json(user);
+    return NextResponse.json({ data: user, message: "User created successfully" });
   } catch (error) {
     return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
   }
@@ -58,7 +67,7 @@ export async function PUT(request: Request) {
       where: { id },
       data,
     });
-    return NextResponse.json(user);
+    return NextResponse.json({ data: user, message: "User updated successfully" });
   } catch (error) {
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }

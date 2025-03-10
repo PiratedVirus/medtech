@@ -6,9 +6,18 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
+    let where = {};
+    if (searchParams.get("doctorId")) {
+      where = { userId: JSON.parse(searchParams.get("doctorId") as string) };
+    }
+
+    if (searchParams.get("clinicId")) {
+      where = { ...where, user: { clinicId: JSON.parse(searchParams.get("clinicId") as string) } };
+    }
 
     const [doctors, total, groupData] = await prisma.$transaction([
       prisma.doctorProfile.findMany({
+        where,
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: {
