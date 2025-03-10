@@ -45,7 +45,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ChevronDown, ArrowUpDown, EditIcon, Trash, CalendarIcon } from "lucide-react";
+import { ChevronDown, ArrowUpDown, EditIcon, Trash, CalendarIcon, DoorClosedIcon } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Badge } from "@/components/ui/badge";
@@ -77,8 +77,9 @@ const fetchDoctors = async () => {
 };
 
 const createDoctorAvailability = async (data) => {
+  console.log("Data for booking is ", data);
   try {
-    const response = await axios.post("/api/admin/doctorsavailability", data);
+    const response = await axios.post("/api/admin/slots", data);
     return response.data;
   } catch (error) {
     console.error("Failed to create doctor availability:", error);
@@ -88,7 +89,7 @@ const createDoctorAvailability = async (data) => {
 
 const updateDoctorAvailability = async (id, data) => {
   try {
-    const response = await axios.put(`/api/admin/doctorsavailability/${id}`, data);
+    const response = await axios.put(`/api/admin/slots?id=${id}`, data);
     return response.data;
   } catch (error) {
     console.error("Failed to update doctor availability:", error);
@@ -98,7 +99,7 @@ const updateDoctorAvailability = async (id, data) => {
 
 const deleteDoctorAvailability = async (id) => {
   try {
-    const response = await axios.delete(`/api/admin/doctorsavailability/${id}`);
+    const response = await axios.delete(`/api/admin/slots?id=${id}`);
     return response.data;
   } catch (error) {
     console.error("Failed to delete doctor availability:", error);
@@ -462,8 +463,9 @@ export default function DoctorAvailabilityPage() {
                   </SelectTrigger>
                   <SelectContent className="bg-white text-black">
                     {doctors.map((doctor) => (
-                      <SelectItem key={doctor.id.toString()} value={doctor.id.toString()}>
+                      <SelectItem key={doctor.userId} value={doctor.id}>
                         {doctor.user.name}
+                        {/* <p>{JSON.stringify(doctor)}</p> */}
                       </SelectItem>
                     ))}
                   </SelectContent>

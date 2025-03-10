@@ -1,5 +1,61 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { google } from "googleapis";
+
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
+const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN!;
+const REDIRECT_URI = "https://developers.google.com/oauthplayground";
+
+const oauth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
+
+async function createGoogleMeetLink(slot: any, doctorId: number, patientId: number) {
+  try {
+    console.log("Creating Google Meet link for slot:", slot);
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+    const startDateTime = new Date(slot.date);
+    startDateTime.setHours(
+      parseInt(slot.startTime.split(":")[0], 10),
+      parseInt(slot.startTime.split(":")[1], 10)
+    );
+
+    const endDateTime = new Date(slot.date);
+    endDateTime.setHours(
+      parseInt(slot.endTime.split(":")[0], 10),
+      parseInt(slot.endTime.split(":")[1], 10)
+    );
+
+    const event = {
+      summary: "Doctor Consultation",
+      description: `Consultation with Doctor ID: ${doctorId}`,
+      start: { dateTime: startDateTime.toISOString(), timeZone: "Asia/Kolkata" },
+      end: { dateTime: endDateTime.toISOString(), timeZone: "Asia/Kolkata" },
+      conferenceData: {
+        createRequest: {
+          requestId: `meet-${Date.now()}`,
+          conferenceSolutionKey: { type: "hangoutsMeet" },
+        },
+      },
+      attendees: [{ email: "patient@example.com" }], // Optional
+    };
+
+    console.log("Event payload for Google Calendar:", event);
+
+    const response = await calendar.events.insert({
+      calendarId: "primary",
+      conferenceDataVersion: 1,
+      requestBody: event,
+    });
+
+    console.log("Google Meet link created:", response.data.hangoutLink);
+    return response.data.hangoutLink || null;
+  } catch (error) {
+    console.error("Error creating Google Meet link:", error);
+    return null;
+  }
+}
 
 export async function GET(request: Request) {
   try {
@@ -12,7 +68,7 @@ export async function GET(request: Request) {
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: {
-          doctor: { select: { name: true } },
+          doctor: true,
           doctorAvailability: { select: { startTime: true, endTime: true } }
         },
         orderBy: { createdAt: "desc" },
@@ -47,6 +103,17 @@ export async function POST(request: Request) {
   try {
     const data = await request.json();
 
+    data.doctorId = parseInt(data.doctorId, 10);
+    data.patientId = parseInt(data.patientId, 10);
+    data.consultationTypeId = parseInt(data.consultationTypeId, 10);
+    data.doctorAvailabilityId = parseInt(data.doctorAvailabilityId, 10);
+    const slot = {
+      startTime: data.startTime,
+      endTime: data.endTime,
+      date: data.appointmentDate, // Changed to use correct field
+    }
+
+
     // Ensure doctorAvailabilityId exists and is available
     const availability = await prisma.doctorAvailability.findUnique({
       where: { id: data.doctorAvailabilityId, status: "available" }
@@ -55,14 +122,33 @@ export async function POST(request: Request) {
     if (!availability) {
       return NextResponse.json({ error: "Invalid or unavailable appointment slot" }, { status: 400 });
     }
+    let meetLink = null;
+    if (data.consultationTypeId !== 1) {
+      console.log("Creating Google Meet link...");
+      meetLink = await createGoogleMeetLink(slot, data.doctorId, data.patientId);
+      console.log("Google Meet link created:", meetLink);
+    }
+    data.meetLink = meetLink;
 
-    const appointment = await prisma.appointment.create({
-      data
-    });
+  const appointment = await prisma.appointment.create({
+    data: {
+      status: "Scheduled",
+      doctorId: data.doctorId,
+      doctorAvailabilityId: data.doctorAvailabilityId,
+      consultationTypeId: data.consultationTypeId,
+      patientId: data.patientId,
+      appointmentDate: data.appointmentDate,
+      fullName: data.patinetName,
+      email: data.patientEmail,
+      mobile: data.patientPhone,
+      //@ts-ignore
+      appointmentLink: meetLink
+    }
+  });
 
     return NextResponse.json({ data: appointment, message: "Appointment created successfully" });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to create appointment" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create appointment: " + error }, { status: 500 });
   }
 }
 
@@ -83,8 +169,8 @@ export async function PUT(request: Request) {
     // Transaction for slot updates and appointment update
     const result = await prisma.$transaction(async (tx) => {
       // If changing time slot
-      if (data.doctorAvailabilityId && 
-          data.doctorAvailabilityId !== existingAppointment.doctorAvailabilityId) {
+      if (data.doctorAvailabilityId &&
+        data.doctorAvailabilityId !== existingAppointment.doctorAvailabilityId) {
         // Mark old slot as available
         await tx.doctorAvailability.update({
           where: { id: existingAppointment.doctorAvailabilityId },

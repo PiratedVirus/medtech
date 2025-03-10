@@ -7,18 +7,11 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
     const doctorId = parseInt(searchParams.get("doctorId") || "0");
-    const checkAvailability = searchParams.get("checkAvailability") === "true";
-    let where = {};
-    if (checkAvailability) {
-      where = {
-        status: "available",
-      };
-    }
+
+    let where: any = {};
+    
     if (doctorId) {
-      where = {
-        ...where,
-        doctorId,
-      };
+      where.doctorId = doctorId;
     }
 
     const [slots, total] = await prisma.$transaction([
@@ -28,65 +21,112 @@ export async function GET(request: Request) {
         where,
         include: {
           doctor: {
-            select: {
-                user: { select: { name: true } },
-            },
-          },
+            include: {
+              user: {
+                select: { name: true }
+              }
+            }
+          }
         },
+        orderBy: {
+          date: 'desc'
+        }
       }),
-      prisma.doctorAvailability.count(),
+      prisma.doctorAvailability.count({ where })
     ]);
 
-    const transformedAppointments = slots.map((appt) => ({
-        ...appt,
-        doctorName: appt.doctor?.user?.name,
-        // Optionally remove the nested doctor field if not needed
-        doctor: undefined,
-      }));
+    const transformedSlots = slots.map(slot => ({
+      ...slot,
+      doctorName: slot.doctor.user.name,
+      doctor: undefined
+    }));
 
     return NextResponse.json({
-      data: transformedAppointments,
+      data: transformedSlots,
       total,
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch doctorAvailability" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch doctor availability slots" },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    const clinic = await prisma.clinic.create({ data });
-    return NextResponse.json({ data: clinic, message: "Clinic created successfully" });
+    console.log("Daata for slot booking is ", data);
+    
+    const newSlot = await prisma.doctorAvailability.create({
+      data: {
+        doctorId: Number(data.doctorId),
+        date: new Date(data.date),
+        startTime: data.startTime,
+        endTime: data.endTime,
+        status: data.status
+      }
+    });
+
+    return NextResponse.json(
+      { data: newSlot, message: "Availability slot created successfully" },
+      { status: 201 }
+    );
   } catch (error) {
-    return NextResponse.json({ error: "Failed to create clinic" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create availability slot " + error },
+      { status: 500 }
+    );
   }
 }
 
 export async function PUT(request: Request) {
   try {
-    const { id, ...data } = await request.json();
-    const clinic = await prisma.clinic.update({
+    const { searchParams } = new URL(request.url);
+    const id = parseInt(searchParams.get("id") || "0");
+    const data = await request.json();
+
+    const updatedSlot = await prisma.doctorAvailability.update({
       where: { id },
-      data,
+      data: {
+        doctorId: data.doctorId,
+        date: new Date(data.date),
+        startTime: data.startTime,
+        endTime: data.endTime,
+        status: data.status
+      }
     });
-    return NextResponse.json({ data: clinic, message: "Clinic updated successfully" });
+
+    return NextResponse.json(
+      { data: updatedSlot, message: "Availability slot updated successfully" }
+    );
   } catch (error) {
-    return NextResponse.json({ error: "Failed to update clinic" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update availability slot" },
+      { status: 500 }
+    );
   }
 }
 
 export async function DELETE(request: Request) {
   try {
-    const { id } = await request.json();
-    await prisma.clinic.delete({
-      where: { id },
+    const { searchParams } = new URL(request.url);
+    const id = parseInt(searchParams.get("id") || "0");
+
+    await prisma.doctorAvailability.delete({
+      where: { id }
     });
-    return NextResponse.json({ message: "Clinic deleted successfully" });
+
+    return NextResponse.json(
+      { message: "Availability slot deleted successfully" }
+    );
   } catch (error) {
-    return NextResponse.json({ error: "Failed to delete clinic" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to delete availability slot" },
+      { status: 500 }
+    );
   }
 }

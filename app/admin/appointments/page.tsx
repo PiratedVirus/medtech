@@ -72,11 +72,21 @@ type Appointment = {
 };
 
 type Doctor = {
-  id: number;
+  userId: number;
   user: {
     name: string;
   };
 };
+
+type Patient = any;
+
+// type Patient = {
+//   id: number;
+
+//   user: {
+//     name: string;
+//   };
+// };
 
 type Slot = {
   id: number;
@@ -87,24 +97,21 @@ type Slot = {
 };
 
 type AppointmentsFormData = {
-  patient: string;
+  patientId: number;
   doctorId: number;
   doctorAvailabilityId: number;
   status: string;
   consultationTypeId: number;
+  startTime: string;
+  endTime: string;
+  appointmentDate: string;
+  patinetName: string;
+  patientEmail: string;
+  patientPhone: string;
 };
 
 // --- API Functions ---
 
-const createAppointment = async (data: AppointmentsFormData) => {
-  try {
-    const response = await axios.post("/api/admin/appointments", data);
-    return response.data;
-  } catch (error) {
-    console.error("Failed to create appointment:", error);
-    return null;
-  }
-};
 
 const updateAppointment = async (id: number, data: AppointmentsFormData) => {
   try {
@@ -130,7 +137,7 @@ const fetchDoctors = async () => {
 
 const fetchAvailableSlots = async (doctorId: number) => {
   try {
-    const response = await axios.get(`/api/admin/appointments/available-slots?doctorId=${doctorId}&checkAvailability=false`);
+    const response = await axios.get(`/api/admin/appointments/available-slots?id=${doctorId}&checkAvailability=false`);
     console.log("Available slots:", response.data);
     // Assume response is { data: Slot[] }
     return response.data;
@@ -150,6 +157,54 @@ export default function AppointmentsPage() {
   const [availableSlots, setAvailableSlots] = useState<Slot[]>([]);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  
+  const createAppointment = async (data: AppointmentsFormData, availableSlots: any) => {
+    console.log("Creating appointment with formData:", data);
+    console.log("doctorId:", data.doctorId);
+    data.doctorId = JSON.parse(data.doctorId).doctorId;
+    // Convert doctorAvailabilityId to number before comparison
+    const slot = availableSlots.find(
+      (slot: any) => slot.id === Number(data.doctorAvailabilityId) // Convert to number
+    );
+  
+    const selectedPatient = patients.find((pat) => pat.id === Number(data.patientId));
+    console.log("Selected patient:", selectedPatient);
+    if (!selectedPatient) {
+      console.error("Patient not found!");
+      return null;
+    }
+    data.patinetName = selectedPatient.name;
+    data.patientEmail = selectedPatient.email;
+    data.patientPhone = selectedPatient.phoneNumber;
+  
+    if (!slot) {
+      console.error("Slot not found!");
+      return null;
+    }
+    console.log("Slot found:", slot);
+
+    const payload = {
+      ...data,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      appointmentDate: slot.date,
+      doctorId: Number(data.doctorId),
+      patientId: Number(data.patientId),
+      doctorAvailabilityId: Number(data.doctorAvailabilityId),
+      consultationTypeId: Number(data.consultationTypeId)
+    };
+    console.log("Entire payload", payload);
+  
+    try {
+      const response = await axios.post("/api/admin/appointments", payload);
+      return response.data;
+    } catch (error) {
+      console.error("Failed to create appointment:", error);
+      return null;
+    }
+  };
+  
 
   const {
     register,
@@ -198,13 +253,30 @@ export default function AppointmentsPage() {
     }
   };
 
+  const fetchPatients = async () => {
+    try {
+      const response = await axios.get("/api/admin/users?role=PATIENT");
+      return response.data.data;
+    } catch (error) {
+      console.error("Failed to fetch patients:", error);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    fetchPatients().then((pats) => setPatients(pats));
+  }, []);
+
   // Watch selected doctor from form
   const selectedDoctorId = watch("doctorId");
+  
 
   // When a doctor is selected, load available slots for that doctor
   useEffect(() => {
     if (selectedDoctorId) {
-      fetchAvailableSlots(Number(selectedDoctorId)).then((slots) =>
+  const sendThisDoctorId = JSON.parse(selectedDoctorId).id;
+
+      fetchAvailableSlots(Number(sendThisDoctorId)).then((slots) =>
         setAvailableSlots(slots)
       );
     } else {
@@ -241,7 +313,7 @@ export default function AppointmentsPage() {
         setValue("status", selectedAppointment.status);
 
         // Fetch slots for the selected doctor
-        const slots = await fetchAvailableSlots(selectedAppointment.doctorId);
+        const slots = await fetchAvailableSlots(selectedAppointment.id);
         setAvailableSlots(slots);
 
         // After slots are loaded, set availability ID
@@ -260,12 +332,13 @@ export default function AppointmentsPage() {
   }, [selectedAppointment, setValue, reset]);
 
   const onSubmit = async (formData: AppointmentsFormData) => {
+    console.log("Form data in app book:", formData);
     try {
       if (selectedAppointment) {
         await updateAppointment(selectedAppointment.id, formData);
         toast.success("Appointment updated successfully");
       } else {
-        await createAppointment(formData);
+        await createAppointment(formData, availableSlots);
         toast.success("Appointment created successfully");
       }
       await fetchData();
@@ -414,7 +487,7 @@ export default function AppointmentsPage() {
       ),
     },
   ];
-
+  console.log("Data state:", dataState.appointments);
   const tableInstance = useReactTable({
     data: dataState.appointments,
     columns,
@@ -440,7 +513,7 @@ export default function AppointmentsPage() {
 
   const formatSlotDisplay = (slotId: string | number) => {
     const slot = availableSlots.find(s => s.id.toString() === slotId.toString());
-    console.log("Slot for ID", slotId, "is", slot.id);
+    // console.log("Slot for ID", slotId, "is", slot.id);
     if (!slot) return "Loading...";
 
     const date = new Date(slot.date);
@@ -492,7 +565,7 @@ export default function AppointmentsPage() {
         <div>
           <Button onClick={() => { setSelectedAppointment(null); reset(); setDialogOpen(true); }}>
             Add Appointment
-          </Button>        
+          </Button>
         </div>
       </div>
       {/* Table */}
@@ -602,8 +675,8 @@ export default function AppointmentsPage() {
                   </SelectTrigger>
                   <SelectContent className="bg-white text-black">
                     {doctors.map((doc) => (
-                      <SelectItem key={doc.id.toString()} value={doc.id.toString()}>
-                        {doc.user.name}
+                      <SelectItem key={doc.userId} value={JSON.stringify({ id: doc.id, doctorId: doc.userId })}>
+                          {doc.user.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -713,7 +786,25 @@ export default function AppointmentsPage() {
               )}
             />
             {/* Patient Input */}
-            <Input {...register("patient", { required: true })} placeholder="Patient" />
+            <Controller
+              control={control}
+              name="patientId"
+              rules={{ required: true }}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value?.toString() || ""}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Patient" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white text-black">
+                    {patients.map((patient) => (
+                      <SelectItem key={patient.id.toString()} value={patient.id.toString()}>
+                        {patient.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
             <DialogFooter>
               <Button
                 type="button"

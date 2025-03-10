@@ -3,7 +3,7 @@ import prisma  from "@/lib/prisma";
 
 export async function GET(request: Request) {
   const {searchParams} = new URL(request.url);
-  const doctorId = parseInt(searchParams.get("doctorId") || "0") ;
+  const doctorId = parseInt(searchParams.get("id") || "0") ;
   const checkAvailability = searchParams.get("checkAvailability") === "true";
   let where = {}
   if (checkAvailability) {
