@@ -1,0 +1,841 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { useForm, Controller } from "react-hook-form";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  getFilteredRowModel,
+  type ColumnDef,
+  type SortingState,
+  type ColumnFiltersState,
+  type VisibilityState,
+  flexRender,
+} from "@tanstack/react-table";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { set } from "date-fns";
+import Link from "next/link";
+
+// --- Types ---
+type Appointment = {
+  id: number;
+  patient: string;
+  doctorId: number;
+  doctorAvailabilityId: number;
+  status: string;
+  createdAt: string;
+  doctorName: string;
+  startTime: string;
+  endTime: string;
+  appointmentDate: string;
+  fullName: string;
+  consultationTypeId: number;
+  appointmentLink: string;
+  // Relations
+
+};
+
+type Doctor = {
+  userId: number;
+  user: {
+    name: string;
+  };
+};
+
+type Patient = any;
+
+// type Patient = {
+//   id: number;
+
+//   user: {
+//     name: string;
+//   };
+// };
+
+type Slot = {
+  id: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+};
+
+type AppointmentsFormData = {
+  patientId: number;
+  doctorId: number;
+  doctorAvailabilityId: number;
+  status: string;
+  consultationTypeId: number;
+  startTime: string;
+  endTime: string;
+  appointmentDate: string;
+  patinetName: string;
+  patientEmail: string;
+  patientPhone: string;
+};
+
+// --- API Functions ---
+
+
+const updateAppointment = async (id: number, data: AppointmentsFormData) => {
+  try {
+    const response = await axios.put(`/api/admin/appointments/${id}`, data);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to update appointment:", error);
+    return null;
+  }
+};
+
+
+
+const fetchDoctors = async () => {
+  try {
+    const response = await axios.get("/api/admin/doctors");
+    return response.data.data;
+  } catch (error) {
+    console.error("Failed to fetch doctors:", error);
+    return [];
+  }
+};
+
+const fetchAvailableSlots = async (doctorId: number) => {
+  try {
+    const response = await axios.get(`/api/admin/appointments/available-slots?id=${doctorId}&checkAvailability=false`);
+    console.log("Available slots:", response.data);
+    // Assume response is { data: Slot[] }
+    return response.data;
+  } catch (error) {
+    console.error("Failed to fetch available slots:", error);
+    return [];
+  }
+};
+
+// --- Component ---
+export default function AppointmentsPage() {
+  const [dataState, setDataState] = useState<{ appointments: Appointment[]; total: number }>({
+    appointments: [],
+    total: 0,
+  });
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<Slot[]>([]);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  
+  const createAppointment = async (data: AppointmentsFormData, availableSlots: any) => {
+    console.log("Creating appointment with formData:", data);
+    console.log("doctorId:", data.doctorId);
+    data.doctorId = JSON.parse(data.doctorId).doctorId;
+    // Convert doctorAvailabilityId to number before comparison
+    const slot = availableSlots.find(
+      (slot: any) => slot.id === Number(data.doctorAvailabilityId) // Convert to number
+    );
+  
+    const selectedPatient = patients.find((pat) => pat.id === Number(data.patientId));
+    console.log("Selected patient:", selectedPatient);
+    if (!selectedPatient) {
+      console.error("Patient not found!");
+      return null;
+    }
+    data.patinetName = selectedPatient.name;
+    data.patientEmail = selectedPatient.email;
+    data.patientPhone = selectedPatient.phoneNumber;
+  
+    if (!slot) {
+      console.error("Slot not found!");
+      return null;
+    }
+    console.log("Slot found:", slot);
+
+    const payload = {
+      ...data,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      appointmentDate: slot.date,
+      doctorId: Number(data.doctorId),
+      patientId: Number(data.patientId),
+      doctorAvailabilityId: Number(data.doctorAvailabilityId),
+      consultationTypeId: Number(data.consultationTypeId)
+    };
+    console.log("Entire payload", payload);
+  
+    try {
+      const response = await axios.post("/api/admin/appointments", payload);
+      return response.data;
+    } catch (error) {
+      console.error("Failed to create appointment:", error);
+      return null;
+    }
+  };
+  
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    control,
+    watch,
+  } = useForm<AppointmentsFormData>({
+    defaultValues: { status: "Scheduled" },
+  });
+  const [sorting, setSorting] = useState<SortingState>([{ id: "appointmentDate", desc: true }]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState({});
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const fetchAppointments = async (pageIndex: number, pageSize: number) => {
+    try {
+      const response = await axios.get(
+        `/api/admin/appointments?page=${pageIndex + 1}&pageSize=${pageSize}`
+      );
+      setDataState({ appointments: response.data.data, total: response.data.total });
+
+      return response.data;
+    } catch (error) {
+      console.error("Failed to fetch appointments:", error);
+      return { data: [], total: 0 };
+    }
+  };
+  const deleteAppointment = async (id: number) => {
+    try {
+      await axios.delete(`/api/admin/appointments?id=${id}`);
+      toast.success("Appointment deleted successfully");
+      // Immediately update local state by filtering out the deleted appointment
+      setDataState((data) => ({
+        ...data,
+        appointments: data.appointments.filter((appt) => appt.id !== id),
+        total: data.total - 1,
+      }));
+    } catch (error) {
+      console.error("Error deleting appointment:", error);
+      toast.error("Failed to delete appointment");
+    }
+  };
+
+  const fetchPatients = async () => {
+    try {
+      const response = await axios.get("/api/admin/users?role=PATIENT");
+      return response.data.data;
+    } catch (error) {
+      console.error("Failed to fetch patients:", error);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    fetchPatients().then((pats) => setPatients(pats));
+  }, []);
+
+  // Watch selected doctor from form
+  const selectedDoctorId = watch("doctorId");
+  
+
+  // When a doctor is selected, load available slots for that doctor
+  useEffect(() => {
+    if (selectedDoctorId) {
+  const sendThisDoctorId = JSON.parse(selectedDoctorId).id;
+
+      fetchAvailableSlots(Number(sendThisDoctorId)).then((slots) =>
+        setAvailableSlots(slots)
+      );
+    } else {
+      setAvailableSlots([]);
+    }
+  }, [selectedDoctorId]);
+
+  // Load doctors on mount
+  useEffect(() => {
+    fetchDoctors().then((docs) => {
+      console.log("Doctors loaded", docs);
+      setDoctors(docs);
+    });
+  }, []);
+
+  // Fetch appointments data
+  const fetchData = async () => {
+    const result = await fetchAppointments(pagination.pageIndex, pagination.pageSize);
+    setDataState({ appointments: result.data, total: result.total });
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [pagination.pageIndex, pagination.pageSize, sorting]);
+
+  // When editing an appointment, pre-fill form values
+  useEffect(() => {
+    const initializeForm = async () => {
+      if (selectedAppointment) {
+        console.log("Selected appointment on edit:", selectedAppointment);
+        // Set basic fields
+        setValue("patient", selectedAppointment.fullName);
+        setValue("doctorId", selectedAppointment.doctorId);
+        setValue("status", selectedAppointment.status);
+
+        // Fetch slots for the selected doctor
+        const slots = await fetchAvailableSlots(selectedAppointment.id);
+        setAvailableSlots(slots);
+
+        // After slots are loaded, set availability ID
+        setValue("doctorAvailabilityId", selectedAppointment.doctorAvailabilityId);
+
+        // Set availability ID after slots load
+        setTimeout(() => {
+          setValue("doctorAvailabilityId", selectedAppointment.doctorAvailabilityId);
+        }, 100);
+      } else {
+        reset();
+      }
+    };
+
+    initializeForm();
+  }, [selectedAppointment, setValue, reset]);
+
+  const onSubmit = async (formData: AppointmentsFormData) => {
+    console.log("Form data in app book:", formData);
+    try {
+      if (selectedAppointment) {
+        await updateAppointment(selectedAppointment.id, formData);
+        toast.success("Appointment updated successfully");
+      } else {
+        await createAppointment(formData, availableSlots);
+        toast.success("Appointment created successfully");
+      }
+      await fetchData();
+      setDialogOpen(false);
+      reset();
+      setSelectedAppointment(null);
+    } catch (error) {
+      console.error("Error saving appointment:", error);
+      toast.error("Failed to save appointment");
+    }
+  };
+
+  const deleteSelected = async () => {
+    const selectedIds = Object.keys(rowSelection).map(
+      (index) => dataState.appointments[parseInt(index)].id
+    );
+    try {
+      await axios.delete("/api/admin/appointments", { data: { ids: selectedIds } });
+      toast.success("Selected appointments deleted successfully");
+      await fetchData();
+      setRowSelection({});
+    } catch (error) {
+      console.error("Error deleting appointments:", error);
+      toast.error("Failed to delete selected appointments");
+    }
+  };
+
+  const columns: ColumnDef<Appointment>[] = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <input
+          type="checkbox"
+          checked={table.getIsAllPageRowsSelected()}
+          onChange={table.getToggleAllPageRowsSelectedHandler()}
+          className="w-4 h-4"
+        />
+      ),
+      cell: ({ row }) => (
+        <input
+          type="checkbox"
+          checked={row.getIsSelected()}
+          onChange={row.getToggleSelectedHandler()}
+          className="w-4 h-4"
+        />
+      ),
+    },
+    {
+      accessorKey: "fullName",
+      id: "fullName",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Patient <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorFn: (row) => row.doctorName,
+      id: "doctorName",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Doctor <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "appointmentDate",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Date & Time <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const date = new Date(row.original.appointmentDate);
+        const options = { day: '2-digit', month: 'short', year: 'numeric' };
+        return (
+          <>
+          {/* <div className="flex items-center gap-2">
+            <span>
+              {date.toLocaleDateString('en-US', options)} •
+              {row.original.startTime} - {row.original.endTime}
+            </span>
+            <Badge variant="outline" className="border-primary text-primary">
+              #{row.original.doctorAvailabilityId}
+            </Badge>
+          </div> */}
+          <div className="flex item-center justify-center">
+            <div className="flex m-3">
+            <Badge variant="outline" className="border-primary text-primary">
+              #{row.original.doctorAvailabilityId}
+            </Badge>
+            </div>
+            <div className="flex flex-col items-end">
+              <p className="text-muted-foreground">{date.toLocaleDateString('en-US', options)}</p>
+              <p className="font-bold"> {row.original.startTime} - {row.original.endTime}</p>
+            </div>
+          </div>
+          </>
+        );
+      },
+      enableSorting: true,
+    },
+    {
+      accessorKey: "consultationTypeId",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Consultation Type <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        return (
+          (row.original.consultationTypeId === 1 ? (
+            <>
+              <Link href={row.original.appointmentLink} >
+                <Badge className="bg-green-700 shadow-none text-white">
+                  JOIN MEET
+                </Badge>
+              </Link>
+            </>
+          ) : "Physical")
+        );
+      }
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Status <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <div className="space-x-2">
+          <Button
+            size="sm"
+            className="bg-transparent text-primary border-0 shadow-none"
+            onClick={() => {
+              setSelectedAppointment(row.original);
+              console.log("Selected appointment on edit click:", row.original);
+              // Pre-fill form for editing:
+              setValue("patient", row.original.fullName);
+              setValue("doctorId", row.original.doctorId);
+              setValue("doctorAvailabilityId", row.original.doctorAvailabilityId);
+              setValue("status", row.original.status);
+              setDialogOpen(true);
+            }}
+          >
+            <EditIcon className="h-4 w-4" />
+          </Button>
+          <Button size="sm" variant="destructive" onClick={() => deleteAppointment(row.original.id)}>
+            <Trash className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+  console.log("Data state:", dataState.appointments);
+  const tableInstance = useReactTable({
+    data: dataState.appointments,
+    columns,
+    pageCount: Math.ceil(dataState.total / pagination.pageSize),
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+      pagination,
+    },
+    manualPagination: true,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  const formatSlotDisplay = (slotId: string | number) => {
+    const slot = availableSlots.find(s => s.id.toString() === slotId.toString());
+    // console.log("Slot for ID", slotId, "is", slot.id);
+    if (!slot) return "Loading...";
+
+    const date = new Date(slot.date);
+    return `${date.toLocaleDateString('en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    })} • ${slot.startTime} - ${slot.endTime}`;
+  };
+
+  return (
+    <div className="container mx-auto p-4 space-y-4">
+      <ToastContainer />
+      {/* Controls */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Input
+            placeholder="Search appointments..."
+            value={(tableInstance.getColumn("fullName")?.getFilterValue() as string) ?? ""}
+            onChange={(event) =>
+              tableInstance.getColumn("fullName")?.setFilterValue(event.target.value)
+            }
+            className="max-w-sm"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                Columns <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-white text-black" align="end">
+              {tableInstance.getAllColumns().filter((column) => column.getCanHide()).map((column) => (
+                <DropdownMenuCheckboxItem
+                  key={column.id}
+                  checked={column.getIsVisible()}
+                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                >
+                  {column.id}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {Object.keys(rowSelection).length > 0 && (
+            <Button variant="destructive" onClick={deleteSelected}>
+              Delete Selected
+            </Button>
+          )}
+        </div>
+        <div>
+          <Button onClick={() => { setSelectedAppointment(null); reset(); setDialogOpen(true); }}>
+            Add Appointment
+          </Button>
+        </div>
+      </div>
+      {/* Table */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader className="bg-custom-mutedgreen text-gray-950">
+            {tableInstance.getHeaderGroups().map((headerGroup) => (
+              <TableRow className="text-center" key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} className="text-black text-center">
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {tableInstance.getRowModel().rows?.length ? (
+              tableInstance.getRowModel().rows.map((row) => (
+                <TableRow className="text-center" className="text-center" key={row.id} data-state={row.getIsSelected() && "selected"}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow className="text-center">
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      {/* Pagination */}
+      <div className="flex items-center justify-between px-2">
+        <div className="text-sm text-muted-foreground">
+          Showing {pagination.pageIndex * pagination.pageSize + 1}-
+          {Math.min((pagination.pageIndex + 1) * pagination.pageSize, dataState.total)} of {dataState.total} appointments
+        </div>
+        <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex items-center space-x-2">
+            <p className="text-sm font-medium">Rows per page</p>
+            <Select
+              value={`${pagination.pageSize}`}
+              onValueChange={(value) =>
+                setPagination((prev) => ({
+                  ...prev,
+                  pageSize: Number(value),
+                  pageIndex: 0,
+                }))
+              }
+            >
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue placeholder={pagination.pageSize} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 20, 30, 40, 50].map((pageSize) => (
+                  <SelectItem key={pageSize} value={`${pageSize}`}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => tableInstance.previousPage()}
+              disabled={!tableInstance.getCanPreviousPage()}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => tableInstance.nextPage()}
+              disabled={!tableInstance.getCanNextPage()}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      </div>
+      {/* Dialog for Create/Edit Appointment */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedAppointment ? "Edit Appointment" : "Create Appointment"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Doctor Dropdown */}
+            <Controller
+              control={control}
+              name="doctorId"
+              rules={{ required: true }}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value ? field.value.toString() : ""}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Doctor" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white text-black">
+                    {doctors.map((doc) => (
+                      <SelectItem key={doc.userId} value={JSON.stringify({ id: doc.id, doctorId: doc.userId })}>
+                          {doc.user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+
+                </Select>
+              )}
+            />
+            {/* Available Slot Dropdown */}
+            <Controller
+              control={control}
+              name="doctorAvailabilityId"
+              rules={{ required: true }}
+              render={({ field }) => (
+                <Select
+                  value={field.value?.toString() || ""}
+                  onValueChange={field.onChange}
+                >
+                  <SelectTrigger>
+                    {availableSlots.length === 0 ? (
+                      "Loading slots..."
+                    ) : (field.value) ? (
+                      availableSlots.find(slot => slot.id.toString() === field.value.toString()) ? (
+                        <>
+                          <span className="flex items-center gap-2">
+                            {formatSlotDisplay(field.value)}
+                            <Badge variant="outline" className="border-primary text-primary ml-1">
+                              #{field.value}
+                            </Badge>
+                          </span>
+
+                        </>
+                      ) : (
+                        "Loading...!"
+                      )
+                    ) : (
+                      "Select Available Slot"
+                    )}
+                  </SelectTrigger>
+                  <SelectContent className="bg-white text-black">
+                    {availableSlots?.length > 0 ? (
+                      availableSlots.map((slot) => (
+
+                        <SelectItem className="cursor-pointer" disabled={(slot.status === "available") ? false : true} key={slot.id.toString()} value={slot.id.toString()}>
+                          <div className="flex justify-between items-center w-full">
+                            <Badge variant="outline" className="border-primary text-primary">
+                              #{slot.id}
+                            </Badge>
+                            <span className="mx-2">{formatSlotDisplay(slot.id)}</span>
+
+                            <Badge
+                              variant="outline"
+                              className={slot.status === "available"
+                                ? "border-green-500 text-green-500"
+                                : "border-red-500 text-red-500 "
+                              }
+                            >
+                              {slot.status === "available" ? "Available" : "Booked"}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem key="no-slot" disabled>
+                        No available slots
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <Controller
+              control={control}
+              name="consultationTypeId"
+              rules={{ required: true }}
+              render={({ field }) => (
+                <Select
+                  value={field.value?.toString()}
+                  onValueChange={(value) => field.onChange(Number(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Consultation Type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white text-black">
+                    <SelectItem value="1">Video Consultation</SelectItem>
+                    <SelectItem value="2">Physical Visit</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {/* Status Dropdown */}
+            <Controller
+              control={control}
+              name="status"
+              defaultValue="Scheduled"
+              rules={{ required: true }}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white text-black">
+                    <SelectItem value="Scheduled">Scheduled</SelectItem>
+                    <SelectItem value="Completed">Completed</SelectItem>
+                    <SelectItem value="Cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {/* Patient Input */}
+            <Controller
+              control={control}
+              name="patientId"
+              rules={{ required: true }}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value?.toString() || ""}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Patient" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white text-black">
+                    {patients.map((patient) => (
+                      <SelectItem key={patient.id.toString()} value={patient.id.toString()}>
+                        {patient.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDialogOpen(false);
+                  setSelectedAppointment(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">
+                {selectedAppointment ? "Save Changes" : "Create Appointment"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
