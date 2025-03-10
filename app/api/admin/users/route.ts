@@ -7,6 +7,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
+    const role = searchParams.get("role");
+
+    // If a role is passed, return a simplified response (user id and name only)
+    if (role) {
+      const usersForRole = await prisma.user.findMany({
+        where: { role }
+      });
+      return NextResponse.json({ data: usersForRole });
+    }
 
     const [users, total, groupData] = await prisma.$transaction([
       prisma.user.findMany({

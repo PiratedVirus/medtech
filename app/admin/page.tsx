@@ -10,6 +10,7 @@ import LabsPage from "@/app/admin/labs/page";
 import MedicinesPage from "@/app/admin/medicines/page";
 import PaymentsPage from "@/app/admin/payments/page";
 import PrescriptionsPage from "@/app/admin/prescriptions/page";
+import SlotsPage from "@/app/admin/slots/page";
 export default function AdminPage() {
   return (
     <div className="container mx-auto p-4">
@@ -26,25 +27,32 @@ export default function AdminPage() {
             <TabsTrigger value="medicines">Medicines</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
+            <TabsTrigger value="slots">Slots</TabsTrigger>
           </TabsList>
         </div>
-        <TabsContent value="users">
-          <UsersPage />
-        </TabsContent>
         <TabsContent value="clinics">
           <ClincsPage/>
         </TabsContent>
-        <TabsContent value="appointments">
-          <AppointmentsPage/>
-        </TabsContent>
-        <TabsContent value="dieticians">
-          <DieticiansPage/>
+        <TabsContent value="users">
+          <UsersPage />
         </TabsContent>
         <TabsContent value="doctors">
           <DoctorsPage />
         </TabsContent>
+   
+
+        <TabsContent value="dieticians">
+          <DieticiansPage/>
+        </TabsContent>
+
         <TabsContent value="labs">
           <LabsPage/>
+        </TabsContent>
+        <TabsContent value="appointments">
+          <AppointmentsPage/>
+        </TabsContent>
+        <TabsContent value="slots">
+          <SlotsPage/>
         </TabsContent>
         <TabsContent value="medicines">
           <MedicinesPage/>
@@ -55,6 +63,7 @@ export default function AdminPage() {
         <TabsContent value="prescriptions">
           <PrescriptionsPage/>
         </TabsContent>
+     
       </Tabs>
     </div>
   );
