@@ -48,6 +48,8 @@ import {
 import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useQuery, useMutation, useQueryClient } from 'react-query';
+import CdLoader from "@/components/ui/custom/cd-loader";
 
 // Types for doctor profile data and related user
 type Doctor = {
@@ -83,10 +85,7 @@ type DoctorsPageFormData = {
 };
 
 export default function DoctorsPage() {
-  const [data, setData] = useState<{ doctors: Doctor[]; total: number }>({ doctors: [], total: 0 });
-  const [clinics, setClinics] = useState([]);
-  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
-  const [roleCounts, setRoleCounts] = useState<{ [key: string]: number }>({});
+  const queryClient = useQueryClient();
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const {
@@ -106,27 +105,46 @@ export default function DoctorsPage() {
     pageSize: 10,
   });
 
-  // Watch clinicId to filter available users
-  const selectedClinicId = watch("clinicId");
-
   const fetchAvailableUsers = async (clinicId: number) => {
     try {
-      // This endpoint should return users for the specified clinic
       const res = await axios.get(`/api/admin/users?clinicId=${clinicId}`);
-      setAvailableUsers(res.data.data);
+      return res.data.data;
     } catch (error) {
       console.error("Error fetching available users:", error);
       toast.error("Failed to fetch users for selected clinic");
+      return [];
     }
   };
 
-  useEffect(() => {
-    if (selectedClinicId) {
-      fetchAvailableUsers(selectedClinicId);
-    } else {
-      setAvailableUsers([]);
+  const fetchDoctors = async (pageIndex: number, pageSize: number) => {
+    try {
+      const response = await axios.get(
+        `/api/admin/doctors?page=${pageIndex + 1}&pageSize=${pageSize}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to fetch doctors:", error);
+      return { data: [], total: 0 };
     }
-  }, [selectedClinicId]);
+  };
+
+  const fetchClinics = async () => {
+    try {
+      const response = await axios.get("/api/admin/clinics");
+      return response.data;
+    } catch (error) {
+      console.error("Failed to fetch clinics:", error);
+      return [];
+    }
+  };
+
+  const { data: availableUsers, isLoading: usersLoading } = useQuery(['availableUsers', watch("clinicId")], () => fetchAvailableUsers(watch("clinicId")), {
+    enabled: !!watch("clinicId"),
+  });
+
+  const { data: doctorsData, isLoading: doctorsLoading } = useQuery(['doctors', pagination.pageIndex, pagination.pageSize], () => fetchDoctors(pagination.pageIndex, pagination.pageSize));
+
+  const { data: clinics, isLoading: clinicsLoading } = useQuery('clinics', fetchClinics);
 
   const columns: ColumnDef<Doctor>[] = [
     {
@@ -244,7 +262,6 @@ export default function DoctorsPage() {
             className="bg-transparent text-primary border-0 shadow-none"
             onClick={() => {
               setSelectedDoctor(row.original);
-              // Pre-fill form with existing data
               setValue("specialty", row.original.specialty);
               setValue("yearsOfExperience", row.original.yearsOfExperience);
               setValue("consultationFee", row.original.consultationFee);
@@ -265,9 +282,9 @@ export default function DoctorsPage() {
   ];
 
   const table = useReactTable({
-    data: data.doctors,
+    data: doctorsData?.data || [],
     columns,
-    pageCount: Math.ceil(data.total / pagination.pageSize),
+    pageCount: Math.ceil(doctorsData?.total / pagination.pageSize),
     state: {
       sorting,
       columnFilters,
@@ -286,25 +303,6 @@ export default function DoctorsPage() {
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   });
-
-  const fetchData = async () => {
-    try {
-      const [doctorsRes, clinicsRes] = await Promise.all([
-        axios.get(`/api/admin/doctors?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`),
-        axios.get("/api/admin/clinics"),
-      ]);
-      setData({ doctors: doctorsRes.data.data, total: doctorsRes.data.total });
-      setClinics(clinicsRes.data);
-      setRoleCounts(doctorsRes.data.roleCounts || {});
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast.error("Failed to fetch data");
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [pagination.pageIndex, pagination.pageSize, sorting]);
 
   useEffect(() => {
     if (selectedDoctor) {
@@ -337,7 +335,7 @@ export default function DoctorsPage() {
         toast.success("Doctor created successfully");
       }
 
-      await fetchData();
+      queryClient.invalidateQueries('doctors');
       setDialogOpen(false);
       reset();
       setSelectedDoctor(null);
@@ -351,7 +349,7 @@ export default function DoctorsPage() {
     try {
       await axios.delete("/api/admin/doctors", { data: { id } });
       toast.success("Doctor deleted successfully");
-      await fetchData();
+      queryClient.invalidateQueries('doctors');
     } catch (error) {
       console.error("Error deleting doctor:", error);
       toast.error("Failed to delete doctor");
@@ -360,12 +358,12 @@ export default function DoctorsPage() {
 
   const deleteSelected = async () => {
     const selectedIds = Object.keys(rowSelection).map(
-      (index) => data.doctors[parseInt(index)].id
+      (index) => doctorsData.data[parseInt(index)].id
     );
     try {
       await axios.delete("/api/admin/doctors", { data: { ids: selectedIds } });
       toast.success("Selected doctors deleted successfully");
-      await fetchData();
+      queryClient.invalidateQueries('doctors');
       setRowSelection({});
     } catch (error) {
       console.error("Error deleting doctors:", error);
@@ -373,33 +371,32 @@ export default function DoctorsPage() {
     }
   };
 
+  if (doctorsLoading || clinicsLoading || usersLoading) {
+    return <CdLoader />;
+  }
+
   return (
     <div className="container mx-auto p-4 space-y-4">
       <ToastContainer />
-      {/* Header Section */}
-
-      {/* Stats Section - Cards for role counts */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="p-4 border rounded-lg bg-custom-mutedgreen items-end flex flex-col">
           <h3 className="text-lg font-semibold">Total Doctors</h3>
-          <p className="text-3xl text-primary">{roleCounts.DOCTOR || 0}</p>
+          <p className="text-3xl text-primary">{doctorsData?.roleCounts.DOCTOR || 0}</p>
         </div>
         <div className="p-4 border rounded-lg bg-custom-mutedgreen items-end flex flex-col">
           <h3 className="text-lg font-semibold">Total Lab Technicians</h3>
-          <p className="text-3xl text-primary">{roleCounts.LAB_TECH || 0}</p>
+          <p className="text-3xl text-primary">{doctorsData?.roleCounts.LAB_TECH || 0}</p>
         </div>
         <div className="p-4 border rounded-lg bg-custom-mutedgreen items-end flex flex-col">
           <h3 className="text-lg font-semibold">Total Patients</h3>
-          <p className="text-3xl text-primary">{roleCounts.PATIENT || 0}</p>
+          <p className="text-3xl text-primary">{doctorsData?.roleCounts.PATIENT || 0}</p>
         </div>
         <div className="p-4 border rounded-lg bg-custom-mutedgreen items-end flex flex-col">
           <h3 className="text-lg font-semibold">Total Users</h3>
-          <p className="text-3xl text-primary">{data.total}</p>
+          <p className="text-3xl text-primary">{doctorsData?.total}</p>
         </div>
       </div>
-      {/* Table & Controls */}
       <div className="flex items-center justify-between">
-        {/* Left group */}
         <div className="flex items-center gap-4">
           <Input
             placeholder="Search doctors..."
@@ -436,7 +433,6 @@ export default function DoctorsPage() {
             </Button>
           )}
         </div>
-        {/* Right group */}
         <div>
           <Button onClick={() => setDialogOpen(true)}>Add Doctor</Button>
         </div>
@@ -478,7 +474,7 @@ export default function DoctorsPage() {
       <div className="flex items-center justify-between px-2">
         <div className="text-sm text-muted-foreground">
           Showing {pagination.pageIndex * pagination.pageSize + 1}-
-          {Math.min((pagination.pageIndex + 1) * pagination.pageSize, data.total)} of {data.total} doctors
+          {Math.min((pagination.pageIndex + 1) * pagination.pageSize, doctorsData.total)} of {doctorsData.total} doctors
         </div>
         <div className="flex items-center space-x-6 lg:space-x-8">
           <div className="flex items-center space-x-2">
@@ -531,7 +527,6 @@ export default function DoctorsPage() {
             <DialogTitle>{selectedDoctor ? "Edit Doctor" : "Create New Doctor"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Clinic Dropdown */}
             <div>
               <label className="block font-medium">Select Clinic</label>
               <Controller
@@ -554,7 +549,6 @@ export default function DoctorsPage() {
                 )}
               />
             </div>
-            {/* User Dropdown (filtered by clinic) */}
             <div>
               <label className="block font-medium">Select User</label>
               <Controller

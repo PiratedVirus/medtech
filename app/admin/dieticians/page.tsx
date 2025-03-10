@@ -48,6 +48,8 @@ import {
 import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useQuery, useMutation, useQueryClient } from 'react-query';
+import CdLoader from "@/components/ui/custom/cd-loader";
 
 const fetchDieticians = async (pageIndex, pageSize) => {
   try {
@@ -90,7 +92,7 @@ const deleteDietician = async (id) => {
 };
 
 export default function DieticiansPage() {
-  const [data, setData] = useState({ dieticians: [], total: 0 });
+  const queryClient = useQueryClient();
   const [selectedDietician, setSelectedDietician] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { register, handleSubmit, reset, setValue } = useForm();
@@ -102,7 +104,9 @@ export default function DieticiansPage() {
     pageIndex: 0,
     pageSize: 10,
   });
-  console.log("data", data);
+
+  const { data, isLoading } = useQuery(['dieticians', pagination.pageIndex, pagination.pageSize], () => fetchDieticians(pagination.pageIndex, pagination.pageSize));
+
   const columns: ColumnDef<any>[] = [
     {
       id: "select",
@@ -177,9 +181,9 @@ export default function DieticiansPage() {
   ];
 
   const table = useReactTable({
-    data: data.dieticians,
+    data: data?.data || [],
     columns,
-    pageCount: Math.ceil(data.total / pagination.pageSize),
+    pageCount: Math.ceil(data?.total / pagination.pageSize),
     state: {
       sorting,
       columnFilters,
@@ -198,15 +202,6 @@ export default function DieticiansPage() {
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   });
-
-  const fetchData = async () => {
-    const { data, total } = await fetchDieticians(pagination.pageIndex, pagination.pageSize);
-    setData({ dieticians: data, total });
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [pagination.pageIndex, pagination.pageSize, sorting]);
 
   useEffect(() => {
     if (selectedDietician) {
@@ -227,7 +222,7 @@ export default function DieticiansPage() {
         await createDietician(formData);
         toast.success("Dietician created successfully");
       }
-      await fetchData();
+      queryClient.invalidateQueries('dieticians');
       setDialogOpen(false);
       reset();
       setSelectedDietician(null);
@@ -244,7 +239,7 @@ export default function DieticiansPage() {
     try {
       await axios.delete("/api/admin/dieticians", { data: { ids: selectedIds } });
       toast.success("Selected dieticians deleted successfully");
-      await fetchData();
+      queryClient.invalidateQueries('dieticians');
       setRowSelection({});
     } catch (error) {
       console.error("Error deleting dieticians:", error);
@@ -252,9 +247,19 @@ export default function DieticiansPage() {
     }
   };
 
+  if (isLoading) {
+    return <CdLoader />;
+  }
+
   return (
     <div className="container mx-auto p-4 space-y-4">
       <ToastContainer />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="p-4 border rounded-lg bg-custom-mutedgreen items-end flex flex-col">
+          <h3 className="text-lg font-semibold">Total Dieticians</h3>
+          <p className="text-3xl text-primary">{data?.total || 0}</p>
+        </div>
+      </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Input

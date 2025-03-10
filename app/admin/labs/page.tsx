@@ -48,6 +48,8 @@ import {
 import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useQuery, useMutation, useQueryClient } from 'react-query';
+import CdLoader from "@/components/ui/custom/cd-loader";
 
 const fetchLabs = async (pageIndex, pageSize) => {
   try {
@@ -90,7 +92,7 @@ const deleteLab = async (id) => {
 };
 
 export default function LabsPage() {
-  const [data, setData] = useState({ labs: [], total: 0 });
+  const queryClient = useQueryClient();
   const [selectedLab, setSelectedLab] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { register, handleSubmit, reset, setValue } = useForm();
@@ -102,6 +104,8 @@ export default function LabsPage() {
     pageIndex: 0,
     pageSize: 10,
   });
+
+  const { data, isLoading } = useQuery(['labs', pagination.pageIndex, pagination.pageSize], () => fetchLabs(pagination.pageIndex, pagination.pageSize));
 
   const columns: ColumnDef<any>[] = [
     {
@@ -176,9 +180,9 @@ export default function LabsPage() {
   ];
 
   const table = useReactTable({
-    data: data.labs,
+    data: data?.data || [],
     columns,
-    pageCount: Math.ceil(data.total / pagination.pageSize),
+    pageCount: Math.ceil(data?.total / pagination.pageSize),
     state: {
       sorting,
       columnFilters,
@@ -197,15 +201,6 @@ export default function LabsPage() {
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   });
-
-  const fetchData = async () => {
-    const { data, total } = await fetchLabs(pagination.pageIndex, pagination.pageSize);
-    setData({ labs: data, total });
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [pagination.pageIndex, pagination.pageSize, sorting]);
 
   useEffect(() => {
     if (selectedLab) {
@@ -226,7 +221,7 @@ export default function LabsPage() {
         await createLab(formData);
         toast.success("Lab created successfully");
       }
-      await fetchData();
+      queryClient.invalidateQueries('labs');
       setDialogOpen(false);
       reset();
       setSelectedLab(null);
@@ -243,7 +238,7 @@ export default function LabsPage() {
     try {
       await axios.delete("/api/admin/labs", { data: { ids: selectedIds } });
       toast.success("Selected labs deleted successfully");
-      await fetchData();
+      queryClient.invalidateQueries('labs');
       setRowSelection({});
     } catch (error) {
       console.error("Error deleting labs:", error);
@@ -251,9 +246,19 @@ export default function LabsPage() {
     }
   };
 
+  if (isLoading) {
+    return <CdLoader />;
+  }
+
   return (
     <div className="container mx-auto p-4 space-y-4">
       <ToastContainer />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="p-4 border rounded-lg bg-custom-mutedgreen items-end flex flex-col">
+          <h3 className="text-lg font-semibold">Total Labs</h3>
+          <p className="text-3xl text-primary">{data?.total || 0}</p>
+        </div>
+      </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Input
