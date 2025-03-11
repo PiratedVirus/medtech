@@ -21,14 +21,8 @@ export default function PricingTable() {
           details: "(1 test every 3 months)",
           parameters: "3 Parameters",
         },
-        dieticianConsultation: {
-          count: "-",
-          details: "",
-        },
-        ophthalmologistConsultation: {
-          count: "-",
-          details: "",
-        },
+        dieticianConsultation: { count: "-", details: "" },
+        ophthalmologistConsultation: { count: "-", details: "" },
         medicines: "15% off",
       },
       care: {
@@ -89,14 +83,8 @@ export default function PricingTable() {
           details: "(1 test every 3 months)",
           parameters: "3 Parameters",
         },
-        dieticianConsultation: {
-          count: "-",
-          details: "",
-        },
-        ophthalmologistConsultation: {
-          count: "-",
-          details: "",
-        },
+        dieticianConsultation: { count: "-", details: "" },
+        ophthalmologistConsultation: { count: "-", details: "" },
         medicines: "15% off",
       },
       care: {
@@ -148,37 +136,35 @@ export default function PricingTable() {
 
   const currentPricing = pricingData[duration];
 
-  // We'll define a small array describing which rows to show:
+  // Rows referencing keys in the data
   const rows = [
-    {
-      title: "Doctor Consultation",
-      key: "doctorConsultation",
-    },
+    { title: "Doctor Consultation", key: "doctorConsultation" },
     {
       title: "Lab Tests",
       key: "labTests",
-      showParameters: true, // we show parameters in a second line
+      showParameters: true, // show optional "parameters" line
     },
-    {
-      title: "Dietician Consultation",
-      key: "dieticianConsultation",
-    },
+    { title: "Dietician Consultation", key: "dieticianConsultation" },
     {
       title: "Ophthalmologist Consultation",
       key: "ophthalmologistConsultation",
       extraNote: "At Clinic*",
     },
-    {
-      title: "Medicines",
-      key: "medicines",
-    },
+    { title: "Medicines", key: "medicines" },
   ];
 
+  // Type-guard to safely handle additionalInfo checks
+  const hasAdditionalInfo = (
+    obj: unknown
+  ): obj is { additionalInfo?: string } => {
+    return typeof obj === "object" && obj !== null && "additionalInfo" in obj;
+  };
+
   return (
-    <div className="min-h-screen bg-[#f5f7f9]">
-      {/* Main Content */}
+    <div className="min-h-screen bg-muted">
       <main className="max-w-7xl mx-auto px-4 py-10">
-        {/* Header */}
+
+        {/* Top Header */}
         <div className="flex items-center justify-center h-24">
           <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-4xl font-semibold bg-clip-text text-transparent">
             Care Diabetics Program
@@ -186,21 +172,21 @@ export default function PricingTable() {
         </div>
 
         <p className="text-center text-xl md:text-2xl text-[#2c2e38] mb-8">
-          We offer great <span className="text-[#349c4b]">price</span> plans for
-          the application
+          We offer great <span className="text-[#349c4b]">price</span> plans
+          for the application
         </p>
 
         {/* Duration Toggle */}
         <div className="flex flex-row justify-center items-center mb-10">
           <p className="text-[#627065] mr-3">Choose plan duration</p>
           <div className="relative flex items-center">
-            <div className="flex bg-white rounded-full p-1 border">
+            <div className="flex bg-white rounded-full p-1">
               <button
                 onClick={() => setDuration("6months")}
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
                   duration === "6months"
-                    ? "bg-[#349c4b] text-white"
-                    : "bg-transparent text-[#627065]"
+                    ? "bg-gradient-to-r from-[#134F30] to-[#56A67C] font-bold text-white"
+                    : "text-[#627065]"
                 }`}
               >
                 6 Months
@@ -209,14 +195,14 @@ export default function PricingTable() {
                 onClick={() => setDuration("12months")}
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
                   duration === "12months"
-                    ? "bg-[#349c4b] text-white"
-                    : "bg-transparent text-[#627065]"
+                    ? "bg-gradient-to-r from-[#134F30] to-[#56A67C] font-bold text-white"
+                    : "text-[#627065]"
                 }`}
               >
                 12 Months
               </button>
             </div>
-            {duration === "12months" && (
+            {duration === "6months" && (
               <div className="absolute -right-24 text-xs font-bold text-[#f28a2e]">
                 SAVE UP TO 33%
               </div>
@@ -225,112 +211,142 @@ export default function PricingTable() {
         </div>
 
         {/* Pricing Table */}
+        {/* 
+          1) Center table with mx-auto 
+          2) Use <colgroup> to set the first column width 
+        */}
         <div className="w-full overflow-x-auto">
-          <table className="w-full border-collapse">
+          <table className="table-auto mx-5 border-collapse bg-white rounded-xl">
+            <colgroup>
+              <col className="w-12 bg-muted" /> {/* First column width */}
+              <col className="w-64"/>
+              <col className="w-80"/>
+              <col className="w-64"/>
+            </colgroup>
             <thead>
-              <tr className="border-b">
-                <th className="p-4 bg-white"></th>
-                <th className="p-4 bg-white text-center text-xl">
-                  {currentPricing.basic.name}
+              <tr>
+                {/* Empty top-left cell */}
+                <th className="p-8"></th>
+
+                {/* Basic header with gradient text */}
+                <th className="p-8 text-center">
+                  <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
+                    {currentPricing.basic.name}
+                  </div>
                 </th>
-                <th className="p-4 bg-custom-mutedgreen text-center text-xl">
-                  {currentPricing.care.name}
+
+                {/* Care header with gradient text */}
+                <th className="p-8 text-center bg-custom-mutedgreen">
+                  <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
+                    {currentPricing.care.name}
+                  </div>
                 </th>
-                <th className="p-4 bg-white text-center text-xl">
-                  {currentPricing.carePlus.name}
+
+                {/* Care+ header with gradient text */}
+                <th className="p-8 text-center">
+                  <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
+                    {currentPricing.carePlus.name}
+                  </div>
                 </th>
               </tr>
             </thead>
 
             <tbody>
-              {/* Rows for each service */}
               {rows.map(({ title, key, showParameters, extraNote }) => {
                 const basicData = currentPricing.basic[key];
                 const careData = currentPricing.care[key];
                 const carePlusData = currentPricing.carePlus[key];
 
-                // Because some keys (labTests) have extra fields (parameters) or additional lines
-                // we’ll conditionally render them below:
-
                 return (
-                  <tr key={key} className="border-b">
-                    {/* Service Title column */}
-                    <td className="p-4 align-top">
-                      <div className="text-[#134F30] font-semibold">
+                  <tr key={key}>
+                    {/* First column (service name) with gradient text */}
+                    <td className="p-8 align-top">
+                      <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-xl font-semibold bg-clip-text text-transparent">
                         {title}
                       </div>
                       {extraNote && (
-                        <div className="text-xs text-[#349c4b]">{extraNote}</div>
+                        <div className="text-xs text-[#349c4b] italic">{extraNote}</div>
                       )}
                     </td>
 
-                    {/* BASIC Column */}
-                    <td className="p-4 text-center align-top">
-                      <div className="font-bold">
-                        {basicData.count || basicData}
+                    {/* Basic Column */}
+                    <td className="p-8 text-center align-top">
+                      <div className="font-bold text-lg">
+                        {typeof basicData === "object"
+                          ? basicData.count
+                          : basicData}
                       </div>
-                      {basicData.details && (
-                        <div className="text-xs text-gray-500">
+                      {typeof basicData === "object" && basicData.details && (
+                        <div className="text-sm text-gray-500 italic">
                           {basicData.details}
                         </div>
                       )}
-                      {/* Optional parameters line */}
-                      {showParameters && basicData.parameters && (
-                        <div className="text-sm text-[#349c4b] mt-1">
-                          {basicData.parameters}
-                        </div>
-                      )}
+                      {showParameters &&
+                        typeof basicData === "object" &&
+                        basicData.parameters && (
+                          <div className="text-sm text-[#349c4b] mt-1">
+                            {basicData.parameters}
+                          </div>
+                        )}
                     </td>
 
-                    {/* CARE Column */}
-                    <td className="p-4 text-center align-top bg-custom-mutedgreen">
-                      <div className="font-bold">
-                        {careData.count || careData}
+                    {/* Care Column */}
+                    <td className="p-8 text-center align-top bg-custom-mutedgreen">
+                      <div className="font-bold text-lg">
+                        {typeof careData === "object" ? careData.count : careData}
                       </div>
-                      {careData.details && (
-                        <div className="text-xs text-gray-500">
+                      {typeof careData === "object" && careData.details && (
+                        <div className="text-sm text-gray-500 italic">
                           {careData.details}
                         </div>
                       )}
-                      {/* Some items have "additionalInfo"—we can show it if present */}
-{/* CARE Column */}
-{typeof careData === "object" && "additionalInfo" in careData && careData.additionalInfo && (
-  <div className="text-xs text-gray-500">
-    {careData.additionalInfo}
-  </div>
-)}
-                      {showParameters && careData.parameters && (
-                        <div className="text-sm text-[#349c4b] mt-1">
-                          {careData.parameters}
-                        </div>
-                      )}
+                      {typeof careData === "object" &&
+                        hasAdditionalInfo(careData) &&
+                        careData.additionalInfo && (
+                          <div className="text-sm text-gray-500 italic">
+                            {careData.additionalInfo}
+                          </div>
+                        )}
+                      {showParameters &&
+                        typeof careData === "object" &&
+                        careData.parameters && (
+                          <div className="text-sm text-[#349c4b] mt-1">
+                            {careData.parameters}
+                          </div>
+                        )}
                     </td>
 
-                    {/* CARE+ Column */}
-                    <td className="p-4 text-center align-top">
-                      <div className="font-bold">
-                        {carePlusData.count || carePlusData}
+                    {/* Care+ Column */}
+                    <td className="p-8 text-center align-top">
+                      <div className="font-bold text-lg">
+                        {typeof carePlusData === "object"
+                          ? carePlusData.count
+                          : carePlusData}
                       </div>
-                      {carePlusData.details && (
-                        <div className="text-xs text-gray-500">
-                          {carePlusData.details}
-                        </div>
-                      )}
-                      {showParameters && carePlusData.parameters && (
-                        <div className="text-sm text-[#349c4b] mt-1">
-                          {carePlusData.parameters}
-                        </div>
-                      )}
+                      {typeof carePlusData === "object" &&
+                        carePlusData.details && (
+                          <div className="italic text-sm text-gray-500">
+                            {carePlusData.details}
+                          </div>
+                        )}
+                      {showParameters &&
+                        typeof carePlusData === "object" &&
+                        carePlusData.parameters && (
+                          <div className="text-sm text-[#349c4b] mt-1">
+                            {carePlusData.parameters}
+                          </div>
+                        )}
                     </td>
                   </tr>
                 );
               })}
-
-              {/* Final row: Plan Pricing + “Get Started” buttons */}
+              {/* Final row: Pricing & Buttons */}
               <tr>
-                <td className="p-4"></td>
-                {/* BASIC price & button */}
-                <td className="p-6 text-center">
+                {/* Empty cell first column */}
+                <td className="p-8"></td>
+
+                {/* Basic Price & Button */}
+                <td className="p-8 text-center align-top">
                   <div className="text-2xl font-bold mb-4">
                     {currentPricing.basic.price}
                   </div>
@@ -342,8 +358,8 @@ export default function PricingTable() {
                   </Button>
                 </td>
 
-                {/* CARE price & button */}
-                <td className="p-6 text-center bg-custom-mutedgreen">
+                {/* Care Price & Button */}
+                <td className="p-8 text-center align-top bg-custom-mutedgreen">
                   <div className="text-2xl font-bold mb-4">
                     {currentPricing.care.price}
                   </div>
@@ -352,8 +368,8 @@ export default function PricingTable() {
                   </Button>
                 </td>
 
-                {/* CARE+ price & button */}
-                <td className="p-6 text-center">
+                {/* Care+ Price & Button */}
+                <td className="p-8 text-center align-top">
                   <div className="text-2xl font-bold mb-4">
                     {currentPricing.carePlus.price}
                   </div>
