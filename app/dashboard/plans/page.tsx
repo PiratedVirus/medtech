@@ -6,137 +6,189 @@ import { Button } from "@/components/ui/button";
 export default function PricingTable() {
   const [duration, setDuration] = useState<"6months" | "12months">("6months");
 
-  // Pricing data for both durations
+  /**
+   * Numeric-based pricing data, similar to an API response.
+   * We remove strings like "2 consultations" or "(1 consultation every 3 months)"
+   * and store only numeric values. The JSX below reconstructs the display text.
+   */
   const pricingData = {
     "6months": {
       basic: {
         name: "Basic",
-        price: "Rs.2599/-",
+        price: 2599, // numeric only
         doctorConsultation: {
-          count: "2 consultations",
-          details: "(1 consultation every 3 months)",
+          totalConsultations: 2,
+          frequencyPerInterval: 1,
+          intervalInMonths: 3,
         },
         labTests: {
-          count: "2 Tests",
-          details: "(1 test every 3 months)",
-          parameters: "3 Parameters",
+          totalTests: 2,
+          frequencyPerInterval: 1,
+          intervalInMonths: 3,
+          parameters: 3,
         },
-        dieticianConsultation: { count: "-", details: "" },
-        ophthalmologistConsultation: { count: "-", details: "" },
-        medicines: "15% off",
+        dieticianConsultation: {
+          totalConsultations: 0,
+          frequencyPerInterval: 0,
+          intervalInMonths: 0,
+        },
+        ophthalmologistConsultation: {
+          totalConsultations: 0,
+          frequencyPerInterval: 0,
+          intervalInMonths: 0,
+        },
+        medicines: {
+          discount: 15, // 15% off
+        },
       },
       care: {
         name: "CARE",
-        price: "Rs.5999/-",
+        price: 5999,
         doctorConsultation: {
-          count: "2 consultations",
-          details: "(1 consultation every 3 months)",
+          totalConsultations: 2,
+          frequencyPerInterval: 1,
+          intervalInMonths: 3,
         },
         labTests: {
-          count: "2 Tests",
-          details: "(1 complete blood and urine test + 1FBS, HbA1c, 2 hr PP)",
-          parameters: "60 parameters",
+          totalTests: 2,
+          frequencyPerInterval: 1,
+          intervalInMonths: 3,
+          parameters: 60,
         },
         dieticianConsultation: {
-          count: "2 consultations",
-          details: "(1 consultation every 3 months)",
+          totalConsultations: 2,
+          frequencyPerInterval: 1,
+          intervalInMonths: 3,
         },
         ophthalmologistConsultation: {
-          count: "1 consultation",
-          details: "(1 consultation in 6 months)",
+          totalConsultations: 1,
+          frequencyPerInterval: 1,
+          intervalInMonths: 6,
         },
-        medicines: "25% off",
+        medicines: {
+          discount: 25,
+        },
       },
       carePlus: {
         name: "CARE+",
-        price: "Rs.9999/-",
+        price: 9999,
         doctorConsultation: {
-          count: "4 consultations",
-          details: "(2 consultations every 3 months)",
+          totalConsultations: 4,
+          frequencyPerInterval: 2,
+          intervalInMonths: 3,
         },
         labTests: {
-          count: "2 Tests",
-          details: "(1 complete blood and urine test every 3 months)",
-          parameters: "80 parameters",
+          totalTests: 2,
+          frequencyPerInterval: 1,
+          intervalInMonths: 3,
+          parameters: 80,
         },
         dieticianConsultation: {
-          count: "4 consultations",
-          details: "(2 consultations every 3 months)",
+          totalConsultations: 4,
+          frequencyPerInterval: 2,
+          intervalInMonths: 3,
         },
         ophthalmologistConsultation: {
-          count: "1 consultation",
-          details: "(1 consultation in 6 months)",
+          totalConsultations: 1,
+          frequencyPerInterval: 1,
+          intervalInMonths: 6,
         },
-        medicines: "35% off",
+        medicines: {
+          discount: 35,
+        },
       },
     },
     "12months": {
       basic: {
         name: "Basic",
-        price: "Rs.4999/-",
+        price: 4999,
         doctorConsultation: {
-          count: "4 consultations",
-          details: "(1 consultation every 3 months)",
+          totalConsultations: 4,
+          frequencyPerInterval: 1,
+          intervalInMonths: 3,
         },
         labTests: {
-          count: "4 Tests",
-          details: "(1 test every 3 months)",
-          parameters: "3 Parameters",
+          totalTests: 4,
+          frequencyPerInterval: 1,
+          intervalInMonths: 3,
+          parameters: 3,
         },
-        dieticianConsultation: { count: "-", details: "" },
-        ophthalmologistConsultation: { count: "-", details: "" },
-        medicines: "15% off",
+        dieticianConsultation: {
+          totalConsultations: 0,
+          frequencyPerInterval: 0,
+          intervalInMonths: 0,
+        },
+        ophthalmologistConsultation: {
+          totalConsultations: 0,
+          frequencyPerInterval: 0,
+          intervalInMonths: 0,
+        },
+        medicines: {
+          discount: 15,
+        },
       },
       care: {
         name: "CARE",
-        price: "Rs.10999/-",
+        price: 10999,
         doctorConsultation: {
-          count: "4 consultations",
-          details: "(1 consultation every 3 months)",
+          totalConsultations: 4,
+          frequencyPerInterval: 1,
+          intervalInMonths: 3,
         },
         labTests: {
-          count: "4 Tests",
-          details: "(1 complete blood and urine test + 1FBS, HbA1c, 2 hr PP)",
-          parameters: "60 parameters",
+          totalTests: 4,
+          frequencyPerInterval: 1,
+          intervalInMonths: 3,
+          parameters: 60,
         },
         dieticianConsultation: {
-          count: "4 consultations",
-          details: "(1 consultation every 3 months)",
+          totalConsultations: 4,
+          frequencyPerInterval: 1,
+          intervalInMonths: 3,
         },
         ophthalmologistConsultation: {
-          count: "2 consultations",
-          details: "(1 consultation in 6 months)",
+          totalConsultations: 2,
+          frequencyPerInterval: 1,
+          intervalInMonths: 6,
         },
-        medicines: "25% off",
+        medicines: {
+          discount: 25,
+        },
       },
       carePlus: {
         name: "CARE+",
-        price: "Rs.18999/-",
+        price: 18999,
         doctorConsultation: {
-          count: "8 consultations",
-          details: "(2 consultations every 3 months)",
+          totalConsultations: 8,
+          frequencyPerInterval: 2,
+          intervalInMonths: 3,
         },
         labTests: {
-          count: "4 Tests",
-          details: "(1 complete blood and urine test every 3 months)",
-          parameters: "80 parameters",
+          totalTests: 4,
+          frequencyPerInterval: 1,
+          intervalInMonths: 3,
+          parameters: 80,
         },
         dieticianConsultation: {
-          count: "8 consultations",
-          details: "(2 consultations every 3 months)",
+          totalConsultations: 8,
+          frequencyPerInterval: 2,
+          intervalInMonths: 3,
         },
         ophthalmologistConsultation: {
-          count: "2 consultations",
-          details: "(1 consultation in 6 months)",
+          totalConsultations: 2,
+          frequencyPerInterval: 1,
+          intervalInMonths: 6,
         },
-        medicines: "35% off",
+        medicines: {
+          discount: 35,
+        },
       },
     },
   };
 
   const currentPricing = pricingData[duration];
 
-  // Rows referencing keys in the data
+  // We define the "rows" we want to render in the table
   const rows = [
     { title: "Doctor Consultation", key: "doctorConsultation" },
     {
@@ -153,17 +205,50 @@ export default function PricingTable() {
     { title: "Medicines", key: "medicines" },
   ];
 
-  // Type-guard to safely handle additionalInfo checks
-  const hasAdditionalInfo = (
-    obj: unknown
-  ): obj is { additionalInfo?: string } => {
-    return typeof obj === "object" && obj !== null && "additionalInfo" in obj;
+  // Helper to format the “consultation/tests” lines
+  const formatConsultationLine = (
+    total: number,
+    frequency: number,
+    interval: number,
+    singularLabel: string,
+    pluralLabel: string
+  ) => {
+    // If total is 0, we treat it as “not available”
+    if (!total) return "-";
+
+    // e.g. “2 consultations”
+    const totalString = `${total} ${total > 1 ? pluralLabel : singularLabel}`;
+
+    // If frequency > 0, e.g. “(1 consultation every 3 months)”
+    if (frequency > 0 && interval > 0) {
+      const freqString = `${frequency} ${
+        frequency > 1 ? pluralLabel : singularLabel
+      } every ${interval} month${interval > 1 ? "s" : ""}`;
+      return (
+        <>
+          <div className="font-bold text-lg">{totalString}</div>
+          <div className="text-sm text-gray-500 italic">({freqString})</div>
+        </>
+      );
+    } else {
+      return <div className="font-bold text-lg">{totalString}</div>;
+    }
+  };
+
+  // Helper to format medicines discount
+  const formatMedicines = (discount: number) => {
+    return discount > 0 ? `${discount}% off` : "-";
+  };
+
+  // Helper to format lab parameters
+  const formatParameters = (parameters: number | undefined) => {
+    if (!parameters) return null;
+    return <div className="text-sm text-[#349c4b] mt-1">{parameters} Parameters</div>;
   };
 
   return (
     <div className="min-h-screen bg-muted">
       <main className="max-w-7xl mx-auto px-4 py-10">
-
         {/* Top Header */}
         <div className="flex items-center justify-center h-24">
           <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-4xl font-semibold bg-clip-text text-transparent">
@@ -185,41 +270,37 @@ export default function PricingTable() {
             <div className="flex bg-white rounded-full p-1">
               <button
                 onClick={() => setDuration("6months")}
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${duration === "6months"
+                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
+                  duration === "6months"
                     ? "bg-gradient-to-r from-[#134F30] to-[#56A67C] font-bold text-white"
                     : "text-[#627065]"
-                  }`}
+                }`}
               >
                 6 Months
               </button>
               <button
                 onClick={() => setDuration("12months")}
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${duration === "12months"
+                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
+                  duration === "12months"
                     ? "bg-gradient-to-r from-[#134F30] to-[#56A67C] font-bold text-white"
                     : "text-[#627065]"
-                  }`}
+                }`}
               >
                 12 Months
               </button>
             </div>
           </div>
 
-          {/* Save Up to 33% - Now Positioned Just Below 12 Months Button */}
-          
           <div className="h-5 mt-2 text-xs font-bold text-[#f28a2e] text-center">
             {duration === "6months" ? "SAVE UP TO 33% ON 12 MONTHS PLAN" : ""}
           </div>
         </div>
 
         {/* Pricing Table */}
-        {/* 
-          1) Center table with mx-auto 
-          2) Use <colgroup> to set the first column width 
-        */}
         <div className="w-full overflow-x-auto mt-3">
           <table className="table-auto mx-5 border-collapse bg-white rounded-xl">
             <colgroup>
-              <col className="w-12 bg-muted" /> {/* First column width */}
+              <col className="w-12 bg-muted" />
               <col className="w-64" />
               <col className="w-80" />
               <col className="w-64" />
@@ -229,21 +310,21 @@ export default function PricingTable() {
                 {/* Empty top-left cell */}
                 <th className="p-8"></th>
 
-                {/* Basic header with gradient text */}
+                {/* Basic header */}
                 <th className="p-8 text-center">
                   <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
                     {currentPricing.basic.name}
                   </div>
                 </th>
 
-                {/* Care header with gradient text */}
+                {/* Care header */}
                 <th className="p-8 text-center bg-custom-mutedgreen">
                   <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
                     {currentPricing.care.name}
                   </div>
                 </th>
 
-                {/* Care+ header with gradient text */}
+                {/* Care+ header */}
                 <th className="p-8 text-center">
                   <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
                     {currentPricing.carePlus.name}
@@ -260,83 +341,108 @@ export default function PricingTable() {
 
                 return (
                   <tr key={key}>
-                    {/* First column (service name) with gradient text */}
+                    {/* First column: feature name */}
                     <td className="p-8 align-top">
                       <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-xl font-semibold bg-clip-text text-transparent">
                         {title}
                       </div>
                       {extraNote && (
-                        <div className="text-xs text-[#349c4b] italic">{extraNote}</div>
+                        <div className="text-xs text-[#349c4b] italic">
+                          {extraNote}
+                        </div>
                       )}
                     </td>
 
                     {/* Basic Column */}
                     <td className="p-8 text-center align-top">
-                      <div className="font-bold text-lg">
-                        {typeof basicData === "object"
-                          ? basicData.count
-                          : basicData}
-                      </div>
-                      {typeof basicData === "object" && basicData.details && (
-                        <div className="text-sm text-gray-500 italic">
-                          {basicData.details}
+                      {key === "medicines" ? (
+                        // For medicines, we display discount
+                        <div className="font-bold text-lg">
+                          {formatMedicines(basicData.discount)}
                         </div>
+                      ) : key === "labTests" ? (
+                        <>
+                          {formatConsultationLine(
+                            basicData.totalTests,
+                            basicData.frequencyPerInterval,
+                            basicData.intervalInMonths,
+                            "test",
+                            "tests"
+                          )}
+                          {showParameters && formatParameters(basicData.parameters)}
+                        </>
+                      ) : (
+                        <>
+                          {formatConsultationLine(
+                            basicData.totalConsultations,
+                            basicData.frequencyPerInterval,
+                            basicData.intervalInMonths,
+                            "consultation",
+                            "consultations"
+                          )}
+                        </>
                       )}
-                      {showParameters &&
-                        typeof basicData === "object" &&
-                        basicData.parameters && (
-                          <div className="text-sm text-[#349c4b] mt-1">
-                            {basicData.parameters}
-                          </div>
-                        )}
                     </td>
 
                     {/* Care Column */}
                     <td className="p-8 text-center align-top bg-custom-mutedgreen">
-                      <div className="font-bold text-lg">
-                        {typeof careData === "object" ? careData.count : careData}
-                      </div>
-                      {typeof careData === "object" && careData.details && (
-                        <div className="text-sm text-gray-500 italic">
-                          {careData.details}
+                      {key === "medicines" ? (
+                        <div className="font-bold text-lg">
+                          {formatMedicines(careData.discount)}
                         </div>
+                      ) : key === "labTests" ? (
+                        <>
+                          {formatConsultationLine(
+                            careData.totalTests,
+                            careData.frequencyPerInterval,
+                            careData.intervalInMonths,
+                            "test",
+                            "tests"
+                          )}
+                          {showParameters && formatParameters(careData.parameters)}
+                        </>
+                      ) : (
+                        <>
+                          {formatConsultationLine(
+                            careData.totalConsultations,
+                            careData.frequencyPerInterval,
+                            careData.intervalInMonths,
+                            "consultation",
+                            "consultations"
+                          )}
+                        </>
                       )}
-                      {typeof careData === "object" &&
-                        hasAdditionalInfo(careData) &&
-                        careData.additionalInfo && (
-                          <div className="text-sm text-gray-500 italic">
-                            {careData.additionalInfo}
-                          </div>
-                        )}
-                      {showParameters &&
-                        typeof careData === "object" &&
-                        careData.parameters && (
-                          <div className="text-sm text-[#349c4b] mt-1">
-                            {careData.parameters}
-                          </div>
-                        )}
                     </td>
 
                     {/* Care+ Column */}
                     <td className="p-8 text-center align-top">
-                      <div className="font-bold text-lg">
-                        {typeof carePlusData === "object"
-                          ? carePlusData.count
-                          : carePlusData}
-                      </div>
-                      {typeof carePlusData === "object" &&
-                        carePlusData.details && (
-                          <div className="italic text-sm text-gray-500">
-                            {carePlusData.details}
-                          </div>
-                        )}
-                      {showParameters &&
-                        typeof carePlusData === "object" &&
-                        carePlusData.parameters && (
-                          <div className="text-sm text-[#349c4b] mt-1">
-                            {carePlusData.parameters}
-                          </div>
-                        )}
+                      {key === "medicines" ? (
+                        <div className="font-bold text-lg">
+                          {formatMedicines(carePlusData.discount)}
+                        </div>
+                      ) : key === "labTests" ? (
+                        <>
+                          {formatConsultationLine(
+                            carePlusData.totalTests,
+                            carePlusData.frequencyPerInterval,
+                            carePlusData.intervalInMonths,
+                            "test",
+                            "tests"
+                          )}
+                          {showParameters &&
+                            formatParameters(carePlusData.parameters)}
+                        </>
+                      ) : (
+                        <>
+                          {formatConsultationLine(
+                            carePlusData.totalConsultations,
+                            carePlusData.frequencyPerInterval,
+                            carePlusData.intervalInMonths,
+                            "consultation",
+                            "consultations"
+                          )}
+                        </>
+                      )}
                     </td>
                   </tr>
                 );
@@ -349,7 +455,7 @@ export default function PricingTable() {
                 {/* Basic Price & Button */}
                 <td className="p-8 text-center align-top">
                   <div className="text-2xl font-bold mb-4">
-                    {currentPricing.basic.price}
+                    Rs.{currentPricing.basic.price}/-
                   </div>
                   <Button
                     variant="outline"
@@ -362,7 +468,7 @@ export default function PricingTable() {
                 {/* Care Price & Button */}
                 <td className="p-8 text-center align-top bg-custom-mutedgreen">
                   <div className="text-2xl font-bold mb-4">
-                    {currentPricing.care.price}
+                    Rs.{currentPricing.care.price}/-
                   </div>
                   <Button className="w-full bg-[#f28a2e] hover:bg-[#e07a1e] text-white">
                     Get Started
@@ -372,7 +478,7 @@ export default function PricingTable() {
                 {/* Care+ Price & Button */}
                 <td className="p-8 text-center align-top">
                   <div className="text-2xl font-bold mb-4">
-                    {currentPricing.carePlus.price}
+                    Rs.{currentPricing.carePlus.price}/-
                   </div>
                   <Button
                     variant="outline"

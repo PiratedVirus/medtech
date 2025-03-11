@@ -293,3 +293,39 @@ model LabBooking {
 
   @@index([deletedAt])
 }
+model Plan {
+  id                  Int       @id @default(autoincrement())
+  name                String    // e.g. "Basic", "Care+"
+  duration            String    // e.g. "6 Months", "12 Months"
+  price               Decimal?  @db.Decimal(10, 2)
+  discountPercentage  Int?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  // Relationship: each Plan can have many PlanFeatures
+  planFeatures        PlanFeature[]
+
+  @@index([deletedAt])
+}
+
+model PlanFeature {
+  id                     Int       @id @default(autoincrement())
+  planId                 Int
+  featureName            String    // e.g. "Doctor Consultation", "Lab Tests", etc.
+
+  // Instead of a single “frequency” string, we store numeric frequency data:
+  occurrencesPerInterval Int?      // e.g. "2" for "2 times every X months"
+  intervalInMonths       Int?      // e.g. "5" for "every 5 months"
+  
+  parameters             Int?      // e.g. number of lab parameters
+  notes                  String?   // Free-form text if needed
+
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  deletedAt              DateTime?
+
+  plan                   Plan      @relation(fields: [planId], references: [id])
+
+  @@index([deletedAt])
+}
