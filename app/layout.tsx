@@ -9,6 +9,7 @@ import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persist
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { useState, useEffect } from "react";
 import { initializeUserProfile } from "@/store/userSlice"; // Update this path as needed
+import CdLoader from '@/components/ui/custom/cd-loader';
 
 const lato = Lato({
   subsets: ['latin'],
@@ -35,7 +36,7 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
 
   if (!isReady) {
     // Return a simple loading state or skeleton
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <CdLoader />;
   }
 
   return (

@@ -228,23 +228,4 @@ export async function DELETE(request: Request) {
   }
 }
 
-// Endpoint to fetch available slots for a specific doctor
-export async function GET_AVAILABLE_SLOTS(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const doctorId = parseInt(searchParams.get("doctorId") || "0");
 
-    if (!doctorId) {
-      return NextResponse.json({ error: "Doctor ID is required" }, { status: 400 });
-    }
-
-    const availableSlots = await prisma.doctorAvailability.findMany({
-      where: { doctorId, status: "available" },
-      select: { id: true, date: true, startTime: true, endTime: true },
-    });
-
-    return NextResponse.json({ data: availableSlots });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch available slots" }, { status: 500 });
-  }
-}
