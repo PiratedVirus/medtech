@@ -177,36 +177,37 @@ export default function PricingTable() {
         </p>
 
         {/* Duration Toggle */}
-        <div className="flex flex-row justify-center items-center mb-10">
-          <p className="text-[#627065] mr-3">Choose plan duration</p>
+        <div className="flex flex-col items-center mb-5">
+          <p className="text-[#627065] mr-3 my-2">Choose plan duration</p>
+
+          {/* Toggle Container */}
           <div className="relative flex items-center">
             <div className="flex bg-white rounded-full p-1">
               <button
                 onClick={() => setDuration("6months")}
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                  duration === "6months"
+                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${duration === "6months"
                     ? "bg-gradient-to-r from-[#134F30] to-[#56A67C] font-bold text-white"
                     : "text-[#627065]"
-                }`}
+                  }`}
               >
                 6 Months
               </button>
               <button
                 onClick={() => setDuration("12months")}
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                  duration === "12months"
+                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${duration === "12months"
                     ? "bg-gradient-to-r from-[#134F30] to-[#56A67C] font-bold text-white"
                     : "text-[#627065]"
-                }`}
+                  }`}
               >
                 12 Months
               </button>
             </div>
-            {duration === "6months" && (
-              <div className="absolute -right-24 text-xs font-bold text-[#f28a2e]">
-                SAVE UP TO 33%
-              </div>
-            )}
+          </div>
+
+          {/* Save Up to 33% - Now Positioned Just Below 12 Months Button */}
+          
+          <div className="h-5 mt-2 text-xs font-bold text-[#f28a2e] text-center">
+            {duration === "6months" ? "SAVE UP TO 33% ON 12 MONTHS PLAN" : ""}
           </div>
         </div>
 
@@ -215,13 +216,13 @@ export default function PricingTable() {
           1) Center table with mx-auto 
           2) Use <colgroup> to set the first column width 
         */}
-        <div className="w-full overflow-x-auto">
+        <div className="w-full overflow-x-auto mt-3">
           <table className="table-auto mx-5 border-collapse bg-white rounded-xl">
             <colgroup>
               <col className="w-12 bg-muted" /> {/* First column width */}
-              <col className="w-64"/>
-              <col className="w-80"/>
-              <col className="w-64"/>
+              <col className="w-64" />
+              <col className="w-80" />
+              <col className="w-64" />
             </colgroup>
             <thead>
               <tr>
