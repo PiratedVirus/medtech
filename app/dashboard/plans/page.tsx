@@ -171,7 +171,7 @@ export default function PricingTable() {
           </div>
         </div>
 
-        <p className="text-center text-xl md:text-2xl text-[#2c2e38] mb-8">
+        <p className="text-center text-2xl md:text-2xl text-[#2c2e38] mb-8">
           We offer great <span className="text-[#349c4b]">price</span> plans
           for the application
         </p>
