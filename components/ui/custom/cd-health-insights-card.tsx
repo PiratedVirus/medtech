@@ -50,11 +50,11 @@ export default function HealthInsightsCard({
         </div>
       </div>
 
-      <div className="h-[100px]">
+      <div className="h-20">
         <AreaChart
           lineColor={color}
           data={data}
-          className="h-[100px]"
+          className="h-20"
           showXAxis={false}
           showYAxis={false}
           showGridLines={false}
