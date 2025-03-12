@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useProfile } from "@/hooks/context/ProfileContext";
 import { HomeAppointmentOverview } from "@/patients/home/HomeAppointmentOverview";
+import { PlanUsageMinimal } from "@/components/patients/plans/PlanUsage";
 
 export default function HomeOverview() {
   const { profile } = useProfile();
@@ -42,22 +43,17 @@ export default function HomeOverview() {
               <span className="bg-gradient-to-r from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
                 CARE+
               </span>
+              {" "} Usage
             </h2>
-            <h3 className="text-[24px] text-[#146356] pt-5">
-              Get the medicines up to 30% off
-            </h3>
-            <p className="text-muted-foreground max-w-sm">
-              Diabetologist Consultation - 2, Lab Test - 2, Free Ophthalmologist
-              Clinic Consult - 6 Months - 1 visit, 12 Months - 2 visits
-            </p>
+            <PlanUsageMinimal userId={4} />
           </div>
 
-          <Button className="h-[51px] w-[267px] rounded-[59px]  text-white hover:bg-popover">
+          {/* <Button className="h-[51px] w-[267px] rounded-[59px]  text-white hover:bg-popover">
             <span className="mr-2">Buy Care Diabetics Care+</span>
             <ArrowRight className="h-5 w-5" />
-          </Button>
+          </Button> */}
 
-          <div className="flex gap-6 mt-auto">
+          {/* <div className="flex gap-6 mt-auto">
             <Card className="flex-1 w-64 bg-[#E5F5F1]">
               <CardContent className="flex gap-4 p-4">
                 <img
@@ -93,7 +89,7 @@ export default function HomeOverview() {
                 <p className="text-sm font-medium">Other plans</p>
               </CardContent>
             </Card>
-          </div>
+          </div> */}
         </div>
 
         {/* Right Section - Appointment & Apps */}
