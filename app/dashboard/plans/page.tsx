@@ -2,210 +2,90 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import axios from "axios";
+import { loadRazorpay } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { useDecryptedProfile } from "@/hooks/use-profile";
+import SuccessModal from "@/components/ui/custom/cd-success-modal";
+import { useQuery } from "@tanstack/react-query";
+import CdLoader from "@/components/ui/custom/cd-loader";
+import PlanUsage from "@/components/patients/plans/PlanUsage";
 
 export default function PricingTable() {
   const [duration, setDuration] = useState<"6months" | "12months">("6months");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  const router = useRouter();
+  const { clinicId, profile, isLoading: profileLoading } = useDecryptedProfile();
+  const userId = profile?.id;
   /**
-   * Numeric-based pricing data, similar to an API response.
-   * We remove strings like "2 consultations" or "(1 consultation every 3 months)"
-   * and store only numeric values. The JSX below reconstructs the display text.
+   * 1) Fetch plan data from your /api/plans endpoint
+   *    We expect a response of shape:
+   *    {
+   *      success: true,
+   *      pricingData: {
+   *        "6months": { basic: {...}, care: {...}, carePlus: {...} },
+   *        "12months": { ... }
+   *      },
+   *      alreadySubscribed: boolean
+   *    }
    */
-  const pricingData = {
-    "6months": {
-      basic: {
-        name: "Basic",
-        price: 2599, // numeric only
-        doctorConsultation: {
-          totalConsultations: 2,
-          frequencyPerInterval: 1,
-          intervalInMonths: 3,
-        },
-        labTests: {
-          totalTests: 2,
-          frequencyPerInterval: 1,
-          intervalInMonths: 3,
-          parameters: 3,
-        },
-        dieticianConsultation: {
-          totalConsultations: 0,
-          frequencyPerInterval: 0,
-          intervalInMonths: 0,
-        },
-        ophthalmologistConsultation: {
-          totalConsultations: 0,
-          frequencyPerInterval: 0,
-          intervalInMonths: 0,
-        },
-        medicines: {
-          discount: 15, // 15% off
-        },
-      },
-      care: {
-        name: "CARE",
-        price: 5999,
-        doctorConsultation: {
-          totalConsultations: 2,
-          frequencyPerInterval: 1,
-          intervalInMonths: 3,
-        },
-        labTests: {
-          totalTests: 2,
-          frequencyPerInterval: 1,
-          intervalInMonths: 3,
-          parameters: 60,
-        },
-        dieticianConsultation: {
-          totalConsultations: 2,
-          frequencyPerInterval: 1,
-          intervalInMonths: 3,
-        },
-        ophthalmologistConsultation: {
-          totalConsultations: 1,
-          frequencyPerInterval: 1,
-          intervalInMonths: 6,
-        },
-        medicines: {
-          discount: 25,
-        },
-      },
-      carePlus: {
-        name: "CARE+",
-        price: 9999,
-        doctorConsultation: {
-          totalConsultations: 4,
-          frequencyPerInterval: 2,
-          intervalInMonths: 3,
-        },
-        labTests: {
-          totalTests: 2,
-          frequencyPerInterval: 1,
-          intervalInMonths: 3,
-          parameters: 80,
-        },
-        dieticianConsultation: {
-          totalConsultations: 4,
-          frequencyPerInterval: 2,
-          intervalInMonths: 3,
-        },
-        ophthalmologistConsultation: {
-          totalConsultations: 1,
-          frequencyPerInterval: 1,
-          intervalInMonths: 6,
-        },
-        medicines: {
-          discount: 35,
-        },
-      },
+  const {
+    data: plansResponse,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["plans"],
+    queryFn: async () => {
+      if (!clinicId) return null; // or return a default shape
+      const response = await axios.get(`/api/plans?userId=${userId}`, { withCredentials: true });
+      return response.data; // e.g. { success, pricingData, alreadySubscribed }
     },
-    "12months": {
-      basic: {
-        name: "Basic",
-        price: 4999,
-        doctorConsultation: {
-          totalConsultations: 4,
-          frequencyPerInterval: 1,
-          intervalInMonths: 3,
-        },
-        labTests: {
-          totalTests: 4,
-          frequencyPerInterval: 1,
-          intervalInMonths: 3,
-          parameters: 3,
-        },
-        dieticianConsultation: {
-          totalConsultations: 0,
-          frequencyPerInterval: 0,
-          intervalInMonths: 0,
-        },
-        ophthalmologistConsultation: {
-          totalConsultations: 0,
-          frequencyPerInterval: 0,
-          intervalInMonths: 0,
-        },
-        medicines: {
-          discount: 15,
-        },
-      },
-      care: {
-        name: "CARE",
-        price: 10999,
-        doctorConsultation: {
-          totalConsultations: 4,
-          frequencyPerInterval: 1,
-          intervalInMonths: 3,
-        },
-        labTests: {
-          totalTests: 4,
-          frequencyPerInterval: 1,
-          intervalInMonths: 3,
-          parameters: 60,
-        },
-        dieticianConsultation: {
-          totalConsultations: 4,
-          frequencyPerInterval: 1,
-          intervalInMonths: 3,
-        },
-        ophthalmologistConsultation: {
-          totalConsultations: 2,
-          frequencyPerInterval: 1,
-          intervalInMonths: 6,
-        },
-        medicines: {
-          discount: 25,
-        },
-      },
-      carePlus: {
-        name: "CARE+",
-        price: 18999,
-        doctorConsultation: {
-          totalConsultations: 8,
-          frequencyPerInterval: 2,
-          intervalInMonths: 3,
-        },
-        labTests: {
-          totalTests: 4,
-          frequencyPerInterval: 1,
-          intervalInMonths: 3,
-          parameters: 80,
-        },
-        dieticianConsultation: {
-          totalConsultations: 8,
-          frequencyPerInterval: 2,
-          intervalInMonths: 3,
-        },
-        ophthalmologistConsultation: {
-          totalConsultations: 2,
-          frequencyPerInterval: 1,
-          intervalInMonths: 6,
-        },
-        medicines: {
-          discount: 35,
-        },
-      },
-    },
-  };
+    enabled: !!clinicId, // Only run if clinicId is present
+    staleTime: 10 * 60 * 100,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
 
+  // If data is loading or if user profile is still loading
+  if (isLoading || profileLoading) {
+    return <CdLoader />;
+  }
+
+  // If there's an error fetching
+  if (isError || !plansResponse) {
+    return <div className="p-4">Error fetching plans.</div>;
+  }
+
+  // If server indicates not successful
+  if (!plansResponse.success) {
+    return <div className="p-4">No plan data found.</div>;
+  }
+
+  // If user already subscribed
+  if (plansResponse.alreadySubscribed) {
+    return (
+      <>
+      <div className="flex items-center justify-center bg-muted">
+        <div className="rounded-md shadow-none">
+        {userId && <PlanUsage userId={Number(userId)} />}
+        </div>
+      </div>
+      
+      </>
+    );
+  }
+
+  // Now we safely access the pricingData
+  const pricingData = plansResponse.pricingData;
   const currentPricing = pricingData[duration];
 
-  // We define the "rows" we want to render in the table
-  const rows = [
-    { title: "Doctor Consultation", key: "doctorConsultation" },
-    {
-      title: "Lab Tests",
-      key: "labTests",
-      showParameters: true, // show optional "parameters" line
-    },
-    { title: "Dietician Consultation", key: "dieticianConsultation" },
-    {
-      title: "Ophthalmologist Consultation",
-      key: "ophthalmologistConsultation",
-      extraNote: "At Clinic*",
-    },
-    { title: "Medicines", key: "medicines" },
-  ];
+  // In case the server does not have the chosen duration
+  if (!currentPricing) {
+    return <div className="p-4">No plan data for {duration} found.</div>;
+  }
 
-  // Helper to format the “consultation/tests” lines
+  // Helper to format consultation/tests
   const formatConsultationLine = (
     total: number,
     frequency: number,
@@ -213,13 +93,8 @@ export default function PricingTable() {
     singularLabel: string,
     pluralLabel: string
   ) => {
-    // If total is 0, we treat it as “not available”
     if (!total) return "-";
-
-    // e.g. “2 consultations”
     const totalString = `${total} ${total > 1 ? pluralLabel : singularLabel}`;
-
-    // If frequency > 0, e.g. “(1 consultation every 3 months)”
     if (frequency > 0 && interval > 0) {
       const freqString = `${frequency} ${
         frequency > 1 ? pluralLabel : singularLabel
@@ -235,15 +110,104 @@ export default function PricingTable() {
     }
   };
 
-  // Helper to format medicines discount
   const formatMedicines = (discount: number) => {
     return discount > 0 ? `${discount}% off` : "-";
   };
 
-  // Helper to format lab parameters
-  const formatParameters = (parameters: number | undefined) => {
+  const formatParameters = (parameters?: number) => {
     if (!parameters) return null;
     return <div className="text-sm text-[#349c4b] mt-1">{parameters} Parameters</div>;
+  };
+
+  // The "rows" in the table
+  const rows = [
+    { title: "Doctor Consultation", key: "doctorConsultation" },
+    { title: "Lab Tests", key: "labTests", showParameters: true },
+    { title: "Dietician Consultation", key: "dieticianConsultation" },
+    {
+      title: "Ophthalmologist Consultation",
+      key: "ophthalmologistConsultation",
+      extraNote: "At Clinic*",
+    },
+    { title: "Medicines", key: "medicines" },
+  ];
+
+  // Payment integration
+  const handlePurchasePlan = async (planKey: "basic" | "care" | "carePlus") => {
+    try {
+      const planData = currentPricing[planKey];
+      if (!planData) {
+        alert("Plan not found");
+        return;
+      }
+      const { planId, price } = planData;
+
+      // 1) Create Razorpay order
+      const createOrderRes = await axios.post("/api/payments/create", {
+        amount: price * 100, // convert to paisa
+        currency: "INR",
+        receipt: `plan_${planId}_${Date.now()}`,
+      });
+      if (!createOrderRes.data.success) {
+        alert("Failed to create order: " + createOrderRes.data.error);
+        return;
+      }
+      const { orderId } = createOrderRes.data;
+
+      // 2) Load Razorpay
+      const razorpay = await loadRazorpay();
+      if (!razorpay) {
+        alert("Failed to load payment gateway.");
+        return;
+      }
+
+      // 3) Open the payment popup
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+        amount: price * 100,
+        currency: "INR",
+        name: "Care Diabetic",
+        description: `Plan Purchase: ${planData.name} (${duration})`,
+        order_id: orderId,
+        handler: async function (response: any) {
+          console.log("Payment successful:", response);
+          // 4) Confirm purchase
+          try {
+            const confirmRes = await axios.post("/api/plans/confirmPurchase", {
+              planId,
+              userId: profile?.id,
+              razorpayOrderId: orderId,
+              razorpayPaymentId: response.razorpay_payment_id,
+            });
+            if (confirmRes.data.success) {
+              setShowSuccessModal(true);
+              setTimeout(() => {
+                setShowSuccessModal(false);
+                router.push("/dashboard/appointments");
+              }, 3000);
+            } else {
+              alert("Error confirming purchase: " + confirmRes.data.error);
+            }
+          } catch (err) {
+            console.error("Error confirming purchase:", err);
+            alert("An error occurred while confirming the purchase.");
+          }
+        },
+        prefill: {
+          name: profile?.name || "Test User",
+          email: profile?.email || "test@example.com",
+          contact: profile?.phoneNumber || "9999999911",
+        },
+        theme: { color: "#f28a2e" },
+      };
+
+      // @ts-expect-error
+      const paymentObject = new razorpay(options);
+      paymentObject.open();
+    } catch (error) {
+      console.error("Payment Error:", error);
+      alert("Payment failed. Please try again.");
+    }
   };
 
   return (
@@ -264,8 +228,6 @@ export default function PricingTable() {
         {/* Duration Toggle */}
         <div className="flex flex-col items-center mb-5">
           <p className="text-[#627065] mr-3 my-2">Choose plan duration</p>
-
-          {/* Toggle Container */}
           <div className="relative flex items-center">
             <div className="flex bg-white rounded-full p-1">
               <button
@@ -290,7 +252,6 @@ export default function PricingTable() {
               </button>
             </div>
           </div>
-
           <div className="h-5 mt-2 text-xs font-bold text-[#f28a2e] text-center">
             {duration === "6months" ? "SAVE UP TO 33% ON 12 MONTHS PLAN" : ""}
           </div>
@@ -307,27 +268,20 @@ export default function PricingTable() {
             </colgroup>
             <thead>
               <tr>
-                {/* Empty top-left cell */}
                 <th className="p-8"></th>
-
-                {/* Basic header */}
                 <th className="p-8 text-center">
                   <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
-                    {currentPricing.basic.name}
+                    {currentPricing.basic?.name}
                   </div>
                 </th>
-
-                {/* Care header */}
                 <th className="p-8 text-center bg-custom-mutedgreen">
                   <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
-                    {currentPricing.care.name}
+                    {currentPricing.care?.name}
                   </div>
                 </th>
-
-                {/* Care+ header */}
                 <th className="p-8 text-center">
                   <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
-                    {currentPricing.carePlus.name}
+                    {currentPricing.carePlus?.name}
                   </div>
                 </th>
               </tr>
@@ -335,13 +289,12 @@ export default function PricingTable() {
 
             <tbody>
               {rows.map(({ title, key, showParameters, extraNote }) => {
-                const basicData = currentPricing.basic[key];
-                const careData = currentPricing.care[key];
-                const carePlusData = currentPricing.carePlus[key];
+                const basicData = currentPricing.basic?.[key];
+                const careData = currentPricing.care?.[key];
+                const carePlusData = currentPricing.carePlus?.[key];
 
                 return (
                   <tr key={key}>
-                    {/* First column: feature name */}
                     <td className="p-8 align-top">
                       <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-xl font-semibold bg-clip-text text-transparent">
                         {title}
@@ -353,14 +306,15 @@ export default function PricingTable() {
                       )}
                     </td>
 
-                    {/* Basic Column */}
+                    {/* BASIC COLUMN */}
                     <td className="p-8 text-center align-top">
                       {key === "medicines" ? (
-                        // For medicines, we display discount
                         <div className="font-bold text-lg">
-                          {formatMedicines(basicData.discount)}
+                          {basicData
+                            ? formatMedicines(basicData.discount)
+                            : "-"}
                         </div>
-                      ) : key === "labTests" ? (
+                      ) : key === "labTests" && basicData ? (
                         <>
                           {formatConsultationLine(
                             basicData.totalTests,
@@ -369,9 +323,10 @@ export default function PricingTable() {
                             "test",
                             "tests"
                           )}
-                          {showParameters && formatParameters(basicData.parameters)}
+                          {showParameters &&
+                            formatParameters(basicData.parameters)}
                         </>
-                      ) : (
+                      ) : basicData ? (
                         <>
                           {formatConsultationLine(
                             basicData.totalConsultations,
@@ -381,16 +336,18 @@ export default function PricingTable() {
                             "consultations"
                           )}
                         </>
+                      ) : (
+                        "-"
                       )}
                     </td>
 
-                    {/* Care Column */}
+                    {/* CARE COLUMN */}
                     <td className="p-8 text-center align-top bg-custom-mutedgreen">
                       {key === "medicines" ? (
                         <div className="font-bold text-lg">
-                          {formatMedicines(careData.discount)}
+                          {careData ? formatMedicines(careData.discount) : "-"}
                         </div>
-                      ) : key === "labTests" ? (
+                      ) : key === "labTests" && careData ? (
                         <>
                           {formatConsultationLine(
                             careData.totalTests,
@@ -401,7 +358,7 @@ export default function PricingTable() {
                           )}
                           {showParameters && formatParameters(careData.parameters)}
                         </>
-                      ) : (
+                      ) : careData ? (
                         <>
                           {formatConsultationLine(
                             careData.totalConsultations,
@@ -411,16 +368,20 @@ export default function PricingTable() {
                             "consultations"
                           )}
                         </>
+                      ) : (
+                        "-"
                       )}
                     </td>
 
-                    {/* Care+ Column */}
+                    {/* CARE+ COLUMN */}
                     <td className="p-8 text-center align-top">
                       {key === "medicines" ? (
                         <div className="font-bold text-lg">
-                          {formatMedicines(carePlusData.discount)}
+                          {carePlusData
+                            ? formatMedicines(carePlusData.discount)
+                            : "-"}
                         </div>
-                      ) : key === "labTests" ? (
+                      ) : key === "labTests" && carePlusData ? (
                         <>
                           {formatConsultationLine(
                             carePlusData.totalTests,
@@ -432,7 +393,7 @@ export default function PricingTable() {
                           {showParameters &&
                             formatParameters(carePlusData.parameters)}
                         </>
-                      ) : (
+                      ) : carePlusData ? (
                         <>
                           {formatConsultationLine(
                             carePlusData.totalConsultations,
@@ -442,56 +403,77 @@ export default function PricingTable() {
                             "consultations"
                           )}
                         </>
+                      ) : (
+                        "-"
                       )}
                     </td>
                   </tr>
                 );
               })}
+
               {/* Final row: Pricing & Buttons */}
               <tr>
-                {/* Empty cell first column */}
                 <td className="p-8"></td>
 
-                {/* Basic Price & Button */}
+                {/* BASIC Price & Button */}
                 <td className="p-8 text-center align-top">
                   <div className="text-2xl font-bold mb-4">
-                    Rs.{currentPricing.basic.price}/-
+                    {currentPricing.basic
+                      ? `Rs.${currentPricing.basic.price}/-`
+                      : "-"}
                   </div>
-                  <Button
-                    variant="outline"
-                    className="w-full border-[#349c4b] text-[#349c4b]"
-                  >
-                    Get Started
-                  </Button>
+                  {currentPricing.basic && (
+                    <Button
+                      variant="outline"
+                      className="w-full border-[#349c4b] text-[#349c4b]"
+                      onClick={() => handlePurchasePlan("basic")}
+                    >
+                      Get Started
+                    </Button>
+                  )}
                 </td>
 
-                {/* Care Price & Button */}
+                {/* CARE Price & Button */}
                 <td className="p-8 text-center align-top bg-custom-mutedgreen">
                   <div className="text-2xl font-bold mb-4">
-                    Rs.{currentPricing.care.price}/-
+                    {currentPricing.care
+                      ? `Rs.${currentPricing.care.price}/-`
+                      : "-"}
                   </div>
-                  <Button className="w-full bg-[#f28a2e] hover:bg-[#e07a1e] text-white">
-                    Get Started
-                  </Button>
+                  {currentPricing.care && (
+                    <Button
+                      className="w-full bg-[#f28a2e] hover:bg-[#e07a1e] text-white"
+                      onClick={() => handlePurchasePlan("care")}
+                    >
+                      Get Started
+                    </Button>
+                  )}
                 </td>
 
-                {/* Care+ Price & Button */}
+                {/* CARE+ Price & Button */}
                 <td className="p-8 text-center align-top">
                   <div className="text-2xl font-bold mb-4">
-                    Rs.{currentPricing.carePlus.price}/-
+                    {currentPricing.carePlus
+                      ? `Rs.${currentPricing.carePlus.price}/-`
+                      : "-"}
                   </div>
-                  <Button
-                    variant="outline"
-                    className="w-full border-[#349c4b] text-[#349c4b]"
-                  >
-                    Get Started
-                  </Button>
+                  {currentPricing.carePlus && (
+                    <Button
+                      variant="outline"
+                      className="w-full border-[#349c4b] text-[#349c4b]"
+                      onClick={() => handlePurchasePlan("carePlus")}
+                    >
+                      Get Started
+                    </Button>
+                  )}
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
       </main>
+
+      <SuccessModal open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
     </div>
   );
 }
