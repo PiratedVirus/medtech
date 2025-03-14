@@ -24,6 +24,16 @@ export default function PaymentSelection({
         {/* ✅ Pay Online Option */}
         <Card
           className={cn(
+            "p-2 flex flex-col items-center justify-center cursor-pointer transition-all md:col-span-2",
+            selectedOption === "plan" ? "border-[#f28a2e] border-2" : "border hover:border-[#f28a2e]"
+          )}
+          onClick={() => onOptionChange("plan")}
+        >
+          {/* <p className="text-[#f28a2e] text-lg font-medium mb-21">₹ 500</p> */}
+          <p className="text-[#f28a2e] text-lg">Book with Plan</p>
+        </Card>
+        <Card
+          className={cn(
             "p-2 flex flex-col items-center justify-center cursor-pointer transition-all",
             selectedOption === "online" ? "border-[#f28a2e] border-2" : "border hover:border-[#f28a2e]"
           )}

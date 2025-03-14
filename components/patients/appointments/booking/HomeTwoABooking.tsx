@@ -100,9 +100,10 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
       patientId: profile?.id,
       paymentOption,
       razorpayResponse,
+      consultationType: paymentOption,
       consultationTypeId: consultationType === "clinic" ? 2 : 1,
     };
-
+    console.log("Appointment Data", appointmentData);
     if (paymentOption === "online" && (!razorpayResponse || !razorpayResponse.success)) {
       alert("Payment not completed. Please try again.");
       setLoading(false);

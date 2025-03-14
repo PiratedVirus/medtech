@@ -217,6 +217,7 @@ export async function POST(request: Request) {
       doctorId,
       patientId,
       consultationTypeId,
+      consultationType,
       paymentOption,
       razorpayResponse,
     } = body;
@@ -257,6 +258,16 @@ export async function POST(request: Request) {
         status: "Scheduled",
       },
     });
+    
+    if(consultationType === "plan") {
+      await prisma.subscriptionTracker.create({
+        data: {
+          userId: patientId,
+          appointmentId: newAppointment.id,
+          planId
+        },
+      });
+    }
 
     console.log("Appointment created successfully with ID:", newAppointment.id);
 

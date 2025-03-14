@@ -38,7 +38,7 @@ export default function PricingTable() {
     queryKey: ["plans"],
     queryFn: async () => {
       if (!clinicId) return null; // or return a default shape
-      const response = await axios.get(`/api/plans?userId=${userId}`, { withCredentials: true });
+      const response = await axios.get(`/api/plans`, { withCredentials: true });
       return response.data; // e.g. { success, pricingData, alreadySubscribed }
     },
     enabled: !!clinicId, // Only run if clinicId is present
@@ -175,7 +175,7 @@ export default function PricingTable() {
           try {
             const confirmRes = await axios.post("/api/plans/confirmPurchase", {
               planId,
-              userId: profile?.id,
+              patientId: profile?.patientProfile.id,
               razorpayOrderId: orderId,
               razorpayPaymentId: response.razorpay_payment_id,
             });

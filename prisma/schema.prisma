@@ -76,14 +76,14 @@ model User {
   doctorAppointments  Appointment[] @relation("Doctor")
   labPatientBookings LabBooking[]   @relation("LabPatient")
   labTechBookings    LabBooking[]   @relation("LabTech")
-  planTrackers       PlanTracker[]
-
   @@index([deletedAt])
 }
 
 model PatientProfile {
   id               Int    @id @default(autoincrement())
   userId           Int    @unique
+  subscriptionId   Int?
+  planId           Int?
   age              Int
   weight           Float?
   height           Float?
@@ -97,6 +97,8 @@ model PatientProfile {
   deletedAt        DateTime?
 
   user             User @relation(fields: [userId], references: [id])
+  planTrackers     SubscriptionTracker[]
+
 
   @@index([deletedAt])
 }
@@ -198,8 +200,10 @@ model Appointment {
   fullName             String?
   mobile               String?
   email                String?
+
   appointmentDate      DateTime?
   appointmentLink      String?
+  subscriptionId       Int?
   status               String
   createdAt            DateTime? @default(now())
   updatedAt            DateTime? @updatedAt
@@ -211,6 +215,8 @@ model Appointment {
   doctorAvailability   DoctorAvailability @relation(fields: [doctorAvailabilityId], references: [id])
   payment              Payment?
 
+  // Relationships
+  planTracker        SubscriptionTracker? @relation(fields: [subscriptionId], references: [subscriptionId])
   @@index([deletedAt])
 }
 
@@ -306,7 +312,7 @@ model Plan {
 
   // Relationship: each Plan can have many PlanFeatures
   planFeatures        PlanFeature[]
-  planTrackers        PlanTracker[]
+  planTrackers        SubscriptionTracker[]
 
   @@index([deletedAt])
 }
@@ -332,17 +338,18 @@ model PlanFeature {
   @@index([deletedAt])
 }
 
-model PlanTracker {
-  id                           Int       @id @default(autoincrement())
-  userId                       Int
+model SubscriptionTracker {
+  subscriptionId               Int       @id @default(autoincrement())
+  patientId                    Int
   planId                       Int
 
   // Usage counters for each feature (initialized to 0)
-  usedDoctorConsultation       Int       @default(0)
-  usedLabTests                 Int       @default(0)
-  usedDieticianConsultation    Int       @default(0)
-  usedOphthalmologistConsultation Int    @default(0)
-  usedMedicines                Int       @default(0)
+  doctorConsultationDates       String[]    @default([])
+  dieticianConsultationDates    String[]    @default([])
+  labTestsDates                 String[]    @default([])
+  ophthalmologistConsultationDates String[] @default([])
+  usedMedicines                 String[]    @default([])
+
 
   // Payment info
   razorpayOrderId              String?
@@ -360,7 +367,7 @@ model PlanTracker {
 
   // Relations
   plan                         Plan      @relation(fields: [planId], references: [id])
-  user                         User      @relation(fields: [userId], references: [id])
-
+  user                         PatientProfile      @relation(fields: [patientId], references: [id])
+  appointments                 Appointment[]
   @@index([deletedAt])
 }
