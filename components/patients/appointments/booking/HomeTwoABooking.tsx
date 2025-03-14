@@ -11,7 +11,8 @@ import SuccessModal from "@/components/ui/custom/cd-success-modal";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { loadRazorpay } from "@/lib/utils";
-import {useRouter} from "next/navigation";
+import { useRouter } from "next/navigation";
+import { set } from "date-fns";
 
 export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any) {
   const router = useRouter();
@@ -21,10 +22,39 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
   const [statusMessage, setStatusMessage] = useState(""); // Status messages
   const [loading, setLoading] = useState(false); // Loader state
   const bookingData = useSelector((state: RootState) => state.appointment.bookingData);
+  const subscriptionTracker = useSelector((state: RootState) => state.subscriptionsStore.subscriptionData);
   const consultationType = bookingData?.type;
-  const [subscriptionTracker, setSubscriptionTracker] = useState<any>(null);
+  const [firstValidDate, setFirstValidDate] = useState<string | null>(null);
+  const [filteredDoctorConsultationDates, setFilteredDoctorConsultationDates] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    if (!subscriptionTracker){
+      return;
+    }  
+    const currentDate = new Date();
+
+    // a) Find the first valid date
+    const foundDate = subscriptionTracker?.doctorConsultationDates?.find((dateString: string) => {
+      const consultationDate = new Date(dateString);
+      const diffInMs = consultationDate.getTime() - currentDate.getTime();
+      const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
+
+      return diffInDays >= -1 && diffInDays <= 10;
+    }) || null;
+
+    setFirstValidDate(foundDate);
+
+    // b) Filter out that date
+    const filtered = subscriptionTracker?.doctorConsultationDates?.filter((dateString: string) => {
+      return dateString !== foundDate;
+    }) || null;
+
+    setFilteredDoctorConsultationDates(filtered);
+
+  }, [subscriptionTracker]);
 
   const formRef = useRef<{ submitForm: (callback: (data: any) => void) => void } | null>(null);
+
 
   const handlePayment = async (appointmentData: any) => {
     try {
@@ -103,6 +133,8 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
       razorpayResponse,
       consultationType: paymentOption,
       consultationTypeId: consultationType === "clinic" ? 2 : 1,
+      subscriptionId: subscriptionTracker.subscriptionId,
+      doctorConsultationDates: filteredDoctorConsultationDates, // update them
     };
     console.log("Appointment Data", appointmentData);
     if (paymentOption === "online" && (!razorpayResponse || !razorpayResponse.success)) {
@@ -154,6 +186,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
                 onOptionChange={setPaymentOption}
                 subscriptionTracker={subscriptionTracker}
                 consultationType={consultationType || ""}
+                firstValidDate={firstValidDate}
               />
             </div>
 
@@ -178,7 +211,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
                 disabled={loading}
               >
                 {loading ? (
-                    <Loader2 className="animate-spin w-5 h-5 mr-2" />
+                  <Loader2 className="animate-spin w-5 h-5 mr-2" />
                 ) : (
                   consultationType === "clinic" ? "Confirm Clinic Visit" : "Confirm Video Consultation"
                 )}

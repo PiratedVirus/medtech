@@ -39,7 +39,7 @@ async function createGoogleMeetLink(slot: any, doctorId: number, patientId: numb
           conferenceSolutionKey: { type: "hangoutsMeet" },
         },
       },
-      attendees: [{ email: "patient@example.com" }], // Optional
+      // attendees: [{ email: "patient@example.com" }], // Optional
     };
 
     console.log("Event payload for Google Calendar:", event);
@@ -220,6 +220,8 @@ export async function POST(request: Request) {
       consultationType,
       paymentOption,
       razorpayResponse,
+      subscriptionId,
+      doctorConsultationDates
     } = body;
 
     if (!patientId || !doctorId || !slot?.id) {
@@ -242,6 +244,8 @@ export async function POST(request: Request) {
       console.log("Google Meet link created:", meetLink);
     }
 
+
+
     // ✅ First, create the appointment
     const newAppointment = await prisma.appointment.create({
       data: {
@@ -260,11 +264,10 @@ export async function POST(request: Request) {
     });
     
     if(consultationType === "plan") {
-      await prisma.subscriptionTracker.create({
+      await prisma.subscriptionTracker.update({
+        where: { subscriptionId },
         data: {
-          userId: patientId,
-          appointmentId: newAppointment.id,
-          planId
+          doctorConsultationDates,
         },
       });
     }

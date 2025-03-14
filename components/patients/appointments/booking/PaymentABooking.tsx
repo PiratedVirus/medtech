@@ -11,12 +11,14 @@ interface PaymentSelectionProps {
   selectedOption: string;
   onOptionChange: (option: string) => void;
   consultationType: string;
+  firstValidDate: any;
 }
 
 export default function PaymentSelection({
   selectedOption,
   onOptionChange,
   consultationType,
+  firstValidDate,
 }: PaymentSelectionProps) {
   console.log("consultation Type is ", consultationType);
   const isVideoConsultation = consultationType === "video";
@@ -25,24 +27,17 @@ export default function PaymentSelection({
   );
 
   // Extract doctorConsultationDates from subscription
-  const doctorConsultationDates = subscriptionTracker?.doctorConsultationDates;
-  console.log("doctorConsultationDates", doctorConsultationDates);
+  console.log("firstValidDate yaha ", firstValidDate);
 
   // Calculate isPlanBookingValid
   let isPlanBookingValid = false;
-  const currentDate = new Date();
 
-  doctorConsultationDates?.forEach((dateString: string) => {
-    const consultationDate = new Date(dateString);
-    const diffInMs = consultationDate.getTime() - currentDate.getTime();
-    const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
-
-    // If it's in the future (>= 0) and within 10 days, mark it valid
-    // Adjust logic as you see fit
-    if (diffInDays >= -1 && diffInDays <= 10) {
-      isPlanBookingValid = true;
-    }
-  });
+  if (firstValidDate) {
+    isPlanBookingValid = true;
+    console.log("First valid date is:", firstValidDate);
+  } else {
+    console.log("No valid date found within 10 days.");
+  }
 
   const [hasAutoSelectedPlan, setHasAutoSelectedPlan] = useState(false);
 
@@ -60,9 +55,9 @@ export default function PaymentSelection({
     "p-2 flex flex-col items-center justify-center transition-all w-full",
     planCardDisabled
       ? "bg-gray-200 text-gray-400 border-gray-200 cursor-not-allowed"
-      : "cursor-pointer border bg-white hover:border-[#f28a2e]",
+      : "cursor-pointer border bg-white hover:border-primary",
     selectedOption === "plan" && !planCardDisabled
-      ? "border-2 border-[#f28a2e] text-[#f28a2e]"
+      ? "border-2 border-primary text-primary"
       : ""
   );
 
@@ -70,8 +65,8 @@ export default function PaymentSelection({
   const onlineCardClasses = cn(
     "p-2 flex flex-col items-center justify-center transition-all cursor-pointer border bg-white",
     selectedOption === "online"
-      ? "border-2 border-[#f28a2e] text-[#f28a2e]"
-      : "hover:border-[#f28a2e]"
+      ? "border-2 border-primary text-primary"
+      : "hover:border-primary"
   );
 
   // Clinic card styles
@@ -80,9 +75,9 @@ export default function PaymentSelection({
     "p-2 flex flex-col items-center justify-center transition-all",
     isClinicDisabled
       ? "bg-gray-200 text-gray-400 border-gray-200 cursor-not-allowed"
-      : "cursor-pointer border bg-white hover:border-[#f28a2e]",
+      : "cursor-pointer border bg-white hover:border-primary",
     selectedOption === "clinic" && !isClinicDisabled
-      ? "border-2 border-[#f28a2e] text-[#f28a2e]"
+      ? "border-2 border-primary text-primary"
       : ""
   );
 
@@ -108,10 +103,10 @@ export default function PaymentSelection({
             className={cn(
               "text-lg font-medium p-3",
               selectedOption === "plan" && !planCardDisabled
-                ? "text-[#f28a2e]"
+                ? "text-primary"
                 : planCardDisabled
-                ? "text-gray-400"
-                : "text-[#2c2e38]"
+                  ? "text-gray-400"
+                  : "text-[#2c2e38]"
             )}
           >
             {`Book with ${subscriptionTracker?.planName ?? "Plan"}`}
@@ -129,7 +124,7 @@ export default function PaymentSelection({
           <p
             className={cn(
               "text-lg font-medium mb-1 text-center",
-              selectedOption === "online" ? "text-[#f28a2e]" : "text-[#2c2e38]"
+              selectedOption === "online" ? "text-primary" : "text-[#2c2e38]"
             )}
           >
             ₹ 500 <br /> Pay Online
@@ -151,8 +146,8 @@ export default function PaymentSelection({
               isClinicDisabled
                 ? "text-gray-400"
                 : selectedOption === "clinic"
-                ? "text-[#f28a2e]"
-                : "text-[#2c2e38]"
+                  ? "text-primary"
+                  : "text-[#2c2e38]"
             )}
           >
             ₹ 500 <br /> Pay later at the clinic
