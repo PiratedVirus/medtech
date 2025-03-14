@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef } from "react";
+import { useState, useRef, use, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import axios from "axios";
@@ -22,6 +22,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
   const [loading, setLoading] = useState(false); // Loader state
   const bookingData = useSelector((state: RootState) => state.appointment.bookingData);
   const consultationType = bookingData?.type;
+  const [subscriptionTracker, setSubscriptionTracker] = useState<any>(null);
 
   const formRef = useRef<{ submitForm: (callback: (data: any) => void) => void } | null>(null);
 
@@ -132,6 +133,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
     }
   };
 
+  console.log("consultation type from HomeTwoA", consultationType);
   return (
     <>
       <DoctorInfoTwo slot={slot} doctor={doctor} onBack={onBack} />
@@ -150,6 +152,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
               <PaymentSelection
                 selectedOption={paymentOption}
                 onOptionChange={setPaymentOption}
+                subscriptionTracker={subscriptionTracker}
                 consultationType={consultationType || ""}
               />
             </div>

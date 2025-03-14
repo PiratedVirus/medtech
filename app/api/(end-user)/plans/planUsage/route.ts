@@ -11,7 +11,7 @@ const prisma = new PrismaClient();
  * {
  *   success: boolean,
  *   data?: {
- *     planTracker: { ... },
+ *     subscriptionTracker: { ... },
  *     planFeatures: [ { featureName, occurrencesPerInterval, intervalInMonths }, ... ]
  *   },
  *   error?: string
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const userId = parseInt(userIdParam);
 
     // 1) Find the user's active plan tracker (if any)
-    const planTracker = await prisma.planTracker.findFirst({
+    const subscriptionTracker = await prisma.subscriptionTracker.findFirst({
       where: {
         userId,
         isActive: true,
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
       },
     });
 
-    if (!planTracker) {
+    if (!subscriptionTracker) {
       return NextResponse.json({
         success: false,
         error: "No active plan found for this user",
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 
     // 2) Get all PlanFeature rows for this plan
     const planFeatures = await prisma.planFeature.findMany({
-      where: { planId: planTracker.planId },
+      where: { planId: subscriptionTracker.planId },
       select: {
         id: true,
         featureName: true,
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       data: {
-        planTracker,
+        subscriptionTracker,
         planFeatures,
       },
     });

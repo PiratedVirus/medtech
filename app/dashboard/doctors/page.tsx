@@ -17,6 +17,7 @@ export default function DoctorsPage() {
   const { clinicId, isLoading: profileLoading } = useDecryptedProfile();
 
   const handleBookAppointment = (doctor: any, type: "video" | "clinic") => {
+    console.log("Booking appointment with doctor and type as ", type);
     dispatch(setBookingData({ doctor, type }));
     router.push(`/dashboard/appointments/${doctor.id}`);
   };

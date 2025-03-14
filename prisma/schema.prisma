@@ -216,7 +216,7 @@ model Appointment {
   payment              Payment?
 
   // Relationships
-  planTracker        SubscriptionTracker? @relation(fields: [subscriptionId], references: [subscriptionId])
+  subscriptionTracker        SubscriptionTracker? @relation(fields: [subscriptionId], references: [subscriptionId])
   @@index([deletedAt])
 }
 

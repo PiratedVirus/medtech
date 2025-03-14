@@ -198,7 +198,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      planTracker: newTracker,
+      subscriptionTracker: newTracker,
       // isPlanActive,
     });
   } catch (error: any) {

@@ -35,7 +35,7 @@ export default function AppointmentPage() {
   // Dispatch data to Redux when available
   useEffect(() => {
     if (doctorData) {
-      dispatch(setBookingData({ doctor: doctorData, type: null }));
+      dispatch(setBookingData({ doctor: doctorData, type: bookingData?.type ?? null }));
     }
   }, [doctorData, dispatch]);
 

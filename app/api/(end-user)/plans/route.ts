@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     let alreadySubscribed = false;
     if (userId) {
       // Find any active plan in PlanTracker for this user
-      const activePlan = await prisma.planTracker.findFirst({
+      const activePlan = await prisma.subscriptionTracker.findFirst({
         where: {
           userId: Number(userId),
           isActive: true,

@@ -96,7 +96,7 @@ export default function PlanUsage({ userId }: { userId: number }) {
     queryKey: ["plan-usage", userId],
     queryFn: async () => {
       const res = await axios.get(`/api/plans/planUsage?userId=${userId}`);
-      return res.data; // shape: { success, data: { planTracker, planFeatures } }
+      return res.data; // shape: { success, data: { subscriptionTracker, planFeatures } }
     },
     enabled: !!userId,
   });
@@ -108,28 +108,28 @@ export default function PlanUsage({ userId }: { userId: number }) {
     return <div className="p-4">Error loading plan usage.</div>;
   }
 
-  const { planTracker, planFeatures } = data.data as {
-    planTracker: PlanTracker;
+  const { subscriptionTracker, planFeatures } = data.data as {
+    subscriptionTracker: PlanTracker;
     planFeatures: PlanFeature[];
   };
 
-  const startDate = new Date(planTracker.startDate);
-  const endDate = new Date(planTracker.endDate);
+  const startDate = new Date(subscriptionTracker.startDate);
+  const endDate = new Date(subscriptionTracker.endDate);
   const now = new Date();
   const planLengthMonths = differenceInMonths(endDate, startDate);
 
   function getUsedCount(featureName: string): number {
     switch (featureName.toLowerCase()) {
       case "doctor consultation":
-        return planTracker.usedDoctorConsultation;
+        return subscriptionTracker.usedDoctorConsultation;
       case "lab tests":
-        return planTracker.usedLabTests;
+        return subscriptionTracker.usedLabTests;
       case "dietician consultation":
-        return planTracker.usedDieticianConsultation;
+        return subscriptionTracker.usedDieticianConsultation;
       case "ophthalmologist consultation":
-        return planTracker.usedOphthalmologistConsultation;
+        return subscriptionTracker.usedOphthalmologistConsultation;
       case "medicines":
-        return planTracker.usedMedicines;
+        return subscriptionTracker.usedMedicines;
       default:
         return 0;
     }
@@ -141,7 +141,7 @@ export default function PlanUsage({ userId }: { userId: number }) {
         <CardHeader>
           <CardTitle>
             <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-4xl font-semibold bg-clip-text text-transparent">
-              You are subscribed to {planTracker.plan?.name ?? "a"} plan
+              You are subscribed to {subscriptionTracker.plan?.name ?? "a"} plan
             </div>
           </CardTitle>
         </CardHeader>
@@ -216,27 +216,27 @@ export function PlanUsageMinimal({ userId }: { userId: number }) {
     return <div className="p-4">Error loading plan usage.</div>;
   }
 
-  const { planTracker, planFeatures } = data.data as {
-    planTracker: PlanTracker;
+  const { subscriptionTracker, planFeatures } = data.data as {
+    subscriptionTracker: PlanTracker;
     planFeatures: PlanFeature[];
   };
 
-  const startDate = new Date(planTracker.startDate);
-  const endDate = new Date(planTracker.endDate);
+  const startDate = new Date(subscriptionTracker.startDate);
+  const endDate = new Date(subscriptionTracker.endDate);
   const planLengthMonths = differenceInMonths(endDate, startDate);
 
   function getUsedCount(featureName: string): number {
     switch (featureName.toLowerCase()) {
       case "doctor consultation":
-        return planTracker.usedDoctorConsultation;
+        return subscriptionTracker.usedDoctorConsultation;
       case "lab tests":
-        return planTracker.usedLabTests;
+        return subscriptionTracker.usedLabTests;
       case "dietician consultation":
-        return planTracker.usedDieticianConsultation;
+        return subscriptionTracker.usedDieticianConsultation;
       case "ophthalmologist consultation":
-        return planTracker.usedOphthalmologistConsultation;
+        return subscriptionTracker.usedOphthalmologistConsultation;
       case "medicines":
-        return planTracker.usedMedicines;
+        return subscriptionTracker.usedMedicines;
       default:
         return 0;
     }
