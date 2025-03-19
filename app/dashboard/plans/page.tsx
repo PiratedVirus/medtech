@@ -18,18 +18,12 @@ export default function PricingTable() {
   const router = useRouter();
   const { clinicId, profile, isLoading: profileLoading } = useDecryptedProfile();
   const userId = profile?.id;
-  /**
-   * 1) Fetch plan data from your /api/plans endpoint
-   *    We expect a response of shape:
-   *    {
-   *      success: true,
-   *      pricingData: {
-   *        "6months": { basic: {...}, care: {...}, carePlus: {...} },
-   *        "12months": { ... }
-   *      },
-   *      alreadySubscribed: boolean
-   *    }
-   */
+
+  // 1) Check if the user has an existing subscription
+  const subscriptionId = profile?.subscriptionDetails?.subscriptionId;
+  const isValidSubscription = !!subscriptionId; // true if subscriptionId is present
+
+  // 2) Always call useQuery, but use `enabled: !isValidSubscription` so it won't fetch if subscribed
   const {
     data: plansResponse,
     isLoading,
@@ -37,55 +31,49 @@ export default function PricingTable() {
   } = useQuery({
     queryKey: ["plans"],
     queryFn: async () => {
-      if (!clinicId) return null; // or return a default shape
+      if (!clinicId) return null;
       const response = await axios.get(`/api/plans`, { withCredentials: true });
       return response.data; // e.g. { success, pricingData, alreadySubscribed }
     },
-    enabled: !!clinicId, // Only run if clinicId is present
-    staleTime: 10 * 60 * 100,
+    enabled: !!clinicId && !isValidSubscription,
+    staleTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
 
-  // If data is loading or if user profile is still loading
-  if (isLoading || profileLoading) {
+  // 3) If profile or plan data is loading, show a loader
+  if (profileLoading || isLoading) {
     return <CdLoader />;
   }
 
-  // If there's an error fetching
+  // 4) If user already has a subscription, show PlanUsage
+  if (isValidSubscription) {
+    return (
+      <div className="min-h-screen bg-muted">
+        <div className="max-w-7xl mx-auto px-4 py-10">
+          {/* Render your actual PlanUsage here */}
+          <PlanUsage subscriptionId={subscriptionId} userId={Number(userId)} />
+        </div>
+      </div>
+    );
+  }
+
+  // 5) If there's an error or no data
   if (isError || !plansResponse) {
     return <div className="p-4">Error fetching plans.</div>;
   }
-
-  // If server indicates not successful
   if (!plansResponse.success) {
     return <div className="p-4">No plan data found.</div>;
   }
 
-  // If user already subscribed
-  if (plansResponse.alreadySubscribed) {
-    return (
-      <>
-      <div className="flex items-center justify-center bg-muted">
-        <div className="rounded-md shadow-none">
-        {userId && <PlanUsage userId={Number(userId)} />}
-        </div>
-      </div>
-      
-      </>
-    );
-  }
-
-  // Now we safely access the pricingData
+  // 6) Now safely access the plan data
   const pricingData = plansResponse.pricingData;
   const currentPricing = pricingData[duration];
-
-  // In case the server does not have the chosen duration
   if (!currentPricing) {
     return <div className="p-4">No plan data for {duration} found.</div>;
   }
 
-  // Helper to format consultation/tests
+  // Helper functions
   const formatConsultationLine = (
     total: number,
     frequency: number,
@@ -119,7 +107,7 @@ export default function PricingTable() {
     return <div className="text-sm text-[#349c4b] mt-1">{parameters} Parameters</div>;
   };
 
-  // The "rows" in the table
+  // Rows for the pricing table
   const rows = [
     { title: "Doctor Consultation", key: "doctorConsultation" },
     { title: "Lab Tests", key: "labTests", showParameters: true },
@@ -144,7 +132,7 @@ export default function PricingTable() {
 
       // 1) Create Razorpay order
       const createOrderRes = await axios.post("/api/payments/create", {
-        amount: price * 100, // convert to paisa
+        amount: price * 100,
         currency: "INR",
         receipt: `plan_${planId}_${Date.now()}`,
       });
@@ -169,13 +157,13 @@ export default function PricingTable() {
         name: "Care Diabetic",
         description: `Plan Purchase: ${planData.name} (${duration})`,
         order_id: orderId,
-        handler: async function (response: any) {
+        handler: async (response: any) => {
           console.log("Payment successful:", response);
           // 4) Confirm purchase
           try {
             const confirmRes = await axios.post("/api/plans/confirmPurchase", {
               planId,
-              patientId: profile?.patientProfile.id,
+              patientId: profile?.patientProfile?.id,
               razorpayOrderId: orderId,
               razorpayPaymentId: response.razorpay_payment_id,
             });
@@ -288,7 +276,17 @@ export default function PricingTable() {
             </thead>
 
             <tbody>
-              {rows.map(({ title, key, showParameters, extraNote }) => {
+              {[
+                { title: "Doctor Consultation", key: "doctorConsultation" },
+                { title: "Lab Tests", key: "labTests", showParameters: true },
+                { title: "Dietician Consultation", key: "dieticianConsultation" },
+                {
+                  title: "Ophthalmologist Consultation",
+                  key: "ophthalmologistConsultation",
+                  extraNote: "At Clinic*",
+                },
+                { title: "Medicines", key: "medicines" },
+              ].map(({ title, key, showParameters, extraNote }) => {
                 const basicData = currentPricing.basic?.[key];
                 const careData = currentPricing.care?.[key];
                 const carePlusData = currentPricing.carePlus?.[key];
@@ -300,112 +298,23 @@ export default function PricingTable() {
                         {title}
                       </div>
                       {extraNote && (
-                        <div className="text-xs text-[#349c4b] italic">
-                          {extraNote}
-                        </div>
+                        <div className="text-xs text-[#349c4b] italic">{extraNote}</div>
                       )}
                     </td>
 
                     {/* BASIC COLUMN */}
                     <td className="p-8 text-center align-top">
-                      {key === "medicines" ? (
-                        <div className="font-bold text-lg">
-                          {basicData
-                            ? formatMedicines(basicData.discount)
-                            : "-"}
-                        </div>
-                      ) : key === "labTests" && basicData ? (
-                        <>
-                          {formatConsultationLine(
-                            basicData.totalTests,
-                            basicData.frequencyPerInterval,
-                            basicData.intervalInMonths,
-                            "test",
-                            "tests"
-                          )}
-                          {showParameters &&
-                            formatParameters(basicData.parameters)}
-                        </>
-                      ) : basicData ? (
-                        <>
-                          {formatConsultationLine(
-                            basicData.totalConsultations,
-                            basicData.frequencyPerInterval,
-                            basicData.intervalInMonths,
-                            "consultation",
-                            "consultations"
-                          )}
-                        </>
-                      ) : (
-                        "-"
-                      )}
+                      {renderFeatureCell(basicData, key, showParameters)}
                     </td>
 
                     {/* CARE COLUMN */}
                     <td className="p-8 text-center align-top bg-custom-mutedgreen">
-                      {key === "medicines" ? (
-                        <div className="font-bold text-lg">
-                          {careData ? formatMedicines(careData.discount) : "-"}
-                        </div>
-                      ) : key === "labTests" && careData ? (
-                        <>
-                          {formatConsultationLine(
-                            careData.totalTests,
-                            careData.frequencyPerInterval,
-                            careData.intervalInMonths,
-                            "test",
-                            "tests"
-                          )}
-                          {showParameters && formatParameters(careData.parameters)}
-                        </>
-                      ) : careData ? (
-                        <>
-                          {formatConsultationLine(
-                            careData.totalConsultations,
-                            careData.frequencyPerInterval,
-                            careData.intervalInMonths,
-                            "consultation",
-                            "consultations"
-                          )}
-                        </>
-                      ) : (
-                        "-"
-                      )}
+                      {renderFeatureCell(careData, key, showParameters)}
                     </td>
 
                     {/* CARE+ COLUMN */}
                     <td className="p-8 text-center align-top">
-                      {key === "medicines" ? (
-                        <div className="font-bold text-lg">
-                          {carePlusData
-                            ? formatMedicines(carePlusData.discount)
-                            : "-"}
-                        </div>
-                      ) : key === "labTests" && carePlusData ? (
-                        <>
-                          {formatConsultationLine(
-                            carePlusData.totalTests,
-                            carePlusData.frequencyPerInterval,
-                            carePlusData.intervalInMonths,
-                            "test",
-                            "tests"
-                          )}
-                          {showParameters &&
-                            formatParameters(carePlusData.parameters)}
-                        </>
-                      ) : carePlusData ? (
-                        <>
-                          {formatConsultationLine(
-                            carePlusData.totalConsultations,
-                            carePlusData.frequencyPerInterval,
-                            carePlusData.intervalInMonths,
-                            "consultation",
-                            "consultations"
-                          )}
-                        </>
-                      ) : (
-                        "-"
-                      )}
+                      {renderFeatureCell(carePlusData, key, showParameters)}
                     </td>
                   </tr>
                 );
@@ -476,4 +385,77 @@ export default function PricingTable() {
       <SuccessModal open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
     </div>
   );
+}
+
+/** Helper to render a single cell. */
+function renderFeatureCell(featureData: any, key: string, showParameters?: boolean) {
+  if (!featureData) return "-";
+
+  // local helpers
+  const formatConsultationLine = (
+    total: number,
+    frequency: number,
+    interval: number,
+    singularLabel: string,
+    pluralLabel: string
+  ) => {
+    if (!total) return "-";
+    const totalString = `${total} ${total > 1 ? pluralLabel : singularLabel}`;
+    if (frequency > 0 && interval > 0) {
+      const freqString = `${frequency} ${
+        frequency > 1 ? pluralLabel : singularLabel
+      } every ${interval} month${interval > 1 ? "s" : ""}`;
+      return (
+        <>
+          <div className="font-bold text-lg">{totalString}</div>
+          <div className="text-sm text-gray-500 italic">({freqString})</div>
+        </>
+      );
+    } else {
+      return <div className="font-bold text-lg">{totalString}</div>;
+    }
+  };
+
+  const formatMedicines = (discount: number) => {
+    return discount > 0 ? `${discount}% off` : "-";
+  };
+
+  const formatParameters = (parameters?: number) => {
+    if (!parameters) return null;
+    return (
+      <div className="text-sm text-[#349c4b] mt-1">
+        {parameters} Parameters
+      </div>
+    );
+  };
+
+  if (key === "medicines") {
+    return <div className="font-bold text-lg">{formatMedicines(featureData.discount)}</div>;
+  } else if (key === "labTests") {
+    return (
+      <>
+        {formatConsultationLine(
+          featureData.totalTests,
+          featureData.frequencyPerInterval,
+          featureData.intervalInMonths,
+          "test",
+          "tests"
+        )}
+        {showParameters && formatParameters(featureData.parameters)}
+      </>
+    );
+  } else {
+    // e.g. doctorConsultation, dieticianConsultation, ophthalmologistConsultation
+    return (
+      <>
+        {formatConsultationLine(
+          featureData.totalConsultations,
+          featureData.frequencyPerInterval,
+          featureData.intervalInMonths,
+          "consultation",
+          "consultations"
+        )}
+      </>
+    );
+  }
 }

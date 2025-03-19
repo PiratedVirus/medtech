@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { useProfile } from "@/hooks/context/ProfileContext";
 import { HomeAppointmentOverview } from "@/patients/home/HomeAppointmentOverview";
 import { PlanUsageMinimal } from "@/components/patients/plans/PlanUsage";
+import { useDecryptedProfile } from "@/hooks/use-profile";
 
 export default function HomeOverview() {
   const { profile } = useProfile();
+
   return (
     <div className="bg-muted px-20 pt-5">
       {/* Header */}
@@ -45,7 +47,7 @@ export default function HomeOverview() {
               </span>
               {" "} Usage
             </h2>
-            <PlanUsageMinimal userId={4} />
+            <PlanUsageMinimal userId={4} subscriptionId={profile?.subscriptionDetails?.subscriptionId} />
           </div>
 
           {/* <Button className="h-[51px] w-[267px] rounded-[59px]  text-white hover:bg-popover">

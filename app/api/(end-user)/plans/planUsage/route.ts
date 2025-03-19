@@ -20,16 +20,16 @@ const prisma = new PrismaClient();
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const userIdParam = searchParams.get("userId");
-    if (!userIdParam) {
+    const subscription = searchParams.get("subscriptionId");
+    if (!subscription) {
       throw new Error("Missing userId");
     }
-    const userId = parseInt(userIdParam);
+    const subscriptionId = parseInt(subscription);
 
     // 1) Find the user's active plan tracker (if any)
     const subscriptionTracker = await prisma.subscriptionTracker.findFirst({
       where: {
-        userId,
+        subscriptionId,
         isActive: true,
         endDate: {
           gt: new Date(), // endDate in the future
