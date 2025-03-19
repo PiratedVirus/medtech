@@ -10,7 +10,7 @@ interface UpcomingAppointmentProps {
 export default function UpcomingAppointment({ appointment }: UpcomingAppointmentProps) {
   if (!appointment) {
     return (
-      <div className="p-6 rounded-3xl bg-custom-mutedgreen">
+      <div className="p-6 rounded-3xl h-full bg-custom-mutedgreen">
         <h2 className="text-2xl font-semibold text-gray-800">Upcoming Appointment</h2>
         <p className="text-gray-600">No upcoming appointments scheduled.</p>
         {/* <p>{JSON.stringify(appointment)}</p> */}

@@ -76,7 +76,7 @@ export default function AppointmentBookingHomeOne({
         console.log("Plan Tracker Data", data);
       });
     }
-  }, [profile]); // <-- add profile here
+  }, [profile]); 
 
   // Navigation functions
   function goToPreviousDay() {
