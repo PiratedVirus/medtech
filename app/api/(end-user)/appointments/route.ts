@@ -221,8 +221,10 @@ export async function POST(request: Request) {
       paymentOption,
       razorpayResponse,
       subscriptionId,
+      isDietician,
       doctorConsultationDates
     } = body;
+
 
     if (!patientId || !doctorId || !slot?.id) {
       console.error("Missing required fields", { patientId, doctorId, slot });
@@ -266,9 +268,9 @@ export async function POST(request: Request) {
     if(consultationType === "plan") {
       await prisma.subscriptionTracker.update({
         where: { subscriptionId },
-        data: {
-          doctorConsultationDates,
-        },
+        data: isDietician 
+          ? { dieticianConsultationDates: doctorConsultationDates } 
+          : { doctorConsultationDates: doctorConsultationDates },
       });
     }
 

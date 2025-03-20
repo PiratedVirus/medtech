@@ -4,6 +4,7 @@ interface AppointmentState {
   bookingData: {
     doctor: any;
     type: 'video' | 'clinic' | null;
+    isDietician?: boolean;
   } | null;
 }
 

@@ -15,6 +15,7 @@ export default function AppointmentPage() {
   const router = useRouter();
   const dispatch = useDispatch();
   const bookingData = useSelector((state: RootState) => state.appointment.bookingData);
+  const isDietician = bookingData?.isDietician || false;
 
   // Fetch doctor availability using React Query
   const { data: doctorData, isLoading, isError } = useQuery({
@@ -35,7 +36,7 @@ export default function AppointmentPage() {
   // Dispatch data to Redux when available
   useEffect(() => {
     if (doctorData) {
-      dispatch(setBookingData({ doctor: doctorData, type: bookingData?.type ?? null }));
+      dispatch(setBookingData({ doctor: doctorData, type: bookingData?.type ?? null , isDietician}));
     }
   }, [doctorData, dispatch]);
 

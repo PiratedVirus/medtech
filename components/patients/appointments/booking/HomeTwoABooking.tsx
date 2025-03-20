@@ -13,6 +13,7 @@ import { RootState } from "@/store";
 import { loadRazorpay } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { set } from "date-fns";
+import { useMemo } from "react";
 
 export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any) {
   const router = useRouter();
@@ -26,32 +27,38 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
   const consultationType = bookingData?.type;
   const [firstValidDate, setFirstValidDate] = useState<string | null>(null);
   const [filteredDoctorConsultationDates, setFilteredDoctorConsultationDates] = useState<string[] | null>(null);
-
+  const isDietician = bookingData?.isDietician || false;
+  const consultationDates = useMemo(() => {
+    if (!subscriptionTracker) return null;
+    return isDietician ? subscriptionTracker.dieticianConsultationDates : subscriptionTracker.doctorConsultationDates;
+  }, [subscriptionTracker, isDietician]);
+  
   useEffect(() => {
-    if (!subscriptionTracker){
+    if (!subscriptionTracker || !consultationDates) {
+      setFirstValidDate(null);
+      setFilteredDoctorConsultationDates(null);
       return;
     }  
+  
     const currentDate = new Date();
-
+  
     // a) Find the first valid date
-    const foundDate = subscriptionTracker?.doctorConsultationDates?.find((dateString: string) => {
+    const foundDate = consultationDates.find((dateString: string) => {
       const consultationDate = new Date(dateString);
       const diffInMs = consultationDate.getTime() - currentDate.getTime();
       const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
-
+  
       return diffInDays >= -1 && diffInDays <= 10;
     }) || null;
-
     setFirstValidDate(foundDate);
-
-    // b) Filter out that date
-    const filtered = subscriptionTracker?.doctorConsultationDates?.filter((dateString: string) => {
-      return dateString !== foundDate;
-    }) || null;
-
+  
+    // b) Filter out that date safely
+    const filtered = foundDate 
+      ? consultationDates.filter((dateString: string) => dateString !== foundDate) 
+      : consultationDates;
+    
     setFilteredDoctorConsultationDates(filtered);
-
-  }, [subscriptionTracker]);
+  }, [subscriptionTracker, consultationDates]);
 
   const formRef = useRef<{ submitForm: (callback: (data: any) => void) => void } | null>(null);
 
@@ -134,6 +141,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
       consultationType: paymentOption,
       consultationTypeId: consultationType === "clinic" ? 2 : 1,
       subscriptionId: subscriptionTracker.subscriptionId,
+      isDietician,
       doctorConsultationDates: filteredDoctorConsultationDates, // update them
     };
     console.log("Appointment Data", appointmentData);

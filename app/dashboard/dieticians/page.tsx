@@ -8,7 +8,6 @@ import axios from "axios";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { CircleCheckBig, CalendarIcon } from "lucide-react";
 import DoctorCard from "@/components/patients/doctors/DoctorCard";
-import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 
 export default function DoctorsPage() {
@@ -17,7 +16,7 @@ export default function DoctorsPage() {
   const { clinicId, isLoading: profileLoading } = useDecryptedProfile();
 
   const handleBookAppointment = (doctor: any, type: "video" | "clinic") => {
-    dispatch(setBookingData({ doctor, type }));
+    dispatch(setBookingData({ doctor, type, isDietician: true }));
     router.push(`/dashboard/appointments/${doctor.id}`);
   };
 
@@ -63,14 +62,6 @@ export default function DoctorsPage() {
           </div>
         </div>
 
-        <Button
-          className="bg-teal-100 border-0 shadow-none rounded-lg p-6 flex items-center justify-center gap-2 w-full md:w-auto mt-5 md:mt-0"
-        >
-          <span className="text-green-800">
-            <b>Choose Date</b>
-          </span>
-          <CalendarIcon className="text-green-800 h-6 w-6" />
-        </Button>
       </div>
 
       {doctors.length > 0 ? (
