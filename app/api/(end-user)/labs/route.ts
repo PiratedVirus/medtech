@@ -20,6 +20,9 @@ export async function POST(request: Request) {
       patientId,
       paymentOption,
       razorpayResponse,
+      consultationType,
+      subscriptionId,
+      labTestsDates,
     } = body;
 
     if (!patientId || !packageId) {
@@ -45,6 +48,15 @@ export async function POST(request: Request) {
         status: "Scheduled",
       },
     });
+
+    if(consultationType === "plan") {
+      await prisma.subscriptionTracker.update({
+        where: { subscriptionId },
+        data: {
+          labTestsDates,
+        },
+      });
+    }
 
     console.log("Lab booking created successfully with ID:", newLabBooking.id);
 

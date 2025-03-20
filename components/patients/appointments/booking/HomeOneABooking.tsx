@@ -6,6 +6,9 @@ import { TimeSlots } from "@/custom/cd-time-slot";
 import { Sidebar } from "@/appointment-book/SidebarABooking";
 import CdLoader from "@/custom/cd-loader";
 import HomeTwoAppointmentBooking from "@/appointment-book/HomeTwoABooking";
+import { useDispatch } from "react-redux";
+import { setSubscriptionData } from "@/store/subscriptionSlice";
+import { useDecryptedProfile } from "@/hooks/use-profile";
 
 interface AppointmentHomeProps {
   doctor: any;
@@ -32,6 +35,8 @@ export default function AppointmentBookingHomeOne({
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState("");
   const [selectedSlot, setSelectedSlot] = useState<Availability | null>(null);
+  const { profile } = useDecryptedProfile();
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (!doctor?.id) return;
@@ -64,6 +69,15 @@ export default function AppointmentBookingHomeOne({
     };
   }, [doctor, page]);
 
+  useEffect(() => {
+    console.log("Profile", profile);
+    if (profile?.id) {
+      fetchSubscriptionTracker(profile.id).then((data) => {
+        console.log("Plan Tracker Data", data);
+      });
+    }
+  }, [profile]); 
+
   // Navigation functions
   function goToPreviousDay() {
     if (dayIndex > 0) {
@@ -88,6 +102,17 @@ export default function AppointmentBookingHomeOne({
     setDayIndex(index);
   }
 
+  const fetchSubscriptionTracker = async (userId: string) => {
+    try {
+      const response = await axios.get(`/api/plans/planTracker?userId=${userId}`);
+      dispatch(setSubscriptionData(response.data.data));
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching plan tracker:", error);
+      return null;
+    }
+  };
+
   // Determine the currently selected day's ISO date and count
   const currentDayInfo = slotCounts[dayIndex];
   const currentDayDateISO = currentDayInfo ? currentDayInfo.date : "";
@@ -96,10 +121,10 @@ export default function AppointmentBookingHomeOne({
   // Filter slots for the selected day (comparing only the date part)
   const displayedSlots = currentDayDateISO
     ? availability.filter(
-        (slot) =>
-          slot.date.split("T")[0] ===
-          new Date(currentDayDateISO).toISOString().split("T")[0]
-      )
+      (slot) =>
+        slot.date.split("T")[0] ===
+        new Date(currentDayDateISO).toISOString().split("T")[0]
+    )
     : [];
 
   if (selectedSlot) {
@@ -118,7 +143,7 @@ export default function AppointmentBookingHomeOne({
         <div>
           <DoctorInfoOne doctor={doctor} onBack={onBack} />
           {(fetching || !doctor) ? (
-            <CdLoader  height="60vh"/>
+            <CdLoader height="60vh" />
           ) : (
             <>
               <DateNavigator

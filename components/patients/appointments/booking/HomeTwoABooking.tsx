@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef } from "react";
+import { useState, useRef, use, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import axios from "axios";
@@ -11,7 +11,9 @@ import SuccessModal from "@/components/ui/custom/cd-success-modal";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { loadRazorpay } from "@/lib/utils";
-import {useRouter} from "next/navigation";
+import { useRouter } from "next/navigation";
+import { set } from "date-fns";
+import { useMemo } from "react";
 
 export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any) {
   const router = useRouter();
@@ -21,9 +23,45 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
   const [statusMessage, setStatusMessage] = useState(""); // Status messages
   const [loading, setLoading] = useState(false); // Loader state
   const bookingData = useSelector((state: RootState) => state.appointment.bookingData);
+  const subscriptionTracker = useSelector((state: RootState) => state.subscriptionsStore.subscriptionData);
   const consultationType = bookingData?.type;
+  const [firstValidDate, setFirstValidDate] = useState<string | null>(null);
+  const [filteredDoctorConsultationDates, setFilteredDoctorConsultationDates] = useState<string[] | null>(null);
+  const isDietician = bookingData?.isDietician || false;
+  const consultationDates = useMemo(() => {
+    if (!subscriptionTracker) return null;
+    return isDietician ? subscriptionTracker.dieticianConsultationDates : subscriptionTracker.doctorConsultationDates;
+  }, [subscriptionTracker, isDietician]);
+  
+  useEffect(() => {
+    if (!subscriptionTracker || !consultationDates) {
+      setFirstValidDate(null);
+      setFilteredDoctorConsultationDates(null);
+      return;
+    }  
+  
+    const currentDate = new Date();
+  
+    // a) Find the first valid date
+    const foundDate = consultationDates.find((dateString: string) => {
+      const consultationDate = new Date(dateString);
+      const diffInMs = consultationDate.getTime() - currentDate.getTime();
+      const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
+  
+      return diffInDays >= -1 && diffInDays <= 10;
+    }) || null;
+    setFirstValidDate(foundDate);
+  
+    // b) Filter out that date safely
+    const filtered = foundDate 
+      ? consultationDates.filter((dateString: string) => dateString !== foundDate) 
+      : consultationDates;
+    
+    setFilteredDoctorConsultationDates(filtered);
+  }, [subscriptionTracker, consultationDates]);
 
   const formRef = useRef<{ submitForm: (callback: (data: any) => void) => void } | null>(null);
+
 
   const handlePayment = async (appointmentData: any) => {
     try {
@@ -100,9 +138,13 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
       patientId: profile?.id,
       paymentOption,
       razorpayResponse,
+      consultationType: paymentOption,
       consultationTypeId: consultationType === "clinic" ? 2 : 1,
+      subscriptionId: subscriptionTracker.subscriptionId,
+      isDietician,
+      doctorConsultationDates: filteredDoctorConsultationDates, // update them
     };
-
+    console.log("Appointment Data", appointmentData);
     if (paymentOption === "online" && (!razorpayResponse || !razorpayResponse.success)) {
       alert("Payment not completed. Please try again.");
       setLoading(false);
@@ -131,6 +173,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
     }
   };
 
+  console.log("consultation type from HomeTwoA", consultationType);
   return (
     <>
       <DoctorInfoTwo slot={slot} doctor={doctor} onBack={onBack} />
@@ -149,7 +192,9 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
               <PaymentSelection
                 selectedOption={paymentOption}
                 onOptionChange={setPaymentOption}
+                subscriptionTracker={subscriptionTracker}
                 consultationType={consultationType || ""}
+                firstValidDate={firstValidDate}
               />
             </div>
 
@@ -174,7 +219,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
                 disabled={loading}
               >
                 {loading ? (
-                    <Loader2 className="animate-spin w-5 h-5 mr-2" />
+                  <Loader2 className="animate-spin w-5 h-5 mr-2" />
                 ) : (
                   consultationType === "clinic" ? "Confirm Clinic Visit" : "Confirm Video Consultation"
                 )}

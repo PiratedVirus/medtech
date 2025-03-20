@@ -4,9 +4,38 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useProfile } from "@/hooks/context/ProfileContext";
 import { HomeAppointmentOverview } from "@/patients/home/HomeAppointmentOverview";
+import { PlanUsageMinimal } from "@/components/patients/plans/PlanUsage";
+import { useDecryptedProfile } from "@/hooks/use-profile";
+import ArrowButton from "@/components/ui/custom/cd-arrow-button";
+import { useDispatch } from "react-redux";
+import { setSubscriptionData } from "@/store/subscriptionSlice";
+import axios from "axios";
+import { useEffect } from "react";
+
 
 export default function HomeOverview() {
   const { profile } = useProfile();
+  const dispatch = useDispatch();
+
+  const fetchSubscriptionTracker = async (userId: string) => {
+    try {
+      const response = await axios.get(`/api/plans/planTracker?userId=${userId}`);
+      dispatch(setSubscriptionData(response.data.data));
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching plan tracker:", error);
+      return null;
+    }
+  };
+  useEffect(() => {
+    console.log("Profile", profile);
+    if (profile?.id) {
+      fetchSubscriptionTracker(profile.id).then((data) => {
+        console.log("Plan Tracker Data", data);
+      });
+    }
+  }, [profile]);
+
   return (
     <div className="bg-muted px-20 pt-5">
       {/* Header */}
@@ -37,63 +66,28 @@ export default function HomeOverview() {
         {/* Middle Section - Program Details */}
         <div className="lg:col-span-5 flex flex-col h-[423px]">
           <div className="space-y-4 mb-6">
-            <h2 className="text-2xl font-semibold">
-              Care Diabetics{" "}
-              <span className="bg-gradient-to-r from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
-                CARE+
-              </span>
-            </h2>
-            <h3 className="text-[24px] text-[#146356] pt-5">
-              Get the medicines up to 30% off
-            </h3>
-            <p className="text-muted-foreground max-w-sm">
-              Diabetologist Consultation - 2, Lab Test - 2, Free Ophthalmologist
-              Clinic Consult - 6 Months - 1 visit, 12 Months - 2 visits
-            </p>
+
+            {profile?.subscriptionDetails?.subscriptionId ? (
+              <>
+                <h2 className="text-2xl font-semibold">
+                  Care Diabetics{" "}
+                  <span className="bg-gradient-to-r from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
+                    CARE+
+                  </span>
+                  {" "} Usage
+                </h2>
+                <PlanUsageMinimal userId={4} subscriptionId={profile?.subscriptionDetails?.subscriptionId} />
+              </>
+            ) : (
+              <>
+                {/* <div className="flex-1 flex justify-center"> */}
+                <ArrowButton buttonText="Explore our plans" href="/dashboard/plans" />
+                {/* </div> */}
+
+              </>
+            )}
           </div>
 
-          <Button className="h-[51px] w-[267px] rounded-[59px]  text-white hover:bg-popover">
-            <span className="mr-2">Buy Care Diabetics Care+</span>
-            <ArrowRight className="h-5 w-5" />
-          </Button>
-
-          <div className="flex gap-6 mt-auto">
-            <Card className="flex-1 w-64 bg-[#E5F5F1]">
-              <CardContent className="flex gap-4 p-4">
-                <img
-                  src="https://c.animaapp.com/Pl3sQKXr/img/image-19@2x.png"
-                  alt="Program icon"
-                  className="w-16 h-16 object-cover"
-                />
-                <div className="space-y-2">
-                  <div className="space-y-1">
-                    <p className="font-medium">Care Diabetics Program</p>
-                    <p className="text-sm">
-                      Current Plan: <span className="text-primary">CARE</span>
-                    </p>
-                  </div>
-                  <div className="text-sm">
-                    <p>Expiry Date:</p>
-                    <p>
-                      20 Jan 2025{" "}
-                      <span className="text-[#9747FF]">(45 days left)</span>
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="w-36 bg-[#E5F5F1]">
-              <CardContent className="h-full flex flex-col items-center justify-center p-4 text-center">
-                <img
-                  src="https://c.animaapp.com/Pl3sQKXr/img/image-4@2x.png"
-                  alt="Other plans"
-                  className="w-14 h-14 mb-2"
-                />
-                <p className="text-sm font-medium">Other plans</p>
-              </CardContent>
-            </Card>
-          </div>
         </div>
 
         {/* Right Section - Appointment & Apps */}

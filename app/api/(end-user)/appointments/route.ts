@@ -39,7 +39,7 @@ async function createGoogleMeetLink(slot: any, doctorId: number, patientId: numb
           conferenceSolutionKey: { type: "hangoutsMeet" },
         },
       },
-      attendees: [{ email: "patient@example.com" }], // Optional
+      // attendees: [{ email: "patient@example.com" }], // Optional
     };
 
     console.log("Event payload for Google Calendar:", event);
@@ -217,9 +217,14 @@ export async function POST(request: Request) {
       doctorId,
       patientId,
       consultationTypeId,
+      consultationType,
       paymentOption,
       razorpayResponse,
+      subscriptionId,
+      isDietician,
+      doctorConsultationDates
     } = body;
+
 
     if (!patientId || !doctorId || !slot?.id) {
       console.error("Missing required fields", { patientId, doctorId, slot });
@@ -241,6 +246,8 @@ export async function POST(request: Request) {
       console.log("Google Meet link created:", meetLink);
     }
 
+
+
     // ✅ First, create the appointment
     const newAppointment = await prisma.appointment.create({
       data: {
@@ -257,6 +264,15 @@ export async function POST(request: Request) {
         status: "Scheduled",
       },
     });
+    
+    if(consultationType === "plan") {
+      await prisma.subscriptionTracker.update({
+        where: { subscriptionId },
+        data: isDietician 
+          ? { dieticianConsultationDates: doctorConsultationDates } 
+          : { doctorConsultationDates: doctorConsultationDates },
+      });
+    }
 
     console.log("Appointment created successfully with ID:", newAppointment.id);
 

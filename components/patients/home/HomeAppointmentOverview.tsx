@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import Link from "next/link";
-import CdLoader from "@/components/ui/custom/cd-loader";
+import AppointmentSkeleton from "@/components/ui/custom/cd-appointment-skeleton";
 
 export function HomeAppointmentOverview() {
   const { clinicId, profile, isLoading: profileLoading } = useDecryptedProfile();
@@ -30,7 +30,7 @@ export function HomeAppointmentOverview() {
     enabled: !!clinicId && !!profile?.id, // Runs only when values exist
   });
 
-  if (isLoading || profileLoading) return <CdLoader />;
+  if (isLoading || profileLoading) return <AppointmentSkeleton />;
   if (isError || !appointment)
     return (
       <div className="p-6 rounded-3xl max-w-sm bg-custom-mutedgreen">

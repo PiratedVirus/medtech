@@ -38,7 +38,7 @@ async function createGoogleMeetLink(slot: any, doctorId: number, patientId: numb
           conferenceSolutionKey: { type: "hangoutsMeet" },
         },
       },
-      attendees: [{ email: "patient@example.com" }], // Optional
+      // attendees: [{ email: "patient@example.com" }], // Optional
     };
 
     console.log("Event payload for Google Calendar:", event);

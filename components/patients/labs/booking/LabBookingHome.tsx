@@ -12,6 +12,10 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { loadRazorpay } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { setSubscriptionData } from "@/store/subscriptionSlice";
+import { useDispatch } from "react-redux";
+import { set } from "date-fns";
 
 export default function LabBookingHome({ packageInfo, onBack }: any) {
   const router = useRouter();
@@ -20,8 +24,58 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState(""); // Status messages
   const [loading, setLoading] = useState(false); // Loader state
+  const dispatch = useDispatch();
   const labBbookingData = packageInfo;
   console.log("labBbookingData", labBbookingData);
+  const subscriptionTracker = useSelector((state: RootState) => state.subscriptionsStore.subscriptionData);
+  const [firstValidDate, setFirstValidDate] = useState<string | null>(null);
+  const [filteredlabTestsDatesDates, setFilteredlabTestsDatesDates] = useState<string[] | null>(null);
+
+  const fetchSubscriptionTracker = async (userId: string) => {
+    try {
+      const response = await axios.get(`/api/plans/planTracker?userId=${userId}`);
+      dispatch(setSubscriptionData(response.data.data));
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching plan tracker:", error);
+      return null;
+    }
+  };
+  useEffect(() => {
+    console.log("Profile", profile);
+    if (profile?.id) {
+      fetchSubscriptionTracker(profile.id).then((data) => {
+        console.log("Plan Tracker Data", data);
+      });
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    if (!subscriptionTracker){
+      return;
+    }  
+    const currentDate = new Date();
+
+    // a) Find the first valid date
+    const foundDate = subscriptionTracker?.labTestDates?.find((dateString: string) => {
+      const consultationDate = new Date(dateString);
+      const diffInMs = consultationDate.getTime() - currentDate.getTime();
+      const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
+
+      return diffInDays >= -1 && diffInDays <= 10;
+    }) || null;
+    console.log("ladTestsDates", subscriptionTracker);
+    console.log("foundDate", foundDate);
+    setFirstValidDate(foundDate);
+
+    // b) Filter out that date
+    const filtered = subscriptionTracker?.labTestDates?.filter((dateString: string) => {
+      return dateString !== foundDate;
+    }) || null;
+
+    setFilteredlabTestsDatesDates(filtered);
+
+  }, [subscriptionTracker]);
 
   const formRef = useRef<{ submitForm: (callback: (data: any) => void) => void } | null>(null);
 
@@ -99,6 +153,10 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
       patientId: profile?.id,
       paymentOption,
       razorpayResponse,
+      consultationType: paymentOption,
+      subscriptionId: subscriptionTracker.subscriptionId,
+      labTestsDates: filteredlabTestsDatesDates,
+
     };
 
     if (paymentOption === "online" && (!razorpayResponse || !razorpayResponse.success)) {
@@ -147,7 +205,10 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
               <PaymentSelection
                 selectedOption={paymentOption}
                 onOptionChange={setPaymentOption}
-                consultationType=""
+                firstValidDate={firstValidDate}
+                subscriptionTracker={subscriptionTracker}
+                consultationType={paymentOption || ""}
+
               />
             </div>
 
@@ -172,7 +233,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
                 disabled={loading}
               >
                 {loading ? (
-                    <Loader2 className="animate-spin w-5 h-5 mr-2" />
+                  <Loader2 className="animate-spin w-5 h-5 mr-2" />
                 ) : (
                   "Confirm Lab Booking"
                 )}
