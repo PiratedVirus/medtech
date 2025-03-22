@@ -49,7 +49,19 @@ import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const fetchClinics = async (pageIndex, pageSize) => {
+interface Clinic {
+  id?: string;
+  name: string;
+  address: string;
+  contactInfo: string;
+}
+
+interface FetchClinicsResponse {
+  data: Clinic[];
+  total: number;
+}
+
+const fetchClinics = async (pageIndex: number, pageSize: number): Promise<FetchClinicsResponse> => {
   try {
     const response = await axios.get(`/api/admin/clinics?page=${pageIndex + 1}&pageSize=${pageSize}`);
     return response.data;
@@ -59,9 +71,16 @@ const fetchClinics = async (pageIndex, pageSize) => {
   }
 };
 
-const createClinic = async (data) => {
+interface CreateClinicResponse {
+  id: string;
+  name: string;
+  address: string;
+  contactInfo: string;
+}
+
+const createClinic = async (data: Clinic): Promise<CreateClinicResponse | null> => {
   try {
-    const response = await axios.post("/api/admin/clinics", data);
+    const response = await axios.post<CreateClinicResponse>("/api/admin/clinics", data);
     return response.data;
   } catch (error) {
     console.error("Failed to create clinic:", error);
@@ -69,9 +88,16 @@ const createClinic = async (data) => {
   }
 };
 
-const updateClinic = async (id, data) => {
+interface UpdateClinicResponse {
+  id: string;
+  name: string;
+  address: string;
+  contactInfo: string;
+}
+
+const updateClinic = async (id: string, data: Clinic): Promise<UpdateClinicResponse | null> => {
   try {
-    const response = await axios.put(`/api/admin/clinics/${id}`, data);
+    const response = await axios.put<UpdateClinicResponse>(`/api/admin/clinics/${id}`, data);
     return response.data;
   } catch (error) {
     console.error("Failed to update clinic:", error);
@@ -79,9 +105,13 @@ const updateClinic = async (id, data) => {
   }
 };
 
-const deleteClinic = async (id) => {
+interface DeleteClinicResponse {
+  success: boolean;
+}
+
+const deleteClinic = async (id: string): Promise<DeleteClinicResponse | null> => {
   try {
-    const response = await axios.delete(`/api/admin/clinics/${id}`);
+    const response = await axios.delete<DeleteClinicResponse>(`/api/admin/clinics/${id}`);
     return response.data;
   } catch (error) {
     console.error("Failed to delete clinic:", error);
@@ -90,10 +120,10 @@ const deleteClinic = async (id) => {
 };
 
 export default function ClinicsPage() {
-  const [data, setData] = useState({ clinics: [], total: 0 });
-  const [selectedClinic, setSelectedClinic] = useState(null);
+  const [data, setData] = useState<{ clinics: Clinic[]; total: number }>({ clinics: [], total: 0 });
+  const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const { register, handleSubmit, reset, setValue } = useForm<FormData>();
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -217,10 +247,18 @@ export default function ClinicsPage() {
     }
   }, [selectedClinic, setValue, reset]);
 
-  const onSubmit = async (formData) => {
+  interface FormData {
+    name: string;
+    address: string;
+    contactInfo: string;
+  }
+
+  const onSubmit = async (formData: FormData) => {
     try {
       if (selectedClinic) {
-        await updateClinic(selectedClinic.id, formData);
+        if (selectedClinic.id) {
+          await updateClinic(selectedClinic.id, { ...formData, id: selectedClinic.id });
+        }
         toast.success("Clinic updated successfully");
       } else {
         await createClinic(formData);

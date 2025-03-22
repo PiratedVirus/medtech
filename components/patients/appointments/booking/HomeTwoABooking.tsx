@@ -104,7 +104,6 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
         prefill: {
           name: profile?.name || "",
           email: profile?.email || "",
-          // @ts-expect-error
           contact: profile?.phoneNumber || "",
         },
         theme: { color: "#f28a2e" },
@@ -192,7 +191,6 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
               <PaymentSelection
                 selectedOption={paymentOption}
                 onOptionChange={setPaymentOption}
-                subscriptionTracker={subscriptionTracker}
                 consultationType={consultationType || ""}
                 firstValidDate={firstValidDate}
               />

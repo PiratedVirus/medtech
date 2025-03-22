@@ -49,7 +49,21 @@ import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const fetchDieticians = async (pageIndex, pageSize) => {
+interface Dietician {
+  id: string;
+  user?: {
+    name: string;
+  };
+  specialty: string;
+  yearsOfExperience: number;
+}
+
+interface FetchDieticiansResponse {
+  data: Dietician[];
+  total: number;
+}
+
+const fetchDieticians = async (pageIndex: number, pageSize: number): Promise<FetchDieticiansResponse> => {
   try {
     const response = await axios.get(`/api/admin/dieticians?page=${pageIndex + 1}&pageSize=${pageSize}`);
     return response.data;
@@ -59,9 +73,18 @@ const fetchDieticians = async (pageIndex, pageSize) => {
   }
 };
 
-const createDietician = async (data) => {
+interface CreateDieticianResponse {
+  id: string;
+  user: {
+    name: string;
+  };
+  specialty: string;
+  yearsOfExperience: number;
+}
+
+const createDietician = async (data: Omit<Dietician, "id">): Promise<CreateDieticianResponse | null> => {
   try {
-    const response = await axios.post("/api/admin/dieticians", data);
+    const response = await axios.post<CreateDieticianResponse>("/api/admin/dieticians", data);
     return response.data;
   } catch (error) {
     console.error("Failed to create dietician:", error);
@@ -69,9 +92,18 @@ const createDietician = async (data) => {
   }
 };
 
-const updateDietician = async (id, data) => {
+interface UpdateDieticianResponse {
+  id: string;
+  user: {
+    name: string;
+  };
+  specialty: string;
+  yearsOfExperience: number;
+}
+
+const updateDietician = async (id: string, data: Omit<Dietician, "id">): Promise<UpdateDieticianResponse | null> => {
   try {
-    const response = await axios.put(`/api/admin/dieticians/${id}`, data);
+    const response = await axios.put<UpdateDieticianResponse>(`/api/admin/dieticians/${id}`, data);
     return response.data;
   } catch (error) {
     console.error("Failed to update dietician:", error);
@@ -79,9 +111,13 @@ const updateDietician = async (id, data) => {
   }
 };
 
-const deleteDietician = async (id) => {
+interface DeleteDieticianResponse {
+  success: boolean;
+}
+
+const deleteDietician = async (id: string): Promise<DeleteDieticianResponse | null> => {
   try {
-    const response = await axios.delete(`/api/admin/dieticians/${id}`);
+    const response = await axios.delete<DeleteDieticianResponse>(`/api/admin/dieticians/${id}`);
     return response.data;
   } catch (error) {
     console.error("Failed to delete dietician:", error);
@@ -90,10 +126,10 @@ const deleteDietician = async (id) => {
 };
 
 export default function DieticiansPage() {
-  const [data, setData] = useState({ dieticians: [], total: 0 });
-  const [selectedDietician, setSelectedDietician] = useState(null);
+  const [data, setData] = useState<{ dieticians: Dietician[]; total: number }>({ dieticians: [], total: 0 });
+  const [selectedDietician, setSelectedDietician] = useState<Dietician | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const { register, handleSubmit, reset, setValue } = useForm<FormData>();
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -210,7 +246,7 @@ export default function DieticiansPage() {
 
   useEffect(() => {
     if (selectedDietician) {
-      setValue("name", selectedDietician.name);
+      setValue("name", selectedDietician.user?.name ?? "");
       setValue("specialty", selectedDietician.specialty);
       setValue("yearsOfExperience", selectedDietician.yearsOfExperience);
     } else {
@@ -218,7 +254,13 @@ export default function DieticiansPage() {
     }
   }, [selectedDietician, setValue, reset]);
 
-  const onSubmit = async (formData) => {
+  interface FormData {
+    name: string;
+    specialty: string;
+    yearsOfExperience: number;
+  }
+
+  const onSubmit = async (formData: FormData) => {
     try {
       if (selectedDietician) {
         await updateDietician(selectedDietician.id, formData);

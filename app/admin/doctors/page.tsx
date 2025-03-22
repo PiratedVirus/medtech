@@ -48,6 +48,7 @@ import {
 import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Clinic } from "@prisma/client";
 
 // Types for doctor profile data and related user
 type Doctor = {
@@ -63,7 +64,7 @@ type Doctor = {
     email: string;
     phoneNumber: string;
     status: string;
-    clinic?: { id: number; name: string };
+    clinic?: { id: number | null; name: string };
   };
 };
 
@@ -249,7 +250,7 @@ export default function DoctorsPage() {
               setValue("yearsOfExperience", row.original.yearsOfExperience);
               setValue("consultationFee", row.original.consultationFee);
               setValue("status", row.original.user.status);
-              setValue("clinicId", row.original.user.clinic?.id);
+              setValue("clinicId", row.original.user.clinic?.id ?? 0);
               setValue("userId", row.original.user.id);
               setDialogOpen(true);
             }}
@@ -312,7 +313,7 @@ export default function DoctorsPage() {
       setValue("yearsOfExperience", selectedDoctor.yearsOfExperience);
       setValue("consultationFee", selectedDoctor.consultationFee);
       setValue("status", selectedDoctor.user.status);
-      setValue("clinicId", selectedDoctor.user.clinic?.id);
+      setValue("clinicId", selectedDoctor.user.clinic?.id ?? 0);
       setValue("userId", selectedDoctor.user.id);
     } else {
       reset();
@@ -544,7 +545,7 @@ export default function DoctorsPage() {
                       <SelectValue placeholder="Select Clinic" />
                     </SelectTrigger>
                     <SelectContent className="bg-white text-black">
-                      {clinics.map((clinic) => (
+                      {clinics.map((clinic: Clinic) => (
                         <SelectItem key={clinic.id} value={clinic.id.toString()}>
                           {clinic.name}
                         </SelectItem>

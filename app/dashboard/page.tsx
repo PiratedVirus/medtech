@@ -53,7 +53,7 @@ export default function Home() {
             <div className="px-20 py-4 flex justify-center w-full">
                 <div className="flex flex-col flex-grow bg-muted justify-start items-center gap-5 rounded-r-lg">
                     <div className="py-10 justify-items-center flex flex-col items-center gap-5">
-                        <Image width={16} height={16} className="w-16 h-16" src="/images/hand-heart.svg" />
+                        <Image width={16} height={16} className="w-16 h-16" src="/images/hand-heart.svg" alt="Hand holding a heart" />
                         <div className="w-full justify-start text-gray-800 text-base font-normal font-['Lato']">Heart Attack Risk Predictor</div>
 
                     </div>

@@ -7,6 +7,9 @@ interface DecryptedProfile {
   email: string;
   clinicId?: string;
   role: string;
+  subscriptionDetails: any;
+  patientProfile: any;
+  phoneNumber: any;
 }
 
 export const useDecryptedProfile = () => {

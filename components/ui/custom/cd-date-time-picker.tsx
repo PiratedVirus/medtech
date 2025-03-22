@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-interface TimeInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface TimeInputProps {
+  className?: string
   value?: string
   onChange?: (value: string) => void
 }

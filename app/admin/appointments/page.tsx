@@ -72,6 +72,7 @@ type Appointment = {
 };
 
 type Doctor = {
+  id?: number;
   userId: number;
   user: {
     name: string;
@@ -162,8 +163,13 @@ export default function AppointmentsPage() {
   const createAppointment = async (data: AppointmentsFormData, availableSlots: any) => {
     console.log("Creating appointment with formData:", data);
     console.log("doctorId:", data.doctorId);
-    data.doctorId = JSON.parse(data.doctorId).doctorId;
-    // Convert doctorAvailabilityId to number before comparison
+    if (typeof data.doctorId === "string") {
+      try {
+        data.doctorId = JSON.parse(data.doctorId)?.doctorId || Number(data.doctorId);
+      } catch (error) {
+        console.error("Error parsing doctorId:", error);
+      }
+    }    // Convert doctorAvailabilityId to number before comparison
     const slot = availableSlots.find(
       (slot: any) => slot.id === Number(data.doctorAvailabilityId) // Convert to number
     );
@@ -274,7 +280,8 @@ export default function AppointmentsPage() {
   // When a doctor is selected, load available slots for that doctor
   useEffect(() => {
     if (selectedDoctorId) {
-  const sendThisDoctorId = JSON.parse(selectedDoctorId).id;
+    // @ts-ignore
+    const sendThisDoctorId = JSON.parse(selectedDoctorId).id;
 
       fetchAvailableSlots(Number(sendThisDoctorId)).then((slots) =>
         setAvailableSlots(slots)
@@ -308,6 +315,8 @@ export default function AppointmentsPage() {
       if (selectedAppointment) {
         console.log("Selected appointment on edit:", selectedAppointment);
         // Set basic fields
+        // TODO - check again
+        // @ts-ignore
         setValue("patient", selectedAppointment.fullName);
         setValue("doctorId", selectedAppointment.doctorId);
         setValue("status", selectedAppointment.status);
@@ -415,7 +424,8 @@ export default function AppointmentsPage() {
       ),
       cell: ({ row }) => {
         const date = new Date(row.original.appointmentDate);
-        const options = { day: '2-digit', month: 'short', year: 'numeric' };
+        // const options = { day: '2-digit', month: 'short', year: 'numeric' };
+        const options: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric" };
         return (
           <>
           {/* <div className="flex items-center gap-2">
@@ -454,7 +464,7 @@ export default function AppointmentsPage() {
         return (
           (row.original.consultationTypeId === 1 ? (
             <>
-              <Link href={row.original.appointmentLink} >
+              <Link href={row.original?.appointmentLink ?? "#"} >
                 <Badge className="bg-green-700 shadow-none text-white">
                   JOIN MEET
                 </Badge>
@@ -484,6 +494,7 @@ export default function AppointmentsPage() {
               setSelectedAppointment(row.original);
               console.log("Selected appointment on edit click:", row.original);
               // Pre-fill form for editing:
+              // @ts-ignore
               setValue("patient", row.original.fullName);
               setValue("doctorId", row.original.doctorId);
               setValue("doctorAvailabilityId", row.original.doctorAvailabilityId);
@@ -598,7 +609,7 @@ export default function AppointmentsPage() {
           <TableBody>
             {tableInstance.getRowModel().rows?.length ? (
               tableInstance.getRowModel().rows.map((row) => (
-                <TableRow className="text-center" className="text-center" key={row.id} data-state={row.getIsSelected() && "selected"}>
+                <TableRow className="text-center" key={row.id} data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -752,7 +763,7 @@ export default function AppointmentsPage() {
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem key="no-slot" disabled>
+                      <SelectItem key="no-slot" value="" disabled>
                         No available slots
                       </SelectItem>
                     )}

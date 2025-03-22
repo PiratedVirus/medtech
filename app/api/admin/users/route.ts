@@ -12,6 +12,7 @@ export async function GET(request: Request) {
     // If a role is passed, return a simplified response (user id and name only)
     if (role) {
       const usersForRole = await prisma.user.findMany({
+        // @ts-ignore
         where: { role }
       });
       return NextResponse.json({ data: usersForRole });

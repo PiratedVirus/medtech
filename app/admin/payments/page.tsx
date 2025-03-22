@@ -49,7 +49,20 @@ import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const fetchPayments = async (pageIndex, pageSize) => {
+interface Payment {
+  id: string;
+  appointmentId: string;
+  amount: number;
+  currency: string;
+  paymentStatus: string;
+}
+
+interface FetchPaymentsResponse {
+  data: Payment[];
+  total: number;
+}
+
+const fetchPayments = async (pageIndex: number, pageSize: number): Promise<FetchPaymentsResponse> => {
   try {
     const response = await axios.get(`/api/admin/payments?page=${pageIndex + 1}&pageSize=${pageSize}`);
     return response.data;
@@ -59,7 +72,14 @@ const fetchPayments = async (pageIndex, pageSize) => {
   }
 };
 
-const createPayment = async (data) => {
+interface CreatePaymentData {
+  appointmentId: string;
+  amount: number;
+  currency: string;
+  paymentStatus: string;
+}
+
+const createPayment = async (data: CreatePaymentData): Promise<Payment | null> => {
   try {
     const response = await axios.post("/api/admin/payments", data);
     return response.data;
@@ -69,7 +89,14 @@ const createPayment = async (data) => {
   }
 };
 
-const updatePayment = async (id, data) => {
+interface UpdatePaymentData {
+  appointmentId: string;
+  amount: number;
+  currency: string;
+  paymentStatus: string;
+}
+
+const updatePayment = async (id: string, data: UpdatePaymentData): Promise<Payment | null> => {
   try {
     const response = await axios.put(`/api/admin/payments/${id}`, data);
     return response.data;
@@ -79,7 +106,11 @@ const updatePayment = async (id, data) => {
   }
 };
 
-const deletePayment = async (id) => {
+interface DeletePaymentResponse {
+  success: boolean;
+}
+
+const deletePayment = async (id: string): Promise<DeletePaymentResponse | null> => {
   try {
     const response = await axios.delete(`/api/admin/payments/${id}`);
     return response.data;
@@ -90,10 +121,10 @@ const deletePayment = async (id) => {
 };
 
 export default function PaymentsPage() {
-  const [data, setData] = useState({ payments: [], total: 0 });
-  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [data, setData] = useState<{ payments: Payment[]; total: number }>({ payments: [], total: 0 });
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const { register, handleSubmit, reset, setValue } = useForm<FormData>();
   const [sorting, setSorting] = useState<SortingState>([{ id: "amount", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -228,7 +259,14 @@ export default function PaymentsPage() {
     }
   }, [selectedPayment, setValue, reset]);
 
-  const onSubmit = async (formData) => {
+  interface FormData {
+    appointmentId: string;
+    amount: number;
+    currency: string;
+    paymentStatus: string;
+  }
+
+  const onSubmit = async (formData: FormData) => {
     try {
       if (selectedPayment) {
         await updatePayment(selectedPayment.id, formData);

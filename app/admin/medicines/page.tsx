@@ -49,7 +49,20 @@ import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const fetchMedicines = async (pageIndex, pageSize) => {
+interface Medicine {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  price: number;
+}
+
+interface FetchMedicinesResponse {
+  data: Medicine[];
+  total: number;
+}
+
+const fetchMedicines = async (pageIndex: number, pageSize: number): Promise<FetchMedicinesResponse> => {
   try {
     const response = await axios.get(`/api/admin/medicines?page=${pageIndex + 1}&pageSize=${pageSize}`);
     return response.data;
@@ -59,9 +72,17 @@ const fetchMedicines = async (pageIndex, pageSize) => {
   }
 };
 
-const createMedicine = async (data) => {
+interface CreateMedicineResponse {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  price: number;
+}
+
+const createMedicine = async (data: Omit<Medicine, 'id'>): Promise<CreateMedicineResponse | null> => {
   try {
-    const response = await axios.post("/api/admin/medicines", data);
+    const response = await axios.post<CreateMedicineResponse>("/api/admin/medicines", data);
     return response.data;
   } catch (error) {
     console.error("Failed to create medicine:", error);
@@ -69,9 +90,17 @@ const createMedicine = async (data) => {
   }
 };
 
-const updateMedicine = async (id, data) => {
+interface UpdateMedicineResponse {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  price: number;
+}
+
+const updateMedicine = async (id: string, data: Omit<Medicine, 'id'>): Promise<UpdateMedicineResponse | null> => {
   try {
-    const response = await axios.put(`/api/admin/medicines/${id}`, data);
+    const response = await axios.put<UpdateMedicineResponse>(`/api/admin/medicines/${id}`, data);
     return response.data;
   } catch (error) {
     console.error("Failed to update medicine:", error);
@@ -79,9 +108,13 @@ const updateMedicine = async (id, data) => {
   }
 };
 
-const deleteMedicine = async (id) => {
+interface DeleteMedicineResponse {
+  success: boolean;
+}
+
+const deleteMedicine = async (id: string): Promise<DeleteMedicineResponse | null> => {
   try {
-    const response = await axios.delete(`/api/admin/medicines/${id}`);
+    const response = await axios.delete<DeleteMedicineResponse>(`/api/admin/medicines/${id}`);
     return response.data;
   } catch (error) {
     console.error("Failed to delete medicine:", error);
@@ -90,10 +123,10 @@ const deleteMedicine = async (id) => {
 };
 
 export default function MedicinesPage() {
-  const [data, setData] = useState({ medicines: [], total: 0 });
-  const [selectedMedicine, setSelectedMedicine] = useState(null);
+  const [data, setData] = useState<{ medicines: Medicine[]; total: number }>({ medicines: [], total: 0 });
+  const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const { register, handleSubmit, reset, setValue } = useForm<FormData>();
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -228,7 +261,14 @@ export default function MedicinesPage() {
     }
   }, [selectedMedicine, setValue, reset]);
 
-  const onSubmit = async (formData) => {
+  interface FormData {
+    name: string;
+    category: string;
+    description: string;
+    price: number;
+  }
+
+  const onSubmit = async (formData: FormData) => {
     try {
       if (selectedMedicine) {
         await updateMedicine(selectedMedicine.id, formData);

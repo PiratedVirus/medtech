@@ -56,7 +56,22 @@ import { format } from "date-fns";
 // Import the new TimePicker component
 import { TimeInput } from "@/components/ui/custom/cd-date-time-picker";
 
-const fetchDoctorAvailability = async (pageIndex, pageSize) => {
+interface DoctorAvailabilityResponse {
+  data: DoctorAvailability[];
+  total: number;
+}
+
+interface DoctorAvailability {
+  id: number;
+  doctorId: number;
+  doctorName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+}
+
+const fetchDoctorAvailability = async (pageIndex: number, pageSize: number): Promise<DoctorAvailabilityResponse> => {
   try {
     const response = await axios.get(`/api/admin/slots?page=${pageIndex + 1}&pageSize=${pageSize}`);
     return response.data;
@@ -76,7 +91,15 @@ const fetchDoctors = async () => {
   }
 };
 
-const createDoctorAvailability = async (data) => {
+interface CreateDoctorAvailabilityData {
+  doctorId: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+}
+
+const createDoctorAvailability = async (data: CreateDoctorAvailabilityData): Promise<DoctorAvailability | null> => {
   console.log("Data for booking is ", data);
   try {
     const response = await axios.post("/api/admin/slots", data);
@@ -87,7 +110,15 @@ const createDoctorAvailability = async (data) => {
   }
 };
 
-const updateDoctorAvailability = async (id, data) => {
+interface UpdateDoctorAvailabilityData {
+  doctorId: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+}
+
+const updateDoctorAvailability = async (id: number, data: UpdateDoctorAvailabilityData): Promise<DoctorAvailability | null> => {
   try {
     const response = await axios.put(`/api/admin/slots?id=${id}`, data);
     return response.data;
@@ -97,7 +128,12 @@ const updateDoctorAvailability = async (id, data) => {
   }
 };
 
-const deleteDoctorAvailability = async (id) => {
+interface DeleteDoctorAvailabilityResponse {
+  success: boolean;
+  message: string;
+}
+
+const deleteDoctorAvailability = async (id: number): Promise<DeleteDoctorAvailabilityResponse | null> => {
   try {
     const response = await axios.delete(`/api/admin/slots?id=${id}`);
     return response.data;
@@ -108,12 +144,12 @@ const deleteDoctorAvailability = async (id) => {
 };
 
 export default function DoctorAvailabilityPage() {
-  const [data, setData] = useState({ availabilities: [], total: 0 });
-  const [doctors, setDoctors] = useState([]);
+  const [data, setData] = useState<{ availabilities: DoctorAvailability[], total: number }>({ availabilities: [], total: 0 });
+  const [doctors, setDoctors] = useState<{ id: number; user: { name: string } }[]>([]);
 
-  const [selectedAvailability, setSelectedAvailability] = useState(null);
+  const [selectedAvailability, setSelectedAvailability] = useState<DoctorAvailability | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { register, handleSubmit, reset, setValue, control } = useForm();
+  const { register, handleSubmit, reset, setValue, control } = useForm<FormData>();
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -209,7 +245,7 @@ export default function DoctorAvailabilityPage() {
             className="bg-transparent text-primary border-0 shadow-none"
             onClick={() => {
               setSelectedAvailability(row.original);
-              setValue("doctor", row.original.doctorName);
+              setValue("doctorId", row.original.doctorId);
               setValue("date", row.original.date);
               setValue("startTime", row.original.startTime);
               setValue("endTime", row.original.endTime);
@@ -278,7 +314,15 @@ export default function DoctorAvailabilityPage() {
     }
   }, [selectedAvailability, setValue, reset]);
 
-  const onSubmit = async (formData) => {
+  interface FormData {
+    doctorId: number;
+    date: string;
+    startTime: string;
+    endTime: string;
+    status: string;
+  }
+
+  const onSubmit = async (formData: FormData) => {
     try {
       if (selectedAvailability) {
         await updateDoctorAvailability(selectedAvailability.id, formData);
@@ -463,9 +507,9 @@ export default function DoctorAvailabilityPage() {
                   </SelectTrigger>
                   <SelectContent className="bg-white text-black">
                     {doctors.map((doctor) => (
-                      <SelectItem key={doctor.userId} value={doctor.id}>
+                      // @ts-ignore
+                      <SelectItem key={doctor.id} value={doctor.id}>
                         {doctor.user.name}
-                        {/* <p>{JSON.stringify(doctor)}</p> */}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -488,6 +532,7 @@ export default function DoctorAvailabilityPage() {
                   <PopoverContent className="w-auto p-0">
                     <Calendar
                       mode="single"
+                      //@ts-ignore
                       selected={field.value}
                       onSelect={field.onChange}
                       disabled={(date) => date < new Date()}

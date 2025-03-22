@@ -49,7 +49,19 @@ import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const fetchLabs = async (pageIndex, pageSize) => {
+interface Lab {
+  id: string;
+  name: string;
+  specialization: string;
+  contactInfo: string;
+}
+
+interface FetchLabsResponse {
+  data: Lab[];
+  total: number;
+}
+
+const fetchLabs = async (pageIndex: number, pageSize: number): Promise<FetchLabsResponse> => {
   try {
     const response = await axios.get(`/api/admin/labs?page=${pageIndex + 1}&pageSize=${pageSize}`);
     return response.data;
@@ -59,7 +71,13 @@ const fetchLabs = async (pageIndex, pageSize) => {
   }
 };
 
-const createLab = async (data) => {
+interface CreateLabData {
+  name: string;
+  specialization: string;
+  contactInfo: string;
+}
+
+const createLab = async (data: CreateLabData): Promise<Lab | null> => {
   try {
     const response = await axios.post("/api/admin/labs", data);
     return response.data;
@@ -69,7 +87,13 @@ const createLab = async (data) => {
   }
 };
 
-const updateLab = async (id, data) => {
+interface UpdateLabData {
+  name: string;
+  specialization: string;
+  contactInfo: string;
+}
+
+const updateLab = async (id: string, data: UpdateLabData): Promise<Lab | null> => {
   try {
     const response = await axios.put(`/api/admin/labs/${id}`, data);
     return response.data;
@@ -79,7 +103,11 @@ const updateLab = async (id, data) => {
   }
 };
 
-const deleteLab = async (id) => {
+interface DeleteLabResponse {
+  success: boolean;
+}
+
+const deleteLab = async (id: string): Promise<DeleteLabResponse | null> => {
   try {
     const response = await axios.delete(`/api/admin/labs/${id}`);
     return response.data;
@@ -90,10 +118,10 @@ const deleteLab = async (id) => {
 };
 
 export default function LabsPage() {
-  const [data, setData] = useState({ labs: [], total: 0 });
-  const [selectedLab, setSelectedLab] = useState(null);
+  const [data, setData] = useState<{ labs: Lab[]; total: number }>({ labs: [], total: 0 });
+  const [selectedLab, setSelectedLab] = useState<Lab | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const { register, handleSubmit, reset, setValue } = useForm<FormData>();
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -217,7 +245,13 @@ export default function LabsPage() {
     }
   }, [selectedLab, setValue, reset]);
 
-  const onSubmit = async (formData) => {
+  interface FormData {
+    name: string;
+    specialization: string;
+    contactInfo: string;
+  }
+
+  const onSubmit = async (formData: FormData) => {
     try {
       if (selectedLab) {
         await updateLab(selectedLab.id, formData);

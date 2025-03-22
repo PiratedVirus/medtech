@@ -18,7 +18,12 @@ function generateNextAppointmentDates(
   intervalInMonths: number,
   totalPlanMonths: number
 ) {
-  const nextAppointmentDates = [];
+  interface AppointmentDate {
+    featureName: string;
+    date: Date;
+  }
+
+  const nextAppointmentDates: AppointmentDate[] = [];
   const currentTime = new Date();
 
   // If either occurrencesPerInterval or intervalInMonths is missing, return empty
