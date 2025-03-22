@@ -120,7 +120,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
         prefill: {
           name: profile?.name || "",
           email: profile?.email || "",
-          // @ts-expect-error
+          // @ts-ignore
           contact: profile?.phoneNumber || "",
         },
         theme: { color: "#f28a2e" },
@@ -206,7 +206,6 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
                 selectedOption={paymentOption}
                 onOptionChange={setPaymentOption}
                 firstValidDate={firstValidDate}
-                subscriptionTracker={subscriptionTracker}
                 consultationType={paymentOption || ""}
 
               />

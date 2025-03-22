@@ -62,7 +62,7 @@ type User = {
 
 export default function UsersPage() {
   const [data, setData] = useState<{ users: User[]; total: number }>({ users: [], total: 0 });
-  const [clinics, setClinics] = useState([]);
+  const [clinics, setClinics] = useState<{ id: number; name: string }[]>([]);
   const [roleCounts, setRoleCounts] = useState<{ [key: string]: number }>({});
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);

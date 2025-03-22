@@ -14,7 +14,8 @@ import { useEffect } from "react";
 
 
 export default function HomeOverview() {
-  const { profile } = useProfile();
+  //@ts-ignore
+  const { profile }: { profile: { id: string; name: string; subscriptionDetails?: { subscriptionId: string } } } = useProfile();
   const dispatch = useDispatch();
 
   const fetchSubscriptionTracker = async (userId: string) => {

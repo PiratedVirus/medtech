@@ -9,7 +9,6 @@ import DoctorsPage from "@/app/admin/doctors/page";
 import LabsPage from "@/app/admin/labs/page";
 import MedicinesPage from "@/app/admin/medicines/page";
 import PaymentsPage from "@/app/admin/payments/page";
-import PrescriptionsPage from "@/app/admin/prescriptions/page";
 import SlotsPage from "@/app/admin/slots/page";
 export default function AdminPage() {
   return (
@@ -60,9 +59,7 @@ export default function AdminPage() {
         <TabsContent value="payments">
           <PaymentsPage/>
         </TabsContent>
-        <TabsContent value="prescriptions">
-          <PrescriptionsPage/>
-        </TabsContent>
+
      
       </Tabs>
     </div>

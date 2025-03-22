@@ -45,20 +45,33 @@ export async function GET(request: Request) {
     }
 
     // 4) Find the user's SubscriptionTracker record
+    if (subscriptionDetails.subscriptionId === null) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Subscription ID is null",
+        },
+        { status: 404 }
+      );
+    }
+
     const subscribedPlan = await prisma.subscriptionTracker.findFirst({
       where: {
         subscriptionId: subscriptionDetails.subscriptionId,
       },
     });
 
-    const planName = await prisma.plan.findUnique({
-      where: {
-        id: subscriptionDetails.planId,
-      },
-      select: {
-        name: true,
-      },
-    });
+    let planName = null;
+    if (subscriptionDetails.planId !== null) {
+      planName = await prisma.plan.findUnique({
+        where: {
+          id: subscriptionDetails.planId,
+        },
+        select: {
+          name: true,
+        },
+      });
+    }
 
     if (!subscribedPlan) {
       return NextResponse.json(
@@ -84,7 +97,7 @@ export async function GET(request: Request) {
       data: {
         subscriptionId: subscriptionDetails.subscriptionId,
         planId: subscriptionDetails.planId,
-        planName: planName.name,
+        planName: planName ? planName.name : null,
         doctorConsultationDates,
         dieticianConsultationDates,
         labTestDates,
