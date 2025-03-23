@@ -26,7 +26,7 @@ export default function AppointmentPage() {
       return response.data.success ? response.data.doctor : null;
     },
     staleTime: 2 * 60 * 1000, // ✅ Cache remains fresh for 10 minutes
-    gcTime: 60 * 60 * 1000, // ✅ Keeps cache for 1 hour
+    gcTime: 10 * 60 * 1000, // ✅ Keeps cache for 1 hour
     refetchOnWindowFocus: false, // ✅ Prevents refetch on tab switch
     refetchOnMount: false, // ✅ Prevents re-fetching on mount
     refetchOnReconnect: true, // ✅ Fetches only if internet reconnects

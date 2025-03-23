@@ -52,8 +52,14 @@ async function createGoogleMeetLink(slot: any, doctorId: number, patientId: numb
 
     console.log("Google Meet link created:", response.data.hangoutLink);
     return response.data.hangoutLink || null;
-  } catch (error) {
-    console.error("Error creating Google Meet link:", error);
+  } catch (error: any) {
+    console.error("Error creating Google Meet link:", {
+      message: error.message,
+      config: error.config,
+      response: error.response?.data,
+      status: error.response?.status,
+      headers: error.response?.headers,
+    });
     return null;
   }
 }
@@ -240,6 +246,17 @@ export async function POST(request: Request) {
       console.log("Creating Google Meet link...");
       meetLink = await createGoogleMeetLink(slot, doctorId, patientId);
       console.log("Google Meet link created:", meetLink);
+    }
+    
+    if (consultationTypeId === 2 && !meetLink) {
+      console.error("Failed to create Google Meet link for video consultation");
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unable to create Google Meet link for video consultation",
+        },
+        { status: 500 }
+      );
     }
 
     // ✅ First, create the appointment

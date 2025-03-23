@@ -22,8 +22,8 @@ export function HomeAppointmentOverview() {
       );
       return response.data.success ? response.data.data : null;
     },
-    staleTime: 10 * 60 * 1000, // Data remains fresh for 10 minutes
-    gcTime: 60 * 60 * 1000, // Cache garbage collected after 1 hour
+    staleTime: 2 * 60 * 1000, // Data remains fresh for 10 minutes
+    gcTime: 15 * 60 * 1000, // Cache garbage collected after 1 hour
     refetchOnWindowFocus: false, // Prevents refetching when switching tabs
     refetchOnMount: false, // Prevents re-fetching on component mount
     refetchOnReconnect: true, // Fetches only if internet reconnects
