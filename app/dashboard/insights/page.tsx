@@ -13,16 +13,17 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Cell,
+  TooltipProps,
 } from "recharts";
+import { ArrowLeft } from "lucide-react";
 
-// Color constants
-const COLOR_NORMAL = "#56A67C";   // custom.green
-const COLOR_HOVER = "#E6F4F1";    // custom.mutedgreen
+// Colors
+const BAR_FILL_NORMAL = "#E6F4F1";      // default bar fill
+const BAR_FILL_HOVER = "#064e3b";      // darker green on hover
+const AXIS_LINE_COLOR = "#666666";     // match x-axis line color
 
-// Metric config from your code
 const METRIC_CONFIG: Record<
   string,
   { color: string; imageSrc: string; unit: string; statusLabel: string }
@@ -66,7 +67,7 @@ const METRIC_CONFIG: Record<
 };
 
 type MonthData = {
-  month: string; // e.g. "2025-03"
+  month: string;
   average: number;
 };
 
@@ -75,7 +76,6 @@ type MetricData = {
   data: MonthData[];
 };
 
-/** Convert "YYYY-MM" to "Mar", "Apr", etc. */
 function formatMonthLabel(ymString: string) {
   const [year, month] = ymString.split("-");
   const date = new Date(Number(year), Number(month) - 1);
@@ -86,7 +86,6 @@ export default function DetailedHealthInsights() {
   const { profile } = useDecryptedProfile();
   const router = useRouter();
 
-  // Fetch data with React Query
   const { data, isLoading, isError } = useQuery({
     queryKey: ["insights", profile?.id],
     queryFn: async () => {
@@ -97,7 +96,6 @@ export default function DetailedHealthInsights() {
     enabled: !!profile?.id,
   });
 
-  // Loading states
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -108,19 +106,20 @@ export default function DetailedHealthInsights() {
   if (isError || !data) {
     return <div className="p-8">Failed to load insights.</div>;
   }
-  if (!data.success || !data.metrics || data.metrics.length === 0) {
+  if (!data.success || data.metrics.length === 0) {
     return <div className="p-8">No Insights Available</div>;
   }
 
   const metrics: MetricData[] = data.metrics;
 
   return (
-    <div className="p-8">
+    <div className="bg-muted min-h-screen px-20 py-6">
       <button
         onClick={() => router.push("/dashboard")}
-        className="mb-4 px-3 py-1.5 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+        className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4"
       >
-        ← Back
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Back
       </button>
 
       <h1 className="text-2xl font-bold mb-6">Full Insights</h1>
@@ -136,9 +135,7 @@ export default function DetailedHealthInsights() {
   );
 }
 
-/**
- * Child component for each metric row
- */
+/** Child component for each metric row */
 function MetricChartRow({
   metric,
   formatMonthLabel,
@@ -146,19 +143,14 @@ function MetricChartRow({
   metric: MetricData;
   formatMonthLabel: (ymString: string) => string;
 }) {
-  // The hook is safely inside a dedicated component
   const [hoverIndex, setHoverIndex] = React.useState(-1);
 
-  // Slice last 6 months if more than 6 data points
   const lastSixMonths = metric.data.slice(-6).map((m) => ({
     ...m,
     month: formatMonthLabel(m.month),
   }));
-
-  // Latest average reading for the card
   const latest = lastSixMonths[lastSixMonths.length - 1]?.average ?? 0;
 
-  // Pull config or fallback
   const config = METRIC_CONFIG[metric.metricName] || {
     color: "#FDFDFD",
     imageSrc: "/icons/default.svg",
@@ -167,10 +159,10 @@ function MetricChartRow({
   };
 
   return (
-    <div className="mb-8 flex gap-4 items-start">
-      {/* Chart */}
-      <div className="w-2/3">
-        <h2 className="text-xl font-semibold mb-2">{metric.metricName}</h2>
+    <div className="flex gap-5 mb-8">
+      {/* Graph in a rounded card */}
+      <div className="bg-white rounded-xl p-6 w-2/3">
+        <h2 className="text-xl font-semibold mb-4">{metric.metricName}</h2>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart
             data={lastSixMonths}
@@ -178,26 +170,33 @@ function MetricChartRow({
           >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="month" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="average" stroke={COLOR_NORMAL}>
-              {lastSixMonths.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={hoverIndex === index ? COLOR_HOVER : COLOR_NORMAL}
-                  onMouseEnter={() => setHoverIndex(index)}
-                  onMouseLeave={() => setHoverIndex(-1)}
-                  cursor="pointer"
-                />
+            <YAxis
+              tickFormatter={(val) => {
+                // Append the metric's unit if available
+                return config.unit ? `${val}${config.unit}` : val;
+              }}
+            />
+            <Tooltip
+              content={<CustomTooltip unit={config.unit} />}
+              cursor={{ fill: "none" }} // remove grey highlight
+            />
+            <Bar dataKey="average" shape={(props: any) => <BottomStrokeBar {...props} />}>
+              {lastSixMonths.map((entry: MonthData, index: number) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={hoverIndex === index ? BAR_FILL_HOVER : BAR_FILL_NORMAL}
+                onMouseEnter={() => setHoverIndex(index)}
+                onMouseLeave={() => setHoverIndex(-1)}
+                cursor="pointer"
+              />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Insights Card on the right */}
-      <div className="w-1/3">
+      {/* Insights Card */}
+      <div className="w-1/3 pl-6">
         <HealthInsightsCard
           title={metric.metricName}
           reading={latest}
@@ -205,10 +204,46 @@ function MetricChartRow({
           statusLabel={config.statusLabel}
           color={config.color}
           imageSrc={config.imageSrc}
-          // example chart data for the mini preview inside the card
           data={lastSixMonths.map((d) => ({ value: d.average }))}
         />
       </div>
+    </div>
+  );
+}
+
+/** Custom bar shape: only stroke the bottom line. */
+function BottomStrokeBar(props: any) {
+  const { x, y, width, height, fill } = props;
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} fill={fill} />
+      <line
+        x1={x}
+        y1={y + height}
+        x2={x + width}
+        y2={y + height}
+        stroke={AXIS_LINE_COLOR}
+        strokeWidth={1}
+      />
+    </g>
+  );
+}
+
+/** Custom Tooltip with orange BG and white text */
+function CustomTooltip({
+  active,
+  payload,
+  label,
+  unit,
+}: TooltipProps<any, any> & { unit?: string }) {
+  if (!active || !payload || !payload.length) return null;
+  return (
+    <div className="bg-[#F2994A] text-white p-2 rounded">
+      <p className="font-medium">{label}</p>
+      <p className="font-semibold">
+        {payload[0].value}
+        {unit}
+      </p>
     </div>
   );
 }

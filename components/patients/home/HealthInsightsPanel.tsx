@@ -67,7 +67,7 @@ export default function HealthInsightsPanel() {
                     Health Insights
                 </h2>
                 <button
-                    className="hover:bg-gray-100 p-1 rounded-full transition-colors"
+                    className="text-primary text-xl underline p-1 rounded-full transition-colors"
                     onClick={() => router.push("/dashboard/insights")}
                 >
                     View Insights
