@@ -7,7 +7,6 @@ import AppointmentsPage from "@/app/admin/appointments/page";
 import DieticiansPage from "@/app/admin/dieticians/page";
 import DoctorsPage from "@/app/admin/doctors/page";
 import LabsPage from "@/app/admin/labs/page";
-import MedicinesPage from "@/app/admin/medicines/page";
 import PaymentsPage from "@/app/admin/payments/page";
 import SlotsPage from "@/app/admin/slots/page";
 export default function AdminPage() {
@@ -23,7 +22,6 @@ export default function AdminPage() {
             <TabsTrigger value="dieticians">Dieticians</TabsTrigger>
             <TabsTrigger value="doctors">Doctors</TabsTrigger>
             <TabsTrigger value="labs">Labs</TabsTrigger>
-            <TabsTrigger value="medicines">Medicines</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
             <TabsTrigger value="slots">Slots</TabsTrigger>
@@ -52,9 +50,6 @@ export default function AdminPage() {
         </TabsContent>
         <TabsContent value="slots">
           <SlotsPage/>
-        </TabsContent>
-        <TabsContent value="medicines">
-          <MedicinesPage/>
         </TabsContent>
         <TabsContent value="payments">
           <PaymentsPage/>
