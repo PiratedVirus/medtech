@@ -280,7 +280,7 @@ export function PlanUsageMinimal({
   const { data, isLoading, isError } = usePlanUsageQuery(userId, subscriptionId);
 
   if (isLoading) {
-    return <div className="p-4">Loading plan usage...</div>;
+    return <PlanUsageMinimalSkeleton />;
   }
   if (isError || !data?.success) {
     return <div className="p-4">Error loading plan usage.</div>;
@@ -365,6 +365,33 @@ function PlanUsageMinimalLayout({
         {/* ArrowButton in the remaining space, centered */}
         <div className="flex-1 flex justify-center">
           <ArrowButton buttonText="View Plan Usage" href="/dashboard/plans" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Skeleton loader for minimal usage layout */
+export function PlanUsageMinimalSkeleton() {
+  const Circle = () => (
+    <div className="flex flex-col items-center">
+      <div className="w-20 h-20 rounded-full bg-muted animate-pulse" />
+      <div className="w-16 h-4 bg-muted rounded mt-2 animate-pulse" />
+      <div className="w-24 h-4 bg-muted rounded mt-1 animate-pulse" />
+    </div>
+  );
+
+  return (
+    <div className="w-full mx-auto py-4 space-y-6">
+      <div className="flex items-center justify-center gap-6 flex-wrap">
+        {Array.from({ length: 4 }).map((_, idx) => (
+          <Circle key={idx} />
+        ))}
+      </div>
+      <div className="flex items-center gap-6 px-6">
+        <Circle />
+        <div className="flex-1 flex justify-center">
+          <div className="w-[160px] h-10 bg-muted rounded-full animate-pulse" />
         </div>
       </div>
     </div>
