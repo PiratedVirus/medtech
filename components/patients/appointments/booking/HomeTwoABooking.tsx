@@ -14,9 +14,12 @@ import { loadRazorpay } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { set } from "date-fns";
 import { useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+
   const [paymentOption, setPaymentOption] = useState("online");
   const { profile } = useDecryptedProfile();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -155,10 +158,12 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
       if (response.data.success) {
         setStatusMessage("Appointment confirmed!");
         setShowSuccessModal(true);
+        queryClient.invalidateQueries({ queryKey: ["appointments"] });
         setTimeout(() => {
           setShowSuccessModal(false);
           setStatusMessage(""); // Reset status
-          router.push("/dashboard/appointments");
+          router.replace("/dashboard/appointments");
+
         }, 3000);
 
       } else {

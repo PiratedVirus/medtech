@@ -171,7 +171,7 @@ export default function PricingTable() {
               setShowSuccessModal(true);
               setTimeout(() => {
                 setShowSuccessModal(false);
-                router.push("/dashboard/appointments");
+                router.replace("/dashboard/appointments");
               }, 3000);
             } else {
               alert("Error confirming purchase: " + confirmRes.data.error);
