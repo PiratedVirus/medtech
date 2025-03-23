@@ -22,8 +22,8 @@ export function HomeAppointmentOverview() {
       );
       return response.data.success ? response.data.data : null;
     },
-    staleTime: 10 * 60 * 1000, // Data remains fresh for 10 minutes
-    gcTime: 60 * 60 * 1000, // Cache garbage collected after 1 hour
+    staleTime: 2 * 60 * 1000, // Data remains fresh for 10 minutes
+    gcTime: 15 * 60 * 1000, // Cache garbage collected after 1 hour
     refetchOnWindowFocus: false, // Prevents refetching when switching tabs
     refetchOnMount: false, // Prevents re-fetching on component mount
     refetchOnReconnect: true, // Fetches only if internet reconnects
@@ -33,7 +33,7 @@ export function HomeAppointmentOverview() {
   if (isLoading || profileLoading) return <AppointmentSkeleton />;
   if (isError || !appointment)
     return (
-      <div className="p-6 rounded-3xl max-w-sm bg-custom-mutedgreen">
+      <div className="p-6 rounded-3xl w-full bg-custom-mutedgreen">
         <h2 className="text-2xl font-semibold text-gray-800">Upcoming Appointment</h2>
         <p className="text-gray-600">No upcoming appointments scheduled.</p>
       </div>

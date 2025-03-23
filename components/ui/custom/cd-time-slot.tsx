@@ -25,6 +25,25 @@ export function TimeSlots({ currentDayDate, displayedSlots, onSlotSelect }: Time
     (slot) => getTimeSegment(slot.startTime) === "evening"
   );
 
+  const now = new Date();
+  const isToday = currentDayDate === now.toISOString().split("T")[0];
+
+  const isSlotDisabled = (slotTime: string) => {
+    if (!isToday) return false;
+  
+    const now = new Date();
+    const [time, modifier] = slotTime.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+  
+    if (modifier === "PM" && hours !== 12) hours += 12;
+    if (modifier === "AM" && hours === 12) hours = 0;
+  
+    const slotDate = new Date(now);
+    slotDate.setHours(hours, minutes, 0, 0);
+    console.log("Comparing", slotTime, "->", slotDate, "vs now:", now);
+    return slotDate <= now;
+  };
+console.log(displayedSlots)
   return (
     <div className="mt-6 space-y-4">
       <h2 className="text-xl font-semibold">{formatDateString(currentDayDate)}</h2>
@@ -41,7 +60,8 @@ export function TimeSlots({ currentDayDate, displayedSlots, onSlotSelect }: Time
                   <Button
                     key={i}
                     variant="outline"
-                    className="border-green-600 text-green-600 hover:bg-green-50 rounded-full"
+                    disabled={isSlotDisabled(slot.startTime)}
+                    className="border-green-600 text-green-600 hover:bg-green-50 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => onSlotSelect(slot)}
                   >
                     {slot.startTime} - {slot.endTime}
@@ -58,7 +78,8 @@ export function TimeSlots({ currentDayDate, displayedSlots, onSlotSelect }: Time
                   <Button
                     key={i}
                     variant="outline"
-                    className="border-green-600 text-green-600 hover:bg-green-50 rounded-full"
+                    disabled={isSlotDisabled(slot.startTime)}
+                    className="border-green-600 text-green-600 hover:bg-green-50 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => onSlotSelect(slot)}
                   >
                     {slot.startTime} - {slot.endTime}
@@ -75,7 +96,8 @@ export function TimeSlots({ currentDayDate, displayedSlots, onSlotSelect }: Time
                   <Button
                     key={i}
                     variant="outline"
-                    className="border-green-600 text-green-600 hover:bg-green-50 rounded-full"
+                    disabled={isSlotDisabled(slot.startTime)}
+                    className="border-green-600 text-green-600 hover:bg-green-50 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => onSlotSelect(slot)}
                   >
                     {slot.startTime} - {slot.endTime}

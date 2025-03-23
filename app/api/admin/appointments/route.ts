@@ -135,7 +135,7 @@ export async function POST(request: Request) {
       status: "Scheduled",
       doctorId: data.doctorId,
       doctorAvailabilityId: data.doctorAvailabilityId,
-      consultationTypeId: data.consultationTypeId,
+      consultationType: data.consultationTypeId, // modify this later
       patientId: data.patientId,
       appointmentDate: data.appointmentDate,
       fullName: data.patinetName,

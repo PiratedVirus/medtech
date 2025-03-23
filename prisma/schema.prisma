@@ -179,21 +179,12 @@ model DieticianAvailability {
   @@index([deletedAt])
 }
 
-model ConsultationType {
-  id            Int    @id @default(autoincrement())
-  type          String
-  deletedAt     DateTime?
-
-  appointments  Appointment[]
-
-  @@index([deletedAt])
-}
 
 model Appointment {
   id                   Int    @id @default(autoincrement())
   patientId            Int
   doctorId             Int
-  consultationTypeId   Int
+  consultationType     String
   doctorAvailabilityId Int
   prescriptionLink     String?
   appointmentFor       String?
@@ -211,7 +202,6 @@ model Appointment {
 
   patient              User @relation("Patient", fields: [patientId], references: [id])
   doctor               User @relation("Doctor", fields: [doctorId], references: [id])
-  consultationType     ConsultationType @relation(fields: [consultationTypeId], references: [id])
   doctorAvailability   DoctorAvailability @relation(fields: [doctorAvailabilityId], references: [id])
   payment              Payment?
 

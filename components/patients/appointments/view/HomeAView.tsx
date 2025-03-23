@@ -24,8 +24,8 @@ export default function AppointmentViewHome() {
       );
       return response.data.success ? response.data.data : { past: [], upcoming: [] };
     },
-    staleTime: 10 * 60 * 1000, // ✅ Keeps cache valid for 10 minutes
-    gcTime: 60 * 60 * 1000, // ✅ Keeps cache for 1 hour
+    staleTime: 2 * 60 * 1000, // ✅ Keeps cache valid for 10 minutes
+    gcTime: 12 * 60 * 1000, // ✅ Keeps cache for 1 hour
     refetchOnWindowFocus: false, // ✅ Prevents re-fetching on tab switch
     refetchOnMount: false, // ✅ Prevents re-fetching when navigating back
     refetchOnReconnect: true, // ✅ Fetches only if internet reconnects

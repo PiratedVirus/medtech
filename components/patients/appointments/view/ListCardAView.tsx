@@ -8,7 +8,7 @@ interface Appointment {
   id: number;
   appointmentDate: string;
   status: string;
-  consultationType: { type: string };
+  consultationType: string;
   doctor: { name: string; doctorProfile: { specialty: string } };
   doctorAvailability: { startTime: string };
   prescriptionLink: string;
@@ -48,7 +48,7 @@ export default function AppointmentListCard({ appointment }: { appointment: Appo
           </p>
           <p className="text-gray-500 text-sm">
             Consultation:{" "}
-            <span className="text-purple-600">{appointment?.consultationType?.type}</span>
+            <span className="text-purple-600">{appointment?.consultationType}</span>
           </p>
           <p className="text-gray-500 text-sm">
             Status:{" "}

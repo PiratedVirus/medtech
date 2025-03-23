@@ -53,7 +53,7 @@ export default function UpcomingAppointment({ appointment }: UpcomingAppointment
         </div>
 
         {/* Right Section - Appointment Card */}
-        {(appointment.consultationType !== 'Physical') ? (
+        {(appointment.consultationType === 'Video') ? (
           <Card className="bg-gradient-to-r to-[#134F30] from-[#56A67C] text-white p-4 rounded-2xl w-full md:w-auto">
             <Link
               href={`${appointment.appointmentLink}`}
