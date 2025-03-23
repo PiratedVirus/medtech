@@ -1,4 +1,6 @@
+'use client';
 import HealthInsightsCard from "@/components/ui/custom/cd-health-insights-card";
+import { useRouter } from "next/navigation";
 const healthMetrics = [
     {
         title: "Blood Glucose Level",
@@ -56,25 +58,29 @@ const healthMetrics = [
     },
 ];
 
-export default function HealthInsightsPanel () {
+export default function HealthInsightsPanel() {
+    const router = useRouter();
     return (
-     <div className="px-20 py-4 bg-custom-mutedbg flex flex-col justify-center">
-                <div className="flex items-end w-full pb-5 justify-between my-3">
-                    <h2 className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-3xl font-semibold bg-clip-text text-transparent">
-                        Health Insights
-                    </h2>
-                    <button className="hover:bg-gray-100 p-1 rounded-full transition-colors">
-                        View Insights
-                    </button>
-
-                </div>
-
-                <div className="flex flex-row gap-3">
-                    {healthMetrics.map((metric, index) => (
-                        <HealthInsightsCard key={index} {...metric} />
-                    ))}
-                </div>
+        <div className="px-20 py-4 bg-custom-mutedbg flex flex-col justify-center">
+            <div className="flex items-end w-full pb-5 justify-between my-3">
+                <h2 className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-3xl font-semibold bg-clip-text text-transparent">
+                    Health Insights
+                </h2>
+                <button
+                    className="hover:bg-gray-100 p-1 rounded-full transition-colors"
+                    onClick={() => router.push("/dashboard/insights")}
+                >
+                    View Insights
+                </button>
 
             </div>
+
+            <div className="flex flex-row gap-3">
+                {healthMetrics.map((metric, index) => (
+                    <HealthInsightsCard key={index} {...metric} />
+                ))}
+            </div>
+
+        </div>
     )
 }
