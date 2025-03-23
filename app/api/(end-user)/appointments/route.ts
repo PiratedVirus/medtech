@@ -198,7 +198,7 @@ export async function GET(request: NextRequest) {
  *   },
  *   "doctorId": 1,
  *   "patientId": 4,
- *   "paymentOption": "online"
+ *   "paymentMethod": "online"
  *   // optionally "consultationTypeId"
  * }
  */
@@ -216,15 +216,15 @@ export async function POST(request: Request) {
       slot,
       doctorId,
       patientId,
-      consultationTypeId,
-      consultationType,
-      paymentOption,
+      consultationMode,
+      paymentMethod,
       razorpayResponse,
       subscriptionId,
       isDietician,
       doctorConsultationDates
     } = body;
 
+    const consultationTypeId = consultationMode === "video" ? 2 : 1;
 
     if (!patientId || !doctorId || !slot?.id) {
       console.error("Missing required fields", { patientId, doctorId, slot });
@@ -234,26 +234,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // Default consultation type if not provided
-    const finalConsultationTypeId = consultationTypeId ?? 1;
-    console.log("Final consultation type:", finalConsultationTypeId);
-
     // Google Meet link for online consultations
     let meetLink = null;
-    if (finalConsultationTypeId !== 1) {
+    if (consultationTypeId === 2) {
       console.log("Creating Google Meet link...");
       meetLink = await createGoogleMeetLink(slot, doctorId, patientId);
       console.log("Google Meet link created:", meetLink);
     }
-
-
 
     // ✅ First, create the appointment
     const newAppointment = await prisma.appointment.create({
       data: {
         patientId,
         doctorId,
-        consultationTypeId: finalConsultationTypeId,
+        consultationTypeId,
         doctorAvailabilityId: slot.id,
         appointmentFor,
         fullName,
@@ -265,7 +259,7 @@ export async function POST(request: Request) {
       },
     });
     
-    if(consultationType === "plan") {
+    if (consultationMode === "plan") {
       await prisma.subscriptionTracker.update({
         where: { subscriptionId },
         data: isDietician 
@@ -283,7 +277,7 @@ export async function POST(request: Request) {
     });
 
     // ✅ Third, create the Payment (only if online)
-    if (paymentOption === "online" && razorpayResponse) {
+    if (paymentMethod === "online" && razorpayResponse) {
       console.log("Creating payment record...");
       await prisma.payment.create({
         data: {
@@ -298,7 +292,7 @@ export async function POST(request: Request) {
       });
       console.log("Payment record created.");
     } else {
-      console.log("Skipping payment record as payment option is not online.");
+      console.log("Skipping payment record as payment method is not online.");
     }
 
     console.log("Transaction completed successfully.");

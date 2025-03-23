@@ -20,14 +20,14 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [paymentOption, setPaymentOption] = useState("online");
+  const [paymentMethod, setPaymentMethod] = useState("online");
   const { profile } = useDecryptedProfile();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState(""); // Status messages
   const [loading, setLoading] = useState(false); // Loader state
   const bookingData = useSelector((state: RootState) => state.appointment.bookingData);
   const subscriptionTracker = useSelector((state: RootState) => state.subscriptionsStore.subscriptionData);
-  const consultationType = bookingData?.type;
+  const consultationMode = bookingData?.type;
   const [firstValidDate, setFirstValidDate] = useState<string | null>(null);
   const [filteredDoctorConsultationDates, setFilteredDoctorConsultationDates] = useState<string[] | null>(null);
   const isDietician = bookingData?.isDietician || false;
@@ -138,16 +138,16 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
       slot,
       doctorId: doctor.id,
       patientId: profile?.id,
-      paymentOption,
+      paymentMethod,
       razorpayResponse,
-      consultationType: paymentOption,
-      consultationTypeId: consultationType === "clinic" ? 2 : 1,
+      consultationMode,
+      consultationTypeId: consultationMode === "video" ? 2 : 1,
       subscriptionId: subscriptionTracker.subscriptionId,
       isDietician,
       doctorConsultationDates: filteredDoctorConsultationDates, // update them
     };
     console.log("Appointment Data", appointmentData);
-    if (paymentOption === "online" && (!razorpayResponse || !razorpayResponse.success)) {
+    if (paymentMethod === "online" && (!razorpayResponse || !razorpayResponse.success)) {
       alert("Payment not completed. Please try again.");
       setLoading(false);
       return;
@@ -177,7 +177,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
     }
   };
 
-  console.log("consultation type from HomeTwoA", consultationType);
+  console.log("consultation mode from HomeTwoA", consultationMode);
   return (
     <>
       <DoctorInfoTwo slot={slot} doctor={doctor} onBack={onBack} />
@@ -194,9 +194,9 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
             {/* Payment Selection */}
             <div className="bg-white flex-grow flex items-center justify-center p-6">
               <PaymentSelection
-                selectedOption={paymentOption}
-                onOptionChange={setPaymentOption}
-                consultationType={consultationType || ""}
+                selectedOption={paymentMethod}
+                onOptionChange={setPaymentMethod}
+                consultationType={consultationMode || ""}
                 firstValidDate={firstValidDate}
               />
             </div>
@@ -210,7 +210,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
                   if (formRef.current) {
                     // @ts-expect-error
                     formRef.current.submitForm(async (data) => {
-                      if (paymentOption === "online") {
+                      if (paymentMethod === "online") {
                         await handlePayment(data);
                       } else {
                         await handleConfirmAppointment(data);
@@ -224,7 +224,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
                 {loading ? (
                   <Loader2 className="animate-spin w-5 h-5 mr-2" />
                 ) : (
-                  consultationType === "clinic" ? "Confirm Clinic Visit" : "Confirm Video Consultation"
+                  consultationMode === "clinic" ? "Confirm Clinic Visit" : "Confirm Video Consultation"
                 )}
               </Button>
             </div>
