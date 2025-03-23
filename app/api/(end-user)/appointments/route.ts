@@ -1,3 +1,4 @@
+// filepath: /Users/saurabhkulkarni/Desktop/caredb/app/api/(end-user)/appointments/route.ts
 import { NextResponse, NextRequest } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { google } from "googleapis";
@@ -68,8 +69,6 @@ async function createGoogleMeetLink(slot: any, doctorId: number, patientId: numb
  * GET /api/appointments
  * Retrieves all appointments, including nested data.
  */
-
-
 export async function GET(request: NextRequest) {
   try {
     console.log("GET /api/appointments called");
@@ -102,7 +101,7 @@ export async function GET(request: NextRequest) {
         email: true,
         appointmentDate: true,
         status: true,
-        consultationType: { select: { type: true } },
+        consultationType: true, // Use consultationType directly
         appointmentLink: true,
         patient: { select: { id: true, name: true, phoneNumber: true, clinicId: true } },
         doctor: { select: { id: true, name: true, clinicId: true } },
@@ -158,7 +157,7 @@ export async function GET(request: NextRequest) {
         appointmentDate: true,
         prescriptionLink: true,
         status: true,
-        consultationType: { select: { type: true } },
+        consultationType: true, // Use consultationType directly
         appointmentLink: true,
         patient: { select: { id: true, name: true, phoneNumber: true, clinicId: true } },
         doctor: { select: { id: true, name: true, clinicId: true } },
@@ -178,7 +177,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Error fetching appointments:", error);
+    console.error("Error fetching appointments:");
     return NextResponse.json(
       { success: false, error: "Failed to fetch appointments", details: error },
       { status: 500 }
@@ -230,7 +229,7 @@ export async function POST(request: Request) {
       doctorConsultationDates
     } = body;
 
-    const consultationTypeId = consultationMode === "video" ? 2 : 1;
+    const consultationType = consultationMode === "video" ? "Video" : "Physical";
 
     if (!patientId || !doctorId || !slot?.id) {
       console.error("Missing required fields", { patientId, doctorId, slot });
@@ -242,21 +241,10 @@ export async function POST(request: Request) {
 
     // Google Meet link for online consultations
     let meetLink = null;
-    if (consultationTypeId === 2) {
+    if (consultationType === "Video") {
       console.log("Creating Google Meet link...");
       meetLink = await createGoogleMeetLink(slot, doctorId, patientId);
       console.log("Google Meet link created:", meetLink);
-    }
-    
-    if (consultationTypeId === 2 && !meetLink) {
-      console.error("Failed to create Google Meet link for video consultation");
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Unable to create Google Meet link for video consultation",
-        },
-        { status: 500 }
-      );
     }
 
     // ✅ First, create the appointment
@@ -264,7 +252,6 @@ export async function POST(request: Request) {
       data: {
         patientId,
         doctorId,
-        consultationTypeId,
         doctorAvailabilityId: slot.id,
         appointmentFor,
         fullName,
@@ -272,10 +259,11 @@ export async function POST(request: Request) {
         email,
         appointmentDate: slot.date ? new Date(slot.date) : null,
         appointmentLink: meetLink,
+        consultationType, // Use consultationType instead of consultationTypeId
         status: "Scheduled",
       },
     });
-    
+
     if (consultationMode === "plan") {
       await prisma.subscriptionTracker.update({
         where: { subscriptionId },
