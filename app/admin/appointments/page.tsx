@@ -102,7 +102,7 @@ type AppointmentsFormData = {
   doctorId: number;
   doctorAvailabilityId: number;
   status: string;
-  consultationTypeId: number;
+  consultationType: string;
   startTime: string;
   endTime: string;
   appointmentDate: string;
@@ -198,7 +198,7 @@ export default function AppointmentsPage() {
       doctorId: Number(data.doctorId),
       patientId: Number(data.patientId),
       doctorAvailabilityId: Number(data.doctorAvailabilityId),
-      consultationTypeId: Number(data.consultationTypeId)
+      consultationType: data.consultationType,
     };
     console.log("Entire payload", payload);
   
@@ -773,7 +773,7 @@ export default function AppointmentsPage() {
             />
             <Controller
               control={control}
-              name="consultationTypeId"
+              name="consultationType"
               rules={{ required: true }}
               render={({ field }) => (
                 <Select

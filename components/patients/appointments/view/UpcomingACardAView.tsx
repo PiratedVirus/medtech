@@ -53,7 +53,7 @@ export default function UpcomingAppointment({ appointment }: UpcomingAppointment
         </div>
 
         {/* Right Section - Appointment Card */}
-        {(appointment.consultationMode === 'video') ? (
+        {(appointment.consultationType === 'Video') ? (
           <Card className="bg-gradient-to-r to-[#134F30] from-[#56A67C] text-white p-4 rounded-2xl w-full md:w-auto">
             <Link
               href={`${appointment.appointmentLink}`}
@@ -94,7 +94,7 @@ export default function UpcomingAppointment({ appointment }: UpcomingAppointment
             {/* Appointment Details */}
             <div className="flex-grow">
               <h3 className="font-semibold text-lg">{appointment.doctor.name}</h3>
-              <p className="text-sm text-white/90">{appointment.consultationMode} consultation</p>
+              <p className="text-sm text-white/90">{appointment.consultationType} consultation</p>
             </div>
 
             {/* Time and Date */}

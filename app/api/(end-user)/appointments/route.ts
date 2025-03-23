@@ -204,7 +204,6 @@ export async function GET(request: NextRequest) {
  *   "doctorId": 1,
  *   "patientId": 4,
  *   "paymentMethod": "online"
- *   // optionally "consultationTypeId"
  * }
  */
 export async function POST(request: Request) {
@@ -259,7 +258,7 @@ export async function POST(request: Request) {
         email,
         appointmentDate: slot.date ? new Date(slot.date) : null,
         appointmentLink: meetLink,
-        consultationType, // Use consultationType instead of consultationTypeId
+        consultationType,
         status: "Scheduled",
       },
     });

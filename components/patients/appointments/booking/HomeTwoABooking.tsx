@@ -141,7 +141,6 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
       paymentMethod,
       razorpayResponse,
       consultationMode,
-      consultationTypeId: consultationMode === "video" ? 2 : 1,
       subscriptionId: subscriptionTracker.subscriptionId,
       isDietician,
       doctorConsultationDates: filteredDoctorConsultationDates, // update them
