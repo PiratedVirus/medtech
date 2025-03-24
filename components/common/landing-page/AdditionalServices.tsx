@@ -2,7 +2,7 @@ import { CheckCircle } from "lucide-react"
 import Image from "next/image"
 export default function AdditionalServices() {
   return (
-    <section className="py-12 bg-muted">
+    <section className="py-12">
       <div className="container px-4 md:px-6 max-w-6xl mx-auto">
         <div className="text-center mb-8">
           <h2 className="text-3xl md:text-4xl font-medium text-[#56a67c]">We care for you to be free</h2>
