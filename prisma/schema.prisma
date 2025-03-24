@@ -39,6 +39,7 @@ model Clinic {
   users             User[]
   specializations   ClinicSpecialization[]
 
+
   @@index([deletedAt])
 }
 
@@ -76,6 +77,7 @@ model User {
   doctorAppointments  Appointment[] @relation("Doctor")
   labPatientBookings LabBooking[]   @relation("LabPatient")
   labTechBookings    LabBooking[]   @relation("LabTech")
+  healthMetrics     HealthMetric[]
   @@index([deletedAt])
 }
 
@@ -360,4 +362,20 @@ model SubscriptionTracker {
   user                         PatientProfile      @relation(fields: [patientId], references: [id])
   appointments                 Appointment[]
   @@index([deletedAt])
+}
+
+model HealthMetric {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  metricName  String
+  reading     Float
+  recordedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([deletedAt])
+  @@index([userId])
 }
