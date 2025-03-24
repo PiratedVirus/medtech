@@ -154,7 +154,7 @@ function MetricChartRow({
 
   const config = METRIC_CONFIG[metric.metricName] || {
     color: "#FDFDFD",
-    imageSrc: "/icons/default.svg",
+    imageSrc: "/icons/blood.svg",
     unit: "",
     statusLabel: "Normal",
   };

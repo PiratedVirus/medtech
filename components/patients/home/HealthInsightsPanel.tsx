@@ -97,7 +97,7 @@ export default function HealthInsightsPanel() {
   const mappedMetrics = metrics.map((m) => {
     const config = METRIC_CONFIG[m.metricName] || {
       color: "#EEE",
-      imageSrc: "/icons/default.svg",
+      imageSrc: "/icons/blood.svg",
       unit: "",
       statusLabel: "Normal",
     };
@@ -113,6 +113,7 @@ export default function HealthInsightsPanel() {
       imageSrc: config.imageSrc,
       // We can map the monthly data to the "data" array for a mini-sparkline if you want
       data: m.data.map((x) => ({ value: x.average })),
+      userId: Number(profile?.id)
     };
   });
 
