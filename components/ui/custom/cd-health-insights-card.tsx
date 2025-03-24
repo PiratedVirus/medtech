@@ -31,6 +31,28 @@ type CardProps = {
   userId: number; // from HealthInsightsPanel
 };
 
+function darkenHex(hex: string, factor = 0.4) {
+  let c = hex.replace(/^#/, "");
+  if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+
+  let r = parseInt(c.slice(0, 2), 16);
+  let g = parseInt(c.slice(2, 4), 16);
+  let b = parseInt(c.slice(4, 6), 16);
+
+  r = Math.round(r * (1 - factor));
+  g = Math.round(g * (1 - factor));
+  b = Math.round(b * (1 - factor));
+
+  r = Math.max(0, Math.min(255, r));
+  g = Math.max(0, Math.min(255, g));
+  b = Math.max(0, Math.min(255, b));
+
+  const rr = r.toString(16).padStart(2, "0");
+  const gg = g.toString(16).padStart(2, "0");
+  const bb = b.toString(16).padStart(2, "0");
+  return `#${rr}${gg}${bb}`;
+}
+
 export default function HealthInsightsCard({
   title,
   reading,
@@ -76,6 +98,8 @@ export default function HealthInsightsCard({
     }
   }
 
+  const darkerLineColor = darkenHex(color, 0.4);
+
   return (
     <>
     <ToastContainer />
@@ -108,7 +132,7 @@ export default function HealthInsightsCard({
       {/* Mini chart (optional) */}
       <div className="h-20">
         <AreaChart
-          lineColor="#000"
+          lineColor={darkerLineColor}
           data={data}
           className="h-20"
           showXAxis={false}
