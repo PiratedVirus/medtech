@@ -80,7 +80,7 @@ export default function SignInForm() {
 
         if (data.success) {
           if (data.userExists) {
-            router.push("/dashboard");
+            window.location.href = "/dashboard";
           } else {
             setStep("register");
           }
