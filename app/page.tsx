@@ -22,16 +22,26 @@ export default function LandingPageTailwind() {
     <>
       <InfoBar />
       <Header />
-      <HeroSection />
+      <div id="home">
+        <HeroSection />
+      </div>
       <AdditionalServices />
       <HowWorks />
-      <ServicesSection />
+      <div id="services">
+        <ServicesSection />
+      </div>
       <DoctorsAndConsultationsGrid />
-      <BestDoctorsSection />
-      <MeetTeamSection />
+      <div id="doctors">
+        <BestDoctorsSection />
+        <MeetTeamSection />
+      </div>
       <FooterVideo />
-      <PatientTestimonials />
-      <ArticlesSection />
+      <div id="testimonials">
+        <PatientTestimonials />
+      </div>
+      <div id="blogs">
+        <ArticlesSection />
+      </div>
       <TripleCard />
       <Footer />
     </>

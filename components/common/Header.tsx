@@ -5,22 +5,22 @@ export default function Header() {
   return (
     <header className="flex items-center justify-between w-full p-4 bg-[#f9fafb] text-white px-16">
       <nav className="flex gap-6">
-        <Link href="#" className="text-gray-900 hover:text-white">
+        <Link href="#home" className="text-gray-900 hover:text-secondary">
           Home
         </Link>
-        <Link href="#" className="text-gray-900 hover:text-white">
+        <Link href="#services" className="text-gray-900 hover:text-secondary">
           Services
         </Link>
-        <Link href="#" className="text-gray-900 hover:text-white">
+        <Link href="#doctors" className="text-gray-900 hover:text-secondary">
          Doctors
         </Link>
-        <Link href="#" className="text-gray-900 hover:text-white">
+        <Link href="#blogs" className="text-gray-900 hover:text-secondary">
          Blogs
         </Link>
-        <Link href="#" className="text-gray-900 hover:text-white">
+        <Link href="#testimonials" className="text-gray-900 hover:text-secondary">
          Testimonials
         </Link>
-        <Link href="#" className="text-gray-900 hover:text-white">
+        <Link href="#" className="text-gray-900 hover:text-secondary">
          About
         </Link>
       </nav>
