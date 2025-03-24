@@ -1,11 +1,33 @@
-"use client"
+"use client";
 import React from "react";
 import { Card } from "@/components/ui/card"
 import { Pencil } from "lucide-react"
 import { AreaChart } from "@/components/ui/chart"
 import Image from "next/image";
 
-// ...existing code...
+/** Darken a hex color by `factor` (0.2 => 20% darker) */
+function darkenHex(hex: string, factor = 0.6) {
+  let c = hex.replace(/^#/, "");
+  if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+
+  let r = parseInt(c.slice(0, 2), 16);
+  let g = parseInt(c.slice(2, 4), 16);
+  let b = parseInt(c.slice(4, 6), 16);
+
+  r = Math.round(r * (1 - factor));
+  g = Math.round(g * (1 - factor));
+  b = Math.round(b * (1 - factor));
+
+  r = Math.max(0, Math.min(255, r));
+  g = Math.max(0, Math.min(255, g));
+  b = Math.max(0, Math.min(255, b));
+
+  const rr = r.toString(16).padStart(2, "0");
+  const gg = g.toString(16).padStart(2, "0");
+  const bb = b.toString(16).padStart(2, "0");
+  return `#${rr}${gg}${bb}`;
+}
+
 export default function HealthInsightsCard({
   title = "Blood Glucose Level",
   reading = 80,
@@ -14,15 +36,10 @@ export default function HealthInsightsCard({
   color = "#F8E5D3",
   imageSrc = "/icons/blood.svg",
   data = [{ value: 65 }, { value: 75 }, { value: 70 }, { value: 85 }, { value: 75 }, { value: 80 }, { value: 75 }],
-}: {
-  title?: string
-  reading?: number
-  unit?: string
-  statusLabel?: string
-  color?: string
-  imageSrc?: string
-  data?: { value: number }[]
 }) {
+  // Make the line a darker shade of the given color
+  const darkerLineColor = darkenHex(color, 0.3);
+
   return (
     <Card className="w-full max-w-80 p-6 rounded-3xl bg-white border">
       <div className="flex items-center gap-4 mb-8">
@@ -52,7 +69,7 @@ export default function HealthInsightsCard({
 
       <div className="h-20">
         <AreaChart
-          lineColor={color}
+          lineColor={darkerLineColor}
           data={data}
           className="h-20"
           showXAxis={false}

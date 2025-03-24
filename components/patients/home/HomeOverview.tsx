@@ -37,12 +37,22 @@ export default function HomeOverview() {
     }
   }, [profile]);
 
+  const currentHour = new Date().getHours();
+  let greeting = "";
+  if (currentHour < 12) {
+    greeting = "Good Morning";
+  } else if (currentHour < 17) {
+    greeting = "Good Afternoon";
+  } else {
+    greeting = "Good Evening";
+  }
+
   return (
     <div className="bg-muted px-20 pt-5">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl">
-          Good Morning <span className="text-secondary">{profile?.name}!</span>
+          {greeting} <span className="text-secondary">{profile?.name}!</span>
         </h1>
       </div>
 

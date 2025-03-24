@@ -24,6 +24,7 @@ const BAR_FILL_NORMAL = "#E6F4F1";      // default bar fill
 const BAR_FILL_HOVER = "#064e3b";      // darker green on hover
 const AXIS_LINE_COLOR = "#666666";     // match x-axis line color
 
+// (Optional) Same config if you want to map metricName => color/icon
 const METRIC_CONFIG: Record<
   string,
   { color: string; imageSrc: string; unit: string; statusLabel: string }
@@ -180,15 +181,18 @@ function MetricChartRow({
               content={<CustomTooltip unit={config.unit} />}
               cursor={{ fill: "none" }} // remove grey highlight
             />
-            <Bar dataKey="average" shape={(props: any) => <BottomStrokeBar {...props} />}>
+            <Bar
+              dataKey="average"
+              shape={(props: any) => <BottomStrokeBar {...props} />}
+            >
               {lastSixMonths.map((entry: MonthData, index: number) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={hoverIndex === index ? BAR_FILL_HOVER : BAR_FILL_NORMAL}
-                onMouseEnter={() => setHoverIndex(index)}
-                onMouseLeave={() => setHoverIndex(-1)}
-                cursor="pointer"
-              />
+                <Cell
+                  key={`cell-${index}`}
+                  fill={hoverIndex === index ? BAR_FILL_HOVER : BAR_FILL_NORMAL}
+                  onMouseEnter={() => setHoverIndex(index)}
+                  onMouseLeave={() => setHoverIndex(-1)}
+                  cursor="pointer"
+                />
               ))}
             </Bar>
           </BarChart>
