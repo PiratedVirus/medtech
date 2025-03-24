@@ -7,7 +7,7 @@ export default function DoctorsAndConsultationsGrid() {
         {/* Top Left - Doctor Consultation Image */}
         <div className="col-span-4 row-span-1 relative overflow-hidden">
           <Image
-            src="/placeholder.svg?height=300&width=400"
+            src="/images/best-doc-grid-1.png?height=300&width=400"
             alt="Doctor consultation with patient"
             fill
             className="object-cover"
@@ -24,7 +24,7 @@ export default function DoctorsAndConsultationsGrid() {
         {/* Right Side - Telehealth Doctor (spans both rows) */}
         <div className="col-span-4 row-span-2 relative overflow-hidden">
           <Image
-            src="/placeholder.svg?height=600&width=400"
+            src="/images/best-doc-grid-3.png?height=600&width=400"
             alt="Doctor providing telehealth consultation"
             fill
             className="object-cover"
@@ -41,7 +41,7 @@ export default function DoctorsAndConsultationsGrid() {
         {/* Bottom Center - Female Doctor with Laptop */}
         <div className="col-span-4 row-span-1 relative overflow-hidden">
           <Image
-            src="/placeholder.svg?height=300&width=400"
+            src="/images/best-doc-grid-2.png?height=300&width=400"
             alt="Female doctor with telehealth laptop"
             fill
             className="object-cover"

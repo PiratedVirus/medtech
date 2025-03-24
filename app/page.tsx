@@ -7,6 +7,12 @@ import DoctorsAndConsultationsGrid from "@/components/common/landing-page/Doctor
 import ServicesSection from "@/components/common/landing-page/ServicesSection";
 import HeroSection from "@/components/common/landing-page/HeroSection";
 import BestDoctorsSection from "@/components/common/landing-page/BestDoctorsSection";
+import { MeetTeamSection } from "@/components/common/landing-page/MeetTeam";
+import PatientTestimonials from "@/components/common/landing-page/PatientTestimonial";
+import FooterVideo from "@/components/patients/home/FooterVideo";
+import ArticlesSection from "@/components/patients/home/ArticleSection";
+import TripleCard from "@/components/common/landing-page/TripleCard";
+import Footer from "@/components/common/Footer";
 
 export default function LandingPageTailwind() {
   return (
@@ -16,6 +22,12 @@ export default function LandingPageTailwind() {
     <ServicesSection />
     <DoctorsAndConsultationsGrid />
     <BestDoctorsSection />
+    <MeetTeamSection /> 
+    <FooterVideo />
+    <PatientTestimonials />
+    <ArticlesSection />
+    <TripleCard />
+    <Footer />
     </>
 
   );

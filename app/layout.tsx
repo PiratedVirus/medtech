@@ -10,6 +10,9 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { useState, useEffect } from "react";
 import { initializeUserProfile } from "@/store/userSlice"; // Update this path as needed
 import CdLoader from '@/components/ui/custom/cd-loader';
+import  Header  from "@/components/common/Header";
+import InfoBar from '@/components/common/landing-page/InfoBar';
+
 
 const lato = Lato({
   subsets: ['latin'],
@@ -59,6 +62,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${lato.variable} antialiased min-h-screen flex flex-col`}>
+        <InfoBar />
+        <Header />
         <ClientSideWrapper>
           {children}
         </ClientSideWrapper>

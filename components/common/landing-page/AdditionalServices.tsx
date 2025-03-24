@@ -1,8 +1,8 @@
 import { CheckCircle } from "lucide-react"
-
+import Image from "next/image"
 export default function AdditionalServices() {
   return (
-    <section className="py-12 bg-white">
+    <section className="py-12 bg-muted">
       <div className="container px-4 md:px-6 max-w-6xl mx-auto">
         <div className="text-center mb-8">
           <h2 className="text-3xl md:text-4xl font-medium text-[#56a67c]">We care for you to be free</h2>
@@ -17,50 +17,12 @@ export default function AdditionalServices() {
           <div className="bg-[#d9f4f1] rounded-3xl p-8 max-w-md mx-auto md:mx-0">
             <div className="flex justify-center mb-6">
               <div className="bg-white rounded-full p-4 w-24 h-24 flex items-center justify-center">
-                <svg
-                  width="48"
-                  height="48"
-                  viewBox="0 0 48 48"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="text-[#56a67c]"
-                >
-                  <path
-                    d="M36 8H12C9.79086 8 8 9.79086 8 12V36C8 38.2091 9.79086 40 12 40H36C38.2091 40 40 38.2091 40 36V12C40 9.79086 38.2091 8 36 8Z"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M16 18H24"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M16 24H24"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M16 30H20"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M32 18V32L40 40"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                <Image
+                  src="/icons/notepad.svg"
+                  alt="Programs Icon"
+                  width={48}
+                  height={48}
+                />
               </div>
             </div>
 
