@@ -11,7 +11,9 @@ export default function FooterVideo() {
   const closeModal = () => setIsModalOpen(false)
 
   return (
-    <section className="max-w-full mx-auto px-20 py-8 md:py-20 bg-custom-mutedbg">
+    <div className="bg-muted">
+
+    <section className="max-w-full mx-auto px-20 py-8 md:py-20 ">
 
       <div className="flex flex-col items-center">
         <h1 className="text-4xl md:text-5xl font-bold text-center mb-12">
@@ -69,6 +71,8 @@ export default function FooterVideo() {
         </div>
       )}
     </section>
+    </div>
+
   )
 }
 

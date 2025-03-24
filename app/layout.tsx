@@ -11,6 +11,8 @@ import { useState, useEffect } from "react";
 import { initializeUserProfile } from "@/store/userSlice"; // Update this path as needed
 import CdLoader from '@/components/ui/custom/cd-loader';
 
+
+
 const lato = Lato({
   subsets: ['latin'],
   weight: ['400', '700'],
@@ -59,6 +61,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${lato.variable} antialiased min-h-screen flex flex-col`}>
+      
         <ClientSideWrapper>
           {children}
         </ClientSideWrapper>

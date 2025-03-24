@@ -3,6 +3,8 @@ import Link from "next/link"
 
 export default function ArticlesSection() {
   return (
+    <div className="bg-muted">
+
     <section className="max-w-full px-20 py-8">
       <div className="space-y-4 mb-10">
         <h2 className="text-3xl md:text-4xl font-bold text-[#2c2e38]">
@@ -19,7 +21,7 @@ export default function ArticlesSection() {
           <div className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md">
             <div className="relative h-64 overflow-hidden">
               <Image
-                src="/placeholder.svg?height=300&width=400"
+                src="/images/blog-card-1.png?height=300&width=400"
                 alt="Doctor with a yellow mug"
                 width={400}
                 height={300}
@@ -42,7 +44,7 @@ export default function ArticlesSection() {
           <div className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md">
             <div className="relative h-64 overflow-hidden">
               <Image
-                src="/placeholder.svg?height=300&width=400"
+                src="/images/blog-card-2.png?height=300&width=400"
                 alt="Hand holding a bowl with lemon water"
                 width={400}
                 height={300}
@@ -65,7 +67,7 @@ export default function ArticlesSection() {
           <div className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md">
             <div className="relative h-64 overflow-hidden">
               <Image
-                src="/placeholder.svg?height=300&width=400"
+                src="/images/blog-card-3.png?height=300&width=400"
                 alt="Stethoscope on a white surface"
                 width={400}
                 height={300}
@@ -84,6 +86,8 @@ export default function ArticlesSection() {
         </Link>
       </div>
     </section>
+    </div>
+
   )
 }
 
