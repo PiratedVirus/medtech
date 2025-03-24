@@ -154,10 +154,11 @@ function MetricChartRow({
 
   const config = METRIC_CONFIG[metric.metricName] || {
     color: "#FDFDFD",
-    imageSrc: "/icons/blood.svg",
+    imageSrc: "/icons/blood4.svg",
     unit: "",
     statusLabel: "Normal",
   };
+  const { profile } = useDecryptedProfile();
 
   return (
     <div className="flex gap-5 mb-8">
@@ -209,6 +210,7 @@ function MetricChartRow({
           color={config.color}
           imageSrc={config.imageSrc}
           data={lastSixMonths.map((d) => ({ value: d.average }))}
+          userId={Number(profile?.id)}
         />
       </div>
     </div>
