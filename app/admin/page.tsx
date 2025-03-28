@@ -9,6 +9,8 @@ import DoctorsPage from "@/app/admin/doctors/page";
 import LabsPage from "@/app/admin/labs/page";
 import PaymentsPage from "@/app/admin/payments/page";
 import SlotsPage from "@/app/admin/slots/page";
+import PlansPage from "@/app/admin/plans/page";
+
 export default function AdminPage() {
   return (
     <div className="container mx-auto p-4">
@@ -25,6 +27,7 @@ export default function AdminPage() {
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
             <TabsTrigger value="slots">Slots</TabsTrigger>
+            <TabsTrigger value="plans">Plans</TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="clinics">
@@ -54,7 +57,9 @@ export default function AdminPage() {
         <TabsContent value="payments">
           <PaymentsPage/>
         </TabsContent>
-
+        <TabsContent value="plans">
+          <PlansPage/>
+        </TabsContent>
      
       </Tabs>
     </div>
