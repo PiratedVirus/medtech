@@ -66,7 +66,7 @@ export async function GET(request: Request) {
       // If you have numeric plan features, you'd map them here:
       // For simplicity, we'll show an example with "doctorConsultation" etc.
       let docConsult = { totalConsultations: 0, frequencyPerInterval: 0, intervalInMonths: 0 };
-      let labTests = { totalTests: 0, frequencyPerInterval: 0, intervalInMonths: 0, parameters: 0 };
+      let labTests = { totalTests: 0, frequencyPerInterval: 0, intervalInMonths: 0, parameters: "" };
       let dietConsult = { totalConsultations: 0, frequencyPerInterval: 0, intervalInMonths: 0 };
       let ophthConsult = { totalConsultations: 0, frequencyPerInterval: 0, intervalInMonths: 0 };
       let medicines = { discount: plan.discountPercentage ?? 0 };
@@ -89,7 +89,7 @@ export async function GET(request: Request) {
               totalTests: feat.occurrencesPerInterval || 0,
               frequencyPerInterval: feat.occurrencesPerInterval || 0,
               intervalInMonths: feat.intervalInMonths || 0,
-              parameters: feat.parameters || 0,
+              parameters: feat.parameters || '',
             };
             break;
           case "dietician consultation":
