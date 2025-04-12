@@ -318,7 +318,7 @@ model PlanFeature {
   occurrencesPerInterval Int?      // e.g. "2" for "2 times every X months"
   intervalInMonths       Int?      // e.g. "5" for "every 5 months"
   
-  parameters             Int?      // e.g. number of lab parameters
+  parameters             String?      // e.g. number of lab parameters
   notes                  String?   // Free-form text if needed
 
   createdAt              DateTime  @default(now())

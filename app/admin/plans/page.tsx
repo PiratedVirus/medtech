@@ -42,7 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowUpDown, EditIcon, Trash } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+import { Plus, X } from "lucide-react";
 type PlanFeatureFormData = {
   featureName: string;
   occurrencesPerInterval?: number;
@@ -65,7 +65,7 @@ export default function PlansPage() {
   const [selectedPlan, setSelectedPlan] = useState<PlanFormData | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedPlanId, setExpandedPlanId] = useState<number | null>(null);
-  
+
   // Table states for filtering, sorting, pagination, column visibility, etc.
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -303,9 +303,9 @@ export default function PlansPage() {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -409,7 +409,7 @@ export default function PlansPage() {
         </div>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog  open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{selectedPlan ? "Edit Plan" : "Create Plan"}</DialogTitle>
@@ -440,58 +440,85 @@ export default function PlansPage() {
               render={({ field }) => <Input {...field} type="number" placeholder="Discount %" />}
             />
             <div>
-              <h4 className="font-semibold">Features</h4>
+              {/* Header row with "Features" and the plus icon on the right */}
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold">Features</h4>
+                <Button
+                  type="button"
+                  onClick={() =>
+                    append({
+                      featureName: "",
+                      occurrencesPerInterval: undefined,
+                      intervalInMonths: undefined,
+                      parameters: undefined,
+                      notes: "",
+                    })
+                  }
+                  variant="null"
+                  className="hover:bg-transparent  p-1"
+                >
+                  <Plus className="h-4 w-4 hover:text-green" />
+                </Button>
+              </div>
+
+              {/* Render each feature entry */}
               {fields.map((field, index) => (
-                <div key={field.id} className="space-y-1 mb-2 border p-2 rounded">
-                  <Controller
-                    name={`planFeatures.${index}.featureName`}
-                    control={control}
-                    render={({ field }) => <Input {...field} placeholder="Feature Name" />}
-                  />
-                  <Controller
-                    name={`planFeatures.${index}.occurrencesPerInterval`}
-                    control={control}
-                    render={({ field }) => <Input {...field} placeholder="Occurrences" type="number" />}
-                  />
-                  <Controller
-                    name={`planFeatures.${index}.intervalInMonths`}
-                    control={control}
-                    render={({ field }) => <Input {...field} placeholder="Interval (months)" type="number" />}
-                  />
-                  <Controller
-                    name={`planFeatures.${index}.parameters`}
-                    control={control}
-                    render={({ field }) => <Input {...field} placeholder="Parameters" type="number" />}
-                  />
-                  <Controller
-                    name={`planFeatures.${index}.notes`}
-                    control={control}
-                    render={({ field }) => <Input {...field} placeholder="Notes" />}
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => remove(index)}
-                    className="mt-1"
-                  >
-                    Remove
-                  </Button>
+                <div key={field.id} className="mb-2 border p-2 rounded space-y-2 relative">
+                  {/* Top row: cross icon button aligned right */}
+                  <div className="flex justify-between items-center">
+                    <p className="text-primary">Insert Feature details</p>
+                    <Button
+                      type="button"
+                      variant="null"
+                      onClick={() => remove(index)}
+                      className="p-1"
+                    >
+                      <X className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                  {/* First row: featureName, Occurrences, Interval on a single row */}
+                  <div className="flex space-x-2">
+                    <Controller
+                      name={`planFeatures.${index}.featureName`}
+                      control={control}
+                      render={({ field }) => (
+                        <Input {...field} placeholder="Feature Name" className="w-full" />
+                      )}
+                    />
+                    <Controller
+                      name={`planFeatures.${index}.occurrencesPerInterval`}
+                      control={control}
+                      render={({ field }) => (
+                        <Input {...field} placeholder="Occurrences" type="number" className="w-full" />
+                      )}
+                    />
+                    <Controller
+                      name={`planFeatures.${index}.intervalInMonths`}
+                      control={control}
+                      render={({ field }) => (
+                        <Input {...field} placeholder="Interval (months)" type="number" className="w-full" />
+                      )}
+                    />
+                  </div>
+                  {/* Second row: Parameters and Notes each on a separate row */}
+                  <div className="space-y-2">
+                    <Controller
+                      name={`planFeatures.${index}.parameters`}
+                      control={control}
+                      render={({ field }) => (
+                        <Input {...field} placeholder="Parameters" type="text" className="w-full" />
+                      )}
+                    />
+                    <Controller
+                      name={`planFeatures.${index}.notes`}
+                      control={control}
+                      render={({ field }) => (
+                        <Input {...field} placeholder="Notes" className="w-full" />
+                      )}
+                    />
+                  </div>
                 </div>
               ))}
-              <Button
-                type="button"
-                onClick={() =>
-                  append({
-                    featureName: "",
-                    occurrencesPerInterval: undefined,
-                    intervalInMonths: undefined,
-                    parameters: undefined,
-                    notes: "",
-                  })
-                }
-              >
-                Add Feature
-              </Button>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => {
