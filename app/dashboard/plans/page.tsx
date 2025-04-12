@@ -10,30 +10,34 @@ import SuccessModal from "@/components/ui/custom/cd-success-modal";
 import { useQuery } from "@tanstack/react-query";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import PlanUsage from "@/components/patients/plans/PlanUsage";
+import { Eye, ArrowUpDown, EditIcon, Trash } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 export default function PricingTable() {
+  // Basic state for duration and subscription success modal
   const [duration, setDuration] = useState<"6months" | "12months">("6months");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  // State for the view parameters dialog
+  const [viewParameters, setViewParameters] = useState<string[]>([]);
+  const [paramsDialogOpen, setParamsDialogOpen] = useState(false);
+
+  // Router and profile hooks
   const router = useRouter();
   const { clinicId, profile, isLoading: profileLoading } = useDecryptedProfile();
   const userId = profile?.id;
 
-  // 1) Check if the user has an existing subscription
+  // Determine subscription status
   const subscriptionId = profile?.subscriptionDetails?.subscriptionId;
-  const isValidSubscription = !!subscriptionId; // true if subscriptionId is present
+  const isValidSubscription = !!subscriptionId;
 
-  // 2) Always call useQuery, but use `enabled: !isValidSubscription` so it won't fetch if subscribed
-  const {
-    data: plansResponse,
-    isLoading,
-    isError,
-  } = useQuery({
+  // Fetch plans (only if clinicId exists and user is not already subscribed)
+  const { data: plansResponse, isLoading, isError } = useQuery({
     queryKey: ["plans"],
     queryFn: async () => {
       if (!clinicId) return null;
       const response = await axios.get(`/api/plans`, { withCredentials: true });
-      return response.data; // e.g. { success, pricingData, alreadySubscribed }
+      return response.data;
     },
     enabled: !!clinicId && !isValidSubscription,
     staleTime: 10 * 60 * 1000,
@@ -41,24 +45,19 @@ export default function PricingTable() {
     refetchOnMount: false,
   });
 
-  // 3) If profile or plan data is loading, show a loader
+  // Loading and error handling
   if (profileLoading || isLoading) {
     return <CdLoader />;
   }
-
-  // 4) If user already has a subscription, show PlanUsage
   if (isValidSubscription) {
     return (
       <div className="min-h-screen bg-muted">
         <div className="max-w-7xl mx-auto px-4 py-10">
-          {/* Render your actual PlanUsage here */}
           <PlanUsage subscriptionId={subscriptionId} userId={Number(userId)} />
         </div>
       </div>
     );
   }
-
-  // 5) If there's an error or no data
   if (isError || !plansResponse) {
     return <div className="p-4">Error fetching plans.</div>;
   }
@@ -66,61 +65,13 @@ export default function PricingTable() {
     return <div className="p-4">No plan data found.</div>;
   }
 
-  // 6) Now safely access the plan data
   const pricingData = plansResponse.pricingData;
   const currentPricing = pricingData[duration];
   if (!currentPricing) {
     return <div className="p-4">No plan data for {duration} found.</div>;
   }
 
-  // Helper functions
-  const formatConsultationLine = (
-    total: number,
-    frequency: number,
-    interval: number,
-    singularLabel: string,
-    pluralLabel: string
-  ) => {
-    if (!total) return "-";
-    const totalString = `${total} ${total > 1 ? pluralLabel : singularLabel}`;
-    if (frequency > 0 && interval > 0) {
-      const freqString = `${frequency} ${
-        frequency > 1 ? pluralLabel : singularLabel
-      } every ${interval} month${interval > 1 ? "s" : ""}`;
-      return (
-        <>
-          <div className="font-bold text-lg">{totalString}</div>
-          <div className="text-sm text-gray-500 italic">({freqString})</div>
-        </>
-      );
-    } else {
-      return <div className="font-bold text-lg">{totalString}</div>;
-    }
-  };
-
-  const formatMedicines = (discount: number) => {
-    return discount > 0 ? `${discount}% off` : "-";
-  };
-
-  const formatParameters = (parameters?: number) => {
-    if (!parameters) return null;
-    return <div className="text-sm text-[#349c4b] mt-1">{parameters} Parameters</div>;
-  };
-
-  // Rows for the pricing table
-  const rows = [
-    { title: "Doctor Consultation", key: "doctorConsultation" },
-    { title: "Lab Tests", key: "labTests", showParameters: true },
-    { title: "Dietician Consultation", key: "dieticianConsultation" },
-    {
-      title: "Ophthalmologist Consultation",
-      key: "ophthalmologistConsultation",
-      extraNote: "At Clinic*",
-    },
-    { title: "Medicines", key: "medicines" },
-  ];
-
-  // Payment integration
+  // Handler for payment (omitted here for brevity; unchanged from your code)
   const handlePurchasePlan = async (planKey: "basic" | "care" | "carePlus") => {
     try {
       const planData = currentPricing[planKey];
@@ -129,8 +80,6 @@ export default function PricingTable() {
         return;
       }
       const { planId, price } = planData;
-
-      // 1) Create Razorpay order
       const createOrderRes = await axios.post("/api/payments/create", {
         amount: price * 100,
         currency: "INR",
@@ -141,15 +90,11 @@ export default function PricingTable() {
         return;
       }
       const { orderId } = createOrderRes.data;
-
-      // 2) Load Razorpay
       const razorpay = await loadRazorpay();
       if (!razorpay) {
         alert("Failed to load payment gateway.");
         return;
       }
-
-      // 3) Open the payment popup
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
         amount: price * 100,
@@ -158,8 +103,6 @@ export default function PricingTable() {
         description: `Plan Purchase: ${planData.name} (${duration})`,
         order_id: orderId,
         handler: async (response: any) => {
-          console.log("Payment successful:", response);
-          // 4) Confirm purchase
           try {
             const confirmRes = await axios.post("/api/plans/confirmPurchase", {
               planId,
@@ -188,7 +131,6 @@ export default function PricingTable() {
         },
         theme: { color: "#f28a2e" },
       };
-
       // @ts-expect-error
       const paymentObject = new razorpay(options);
       paymentObject.open();
@@ -198,6 +140,100 @@ export default function PricingTable() {
     }
   };
 
+  // ---------- VIEW PARAMETERS DIALOG FUNCTIONS ----------
+  // Splits the parameters string and opens the dialog
+  const handleViewParameters = (parameters: string) => {
+    const paramsArray = parameters
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+    setViewParameters(paramsArray);
+    setParamsDialogOpen(true);
+  };
+
+  // ---------- HELPER FUNCTIONS FOR RENDERING CELLS ----------
+  // Helper to render consultation lines
+  const formatConsultationLine = (
+    total: number,
+    frequency: number,
+    interval: number,
+    singularLabel: string,
+    pluralLabel: string
+  ) => {
+    if (!total) return "-";
+    const totalString = `${total} ${total > 1 ? pluralLabel : singularLabel}`;
+    if (frequency > 0 && interval > 0) {
+      const freqString = `${frequency} ${
+        frequency > 1 ? pluralLabel : singularLabel
+      } every ${interval} month${interval > 1 ? "s" : ""}`;
+      return (
+        <>
+          <div className="font-bold text-lg">{totalString}</div>
+          <div className="text-sm text-gray-500 italic">({freqString})</div>
+        </>
+      );
+    } else {
+      return <div className="font-bold text-lg">{totalString}</div>;
+    }
+  };
+
+  const formatMedicines = (discount: number) => {
+    return discount > 0 ? `${discount}% off` : "-";
+  };
+
+  // formatParameters displays the count and an Eye icon which opens a dialog when clicked.
+  const formatParameters = (parameters?: string) => {
+    if (!parameters) return null;
+    const paramsArray = parameters
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+    return (
+      <div className="inline-flex items-center text-sm text-[#349c4b] mt-1">
+        {paramsArray.length} Parameters
+        <Eye
+          className="ml-1 h-4 w-4 cursor-pointer hover:text-green-500"
+          onClick={() => handleViewParameters(parameters)}
+        />
+      </div>
+    );
+  };
+
+  // Render cell helper for various feature keys
+  function renderFeatureCell(featureData: any, key: string, showParameters?: boolean) {
+    if (!featureData) return "-";
+    if (key === "medicines") {
+      return <div className="font-bold text-lg">{formatMedicines(featureData.discount)}</div>;
+    } else if (key === "labTests") {
+      return (
+        <>
+          {formatConsultationLine(
+            featureData.totalTests,
+            featureData.frequencyPerInterval,
+            featureData.intervalInMonths,
+            "test",
+            "tests"
+          )}
+          {showParameters && formatParameters(featureData.parameters)}
+        </>
+      );
+    } else {
+      // e.g. doctorConsultation, dieticianConsultation, ophthalmologistConsultation
+      return (
+        <>
+          {formatConsultationLine(
+            featureData.totalConsultations,
+            featureData.frequencyPerInterval,
+            featureData.intervalInMonths,
+            "consultation",
+            "consultations"
+          )}
+        </>
+      );
+    }
+  }
+
+  // ---------- JSX RENDERING ----------
   return (
     <div className="min-h-screen bg-muted">
       <main className="max-w-7xl mx-auto px-4 py-10">
@@ -209,8 +245,7 @@ export default function PricingTable() {
         </div>
 
         <p className="text-center text-2xl md:text-2xl text-[#2c2e38] mb-8">
-          We offer great <span className="text-[#349c4b]">price</span> plans
-          for the application
+          We offer great <span className="text-[#349c4b]">price</span> plans for the application
         </p>
 
         {/* Duration Toggle */}
@@ -290,7 +325,6 @@ export default function PricingTable() {
                 const basicData = currentPricing.basic?.[key];
                 const careData = currentPricing.care?.[key];
                 const carePlusData = currentPricing.carePlus?.[key];
-
                 return (
                   <tr key={key}>
                     <td className="p-8 align-top">
@@ -382,80 +416,31 @@ export default function PricingTable() {
         </div>
       </main>
 
+      {/* Success Modal */}
       <SuccessModal open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
+
+      {/* Dialog for Viewing Parameters */}
+      <Dialog open={paramsDialogOpen} onOpenChange={setParamsDialogOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-4xl w-[90vw]">
+          <DialogHeader>
+            <DialogTitle>Parameters</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-5 gap-2">
+          {viewParameters.map((param, index) => (
+            <div
+              key={index}
+              className="p-2 bg-custom-mutedgreen font-semibold rounded flex items-center justify-center text-center"
+              style={{ minHeight: "50px" }}
+            >
+              {param}
+            </div>
+          ))}
+        </div>
+          <DialogFooter>
+            <Button onClick={() => setParamsDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-}
-
-/** Helper to render a single cell. */
-function renderFeatureCell(featureData: any, key: string, showParameters?: boolean) {
-  if (!featureData) return "-";
-
-  // local helpers
-  const formatConsultationLine = (
-    total: number,
-    frequency: number,
-    interval: number,
-    singularLabel: string,
-    pluralLabel: string
-  ) => {
-    if (!total) return "-";
-    const totalString = `${total} ${total > 1 ? pluralLabel : singularLabel}`;
-    if (frequency > 0 && interval > 0) {
-      const freqString = `${frequency} ${
-        frequency > 1 ? pluralLabel : singularLabel
-      } every ${interval} month${interval > 1 ? "s" : ""}`;
-      return (
-        <>
-          <div className="font-bold text-lg">{totalString}</div>
-          <div className="text-sm text-gray-500 italic">({freqString})</div>
-        </>
-      );
-    } else {
-      return <div className="font-bold text-lg">{totalString}</div>;
-    }
-  };
-
-  const formatMedicines = (discount: number) => {
-    return discount > 0 ? `${discount}% off` : "-";
-  };
-
-  const formatParameters = (parameters?: number) => {
-    if (!parameters) return null;
-    return (
-      <div className="text-sm text-[#349c4b] mt-1">
-        {parameters} Parameters
-      </div>
-    );
-  };
-
-  if (key === "medicines") {
-    return <div className="font-bold text-lg">{formatMedicines(featureData.discount)}</div>;
-  } else if (key === "labTests") {
-    return (
-      <>
-        {formatConsultationLine(
-          featureData.totalTests,
-          featureData.frequencyPerInterval,
-          featureData.intervalInMonths,
-          "test",
-          "tests"
-        )}
-        {showParameters && formatParameters(featureData.parameters)}
-      </>
-    );
-  } else {
-    // e.g. doctorConsultation, dieticianConsultation, ophthalmologistConsultation
-    return (
-      <>
-        {formatConsultationLine(
-          featureData.totalConsultations,
-          featureData.frequencyPerInterval,
-          featureData.intervalInMonths,
-          "consultation",
-          "consultations"
-        )}
-      </>
-    );
-  }
 }

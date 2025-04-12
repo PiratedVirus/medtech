@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       const newPlan = await tx.plan.create({
         data: {
           name,
-          duration,
+          duration: duration,
           price: formattedPrice,
           discountPercentage: formattedDiscount,
         },

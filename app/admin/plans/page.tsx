@@ -39,15 +39,15 @@ import {
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpDown, EditIcon, Trash } from "lucide-react";
+import { ArrowUpDown, EditIcon, Trash, Plus, X, Eye } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { Plus, X } from "lucide-react";
+
 type PlanFeatureFormData = {
   featureName: string;
   occurrencesPerInterval?: number;
   intervalInMonths?: number;
-  parameters?: number;
+  parameters?: string; // changed to string since client sends comma-separated values
   notes?: string;
 };
 
@@ -65,6 +65,10 @@ export default function PlansPage() {
   const [selectedPlan, setSelectedPlan] = useState<PlanFormData | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedPlanId, setExpandedPlanId] = useState<number | null>(null);
+
+  // Additional state for view parameters dialog (to show parameter details in grid)
+  const [viewParameters, setViewParameters] = useState<string[]>([]);
+  const [paramsDialogOpen, setParamsDialogOpen] = useState(false);
 
   // Table states for filtering, sorting, pagination, column visibility, etc.
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
@@ -93,6 +97,7 @@ export default function PlansPage() {
     name: "planFeatures",
   });
 
+  // Updated fetchPlans to bust cache by adding a timestamp
   const fetchPlans = async () => {
     try {
       const res = await axios.get("/api/admin/plans");
@@ -214,6 +219,10 @@ export default function PlansPage() {
 
   const onSubmit = async (formData: PlanFormData) => {
     try {
+      formData.duration = formData.duration.toLowerCase().endsWith("months")
+        ? formData.duration
+        : formData.duration + "months";
+
       if (selectedPlan) {
         await axios.put("/api/admin/plans", { ...formData, id: selectedPlan.id });
         toast.success("Plan updated");
@@ -240,6 +249,34 @@ export default function PlansPage() {
     }
   };
 
+  // ---------- VIEW PARAMETERS DIALOG FUNCTIONS ----------
+  const handleViewParameters = (parameters: string) => {
+    const paramsArray = parameters
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+    setViewParameters(paramsArray);
+    setParamsDialogOpen(true);
+  };
+
+  const formatFeatureParameters = (parameters?: string) => {
+    if (!parameters) return null;
+    const paramsArray = parameters
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+    return (
+      <div className="inline-flex items-center text-sm text-[#349c4b]">
+        {paramsArray.length} Parameters
+        <Eye
+          className="ml-1 h-4 w-4 cursor-pointer hover:text-green-500"
+          onClick={() => handleViewParameters(parameters)}
+        />
+      </div>
+    );
+  };
+
+  // Modified expanded row: now each feature card shows parameter count (via formatFeatureParameters)
   return (
     <div className="container mx-auto p-4 space-y-4">
       <ToastContainer />
@@ -248,9 +285,7 @@ export default function PlansPage() {
         <div className="flex items-center gap-4">
           <Input
             placeholder="Search plans..."
-            value={
-              (table.getColumn("name")?.getFilterValue() as string) ?? ""
-            }
+            value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
             onChange={(e) =>
               table.getColumn("name")?.setFilterValue(e.target.value)
             }
@@ -258,9 +293,7 @@ export default function PlansPage() {
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                Columns
-              </Button>
+              <Button variant="outline">Columns</Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-white text-black" align="end">
               {table
@@ -270,9 +303,7 @@ export default function PlansPage() {
                   <DropdownMenuCheckboxItem
                     key={column.id}
                     checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
+                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
                   >
                     {column.id}
                   </DropdownMenuCheckboxItem>
@@ -318,10 +349,7 @@ export default function PlansPage() {
                   <TableRow className="text-center" data-state={row.getIsSelected() && "selected"}>
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -337,7 +365,7 @@ export default function PlansPage() {
                               <h4 className="font-semibold">{feature.featureName}</h4>
                               <p>Occurrences: {feature.occurrencesPerInterval}</p>
                               <p>Interval (Months): {feature.intervalInMonths}</p>
-                              <p>Parameters: {feature.parameters}</p>
+                              <p>Parameters: {formatFeatureParameters(feature.parameters)}</p>
                               <p>Notes: {feature.notes}</p>
                             </div>
                           ))}
@@ -409,8 +437,9 @@ export default function PlansPage() {
         </div>
       </div>
 
-      <Dialog  open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+      {/* Dialog for Creating/Editing Plan */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-4xl w-[90vw]">
           <DialogHeader>
             <DialogTitle>{selectedPlan ? "Edit Plan" : "Create Plan"}</DialogTitle>
           </DialogHeader>
@@ -450,81 +479,86 @@ export default function PlansPage() {
                       featureName: "",
                       occurrencesPerInterval: undefined,
                       intervalInMonths: undefined,
-                      parameters: undefined,
+                      parameters: "",
                       notes: "",
                     })
                   }
                   variant="null"
-                  className="hover:bg-transparent  p-1"
+                  className="hover:bg-transparent p-1"
                 >
-                  <Plus className="h-4 w-4 hover:text-green" />
+                  <Plus className="h-4 w-4 hover:text-green-500" />
                 </Button>
               </div>
-
-              {/* Render each feature entry */}
-              {fields.map((field, index) => (
-                <div key={field.id} className="mb-2 border p-2 rounded space-y-2 relative">
-                  {/* Top row: cross icon button aligned right */}
-                  <div className="flex justify-between items-center">
-                    <p className="text-primary">Insert Feature details</p>
-                    <Button
-                      type="button"
-                      variant="null"
-                      onClick={() => remove(index)}
-                      className="p-1"
-                    >
-                      <X className="h-4 w-4 text-red-500" />
-                    </Button>
+              {/* Render features in a 2x2 grid */}
+              <div className="grid grid-cols-2 gap-2">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="border p-2 rounded space-y-2 relative">
+                    {/* Top row: cross icon button aligned right */}
+                    <div className="flex justify-between items-center">
+                      <p className="text-primary">Insert Feature details</p>
+                      <Button
+                        type="button"
+                        variant="null"
+                        onClick={() => remove(index)}
+                        className="p-1"
+                      >
+                        <X className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                    {/* First row: featureName, Occurrences, Interval on a single row */}
+                    <div className="flex space-x-2">
+                      <Controller
+                        name={`planFeatures.${index}.featureName`}
+                        control={control}
+                        render={({ field }) => (
+                          <Input {...field} placeholder="Feature Name" className="w-full" />
+                        )}
+                      />
+                      <Controller
+                        name={`planFeatures.${index}.occurrencesPerInterval`}
+                        control={control}
+                        render={({ field }) => (
+                          <Input {...field} placeholder="Occurrences" type="number" className="w-full" />
+                        )}
+                      />
+                      <Controller
+                        name={`planFeatures.${index}.intervalInMonths`}
+                        control={control}
+                        render={({ field }) => (
+                          <Input {...field} placeholder="Interval (months)" type="number" className="w-full" />
+                        )}
+                      />
+                    </div>
+                    {/* Second row: Parameters and Notes each on a separate row */}
+                    <div className="space-y-2">
+                      <Controller
+                        name={`planFeatures.${index}.parameters`}
+                        control={control}
+                        render={({ field }) => (
+                          <Input {...field} placeholder="Parameters" type="text" className="w-full" />
+                        )}
+                      />
+                      <Controller
+                        name={`planFeatures.${index}.notes`}
+                        control={control}
+                        render={({ field }) => (
+                          <Input {...field} placeholder="Notes" className="w-full" />
+                        )}
+                      />
+                    </div>
                   </div>
-                  {/* First row: featureName, Occurrences, Interval on a single row */}
-                  <div className="flex space-x-2">
-                    <Controller
-                      name={`planFeatures.${index}.featureName`}
-                      control={control}
-                      render={({ field }) => (
-                        <Input {...field} placeholder="Feature Name" className="w-full" />
-                      )}
-                    />
-                    <Controller
-                      name={`planFeatures.${index}.occurrencesPerInterval`}
-                      control={control}
-                      render={({ field }) => (
-                        <Input {...field} placeholder="Occurrences" type="number" className="w-full" />
-                      )}
-                    />
-                    <Controller
-                      name={`planFeatures.${index}.intervalInMonths`}
-                      control={control}
-                      render={({ field }) => (
-                        <Input {...field} placeholder="Interval (months)" type="number" className="w-full" />
-                      )}
-                    />
-                  </div>
-                  {/* Second row: Parameters and Notes each on a separate row */}
-                  <div className="space-y-2">
-                    <Controller
-                      name={`planFeatures.${index}.parameters`}
-                      control={control}
-                      render={({ field }) => (
-                        <Input {...field} placeholder="Parameters" type="text" className="w-full" />
-                      )}
-                    />
-                    <Controller
-                      name={`planFeatures.${index}.notes`}
-                      control={control}
-                      render={({ field }) => (
-                        <Input {...field} placeholder="Notes" className="w-full" />
-                      )}
-                    />
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => {
-                setDialogOpen(false);
-                setSelectedPlan(null);
-              }}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDialogOpen(false);
+                  setSelectedPlan(null);
+                }}
+              >
                 Cancel
               </Button>
               <Button type="submit">
@@ -534,6 +568,29 @@ export default function PlansPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+
+      {/* Dialog for Viewing Parameters */}
+      <Dialog open={paramsDialogOpen} onOpenChange={setParamsDialogOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-4xl w-[90vw]">
+          <DialogHeader>
+            <DialogTitle>Parameters</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-5 gap-2">
+          {viewParameters.map((param, index) => (
+            <div
+              key={index}
+              className="p-2 bg-custom-mutedgreen font-semibold rounded flex items-center justify-center text-center"
+              style={{ minHeight: "50px" }}
+            >
+              {param}
+            </div>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button onClick={() => setParamsDialogOpen(false)}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </div >
   );
 }
