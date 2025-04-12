@@ -159,7 +159,7 @@ export default function PlansPage() {
           variant="ghost"
           className="text-primary"
           onClick={() =>
-            setExpandedPlanId(expandedPlanId === row.original.id ? null : row.original.id)
+            setExpandedPlanId(expandedPlanId === row.original.id ? null : row.original.id ?? null)
           }
         >
           {expandedPlanId === row.original.id ? "Hide Features" : "Show Features"}
@@ -483,7 +483,7 @@ export default function PlansPage() {
                       notes: "",
                     })
                   }
-                  variant="null"
+                  variant={null}
                   className="hover:bg-transparent p-1"
                 >
                   <Plus className="h-4 w-4 hover:text-green-500" />
@@ -498,7 +498,7 @@ export default function PlansPage() {
                       <p className="text-primary">Insert Feature details</p>
                       <Button
                         type="button"
-                        variant="null"
+                        variant={null}
                         onClick={() => remove(index)}
                         className="p-1"
                       >

@@ -12,18 +12,21 @@ import CdLoader from "@/components/ui/custom/cd-loader";
 import PlanUsage from "@/components/patients/plans/PlanUsage";
 import { Eye, ArrowUpDown, EditIcon, Trash } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function PricingTable() {
   // Basic state for duration and subscription success modal
   const [duration, setDuration] = useState<"6months" | "12months">("6months");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-
+  const [tab, setTab] = useState<"plans" | "usage">("plans");
   // State for the view parameters dialog
   const [viewParameters, setViewParameters] = useState<string[]>([]);
   const [paramsDialogOpen, setParamsDialogOpen] = useState(false);
 
   // Router and profile hooks
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { clinicId, profile, isLoading: profileLoading } = useDecryptedProfile();
   const userId = profile?.id;
 
@@ -48,15 +51,6 @@ export default function PricingTable() {
   // Loading and error handling
   if (profileLoading || isLoading) {
     return <CdLoader />;
-  }
-  if (isValidSubscription) {
-    return (
-      <div className="min-h-screen bg-muted">
-        <div className="max-w-7xl mx-auto px-4 py-10">
-          <PlanUsage subscriptionId={subscriptionId} userId={Number(userId)} />
-        </div>
-      </div>
-    );
   }
   if (isError || !plansResponse) {
     return <div className="p-4">Error fetching plans.</div>;
@@ -111,6 +105,7 @@ export default function PricingTable() {
               razorpayPaymentId: response.razorpay_payment_id,
             });
             if (confirmRes.data.success) {
+              queryClient.invalidateQueries({ queryKey: ["plans"] });
               setShowSuccessModal(true);
               setTimeout(() => {
                 setShowSuccessModal(false);
@@ -163,9 +158,8 @@ export default function PricingTable() {
     if (!total) return "-";
     const totalString = `${total} ${total > 1 ? pluralLabel : singularLabel}`;
     if (frequency > 0 && interval > 0) {
-      const freqString = `${frequency} ${
-        frequency > 1 ? pluralLabel : singularLabel
-      } every ${interval} month${interval > 1 ? "s" : ""}`;
+      const freqString = `${frequency} ${frequency > 1 ? pluralLabel : singularLabel
+        } every ${interval} month${interval > 1 ? "s" : ""}`;
       return (
         <>
           <div className="font-bold text-lg">{totalString}</div>
@@ -235,212 +229,235 @@ export default function PricingTable() {
 
   // ---------- JSX RENDERING ----------
   return (
-    <div className="min-h-screen bg-muted">
-      <main className="max-w-7xl mx-auto px-4 py-10">
-        {/* Top Header */}
-        <div className="flex items-center justify-center h-24">
-          <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-4xl font-semibold bg-clip-text text-transparent">
-            Care Diabetics Program
-          </div>
-        </div>
+    <div className="min-h-screen flex justify-center bg-muted">
+      {/* Toggle between Plans and Usage */}
 
-        <p className="text-center text-2xl md:text-2xl text-[#2c2e38] mb-8">
-          We offer great <span className="text-[#349c4b]">price</span> plans for the application
-        </p>
-
-        {/* Duration Toggle */}
-        <div className="flex flex-col items-center mb-5">
-          <p className="text-[#627065] mr-3 my-2">Choose plan duration</p>
-          <div className="relative flex items-center">
-            <div className="flex bg-white rounded-full p-1">
-              <button
-                onClick={() => setDuration("6months")}
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                  duration === "6months"
-                    ? "bg-gradient-to-r from-[#134F30] to-[#56A67C] font-bold text-white"
-                    : "text-[#627065]"
-                }`}
-              >
-                6 Months
-              </button>
-              <button
-                onClick={() => setDuration("12months")}
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                  duration === "12months"
-                    ? "bg-gradient-to-r from-[#134F30] to-[#56A67C] font-bold text-white"
-                    : "text-[#627065]"
-                }`}
-              >
-                12 Months
-              </button>
+      <Tabs defaultValue={isValidSubscription ? "usage" : "plans"} className="w-full">
+        <TabsList className="grid max-w-xs grid-cols-2 mx-auto mt-2">
+          <TabsTrigger value="plans">Plans</TabsTrigger>
+          <TabsTrigger value="usage">Usage</TabsTrigger>
+        </TabsList>
+        <TabsContent value="usage">
+          {isValidSubscription ? (
+            <PlanUsage subscriptionId={subscriptionId} userId={Number(userId)} />
+          ) : (
+            <div className="text-center text-xl font-semibold text-gray-600 mt-10">
+              Please subscribe to a plan to view usage.
             </div>
-          </div>
-          <div className="h-5 mt-2 text-xs font-bold text-[#f28a2e] text-center">
-            {duration === "6months" ? "SAVE UP TO 33% ON 12 MONTHS PLAN" : ""}
-          </div>
-        </div>
+          )}
+        </TabsContent>
+        <TabsContent value="plans">
 
-        {/* Pricing Table */}
-        <div className="w-full overflow-x-auto mt-3">
-          <table className="table-auto mx-5 border-collapse bg-white rounded-xl">
-            <colgroup>
-              <col className="w-12 bg-muted" />
-              <col className="w-64" />
-              <col className="w-80" />
-              <col className="w-64" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th className="p-8"></th>
-                <th className="p-8 text-center">
-                  <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
-                    {currentPricing.basic?.name}
-                  </div>
-                </th>
-                <th className="p-8 text-center bg-custom-mutedgreen">
-                  <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
-                    {currentPricing.care?.name}
-                  </div>
-                </th>
-                <th className="p-8 text-center">
-                  <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
-                    {currentPricing.carePlus?.name}
-                  </div>
-                </th>
-              </tr>
-            </thead>
+          <>
+            <main className="max-w-7xl mx-auto px-3 py-2">
+              {/* Top Header */}
+              <div className="flex items-center justify-center h-24">
+                <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-4xl font-semibold bg-clip-text text-transparent">
+                  Care Diabetics Program
+                </div>
+              </div>
 
-            <tbody>
-              {[
-                { title: "Doctor Consultation", key: "doctorConsultation" },
-                { title: "Lab Tests", key: "labTests", showParameters: true },
-                { title: "Dietician Consultation", key: "dieticianConsultation" },
-                {
-                  title: "Ophthalmologist Consultation",
-                  key: "ophthalmologistConsultation",
-                  extraNote: "At Clinic*",
-                },
-                { title: "Medicines", key: "medicines" },
-              ].map(({ title, key, showParameters, extraNote }) => {
-                const basicData = currentPricing.basic?.[key];
-                const careData = currentPricing.care?.[key];
-                const carePlusData = currentPricing.carePlus?.[key];
-                return (
-                  <tr key={key}>
-                    <td className="p-8 align-top">
-                      <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-xl font-semibold bg-clip-text text-transparent">
-                        {title}
-                      </div>
-                      {extraNote && (
-                        <div className="text-xs text-[#349c4b] italic">{extraNote}</div>
-                      )}
-                    </td>
+              <p className="text-center text-2xl md:text-2xl text-[#2c2e38] mb-8">
+                We offer great <span className="text-[#349c4b]">price</span> plans for the application
+              </p>
 
-                    {/* BASIC COLUMN */}
-                    <td className="p-8 text-center align-top">
-                      {renderFeatureCell(basicData, key, showParameters)}
-                    </td>
-
-                    {/* CARE COLUMN */}
-                    <td className="p-8 text-center align-top bg-custom-mutedgreen">
-                      {renderFeatureCell(careData, key, showParameters)}
-                    </td>
-
-                    {/* CARE+ COLUMN */}
-                    <td className="p-8 text-center align-top">
-                      {renderFeatureCell(carePlusData, key, showParameters)}
-                    </td>
-                  </tr>
-                );
-              })}
-
-              {/* Final row: Pricing & Buttons */}
-              <tr>
-                <td className="p-8"></td>
-
-                {/* BASIC Price & Button */}
-                <td className="p-8 text-center align-top">
-                  <div className="text-2xl font-bold mb-4">
-                    {currentPricing.basic
-                      ? `Rs.${currentPricing.basic.price}/-`
-                      : "-"}
-                  </div>
-                  {currentPricing.basic && (
-                    <Button
-                      variant="outline"
-                      className="w-full border-[#349c4b] text-[#349c4b]"
-                      onClick={() => handlePurchasePlan("basic")}
+              {/* Duration Toggle */}
+              <div className="flex flex-col items-center mb-5">
+                <p className="text-[#627065] mr-3 my-2">Choose plan duration</p>
+                <div className="relative flex items-center">
+                  <div className="flex bg-white rounded-full p-1">
+                    <button
+                      onClick={() => setDuration("6months")}
+                      className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${duration === "6months"
+                        ? "bg-gradient-to-r from-[#134F30] to-[#56A67C] font-bold text-white"
+                        : "text-[#627065]"
+                        }`}
                     >
-                      Get Started
-                    </Button>
-                  )}
-                </td>
-
-                {/* CARE Price & Button */}
-                <td className="p-8 text-center align-top bg-custom-mutedgreen">
-                  <div className="text-2xl font-bold mb-4">
-                    {currentPricing.care
-                      ? `Rs.${currentPricing.care.price}/-`
-                      : "-"}
-                  </div>
-                  {currentPricing.care && (
-                    <Button
-                      className="w-full bg-[#f28a2e] hover:bg-[#e07a1e] text-white"
-                      onClick={() => handlePurchasePlan("care")}
+                      6 Months
+                    </button>
+                    <button
+                      onClick={() => setDuration("12months")}
+                      className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${duration === "12months"
+                        ? "bg-gradient-to-r from-[#134F30] to-[#56A67C] font-bold text-white"
+                        : "text-[#627065]"
+                        }`}
                     >
-                      Get Started
-                    </Button>
-                  )}
-                </td>
-
-                {/* CARE+ Price & Button */}
-                <td className="p-8 text-center align-top">
-                  <div className="text-2xl font-bold mb-4">
-                    {currentPricing.carePlus
-                      ? `Rs.${currentPricing.carePlus.price}/-`
-                      : "-"}
+                      12 Months
+                    </button>
                   </div>
-                  {currentPricing.carePlus && (
-                    <Button
-                      variant="outline"
-                      className="w-full border-[#349c4b] text-[#349c4b]"
-                      onClick={() => handlePurchasePlan("carePlus")}
+                </div>
+                <div className="h-5 mt-2 text-xs font-bold text-[#f28a2e] text-center">
+                  {duration === "6months" ? "SAVE UP TO 33% ON 12 MONTHS PLAN" : ""}
+                </div>
+              </div>
+
+              {/* Pricing Table */}
+              <div className="w-full overflow-x-auto mt-3">
+                <table className="table-auto mx-5 border-collapse bg-white rounded-xl">
+                  <colgroup>
+                    <col className="w-12 bg-muted" />
+                    <col className="w-64" />
+                    <col className="w-80" />
+                    <col className="w-64" />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th className="p-8"></th>
+                      <th className="p-8 text-center">
+                        <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
+                          {currentPricing.basic?.name}
+                        </div>
+                      </th>
+                      <th className="p-8 text-center bg-custom-mutedgreen">
+                        <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
+                          {currentPricing.care?.name}
+                        </div>
+                      </th>
+                      <th className="p-8 text-center">
+                        <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
+                          {currentPricing.carePlus?.name}
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {[
+                      { title: "Doctor Consultation", key: "doctorConsultation" },
+                      { title: "Lab Tests", key: "labTests", showParameters: true },
+                      { title: "Dietician Consultation", key: "dieticianConsultation" },
+                      {
+                        title: "Ophthalmologist Consultation",
+                        key: "ophthalmologistConsultation",
+                        extraNote: "At Clinic*",
+                      },
+                      { title: "Medicines", key: "medicines" },
+                    ].map(({ title, key, showParameters, extraNote }) => {
+                      const basicData = currentPricing.basic?.[key];
+                      const careData = currentPricing.care?.[key];
+                      const carePlusData = currentPricing.carePlus?.[key];
+                      return (
+                        <tr key={key}>
+                          <td className="p-8 align-top">
+                            <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-xl font-semibold bg-clip-text text-transparent">
+                              {title}
+                            </div>
+                            {extraNote && (
+                              <div className="text-xs text-[#349c4b] italic">{extraNote}</div>
+                            )}
+                          </td>
+
+                          {/* BASIC COLUMN */}
+                          <td className="p-8 text-center align-top">
+                            {renderFeatureCell(basicData, key, showParameters)}
+                          </td>
+
+                          {/* CARE COLUMN */}
+                          <td className="p-8 text-center align-top bg-custom-mutedgreen">
+                            {renderFeatureCell(careData, key, showParameters)}
+                          </td>
+
+                          {/* CARE+ COLUMN */}
+                          <td className="p-8 text-center align-top">
+                            {renderFeatureCell(carePlusData, key, showParameters)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {/* Final row: Pricing & Buttons */}
+                    <tr>
+                      <td className="p-8"></td>
+
+                      {/* BASIC Price & Button */}
+                      <td className="p-8 text-center align-top">
+                        <div className="text-2xl font-bold mb-4">
+                          {currentPricing.basic
+                            ? `Rs.${currentPricing.basic.price}/-`
+                            : "-"}
+                        </div>
+                        {currentPricing.basic && (
+                          <Button
+                            variant="outline"
+                            className="w-full border-[#349c4b] text-[#349c4b]"
+                            onClick={() => handlePurchasePlan("basic")}
+                            disabled={isValidSubscription}
+                          >
+                            Get Started
+                          </Button>
+                        )}
+                      </td>
+
+                      {/* CARE Price & Button */}
+                      <td className="p-8 text-center align-top bg-custom-mutedgreen">
+                        <div className="text-2xl font-bold mb-4">
+                          {currentPricing.care
+                            ? `Rs.${currentPricing.care.price}/-`
+                            : "-"}
+                        </div>
+                        {currentPricing.care && (
+                          <Button
+                            className="w-full bg-[#f28a2e] hover:bg-[#e07a1e] text-white"
+                            onClick={() => handlePurchasePlan("care")}
+                            disabled={isValidSubscription}
+                          >
+                            Get Started
+                          </Button>
+                        )}
+                      </td>
+
+                      {/* CARE+ Price & Button */}
+                      <td className="p-8 text-center align-top">
+                        <div className="text-2xl font-bold mb-4">
+                          {currentPricing.carePlus
+                            ? `Rs.${currentPricing.carePlus.price}/-`
+                            : "-"}
+                        </div>
+                        {currentPricing.carePlus && (
+                          <Button
+                            variant="outline"
+                            className="w-full border-[#349c4b] text-[#349c4b]"
+                            onClick={() => handlePurchasePlan("carePlus")}
+                            disabled={isValidSubscription}
+                          >
+                            Get Started
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </main>
+
+            {/* Success Modal */}
+            <SuccessModal open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
+
+            {/* Dialog for Viewing Parameters */}
+            <Dialog open={paramsDialogOpen} onOpenChange={setParamsDialogOpen}>
+              <DialogContent className="max-h-[90vh] overflow-y-auto max-w-4xl w-[90vw]">
+                <DialogHeader>
+                  <DialogTitle>Parameters</DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-5 gap-2">
+                  {viewParameters.map((param, index) => (
+                    <div
+                      key={index}
+                      className="p-2 bg-custom-mutedgreen font-semibold rounded flex items-center justify-center text-center"
+                      style={{ minHeight: "50px" }}
                     >
-                      Get Started
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </main>
-
-      {/* Success Modal */}
-      <SuccessModal open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
-
-      {/* Dialog for Viewing Parameters */}
-      <Dialog open={paramsDialogOpen} onOpenChange={setParamsDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-4xl w-[90vw]">
-          <DialogHeader>
-            <DialogTitle>Parameters</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-5 gap-2">
-          {viewParameters.map((param, index) => (
-            <div
-              key={index}
-              className="p-2 bg-custom-mutedgreen font-semibold rounded flex items-center justify-center text-center"
-              style={{ minHeight: "50px" }}
-            >
-              {param}
-            </div>
-          ))}
-        </div>
-          <DialogFooter>
-            <Button onClick={() => setParamsDialogOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                      {param}
+                    </div>
+                  ))}
+                </div>
+                <DialogFooter>
+                  <Button onClick={() => setParamsDialogOpen(false)}>Close</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

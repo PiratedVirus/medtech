@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, data: result });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: (error as any).message }, { status: 500 });
   }
 }
 
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json({ success: true, data: plans });
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
@@ -111,7 +111,7 @@ export async function DELETE(request: Request) {
     });
 
     return NextResponse.json({ success: true, message: "Plan deleted successfully" });
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
