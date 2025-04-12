@@ -38,6 +38,8 @@ import {
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
+import ViewParametersDialog from "@/components/common/ViewParametersDialog";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowUpDown, EditIcon, Trash, Plus, X, Eye } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
@@ -570,27 +572,11 @@ export default function PlansPage() {
       </Dialog>
 
       {/* Dialog for Viewing Parameters */}
-      <Dialog open={paramsDialogOpen} onOpenChange={setParamsDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-4xl w-[90vw]">
-          <DialogHeader>
-            <DialogTitle>Parameters</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-5 gap-2">
-          {viewParameters.map((param, index) => (
-            <div
-              key={index}
-              className="p-2 bg-custom-mutedgreen font-semibold rounded flex items-center justify-center text-center"
-              style={{ minHeight: "50px" }}
-            >
-              {param}
-            </div>
-          ))}
-        </div>
-        <DialogFooter>
-          <Button onClick={() => setParamsDialogOpen(false)}>Close</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <ViewParametersDialog
+              open={paramsDialogOpen}
+              onOpenChange={setParamsDialogOpen}
+              parameters={viewParameters}
+            />
     </div >
   );
 }

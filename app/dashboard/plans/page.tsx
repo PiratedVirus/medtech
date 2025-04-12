@@ -14,6 +14,7 @@ import { Eye, ArrowUpDown, EditIcon, Trash } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useQueryClient } from "@tanstack/react-query";
+import ViewParametersDialog from "@/components/common/ViewParametersDialog";
 
 export default function PricingTable() {
   // Basic state for duration and subscription success modal
@@ -42,7 +43,7 @@ export default function PricingTable() {
       const response = await axios.get(`/api/plans`, { withCredentials: true });
       return response.data;
     },
-    enabled: !!clinicId && !isValidSubscription,
+    enabled: !!clinicId,
     staleTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -52,8 +53,11 @@ export default function PricingTable() {
   if (profileLoading || isLoading) {
     return <CdLoader />;
   }
-  if (isError || !plansResponse) {
+  if (isError) {
     return <div className="p-4">Error fetching plans.</div>;
+  }
+  if (!plansResponse) {
+    return <div className="p-4">Error fetching plans because no response from plans</div>;
   }
   if (!plansResponse.success) {
     return <div className="p-4">No plan data found.</div>;
@@ -434,27 +438,11 @@ export default function PricingTable() {
             <SuccessModal open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
 
             {/* Dialog for Viewing Parameters */}
-            <Dialog open={paramsDialogOpen} onOpenChange={setParamsDialogOpen}>
-              <DialogContent className="max-h-[90vh] overflow-y-auto max-w-4xl w-[90vw]">
-                <DialogHeader>
-                  <DialogTitle>Parameters</DialogTitle>
-                </DialogHeader>
-                <div className="grid grid-cols-5 gap-2">
-                  {viewParameters.map((param, index) => (
-                    <div
-                      key={index}
-                      className="p-2 bg-custom-mutedgreen font-semibold rounded flex items-center justify-center text-center"
-                      style={{ minHeight: "50px" }}
-                    >
-                      {param}
-                    </div>
-                  ))}
-                </div>
-                <DialogFooter>
-                  <Button onClick={() => setParamsDialogOpen(false)}>Close</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <ViewParametersDialog
+              open={paramsDialogOpen}
+              onOpenChange={setParamsDialogOpen}
+              parameters={viewParameters}
+            />
           </>
         </TabsContent>
       </Tabs>
