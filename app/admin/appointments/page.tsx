@@ -519,6 +519,7 @@ export default function AppointmentsPage() {
                   // }
 
                   console.log('Creating and joining new call frame...');
+                  // @ts-ignore
                   const newCallFrame = DailyIframe.createFrame({
                     iframeStyle: {
                       alignItems: 'center',
