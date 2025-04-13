@@ -85,7 +85,7 @@ type DoctorsPageFormData = {
 
 export default function DoctorsPage() {
   const [data, setData] = useState<{ doctors: Doctor[]; total: number }>({ doctors: [], total: 0 });
-  const [clinics, setClinics] = useState([]);
+  const [clinics, setClinics] = useState<{ id: number; name: string }[]>([]);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [roleCounts, setRoleCounts] = useState<{ [key: string]: number }>({});
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
@@ -295,7 +295,7 @@ export default function DoctorsPage() {
         axios.get("/api/admin/clinics"),
       ]);
       setData({ doctors: doctorsRes.data.data, total: doctorsRes.data.total });
-      setClinics(clinicsRes.data);
+      setClinics(clinicsRes.data.data);
       setRoleCounts(doctorsRes.data.roleCounts || {});
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -545,7 +545,7 @@ export default function DoctorsPage() {
                       <SelectValue placeholder="Select Clinic" />
                     </SelectTrigger>
                     <SelectContent className="bg-white text-black">
-                      {clinics.map((clinic: Clinic) => (
+                      {Array.isArray(clinics) && clinics.map((clinic) => (
                         <SelectItem key={clinic.id} value={clinic.id.toString()}>
                           {clinic.name}
                         </SelectItem>
