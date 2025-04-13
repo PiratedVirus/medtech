@@ -1,4 +1,5 @@
 "use client";
+import DailyIframe from '@daily-co/daily-js';
 
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -67,6 +68,9 @@ type Appointment = {
   fullName: string;
   consultationType: string;
   appointmentLink: string;
+  meetingRoomLink: string;
+  ownerToken1: string;
+  ownerToken2: string;
   // Relations
 
 };
@@ -147,6 +151,8 @@ const fetchAvailableSlots = async (doctorId: number) => {
     return [];
   }
 };
+// const callFrame = DailyIframe.createFrame({ showLeaveButton: true });
+
 
 // --- Component ---
 export default function AppointmentsPage() {
@@ -474,17 +480,28 @@ export default function AppointmentsPage() {
         </Button>
       ),
       cell: ({ row }) => {
-        return (
-          (row.original.consultationType === "Video" ? (
-            <>
-              <Link href={row.original?.appointmentLink ?? "#"} >
-                <Badge className="bg-green-700 shadow-none text-white">
-                  JOIN MEET
-                </Badge>
-              </Link>
-            </>
-          ) : "Physical")
-        );
+        if (row.original.consultationType === "Video") {
+          return (
+            <Button
+              className="bg-transparent shadow-none"
+              onClick={() => {
+                  if (row.original.meetingRoomLink && row.original.ownerToken1) {
+                    const callFrame = DailyIframe.createFrame({ showLeaveButton: true });
+                    callFrame.join({ 
+                      url: row.original.meetingRoomLink, 
+                      token: row.original.ownerToken1 
+                    });                  } else {
+                    console.error("Meeting link or owner token is missing.");
+                  }
+              }}
+            >
+              <Badge className="bg-green-700 shadow-none text-white">
+                JOIN MEET
+              </Badge>
+            </Button>
+          );
+        }
+        return "Physical";
       }
     },
     {

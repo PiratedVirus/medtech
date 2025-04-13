@@ -80,6 +80,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         name: roomName,
+        privacy: "private",
         properties: {
           enable_knocking: true,
           exp: null,

@@ -75,15 +75,40 @@ export async function GET(request: Request) {
       }),
       prisma.appointment.count(),
     ]);
+    
+    // Extract unique doctor IDs for video consultations
+    const videoDoctorIds = appointments
+      .filter(app => app.consultationType === "Video")
+      .map(app => app.doctorId);
+    const uniqueDoctorIds = [...new Set(videoDoctorIds)];
+    
+    let doctorProfilesByUserId: Record<number, { meetingRoomLink: string; ownerToken1: string }> = {};
+    if (uniqueDoctorIds.length) {
+      const doctorProfiles = await prisma.doctorProfile.findMany({
+        where: { userId: { in: uniqueDoctorIds } },
+        select: { userId: true, meetingRoomLink: true, ownerToken1: true },
+      });
+      doctorProfilesByUserId = doctorProfiles.reduce((acc, profile) => {
+        acc[profile.userId] = profile;
+        return acc;
+      }, {});
+    }
 
-    // Transform the data structure
     const transformedAppointments = appointments.map(appointment => {
       const { doctor, doctorAvailability, ...rest } = appointment;
+      const additionalData =
+        appointment.consultationType === "Video" && doctorProfilesByUserId[appointment.doctorId]
+          ? {
+              meetingRoomLink: doctorProfilesByUserId[appointment.doctorId].meetingRoomLink,
+              ownerToken1: doctorProfilesByUserId[appointment.doctorId].ownerToken1,
+            }
+          : {};
       return {
         ...rest,
         doctorName: doctor.name,
         startTime: doctorAvailability.startTime,
-        endTime: doctorAvailability.endTime
+        endTime: doctorAvailability.endTime,
+        ...additionalData,
       };
     });
 
