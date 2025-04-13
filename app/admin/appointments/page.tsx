@@ -167,7 +167,7 @@ export default function AppointmentsPage() {
   const [activeCallFrame, setActiveCallFrame] = useState<DailyCall | null>(null);
 
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
-const [meetingDetails, setMeetingDetails] = useState<{ meetingRoomLink: string; token: string } | null>(null);
+  const [meetingDetails, setMeetingDetails] = useState<{ meetingRoomLink: string; token: string } | null>(null);
 
 
   useEffect(() => {
@@ -529,6 +529,10 @@ const [meetingDetails, setMeetingDetails] = useState<{ meetingRoomLink: string; 
                       left: '10%',
                       width: '80%',
                       height: '80%',
+                      zIndex: 1000,
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)'
                     },
                     showLeaveButton: true,
                     showFullscreenButton: true
@@ -785,24 +789,44 @@ const [meetingDetails, setMeetingDetails] = useState<{ meetingRoomLink: string; 
         </div>
       </div>
       {activeCallFrame && (
-  <div className="fixed top-4 left-4 z-50">
-    <Button
-      variant="destructive"
-      onClick={async () => {
-        try {
-          await activeCallFrame.destroy();
-          setActiveCallFrame(null);
-          toast.success("Meeting closed successfully.");
-        } catch (error) {
-          console.error("Error closing meeting:", error);
-          toast.error("Failed to close meeting.");
-        }
-      }}
-    >
-      Close Meeting
-    </Button>
-  </div>
-)}
+        <>
+          {/* Improved dark overlay that covers the entire viewport */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-40"
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              margin: 0,
+              padding: 0,
+              width: '100vw',
+              height: '100vh'
+            }}
+          />
+
+          {/* Close meeting button positioned at bottom center */}
+          <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+            <Button
+              variant="destructive"
+              size="lg"
+              onClick={async () => {
+                try {
+                  await activeCallFrame.destroy();
+                  setActiveCallFrame(null);
+                  toast.success("Meeting closed successfully.");
+                } catch (error) {
+                  console.error("Error closing meeting:", error);
+                  toast.error("Failed to close meeting.");
+                }
+              }}
+            >
+              Close Meeting
+            </Button>
+          </div>
+        </>
+      )}
       {/* Dialog for Create/Edit Appointment */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
