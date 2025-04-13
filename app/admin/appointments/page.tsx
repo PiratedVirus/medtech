@@ -1,5 +1,5 @@
 "use client";
-import DailyIframe from '@daily-co/daily-js';
+import DailyIframe, { DailyCall } from '@daily-co/daily-js';
 
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -151,7 +151,6 @@ const fetchAvailableSlots = async (doctorId: number) => {
     return [];
   }
 };
-// const callFrame = DailyIframe.createFrame({ showLeaveButton: true });
 
 
 // --- Component ---
@@ -165,7 +164,24 @@ export default function AppointmentsPage() {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
-  
+  const [activeCallFrame, setActiveCallFrame] = useState<DailyCall | null>(null);
+
+
+  useEffect(() => {
+    // This function runs when the component unmounts
+    return () => {
+      if (activeCallFrame) {
+        console.log('AppointmentsPage unmounting, destroying active call frame.');
+        activeCallFrame.destroy();
+        // No need to setActiveCallFrame(null) here as the component is gone
+      }
+      // If using ref:
+      // if (activeCallFrameRef.current) {
+      //   activeCallFrameRef.current.destroy();
+      // }
+    };
+  }, [activeCallFrame]);
+
   const createAppointment = async (data: AppointmentsFormData, availableSlots: any) => {
     console.log("Creating appointment with formData:", data);
     console.log("doctorId:", data.doctorId);
@@ -179,7 +195,7 @@ export default function AppointmentsPage() {
     const slot = availableSlots.find(
       (slot: any) => slot.id === Number(data.doctorAvailabilityId) // Convert to number
     );
-  
+
     const selectedPatient = patients.find((pat) => pat.id === Number(data.patientId));
     console.log("Selected patient:", selectedPatient);
     if (!selectedPatient) {
@@ -189,7 +205,7 @@ export default function AppointmentsPage() {
     data.patinetName = selectedPatient.name;
     data.patientEmail = selectedPatient.email;
     data.patientPhone = selectedPatient.phoneNumber;
-  
+
     if (!slot) {
       console.error("Slot not found!");
       return null;
@@ -207,7 +223,7 @@ export default function AppointmentsPage() {
       consultationType: data.consultationType,
     };
     console.log("Entire payload", payload);
-  
+
     try {
       const response = await axios.post("/api/admin/appointments", payload);
       return response.data;
@@ -216,7 +232,7 @@ export default function AppointmentsPage() {
       return null;
     }
   };
-  
+
 
   const {
     register,
@@ -281,13 +297,13 @@ export default function AppointmentsPage() {
 
   // Watch selected doctor from form
   const selectedDoctorId = watch("doctorId");
-  
+
 
   // When a doctor is selected, load available slots for that doctor
   useEffect(() => {
     if (selectedDoctorId) {
-    // @ts-ignore
-    const sendThisDoctorId = JSON.parse(selectedDoctorId).id;
+      // @ts-ignore
+      const sendThisDoctorId = JSON.parse(selectedDoctorId).id;
 
       fetchAvailableSlots(Number(sendThisDoctorId)).then((slots) =>
         setAvailableSlots(slots)
@@ -326,7 +342,7 @@ export default function AppointmentsPage() {
       if (foundPatient) {
         setValue("patientId", foundPatient.id.toString());
       }
-  
+
       // 2. Prefill 'doctorId' (JSON string)
       const foundDoctor = doctors.find(
         (doc) => doc.userId === selectedAppointment.doctorId
@@ -337,13 +353,13 @@ export default function AppointmentsPage() {
           JSON.stringify({ id: foundDoctor.id, doctorId: foundDoctor.userId })
         );
       }
-  
+
       // 3. Prefill the slot
       setValue(
         "doctorAvailabilityId",
         selectedAppointment.doctorAvailabilityId.toString()
       );
-  
+
       // 4. Prefill consultationType
       if (selectedAppointment.consultationType) {
         setValue(
@@ -351,7 +367,7 @@ export default function AppointmentsPage() {
           selectedAppointment.consultationType.toString()
         );
       }
-  
+
       // 5. Prefill status
       setValue("status", selectedAppointment.status);
     } else {
@@ -447,7 +463,7 @@ export default function AppointmentsPage() {
         const options: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric" };
         return (
           <>
-          {/* <div className="flex items-center gap-2">
+            {/* <div className="flex items-center gap-2">
             <span>
               {date.toLocaleDateString('en-US', options)} •
               {row.original.startTime} - {row.original.endTime}
@@ -456,17 +472,17 @@ export default function AppointmentsPage() {
               #{row.original.doctorAvailabilityId}
             </Badge>
           </div> */}
-          <div className="flex item-center justify-center">
-            <div className="flex m-3">
-            <Badge variant="outline" className="border-primary text-primary">
-              #{row.original.doctorAvailabilityId}
-            </Badge>
+            <div className="flex item-center justify-center">
+              <div className="flex m-3">
+                <Badge variant="outline" className="border-primary text-primary">
+                  #{row.original.doctorAvailabilityId}
+                </Badge>
+              </div>
+              <div className="flex flex-col items-end">
+                <p className="text-muted-foreground">{date.toLocaleDateString('en-US', options)}</p>
+                <p className="font-bold"> {row.original.startTime} - {row.original.endTime}</p>
+              </div>
             </div>
-            <div className="flex flex-col items-end">
-              <p className="text-muted-foreground">{date.toLocaleDateString('en-US', options)}</p>
-              <p className="font-bold"> {row.original.startTime} - {row.original.endTime}</p>
-            </div>
-          </div>
           </>
         );
       },
@@ -484,15 +500,79 @@ export default function AppointmentsPage() {
           return (
             <Button
               className="bg-transparent shadow-none"
-              onClick={() => {
-                  if (row.original.meetingRoomLink && row.original.ownerToken1) {
-                    const callFrame = DailyIframe.createFrame({ showLeaveButton: true });
-                    callFrame.join({ 
-                      url: row.original.meetingRoomLink, 
-                      token: row.original.ownerToken1 
-                    });                  } else {
-                    console.error("Meeting link or owner token is missing.");
+              onClick={async () => { // Make onClick async if needed for join promise
+                if (row.original.meetingRoomLink && row.original.ownerToken1) {
+
+                  // --- Destroy existing frame if any ---
+                  if (activeCallFrame) {
+                    console.log('Destroying previous call frame before starting new one.');
+                    await activeCallFrame.destroy(); // Wait for destruction if needed
+                    setActiveCallFrame(null);
                   }
+                  // If using ref:
+                  // if (activeCallFrameRef.current) {
+                  //   await activeCallFrameRef.current.destroy();
+                  //   activeCallFrameRef.current = null;
+                  // }
+
+                  console.log('Creating and joining new call frame...');
+                  const newCallFrame = DailyIframe.createFrame({
+                    iframeStyle: {
+                      alignItems: 'center',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      position: 'fixed',
+                      
+                      top: '10%',
+                      left: '10%',
+                      width: '80%',
+                      height: '80%',
+                    },
+                    showLeaveButton: true,
+                    showFullscreenButton: true
+                  });
+
+                  // --- Add listener to destroy frame on leaving ---
+                  newCallFrame.on('left-meeting', () => {
+                    console.log('Call frame event: left-meeting. Destroying frame.');
+                    newCallFrame.destroy();
+                    setActiveCallFrame(null); // Clear the state
+                    // If using ref: activeCallFrameRef.current = null;
+                  });
+
+                  // Optional: Handle errors during the call
+                  newCallFrame.on('error', (error) => {
+                    console.error('Daily call error:', error);
+                    toast.error(`Video call error: ${error?.errorMsg || 'Unknown error'}`);
+                    newCallFrame.destroy(); // Destroy frame on error too
+                    setActiveCallFrame(null);
+                    // If using ref: activeCallFrameRef.current = null;
+                  });
+
+                  // --- Store the new frame ---
+                  setActiveCallFrame(newCallFrame);
+                  // If using ref: activeCallFrameRef.current = newCallFrame;
+
+                  // --- Join the call ---
+                  try {
+                    await newCallFrame.join({
+                      url: row.original.meetingRoomLink,
+                      token: row.original.ownerToken1
+                    });
+                    console.log('Successfully joined call');
+                  } catch (error) {
+                    console.error("Failed to join Daily call:", error);
+                    toast.error("Failed to join video call.");
+                    // If join fails, destroy the frame immediately
+                    newCallFrame.destroy();
+                    setActiveCallFrame(null);
+                    // If using ref: activeCallFrameRef.current = null;
+                  }
+
+                } else {
+                  console.error("Meeting link or owner token is missing.");
+                  toast.error("Cannot start video call: Missing meeting details.");
+                }
               }}
             >
               <Badge className="bg-green-700 shadow-none text-white">
@@ -724,7 +804,7 @@ export default function AppointmentsPage() {
                   <SelectContent className="bg-white text-black">
                     {doctors.map((doc) => (
                       <SelectItem key={doc.userId} value={JSON.stringify({ id: doc.id, doctorId: doc.userId })}>
-                          {doc.user.name}
+                        {doc.user.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
