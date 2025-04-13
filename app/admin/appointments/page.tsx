@@ -166,6 +166,9 @@ export default function AppointmentsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [activeCallFrame, setActiveCallFrame] = useState<DailyCall | null>(null);
 
+  const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
+const [meetingDetails, setMeetingDetails] = useState<{ meetingRoomLink: string; token: string } | null>(null);
+
 
   useEffect(() => {
     // This function runs when the component unmounts
@@ -522,7 +525,6 @@ export default function AppointmentsPage() {
                       display: 'flex',
                       justifyContent: 'center',
                       position: 'fixed',
-                      
                       top: '10%',
                       left: '10%',
                       width: '80%',
@@ -782,6 +784,25 @@ export default function AppointmentsPage() {
           </div>
         </div>
       </div>
+      {activeCallFrame && (
+  <div className="fixed top-4 left-4 z-50">
+    <Button
+      variant="destructive"
+      onClick={async () => {
+        try {
+          await activeCallFrame.destroy();
+          setActiveCallFrame(null);
+          toast.success("Meeting closed successfully.");
+        } catch (error) {
+          console.error("Error closing meeting:", error);
+          toast.error("Failed to close meeting.");
+        }
+      }}
+    >
+      Close Meeting
+    </Button>
+  </div>
+)}
       {/* Dialog for Create/Edit Appointment */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
