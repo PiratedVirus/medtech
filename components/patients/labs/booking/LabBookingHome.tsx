@@ -15,7 +15,8 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { setSubscriptionData } from "@/store/subscriptionSlice";
 import { useDispatch } from "react-redux";
-import { set } from "date-fns";
+import { EyeIcon } from "lucide-react";
+import ViewParametersDialog from "@/components/common/ViewParametersDialog";
 
 export default function LabBookingHome({ packageInfo, onBack }: any) {
   const router = useRouter();
@@ -30,6 +31,11 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
   const subscriptionTracker = useSelector((state: RootState) => state.subscriptionsStore.subscriptionData);
   const [firstValidDate, setFirstValidDate] = useState<string | null>(null);
   const [filteredlabTestsDatesDates, setFilteredlabTestsDatesDates] = useState<string[] | null>(null);
+  const [paramsOpen, setParamsOpen] = useState(false);
+
+  const parametersArray = labBbookingData.parameters
+    ? labBbookingData.parameters.split(",").map((p: string) => p.trim())
+    : [];
 
   const fetchSubscriptionTracker = async (userId: string) => {
     try {
@@ -201,13 +207,12 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
           {/* Right column - Payment Selection and Button */}
           <div className="flex flex-col gap-1 pt-0 h-full">
             {/* Payment Selection */}
-            <div className="bg-white flex-grow flex items-center justify-center p-6">
+            <div className="bg-white flex-grow flex justify-center p-6">
               <PaymentSelection
                 selectedOption={paymentOption}
                 onOptionChange={setPaymentOption}
                 firstValidDate={firstValidDate}
                 consultationType={paymentOption || ""}
-
               />
             </div>
 
@@ -241,6 +246,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
           </div>
         </div>
       </div>
+
       <SuccessModal open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
     </>
   );

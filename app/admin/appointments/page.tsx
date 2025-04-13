@@ -65,7 +65,7 @@ type Appointment = {
   endTime: string;
   appointmentDate: string;
   fullName: string;
-  consultationTypeId: number;
+  consultationType: string;
   appointmentLink: string;
   // Relations
 
@@ -99,8 +99,8 @@ type Slot = {
 
 type AppointmentsFormData = {
   patientId: number;
-  doctorId: number;
-  doctorAvailabilityId: number;
+  doctorId: string | number;
+  doctorAvailabilityId: number | string;
   status: string;
   consultationType: string;
   startTime: string;
@@ -311,34 +311,47 @@ export default function AppointmentsPage() {
 
   // When editing an appointment, pre-fill form values
   useEffect(() => {
-    const initializeForm = async () => {
-      if (selectedAppointment) {
-        console.log("Selected appointment on edit:", selectedAppointment);
-        // Set basic fields
-        // TODO - check again
-        // @ts-ignore
-        setValue("patient", selectedAppointment.fullName);
-        setValue("doctorId", selectedAppointment.doctorId);
-        setValue("status", selectedAppointment.status);
-
-        // Fetch slots for the selected doctor
-        const slots = await fetchAvailableSlots(selectedAppointment.id);
-        setAvailableSlots(slots);
-
-        // After slots are loaded, set availability ID
-        setValue("doctorAvailabilityId", selectedAppointment.doctorAvailabilityId);
-
-        // Set availability ID after slots load
-        setTimeout(() => {
-          setValue("doctorAvailabilityId", selectedAppointment.doctorAvailabilityId);
-        }, 100);
-      } else {
-        reset();
+    if (selectedAppointment && doctors.length > 0 && patients.length > 0) {
+      console.log("Selected appointment:", selectedAppointment);
+      // 1. Prefill 'patientId'
+      const foundPatient = patients.find(
+        (p) => p.name === selectedAppointment.fullName
+      );
+      if (foundPatient) {
+        setValue("patientId", foundPatient.id.toString());
       }
-    };
-
-    initializeForm();
-  }, [selectedAppointment, setValue, reset]);
+  
+      // 2. Prefill 'doctorId' (JSON string)
+      const foundDoctor = doctors.find(
+        (doc) => doc.userId === selectedAppointment.doctorId
+      );
+      if (foundDoctor) {
+        setValue(
+          "doctorId",
+          JSON.stringify({ id: foundDoctor.id, doctorId: foundDoctor.userId })
+        );
+      }
+  
+      // 3. Prefill the slot
+      setValue(
+        "doctorAvailabilityId",
+        selectedAppointment.doctorAvailabilityId.toString()
+      );
+  
+      // 4. Prefill consultationType
+      if (selectedAppointment.consultationType) {
+        setValue(
+          "consultationType",
+          selectedAppointment.consultationType.toString()
+        );
+      }
+  
+      // 5. Prefill status
+      setValue("status", selectedAppointment.status);
+    } else {
+      reset();
+    }
+  }, [selectedAppointment, doctors, patients, setValue, reset]);
 
   const onSubmit = async (formData: AppointmentsFormData) => {
     console.log("Form data in app book:", formData);
@@ -454,7 +467,7 @@ export default function AppointmentsPage() {
       enableSorting: true,
     },
     {
-      accessorKey: "consultationTypeId",
+      accessorKey: "consultationType",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Consultation Type <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -462,7 +475,7 @@ export default function AppointmentsPage() {
       ),
       cell: ({ row }) => {
         return (
-          (row.original.consultationTypeId === 1 ? (
+          (row.original.consultationType === "Video" ? (
             <>
               <Link href={row.original?.appointmentLink ?? "#"} >
                 <Badge className="bg-green-700 shadow-none text-white">
@@ -493,12 +506,6 @@ export default function AppointmentsPage() {
             onClick={() => {
               setSelectedAppointment(row.original);
               console.log("Selected appointment on edit click:", row.original);
-              // Pre-fill form for editing:
-              // @ts-ignore
-              setValue("patient", row.original.fullName);
-              setValue("doctorId", row.original.doctorId);
-              setValue("doctorAvailabilityId", row.original.doctorAvailabilityId);
-              setValue("status", row.original.status);
               setDialogOpen(true);
             }}
           >
@@ -715,7 +722,7 @@ export default function AppointmentsPage() {
               rules={{ required: true }}
               render={({ field }) => (
                 <Select
-                  value={field.value?.toString() || ""}
+                  value={field.value ? field.value.toString() : undefined}
                   onValueChange={field.onChange}
                 >
                   <SelectTrigger>
@@ -763,7 +770,7 @@ export default function AppointmentsPage() {
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem key="no-slot" value="" disabled>
+                      <SelectItem key="no-slot" value="no-slot" disabled>
                         No available slots
                       </SelectItem>
                     )}
@@ -778,14 +785,14 @@ export default function AppointmentsPage() {
               render={({ field }) => (
                 <Select
                   value={field.value?.toString()}
-                  onValueChange={(value) => field.onChange(Number(value))}
+                  onValueChange={(value) => field.onChange(value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Consultation Type" />
                   </SelectTrigger>
                   <SelectContent className="bg-white text-black">
-                    <SelectItem value="1">Video Consultation</SelectItem>
-                    <SelectItem value="2">Physical Visit</SelectItem>
+                    <SelectItem value="Video">Video Consultation</SelectItem>
+                    <SelectItem value="Physical">Physical Visit</SelectItem>
                   </SelectContent>
                 </Select>
               )}
@@ -815,7 +822,7 @@ export default function AppointmentsPage() {
               name="patientId"
               rules={{ required: true }}
               render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value?.toString() || ""}>
+                <Select onValueChange={field.onChange} value={field.value ? field.value.toString() : undefined}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Patient" />
                   </SelectTrigger>

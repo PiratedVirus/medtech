@@ -1,24 +1,29 @@
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/badge";
+import { EyeIcon } from "lucide-react";
+import ViewParametersDialog from "@/components/common/ViewParametersDialog";
+import { useState } from "react";
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { InfoIcon } from "lucide-react";
 
 interface LabCardProps {
     labPackage: {
         name: string;
         description: string;
+        shortDescription: string;
         price: number;
         parameters?: string; // Assuming this is a comma-separated string
+        criticalRequirements?: string; // Assuming this is a comma-separated string
     };
     handleBookAppointment?: (labPackage: any) => void;
 }
 
 export default function LabCard({ labPackage, handleBookAppointment }: LabCardProps) {
     const parametersArray = labPackage.parameters ? labPackage.parameters.split(",") : [];
+    const [open, setOpen] = useState(false);
 
     return (
-        <div className="flex  bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 w-fit">
+        <div className="flex h-72 bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 w-[400px]">
             {/* Left Column: Rotated Package Name */}
             
             <div className=" text-white bg-custom-mutedgreen px-3 py-5 flex items-center justify-center w-12 md:w-16">
@@ -28,36 +33,42 @@ export default function LabCard({ labPackage, handleBookAppointment }: LabCardPr
             </div>
 
             {/* Right Column: Package Details */}
-            <div className="flex-1 py-6 px-4 space-y-4">
-                {/* Row 1: Package Name */}
-                <h3 className="text-xl font-semibold text-primary">
-                    <span className="text-black"> Care Diabetics </span>{labPackage.name} <span className="text-black">Package</span>
-                </h3>
+            <div className="flex-1 py-6 px-4 flex flex-col justify-between">
+                <div className="space-y-4">
+                    {/* Row 1: Package Name */}
+                    <h3 className="text-xl font-semibold text-primary">
+                        <span className="text-black"> Care Diabetics </span>{labPackage.name} <span className="text-black">Package</span>
+                    </h3>
 
-                {/* Row 2: Package Description */}
-                <p className="text-gray-600 text-sm">{labPackage.description}</p>
-                <Badge variant="outline" className="bg-red-400 text-white">Fasting Required</Badge>
+                    {/* Row 2: Package Description */}
+                    <p className="text-gray-600 text-sm">{labPackage.shortDescription}</p>
+                    {labPackage.criticalRequirements?.split(",").map((item, index) => (
+                        <Badge key={index} variant="outline" className="bg-red-400 text-white shadow-none ">
+                            {item.trim()}
+                        </Badge>
+                    ))}
 
+                    {/* Row 3: Parameters with EyeIcon */}
+                    <div className="flex items-center gap-2 text-gray-700 text-sm">
+                        <span>{parametersArray.length} Parameters</span>
+                        {parametersArray.length > 0 && (
+                            <>
+                                <EyeIcon
+                                    className="h-4 w-4 text-green-600 cursor-pointer"
+                                    onClick={() => setOpen(true)}
+                                />
+                                <ViewParametersDialog
+                                    open={open}
+                                    onOpenChange={setOpen}
+                                    parameters={parametersArray}
+                                />
+                            </>
+                        )}
+                    </div>
 
-                {/* Row 3: Parameters with Tooltip */}
-                <div className="flex items-center gap-2 text-gray-700 text-sm">
-                    <span>{parametersArray.length} Parameters</span>
-                    {parametersArray.length > 0 && (
-                        <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger>
-                                <InfoIcon className="h-4 w-4 text-gray-500 hover:text-gray-700 cursor-pointer" />
-                            </TooltipTrigger>
-                            <TooltipContent className="bg-gray-900 text-white text-xs p-2 rounded-md">
-                                {parametersArray.join(", ")}
-                            </TooltipContent>
-                        </Tooltip>
-                        </TooltipProvider>
-                    )}
+                    {/* Row 4: Price */}
+                    <p className="text-lg font-semibold text-green-600">₹{labPackage.price}</p>
                 </div>
-
-                {/* Row 4: Price */}
-                <p className="text-lg font-semibold text-green-600">₹{labPackage.price}</p>
 
                 {/* Row 5: Book Appointment Button (Centered) */}
                 <div className="flex justify-center gap-3">
@@ -69,7 +80,7 @@ export default function LabCard({ labPackage, handleBookAppointment }: LabCardPr
                     </Button>
                     <Button
                         variant="outline"
-                        onClick={() => handleBookAppointment?.(labPackage)}
+                        onClick={() => setOpen(true)}
                         className="px-6 py-2 rounded-full border-primary  text-primary"
                     >
                         View Parameters

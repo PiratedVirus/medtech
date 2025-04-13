@@ -41,12 +41,16 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const { id, ...data } = await request.json();
+    console.log("Updating Lab ID:", id);
+    console.log("Update Payload:", data);
+
     const labPackage = await prisma.labPackage.update({
       where: { id },
       data,
     });
     return NextResponse.json({ data: labPackage, message: "Lab updated successfully" });
   } catch (error) {
+    console.error("Update Error:", error instanceof Error ? error.message : JSON.stringify(error));
     return NextResponse.json({ error: "Failed to update labPackage" }, { status: 500 });
   }
 }

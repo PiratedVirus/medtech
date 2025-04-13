@@ -101,7 +101,6 @@ model PatientProfile {
   user             User @relation(fields: [userId], references: [id])
   planTrackers     SubscriptionTracker[]
 
-
   @@index([deletedAt])
 }
 
@@ -181,7 +180,6 @@ model DieticianAvailability {
   @@index([deletedAt])
 }
 
-
 model Appointment {
   id                   Int    @id @default(autoincrement())
   patientId            Int
@@ -256,9 +254,11 @@ model Payment {
 model LabPackage {
   id          Int    @id @default(autoincrement())
   name        String @unique
+  shortDescription String?
   description String?
   price       Int
   parameters  String?
+  criticalRequirements String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   deletedAt   DateTime?
@@ -292,6 +292,7 @@ model LabBooking {
 
   @@index([deletedAt])
 }
+
 model Plan {
   id                  Int       @id @default(autoincrement())
   name                String    // e.g. "Basic", "Care+"
@@ -341,7 +342,6 @@ model SubscriptionTracker {
   labTestsDates                 String[]    @default([])
   ophthalmologistConsultationDates String[] @default([])
   usedMedicines                 String[]    @default([])
-
 
   // Payment info
   razorpayOrderId              String?
