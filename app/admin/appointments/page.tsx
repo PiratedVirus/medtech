@@ -715,7 +715,7 @@ export default function AppointmentsPage() {
               rules={{ required: true }}
               render={({ field }) => (
                 <Select
-                  value={field.value?.toString() || ""}
+                  value={field.value ? field.value.toString() : undefined}
                   onValueChange={field.onChange}
                 >
                   <SelectTrigger>
@@ -763,7 +763,7 @@ export default function AppointmentsPage() {
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem key="no-slot" value="" disabled>
+                      <SelectItem key="no-slot" value="no-slot" disabled>
                         No available slots
                       </SelectItem>
                     )}
@@ -815,7 +815,7 @@ export default function AppointmentsPage() {
               name="patientId"
               rules={{ required: true }}
               render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value?.toString() || ""}>
+                <Select onValueChange={field.onChange} value={field.value ? field.value.toString() : undefined}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Patient" />
                   </SelectTrigger>

@@ -45,15 +45,19 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
+import { ChevronDown, ArrowUpDown, EditIcon, Trash, EyeIcon } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import ViewParametersDialog from "@/components/common/ViewParametersDialog";
 
 interface Lab {
-  id: string;
+  id: number;
   name: string;
-  specialization: string;
-  contactInfo: string;
+  description?: string;
+  shortDescription?: string;
+  price: number;
+  parameters?: string;
+  criticalRequirements?: string;
 }
 
 interface FetchLabsResponse {
@@ -73,8 +77,10 @@ const fetchLabs = async (pageIndex: number, pageSize: number): Promise<FetchLabs
 
 interface CreateLabData {
   name: string;
-  specialization: string;
-  contactInfo: string;
+  description?: string;
+  price: number;
+  parameters?: string;
+  criticalRequirements?: string;
 }
 
 const createLab = async (data: CreateLabData): Promise<Lab | null> => {
@@ -89,13 +95,17 @@ const createLab = async (data: CreateLabData): Promise<Lab | null> => {
 
 interface UpdateLabData {
   name: string;
-  specialization: string;
-  contactInfo: string;
+  description?: string;
+  shortDescription?: string;
+  price: number;
+  parameters?: string;
+  criticalRequirements?: string;
 }
 
-const updateLab = async (id: string, data: UpdateLabData): Promise<Lab | null> => {
+const updateLab = async (id: number, data: UpdateLabData): Promise<Lab | null> => {
   try {
-    const response = await axios.put(`/api/admin/labs/${id}`, data);
+    const dataWithId = { ...data, id };
+    const response = await axios.put(`/api/admin/labs`, dataWithId);
     return response.data;
   } catch (error) {
     console.error("Failed to update lab:", error);
@@ -107,7 +117,7 @@ interface DeleteLabResponse {
   success: boolean;
 }
 
-const deleteLab = async (id: string): Promise<DeleteLabResponse | null> => {
+const deleteLab = async (id: number): Promise<DeleteLabResponse | null> => {
   try {
     const response = await axios.delete(`/api/admin/labs/${id}`);
     return response.data;
@@ -121,6 +131,7 @@ export default function LabsPage() {
   const [data, setData] = useState<{ labs: Lab[]; total: number }>({ labs: [], total: 0 });
   const [selectedLab, setSelectedLab] = useState<Lab | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [viewParametersOpen, setViewParametersOpen] = useState(false);
   const { register, handleSubmit, reset, setValue } = useForm<FormData>();
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -161,22 +172,65 @@ export default function LabsPage() {
       enableSorting: true,
     },
     {
-      accessorKey: "specialization",
+      accessorKey: "shortDescription",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Specialization <ArrowUpDown className="ml-2 h-4 w-4" />
+          Short Description <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       enableSorting: true,
     },
     {
-      accessorKey: "contactInfo",
+      accessorKey: "description",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Contact Info <ArrowUpDown className="ml-2 h-4 w-4" />
+          Description <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       enableSorting: true,
+    },
+    {
+      accessorKey: "price",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Price <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "criticalRequirements",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Critical Requirements <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => row.original.criticalRequirements || "-",
+      enableSorting: true,
+    },
+    {
+      id: "parameters",
+      header: "Parameters",
+      cell: ({ row }) => {
+        const params: string[] = row.original.parameters
+        ? row.original.parameters.split(",").map((p: string) => p.trim())
+        : [];
+        return (
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-sm text-gray-700">{params.length} parameters</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setSelectedLab(row.original);
+                setViewParametersOpen(true);
+              }}
+            >
+              <EyeIcon className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      },
     },
     {
       id: "actions",
@@ -188,8 +242,10 @@ export default function LabsPage() {
             onClick={() => {
               setSelectedLab(row.original);
               setValue("name", row.original.name);
-              setValue("specialization", row.original.specialization);
-              setValue("contactInfo", row.original.contactInfo);
+              setValue("description", row.original.description);
+              setValue("price", row.original.price);
+              setValue("parameters", row.original.parameters);
+              setValue("criticalRequirements", row.original.criticalRequirements);
               setDialogOpen(true);
             }}
           >
@@ -198,6 +254,7 @@ export default function LabsPage() {
           <Button size="sm" variant="destructive" onClick={() => deleteLab(row.original.id)}>
             <Trash className="h-4 w-4" />
           </Button>
+
         </div>
       ),
     },
@@ -238,8 +295,10 @@ export default function LabsPage() {
   useEffect(() => {
     if (selectedLab) {
       setValue("name", selectedLab.name);
-      setValue("specialization", selectedLab.specialization);
-      setValue("contactInfo", selectedLab.contactInfo);
+      setValue("description", selectedLab.description);
+      setValue("price", selectedLab.price);
+      setValue("parameters", selectedLab.parameters);
+      setValue("criticalRequirements", selectedLab.criticalRequirements);
     } else {
       reset();
     }
@@ -247,12 +306,26 @@ export default function LabsPage() {
 
   interface FormData {
     name: string;
-    specialization: string;
-    contactInfo: string;
+    description?: string;
+    shortDescription?: string;
+    price: number;
+    parameters?: string;
+    criticalRequirements?: string;
   }
 
   const onSubmit = async (formData: FormData) => {
     try {
+      formData.price = Number(formData.price);
+
+      if (formData.parameters) {
+        formData.parameters = formData.parameters
+          .split(",")
+          .map((p) => p.trim())
+          .filter(Boolean)
+          .join(", ");
+      }
+
+  
       if (selectedLab) {
         await updateLab(selectedLab.id, formData);
         toast.success("Lab updated successfully");
@@ -420,8 +493,11 @@ export default function LabsPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Input {...register("name", { required: true })} placeholder="Name" />
-            <Input {...register("specialization", { required: true })} placeholder="Specialization" />
-            <Input {...register("contactInfo", { required: true })} placeholder="Contact Info" />
+            <Input {...register("shortDescription")} placeholder="Short Description" />
+            <Input {...register("description")} placeholder="Description" />
+            <Input type="number" {...register("price", { required: true })} placeholder="Price" />
+            <Input {...register("parameters")} placeholder="Parameters (comma-separated)" />
+            <Input {...register("criticalRequirements")} placeholder="Critical Requirements" />
             <DialogFooter>
               <Button
                 type="button"
@@ -438,6 +514,15 @@ export default function LabsPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <ViewParametersDialog
+        open={viewParametersOpen}
+        onOpenChange={setViewParametersOpen}
+        parameters={
+          selectedLab?.parameters
+            ? selectedLab.parameters.split(",").map((p) => p.trim())
+            : []
+        }
+      />
     </div>
   );
 }

@@ -33,7 +33,7 @@ export default function LabsPage() {
       );
       return response.data.success ? response.data.packages : [];
     },
-    staleTime: 10 * 60 * 1000, // ✅ Cache valid for 10 minutes
+    staleTime: 1 * 6 * 1, // ✅ Cache valid for 10 minutes
     gcTime: 60 * 60 * 1000, // ✅ Keeps cache for 1 hour
     refetchOnWindowFocus: false, // ✅ Prevents re-fetching on tab switch
     refetchOnMount: false, // ✅ Prevents re-fetching when navigating back
@@ -68,7 +68,7 @@ export default function LabsPage() {
             </div>
           </div>
 
-          <div className="flex items-start flex-wrap gap-6 mt-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
             {labs.map((lab: any) => (
               <LabCard key={lab.id} labPackage={lab} handleBookAppointment={handleBookAppointment} />
             ))}

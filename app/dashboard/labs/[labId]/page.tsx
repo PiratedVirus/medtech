@@ -28,8 +28,8 @@ export default function LabBookingHomePage () {
               );
               return response.data.success ? response.data.packages : [];
             },
-            staleTime: 10 * 60 * 1000, // ✅ Cache valid for 10 minutes
-            gcTime: 60 * 60 * 1000, // ✅ Keeps cache for 1 hour
+            staleTime: 1 * 6 * 1, // ✅ Cache valid for 10 minutes
+            gcTime: 6 * 6 * 1, // ✅ Keeps cache for 1 hour
             refetchOnWindowFocus: false, // ✅ Prevents re-fetching on tab switch
             refetchOnMount: false, // ✅ Prevents re-fetching when navigating back
             refetchOnReconnect: true, // ✅ Fetches only if internet reconnects
