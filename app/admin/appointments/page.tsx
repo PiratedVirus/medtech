@@ -99,8 +99,8 @@ type Slot = {
 
 type AppointmentsFormData = {
   patientId: number;
-  doctorId: number;
-  doctorAvailabilityId: number;
+  doctorId: string | number;
+  doctorAvailabilityId: number | string;
   status: string;
   consultationType: string;
   startTime: string;
@@ -340,6 +340,48 @@ export default function AppointmentsPage() {
     initializeForm();
   }, [selectedAppointment, setValue, reset]);
 
+  useEffect(() => {
+    if (selectedAppointment && doctors.length > 0 && patients.length > 0) {
+      // 1. Prefill 'patientId'
+      const foundPatient = patients.find(
+        (p) => p.name === selectedAppointment.fullName
+      );
+      if (foundPatient) {
+        setValue("patientId", foundPatient.id.toString());
+      }
+  
+      // 2. Prefill 'doctorId' (JSON string)
+      const foundDoctor = doctors.find(
+        (doc) => doc.userId === selectedAppointment.doctorId
+      );
+      if (foundDoctor) {
+        setValue(
+          "doctorId",
+          JSON.stringify({ id: foundDoctor.id, doctorId: foundDoctor.userId })
+        );
+      }
+  
+      // 3. Prefill the slot
+      setValue(
+        "doctorAvailabilityId",
+        selectedAppointment.doctorAvailabilityId.toString()
+      );
+  
+      // 4. Prefill consultationType
+      if (selectedAppointment.consultationTypeId) {
+        setValue(
+          "consultationType",
+          selectedAppointment.consultationTypeId.toString()
+        );
+      }
+  
+      // 5. Prefill status
+      setValue("status", selectedAppointment.status);
+    } else {
+      reset();
+    }
+  }, [selectedAppointment, doctors, patients, setValue, reset]);
+
   const onSubmit = async (formData: AppointmentsFormData) => {
     console.log("Form data in app book:", formData);
     try {
@@ -493,12 +535,6 @@ export default function AppointmentsPage() {
             onClick={() => {
               setSelectedAppointment(row.original);
               console.log("Selected appointment on edit click:", row.original);
-              // Pre-fill form for editing:
-              // @ts-ignore
-              setValue("patient", row.original.fullName);
-              setValue("doctorId", row.original.doctorId);
-              setValue("doctorAvailabilityId", row.original.doctorAvailabilityId);
-              setValue("status", row.original.status);
               setDialogOpen(true);
             }}
           >
