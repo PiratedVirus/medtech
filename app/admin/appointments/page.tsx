@@ -65,7 +65,7 @@ type Appointment = {
   endTime: string;
   appointmentDate: string;
   fullName: string;
-  consultationTypeId: number;
+  consultationType: string;
   appointmentLink: string;
   // Relations
 
@@ -311,37 +311,8 @@ export default function AppointmentsPage() {
 
   // When editing an appointment, pre-fill form values
   useEffect(() => {
-    const initializeForm = async () => {
-      if (selectedAppointment) {
-        console.log("Selected appointment on edit:", selectedAppointment);
-        // Set basic fields
-        // TODO - check again
-        // @ts-ignore
-        setValue("patient", selectedAppointment.fullName);
-        setValue("doctorId", selectedAppointment.doctorId);
-        setValue("status", selectedAppointment.status);
-
-        // Fetch slots for the selected doctor
-        const slots = await fetchAvailableSlots(selectedAppointment.id);
-        setAvailableSlots(slots);
-
-        // After slots are loaded, set availability ID
-        setValue("doctorAvailabilityId", selectedAppointment.doctorAvailabilityId);
-
-        // Set availability ID after slots load
-        setTimeout(() => {
-          setValue("doctorAvailabilityId", selectedAppointment.doctorAvailabilityId);
-        }, 100);
-      } else {
-        reset();
-      }
-    };
-
-    initializeForm();
-  }, [selectedAppointment, setValue, reset]);
-
-  useEffect(() => {
     if (selectedAppointment && doctors.length > 0 && patients.length > 0) {
+      console.log("Selected appointment:", selectedAppointment);
       // 1. Prefill 'patientId'
       const foundPatient = patients.find(
         (p) => p.name === selectedAppointment.fullName
@@ -368,10 +339,10 @@ export default function AppointmentsPage() {
       );
   
       // 4. Prefill consultationType
-      if (selectedAppointment.consultationTypeId) {
+      if (selectedAppointment.consultationType) {
         setValue(
           "consultationType",
-          selectedAppointment.consultationTypeId.toString()
+          selectedAppointment.consultationType.toString()
         );
       }
   
@@ -496,7 +467,7 @@ export default function AppointmentsPage() {
       enableSorting: true,
     },
     {
-      accessorKey: "consultationTypeId",
+      accessorKey: "consultationType",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Consultation Type <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -504,7 +475,7 @@ export default function AppointmentsPage() {
       ),
       cell: ({ row }) => {
         return (
-          (row.original.consultationTypeId === 1 ? (
+          (row.original.consultationType === "Video" ? (
             <>
               <Link href={row.original?.appointmentLink ?? "#"} >
                 <Badge className="bg-green-700 shadow-none text-white">
@@ -820,8 +791,8 @@ export default function AppointmentsPage() {
                     <SelectValue placeholder="Consultation Type" />
                   </SelectTrigger>
                   <SelectContent className="bg-white text-black">
-                    <SelectItem value="1">Video Consultation</SelectItem>
-                    <SelectItem value="2">Physical Visit</SelectItem>
+                    <SelectItem value="Video">Video Consultation</SelectItem>
+                    <SelectItem value="Physical">Physical Visit</SelectItem>
                   </SelectContent>
                 </Select>
               )}
