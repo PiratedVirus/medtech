@@ -105,7 +105,6 @@ export async function POST(request: Request) {
 
     data.doctorId = parseInt(data.doctorId, 10);
     data.patientId = parseInt(data.patientId, 10);
-    data.consultationTypeId = parseInt(data.consultationTypeId, 10);
     data.doctorAvailabilityId = parseInt(data.doctorAvailabilityId, 10);
     const slot = {
       startTime: data.startTime,
@@ -123,7 +122,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid or unavailable appointment slot" }, { status: 400 });
     }
     let meetLink = null;
-    if (data.consultationTypeId !== 1) {
+    if (data.consultationType === 'Video') {
       console.log("Creating Google Meet link...");
       meetLink = await createGoogleMeetLink(slot, data.doctorId, data.patientId);
       console.log("Google Meet link created:", meetLink);
@@ -135,14 +134,14 @@ export async function POST(request: Request) {
       status: "Scheduled",
       doctorId: data.doctorId,
       doctorAvailabilityId: data.doctorAvailabilityId,
-      consultationType: data.consultationTypeId, // modify this later
+      consultationType: data.consultationType, // Set consultationType from data
       patientId: data.patientId,
       appointmentDate: data.appointmentDate,
       fullName: data.patinetName,
       email: data.patientEmail,
       mobile: data.patientPhone,
       //@ts-ignore
-      appointmentLink: meetLink
+      appointmentLink: meetLink,
     }
   });
 
@@ -201,9 +200,7 @@ export async function PUT(request: Request) {
       return await tx.appointment.update({
         where: { id },
         data: {
-          ...data,
-          // Ensure consultationTypeId is valid
-          consultationTypeId: data.consultationTypeId ? Number(data.consultationTypeId) : undefined
+          ...data
         }
       });
     });

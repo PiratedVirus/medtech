@@ -785,7 +785,7 @@ export default function AppointmentsPage() {
               render={({ field }) => (
                 <Select
                   value={field.value?.toString()}
-                  onValueChange={(value) => field.onChange(Number(value))}
+                  onValueChange={(value) => field.onChange(value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Consultation Type" />
