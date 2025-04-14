@@ -120,7 +120,11 @@ type AppointmentsFormData = {
 
 const updateAppointment = async (id: number, data: AppointmentsFormData) => {
   try {
-    const response = await axios.put(`/api/admin/appointments/${id}`, data);
+    const dataWIthId = {
+      ...data,
+      id: Number(id),
+    }
+    const response = await axios.put(`/api/admin/appointments`, dataWIthId);
     return response.data;
   } catch (error) {
     console.error("Failed to update appointment:", error);
@@ -965,7 +969,11 @@ export default function AppointmentsPage() {
               name="patientId"
               rules={{ required: true }}
               render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value ? field.value.toString() : undefined}>
+                <Select
+                  disabled={!!selectedAppointment}
+                  onValueChange={field.onChange}
+                  value={field.value ? field.value.toString() : undefined}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select Patient" />
                   </SelectTrigger>

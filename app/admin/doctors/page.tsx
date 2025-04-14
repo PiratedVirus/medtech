@@ -313,7 +313,6 @@ export default function DoctorsPage() {
       setValue("yearsOfExperience", selectedDoctor.yearsOfExperience);
       setValue("consultationFee", selectedDoctor.consultationFee);
       setValue("status", selectedDoctor.user.status);
-      setValue("clinicId", selectedDoctor.user.clinic?.id ?? 0);
       setValue("userId", selectedDoctor.user.id);
     } else {
       reset();
@@ -325,7 +324,6 @@ export default function DoctorsPage() {
     try {
       const payload = {
         ...formData,
-        clinicId: formData.clinicId ? Number(formData.clinicId) : null,
         yearsOfExperience: Number(formData.yearsOfExperience),
         consultationFee: Number(formData.consultationFee),
       };
@@ -532,29 +530,7 @@ export default function DoctorsPage() {
             <DialogTitle>{selectedDoctor ? "Edit Doctor" : "Create New Doctor"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Clinic Dropdown */}
-            <div>
-              <label className="block font-medium">Select Clinic</label>
-              <Controller
-                control={control}
-                name="clinicId"
-                rules={{ required: true }}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value ? field.value.toString() : ""}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Clinic" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white text-black">
-                      {Array.isArray(clinics) && clinics.map((clinic) => (
-                        <SelectItem key={clinic.id} value={clinic.id.toString()}>
-                          {clinic.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
+    
             {/* User Dropdown (filtered by clinic) */}
             <div>
               <label className="block font-medium">Select User</label>
