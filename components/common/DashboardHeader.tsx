@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
-import { Search, LogOut } from "lucide-react";
+import { Search, LogOut, User } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { logoutUser } from "@/store/userSlice";
 import { useProfile } from "@/hooks/context/ProfileContext";
 import { useRouter, usePathname } from "next/navigation";
 import type { AppDispatch, RootState } from "@/store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 
 const navigation = [
   { name: "Home", href: "/dashboard", current: true },
@@ -55,19 +56,26 @@ export function DashboardHeader() {
         </nav>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3 px-4 py-2 rounded-xl border border-border">
-            <Avatar className="h-9 w-9">
-              <AvatarImage src="https://c.animaapp.com/2DuHYCg5/img/ellipse-38-1@2x.png" />
-              <AvatarFallback>MP</AvatarFallback>
-            </Avatar>
-            <span className="text-sm text-foreground">{profile?.name}</span>
-          </div>
-          <LogOut
-            onClick={handleLogout}
-            className="h-6 w-6 text-foreground cursor-pointer"
-          />
-        </div>
+        {/* profile */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div className="flex items-center gap-3 px-4 py-2 w-32 rounded-xl border border-border cursor-pointer">
+              <User className="h-6 w-6" />
+              <span className="text-sm text-foreground">{profile?.name}</span>
+            </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-white text-black w-32">
+            <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
+              <User className="mr-2 h-4 w-4" />
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4 text-red-500" />
+              <span className="text-red-500">Logout</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

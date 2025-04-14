@@ -94,6 +94,9 @@ model PatientProfile {
   allergies        String?
   medicalHistory   String?
   emergencyContact String?
+  dateOfBirth      DateTime?
+  address          String?
+  profilePicture   String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   deletedAt        DateTime?
