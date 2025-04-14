@@ -75,15 +75,41 @@ export async function GET(request: Request) {
       }),
       prisma.appointment.count(),
     ]);
+    
+    // Extract unique doctor IDs for video consultations
+    const videoDoctorIds = appointments
+      .filter(app => app.consultationType === "Video")
+      .map(app => app.doctorId);
+    const uniqueDoctorIds = [...new Set(videoDoctorIds)];
+    
+    let doctorProfilesByUserId: { [key: number]: { meetingRoomLink: string; ownerToken1: string } } = {};
+    if (uniqueDoctorIds.length) {
+      const doctorProfiles = await prisma.doctorProfile.findMany({
+        where: { userId: { in: uniqueDoctorIds } },
+        select: { userId: true, meetingRoomLink: true, ownerToken1: true },
+      });
+      doctorProfilesByUserId = doctorProfiles.reduce((acc, profile) => {
+        // @ts-ignore
+        acc[profile.userId] = profile;
+        return acc;
+      }, {});
+    }
 
-    // Transform the data structure
     const transformedAppointments = appointments.map(appointment => {
       const { doctor, doctorAvailability, ...rest } = appointment;
+      const additionalData =
+        appointment.consultationType === "Video" && doctorProfilesByUserId[appointment.doctorId]
+          ? {
+              meetingRoomLink: doctorProfilesByUserId[appointment.doctorId].meetingRoomLink,
+              ownerToken1: doctorProfilesByUserId[appointment.doctorId].ownerToken1,
+            }
+          : {};
       return {
         ...rest,
         doctorName: doctor.name,
         startTime: doctorAvailability.startTime,
-        endTime: doctorAvailability.endTime
+        endTime: doctorAvailability.endTime,
+        ...additionalData,
       };
     });
 
@@ -159,6 +185,11 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const { id, ...data } = await request.json();
+    console.log("Updating appointment with ID:", id, " with data :", data);
+    data.patientId = parseInt(data.patientId, 10);
+    data.doctorId = Number(JSON.parse(data.doctorId).doctorId);
+    data.doctorAvailabilityId = parseInt(data.doctorAvailabilityId, 10);
+    
 
     // Get existing appointment
     const existingAppointment = await prisma.appointment.findUnique({
@@ -200,7 +231,12 @@ export async function PUT(request: Request) {
       return await tx.appointment.update({
         where: { id },
         data: {
-          ...data
+          status: data.status,
+          doctorId: data.doctorId,
+          doctorAvailabilityId: data.doctorAvailabilityId,
+          consultationType: data.consultationType,
+          patientId: data.patientId,
+          
         }
       });
     });

@@ -71,21 +71,81 @@ export async function POST(request: Request) {
       );
     }
 
+    const roomName = `doctor-${user.id}-${Date.now()}`;
+    const dailyRes = await fetch("https://api.daily.co/v1/rooms", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.DAILY_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: roomName,
+        privacy: "private",
+        properties: {
+          enable_knocking: true,
+          exp: null,
+        },
+      }),
+    });
+    if (!dailyRes.ok) {
+      const errData = await dailyRes.json();
+      console.error("Failed to create Daily.co room:", errData);
+      return NextResponse.json({ error: "Failed to create video room" }, { status: 500 });
+    }
+    const dailyRoom = await dailyRes.json();
+    if (!dailyRoom || typeof dailyRoom !== 'object' || !dailyRoom.url) {
+      console.error("Daily API returned invalid payload:", dailyRoom);
+      return NextResponse.json({ error: "Invalid response from video room API" }, { status: 500 });
+    }
+
+    const ownerTokens: string[] = [];
+
+    for (let i = 0; i < 2; i++) {
+      const tokenRes = await fetch("https://api.daily.co/v1/meeting-tokens", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.DAILY_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          properties: {
+            is_owner: true,
+            room_name: roomName,
+          },
+        }),
+      });
+
+      if (!tokenRes.ok) {
+        const tokenError = await tokenRes.json();
+        console.error(`Failed to create owner token ${i + 1}:`, tokenError);
+        return NextResponse.json({ error: "Failed to create owner token" }, { status: 500 });
+      }
+
+      const tokenData = await tokenRes.json();
+      ownerTokens.push(tokenData.token);
+    }
+
     const doctor = await prisma.doctorProfile.create({
       data: {
         specialty: data.specialty,
         yearsOfExperience: data.yearsOfExperience,
         consultationFee: data.consultationFee,
+        meetingRoomLink: dailyRoom.url,
+        ownerToken1: ownerTokens[0],
+        ownerToken2: ownerTokens[1],
         user: { connect: { id: Number(data.userId) } },
       },
     });
     return NextResponse.json(doctor);
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Failed to create doctor" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Error creating doctor:", error);
+    // Make sure to always pass an object to NextResponse.json
+    return NextResponse.json(
+      { error: "Failed to create doctor", details: error?.toString() || "Unknown error" },
+      { status: 500 }
+    );
   }
 }
-
 export async function PUT(request: Request) {
   try {
     const { id, ...data } = await request.json();

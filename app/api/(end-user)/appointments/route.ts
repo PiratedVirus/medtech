@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     if (clinicId) baseWhere.doctor = { clinicId };
 
     // Fetch upcoming appointments
-    const upcomingAppointments = await prisma.appointment.findMany({
+    const upcomingAppointmentsWithoutMeetRoomLink = await prisma.appointment.findMany({
       where: { ...baseWhere, appointmentDate: { gte: new Date() } },
       select: {
         id: true,
@@ -104,13 +104,30 @@ export async function GET(request: NextRequest) {
         consultationType: true, // Use consultationType directly
         appointmentLink: true,
         patient: { select: { id: true, name: true, phoneNumber: true, clinicId: true } },
-        doctor: { select: { id: true, name: true, clinicId: true } },
+        doctor: {
+          select: {
+            id: true,
+            name: true,
+            clinicId: true,
+            doctorProfile: {
+              select: {
+                meetingRoomLink: true, // Fetch the meetingRoomLink
+              },
+            },
+          }
+        },
         doctorAvailability: {
           select: { id: true, doctorId: true, date: true, startTime: true, endTime: true },
         },
       },
       orderBy: [{ appointmentDate: "asc" }, { doctorAvailability: { date: "asc" } }],
     });
+
+    const upcomingAppointments = upcomingAppointmentsWithoutMeetRoomLink.map((appointment) => ({
+      ...appointment,
+      appointmentLink: appointment.doctor.doctorProfile?.meetingRoomLink || null, // Use meetingRoomLink
+    }));
+
 
     // Convert and sort upcoming appointments by time correctly
     const sortedUpcoming = upcomingAppointments.sort((a, b) => {
@@ -146,7 +163,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch past appointments
-    const pastAppointments = await prisma.appointment.findMany({
+    const pastAppointmentsWithoutMeetRoomLink = await prisma.appointment.findMany({
       where: { ...baseWhere, appointmentDate: { lt: new Date() } }, // Past appointments
       select: {
         id: true,
@@ -160,13 +177,29 @@ export async function GET(request: NextRequest) {
         consultationType: true, // Use consultationType directly
         appointmentLink: true,
         patient: { select: { id: true, name: true, phoneNumber: true, clinicId: true } },
-        doctor: { select: { id: true, name: true, clinicId: true } },
+        doctor: {
+          select: {
+            id: true,
+            name: true,
+            clinicId: true,
+            doctorProfile: {
+              select: {
+                meetingRoomLink: true, // Fetch the meetingRoomLink
+              },
+            },
+          }
+        },
         doctorAvailability: {
           select: { id: true, doctorId: true, date: true, startTime: true, endTime: true },
         },
       },
       orderBy: [{ appointmentDate: "desc" }], // Most recent past appointment first
     });
+
+    const pastAppointments = pastAppointmentsWithoutMeetRoomLink.map((appointment) => ({
+      ...appointment,
+      appointmentLink: appointment.doctor.doctorProfile?.meetingRoomLink || null, // Use meetingRoomLink
+    }));
 
     return NextResponse.json({
       success: true,
@@ -266,8 +299,8 @@ export async function POST(request: Request) {
     if (consultationMode === "plan") {
       await prisma.subscriptionTracker.update({
         where: { subscriptionId },
-        data: isDietician 
-          ? { dieticianConsultationDates: doctorConsultationDates } 
+        data: isDietician
+          ? { dieticianConsultationDates: doctorConsultationDates }
           : { doctorConsultationDates: doctorConsultationDates },
       });
     }

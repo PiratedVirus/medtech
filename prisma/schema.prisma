@@ -109,6 +109,9 @@ model DoctorProfile {
   userId            Int    @unique
   specialty         String
   yearsOfExperience Int?
+  meetingRoomLink   String?
+  ownerToken1       String?
+  ownerToken2       String?
   licenseNumber     String? @unique
   consultationFee   Int
   rating            Float?
@@ -318,7 +321,7 @@ model PlanFeature {
   // Instead of a single “frequency” string, we store numeric frequency data:
   occurrencesPerInterval Int?      // e.g. "2" for "2 times every X months"
   intervalInMonths       Int?      // e.g. "5" for "every 5 months"
-  
+
   parameters             String?      // e.g. number of lab parameters
   notes                  String?   // Free-form text if needed
 
