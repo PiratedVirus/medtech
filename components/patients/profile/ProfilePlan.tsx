@@ -131,7 +131,8 @@ export function ProfileForm() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           {/* Personal Information Card */}
-          <Card>
+          <div className="grid grid-cols-12 gap-6 w-full px-8 py-4">
+          <Card className="w-full col-span-12 border">
             <CardHeader>
               <CardTitle>Personal Information</CardTitle>
               <CardDescription>Update your personal details here.</CardDescription>
@@ -212,7 +213,7 @@ export function ProfileForm() {
           </Card>
 
           {/* Health Information Card */}
-          <Card className="mt-6">
+          <Card className="w-full col-span-12 border">
             <CardHeader>
               <CardTitle>Health Information</CardTitle>
               <CardDescription>Update your health details here.</CardDescription>
@@ -333,6 +334,7 @@ export function ProfileForm() {
               />
             </CardContent>
           </Card>
+          </div>
 
           <CardFooter className="flex justify-end mt-6">
             <Button type="submit" disabled={isSubmitting}>
