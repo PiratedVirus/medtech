@@ -3,7 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useProfile } from "@/hooks/context/ProfileContext";
-import { HomeAppointmentOverview } from "@/patients/home/HomeAppointmentOverview";
+import HomeAppointmentOverview  from "@/patients/home/HomeAppointmentOverview";
 import { PlanUsageMinimal } from "@/components/patients/plans/PlanUsage";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import ArrowButton from "@/components/ui/custom/cd-arrow-button";
@@ -11,6 +11,8 @@ import { useDispatch } from "react-redux";
 import { setSubscriptionData } from "@/store/subscriptionSlice";
 import axios from "axios";
 import { useEffect } from "react";
+import HeartRiskCardRed from "./RedHeartRisk";
+import ViewHealthInsightsCard from "./ViewHealthInsightCard";
 
 
 export default function HomeOverview() {
@@ -98,6 +100,7 @@ export default function HomeOverview() {
               </>
             )}
           </div>
+          <ViewHealthInsightsCard />
 
         </div>
 
@@ -105,32 +108,8 @@ export default function HomeOverview() {
         <div className="lg:col-span-4 flex flex-col items-end h-[423px] gap-6">
           <HomeAppointmentOverview />
 
-          <Card className=" bg-custom-mutedgreen mt-auto h-52 w-full flex flex-col justify-end">
-            <CardContent className="pt-2 pb-0 flex items-center justify-between">
-              {/* Left - App Preview Image (Aligned at Bottom) */}
-              <div className="relative w-52 flex items-end">
-                <img
-                  src="/images/iphone-large.png"
-                  alt="App preview"
-                  className="w-36 h-40 self-end"
-                />
-              </div>
 
-              {/* Right - App Store Buttons */}
-              <div className="space-y-4">
-                <img
-                  src="/images/playstore.png"
-                  alt="Play Store"
-                  className="h-[45px] w-auto cursor-pointer"
-                />
-                <img
-                  src="/images/appstore.png"
-                  alt="App Store"
-                  className="h-[45px] w-auto cursor-pointer"
-                />
-              </div>
-            </CardContent>
-          </Card>
+          <HeartRiskCardRed />
         </div>
       </div>
     </div>

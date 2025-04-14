@@ -301,6 +301,7 @@ export function PlanUsageMinimal({
 }
 
 /** The "Minimal" usage layout (two rows, circles, etc.) */
+/** The "Minimal" usage layout (responsive grid with feature name split into two lines) */
 function PlanUsageMinimalLayout({
   subscriptionTracker,
   planFeatures,
@@ -312,65 +313,44 @@ function PlanUsageMinimalLayout({
   const endDate = new Date(subscriptionTracker.endDate);
   const planLengthMonths = differenceInMonths(endDate, startDate);
 
-  // Row 1: first 4 features
-  const row1Features = planFeatures.slice(0, 4);
-  // Row 2: the rest
-  const row2Features = planFeatures.slice(4);
-
   return (
     <div className="w-full mx-auto py-4 space-y-6">
-      {/* Row 1: up to 4 circles */}
-      <div className="flex items-center justify-center gap-6 flex-wrap">
-        {row1Features.map((feat) => {
-          const { totalAllowed, usedCount, remaining, clampedPct } =
-            computeFeatureUsage(feat, subscriptionTracker);
+      {/* Responsive grid for features */}
+      <div
+  className="grid gap-6"
+  style={{
+    gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", // Use auto-fill for consistent behavior
+  }}
+>
+  {planFeatures.slice(0, 4).map((feat) => {
+    const { totalAllowed, usedCount, clampedPct } = computeFeatureUsage(
+      feat,
+      subscriptionTracker
+    );
 
-          return (
-            <div key={feat.id} className="flex flex-col items-center">
-              <CircularProgress percentage={clampedPct} size={80} />
-              {/* Show numeric consumption below */}
-              <div className="text-xs mt-2 text-gray-500 font-bold">
-                {usedCount}/{totalAllowed} used
-              </div>
-              <div className="text-sm font-medium mt-1 text-center">
-                {feat.featureName}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Row 2: 1 circle at beginning, then ArrowButton in leftover space */}
-      <div className="flex items-center gap-6 px-6">
-        {/* If we have at least one feature in row2 */}
-        {row2Features.length > 0 && (() => {
-          const feat = row2Features[0];
-          const { totalAllowed, usedCount, clampedPct } =
-            computeFeatureUsage(feat, subscriptionTracker);
-
-          return (
-            <div key={feat.id} className="flex-none flex flex-col items-center">
-              <CircularProgress percentage={clampedPct} size={80} />
-              {/* numeric consumption */}
-              <div className="text-xs mt-2 text-gray-500">
-                {usedCount}/{totalAllowed}
-              </div>
-              <div className="text-sm font-medium mt-1 text-center">
-                {feat.featureName}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* ArrowButton in the remaining space, centered */}
-        <div className="flex-1 flex justify-center">
-          <ArrowButton buttonText="View Plan Usage" href="/dashboard/plans" />
+    return (
+      <div key={feat.id} className="flex flex-col items-center">
+        <CircularProgress percentage={clampedPct} size={80} />
+        {/* Numeric consumption */}
+        <div className="text-xs mt-2 text-gray-500 font-bold">
+          {usedCount}/{totalAllowed} used
+        </div>
+        {/* Feature name split into two lines */}
+        <div className="text-sm font-medium mt-1 text-center">
+          {feat.featureName.split(" ").map((word, index) => (
+            <React.Fragment key={index}>
+              {word}
+              <br />
+            </React.Fragment>
+          ))}
         </div>
       </div>
+    );
+  })}
+</div>
     </div>
   );
 }
-
 /** Skeleton loader for minimal usage layout */
 export function PlanUsageMinimalSkeleton() {
   const Circle = () => (
