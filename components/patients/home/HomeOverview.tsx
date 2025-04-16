@@ -12,7 +12,11 @@ import { setSubscriptionData } from "@/store/subscriptionSlice";
 import axios from "axios";
 import { useEffect } from "react";
 import HeartRiskCardRed from "./RedHeartRisk";
-import ViewHealthInsightsCard from "./ViewHealthInsightCard";
+import Link from "next/link"
+import { LineChart, DollarSign } from "lucide-react"
+import HomePageCardSmall from "@/components/ui/custom/cd-homepage-card-small"
+import MedicalCarousel from "@/components/patients/home/MedicalCarousel";
+
 
 
 export default function HomeOverview() {
@@ -62,18 +66,7 @@ export default function HomeOverview() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Section - Video Carousel */}
         <div className="lg:col-span-3">
-          <div className="relative w- h-[423px] bg-cover bg-center rounded-lg overflow-hidden">
-            <img
-              src="/images/overview-col.png"
-              alt="Doctor consultation"
-              className="w-80 h-[423px] object-cover rounded-lg"
-            />
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-muted opacity-80" />
-              <div className="w-2 h-2 rounded-full bg-white" />
-              <div className="w-1.5 h-1.5 rounded-full bg-muted opacity-80" />
-            </div>
-          </div>
+<MedicalCarousel />
         </div>
 
         {/* Middle Section - Program Details */}
@@ -82,13 +75,7 @@ export default function HomeOverview() {
 
             {profile?.subscriptionDetails?.subscriptionId ? (
               <>
-                <h2 className="text-2xl font-semibold">
-                  Care Diabetics{" "}
-                  <span className="bg-gradient-to-r from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
-                    CARE+
-                  </span>
-                  {" "} Usage
-                </h2>
+
                 <PlanUsageMinimal userId={4} subscriptionId={profile?.subscriptionDetails?.subscriptionId} />
               </>
             ) : (
@@ -100,7 +87,32 @@ export default function HomeOverview() {
               </>
             )}
           </div>
-          <ViewHealthInsightsCard />
+          <div className="flex gap-3">
+          {/* <ViewHealthInsightsCard /> */}
+              <Link href="/health-insights" className="block">
+                <HomePageCardSmall
+                  href="/health-insights"
+                  headerLabel="Health Analytics"
+                  cardTitle="View Health Insights"
+                  cardDescription="Personalized analysis of your health metrics and trends"
+                  ctaText="Explore your insights"
+                  PrimaryIcon={LineChart}
+                  OutlineIcon={LineChart} // Use any valid icon as the outline icon
+                />
+              </Link>
+              <Link href="/health-insights" className="block">
+                <HomePageCardSmall
+                  href="/health-insights"
+                  headerLabel="Plan details"
+                  cardTitle="View plan details"
+                  cardDescription="Personalized analysis of your health metrics and trends"
+                  ctaText="Explore your plan"
+                  PrimaryIcon={DollarSign}
+                  OutlineIcon={DollarSign} // Use any valid icon as the outline icon
+                />
+              </Link>
+
+          </div>
 
         </div>
 
