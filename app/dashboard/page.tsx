@@ -13,37 +13,44 @@ export default function Home() {
         <div className="">
             <HomeOverview />
 
-            <div className="px-20 bg-muted py-4 flex justify-center w-full">
-                <div className="flex gap-6">
-                    {/* <HealthInsightsCard /> */}
-                    <HomeServiceBookingCard
-                        title="GDM Care"
-                        description="You can book the appointment from here.."
-                        buttonText="Explore our Plans"
-                        iconSrc="/icons/mother.svg"
-                        href="/dashboard/plans"
-                    />
-                    <HomeServiceBookingCard
-                        title="Lab Test"
-                        description="You can book the appointment from here.."
-                        buttonText="Book a Lab Test"
-                        iconSrc="/images/lab-test.png"
-                        href="/dashboard/labs"
-                    />
-                    <HomeServiceBookingCard
-                        title="Consultation"
-                        description="You can book the appointment from here.."
-                        buttonText="Book Consultation"
-                        iconSrc="/images/consultation.png"
-                        href="/dashboard/doctors"
-                    />
-                    <HomeServiceBookingCard
-                        title="Medicine Delivery"
-                        description="You can book the appointment from here.."
-                        buttonText="Book Medicines"
-                        iconSrc="/images/medicines-delivery.png"
-                        href="/dashboard/medicines"
-                    />
+            <div className="px-4 md:px-20 bg-muted py-4 flex justify-center w-full">
+                <div className="flex gap-6 overflow-x-auto no-scrollbar md:flex-wrap">
+                    <div className="min-w-[320px] md:min-w-0">
+                        <HomeServiceBookingCard
+                            title="GDM Care"
+                            description="You can book the appointment from here.."
+                            buttonText="Explore our Plans"
+                            iconSrc="/icons/mother.svg"
+                            href="/dashboard/plans"
+                        />
+                    </div>
+                    <div className="min-w-[320px] md:min-w-0">
+                        <HomeServiceBookingCard
+                            title="Lab Test"
+                            description="You can book the appointment from here.."
+                            buttonText="Book a Lab Test"
+                            iconSrc="/images/lab-test.png"
+                            href="/dashboard/labs"
+                        />
+                    </div>
+                    <div className="min-w-[320px] md:min-w-0">
+                        <HomeServiceBookingCard
+                            title="Consultation"
+                            description="You can book the appointment from here.."
+                            buttonText="Book Consultation"
+                            iconSrc="/images/consultation.png"
+                            href="/dashboard/doctors"
+                        />
+                    </div>
+                    <div className="min-w-[320px] md:min-w-0">
+                        <HomeServiceBookingCard
+                            title="Medicine Delivery"
+                            description="You can book the appointment from here.."
+                            buttonText="Book Medicines"
+                            iconSrc="/images/medicines-delivery.png"
+                            href="/dashboard/medicines"
+                        />
+                    </div>
                 </div>
 
             </div>
@@ -70,4 +77,3 @@ export default function Home() {
         </div>
     )
 }
-

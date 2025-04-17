@@ -3,7 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useProfile } from "@/hooks/context/ProfileContext";
-import HomeAppointmentOverview  from "@/patients/home/HomeAppointmentOverview";
+import HomeAppointmentOverview from "@/patients/home/HomeAppointmentOverview";
 import { PlanUsageMinimal } from "@/components/patients/plans/PlanUsage";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import ArrowButton from "@/components/ui/custom/cd-arrow-button";
@@ -54,7 +54,7 @@ export default function HomeOverview() {
   }
 
   return (
-    <div className="bg-muted px-20 pt-5">
+    <div className="bg-muted md:px-20 px-5 pt-5">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl">
@@ -66,7 +66,7 @@ export default function HomeOverview() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Section - Video Carousel */}
         <div className="lg:col-span-3">
-<MedicalCarousel />
+          <MedicalCarousel />
         </div>
 
         {/* Middle Section - Program Details */}
@@ -74,43 +74,35 @@ export default function HomeOverview() {
           <div className="space-y-4 mb-6">
 
             {profile?.subscriptionDetails?.subscriptionId ? (
-              <>
-
                 <PlanUsageMinimal userId={4} subscriptionId={profile?.subscriptionDetails?.subscriptionId} />
-              </>
             ) : (
-              <>
-                {/* <div className="flex-1 flex justify-center"> */}
                 <ArrowButton buttonText="Explore our plans" href="/dashboard/plans" />
-                {/* </div> */}
-
-              </>
             )}
           </div>
           <div className="flex gap-3">
-          {/* <ViewHealthInsightsCard /> */}
-              <Link href="/health-insights" className="block">
-                <HomePageCardSmall
-                  href="/health-insights"
-                  headerLabel="Health Analytics"
-                  cardTitle="View Health Insights"
-                  cardDescription="Personalized analysis of your health metrics and trends"
-                  ctaText="Explore your insights"
-                  PrimaryIcon={LineChart}
-                  OutlineIcon={LineChart} // Use any valid icon as the outline icon
-                />
-              </Link>
-              <Link href="/health-insights" className="block">
-                <HomePageCardSmall
-                  href="/health-insights"
-                  headerLabel="Plan details"
-                  cardTitle="View plan details"
-                  cardDescription="Personalized analysis of your health metrics and trends"
-                  ctaText="Explore your plan"
-                  PrimaryIcon={DollarSign}
-                  OutlineIcon={DollarSign} // Use any valid icon as the outline icon
-                />
-              </Link>
+            {/* <ViewHealthInsightsCard /> */}
+            <Link href="/health-insights" className="block">
+              <HomePageCardSmall
+                href="/health-insights"
+                headerLabel="Health Analytics"
+                cardTitle="View Insights"
+                cardDescription="Personalized analysis of your health metrics and trends"
+                ctaText="Explore your insights"
+                PrimaryIcon={LineChart}
+                OutlineIcon={LineChart} // Use any valid icon as the outline icon
+              />
+            </Link>
+            <Link href="/health-insights" className="block">
+              <HomePageCardSmall
+                href="/health-insights"
+                headerLabel="Plan details"
+                cardTitle="View plan details"
+                cardDescription="Personalized analysis of your health metrics and trends"
+                ctaText="Explore your plan"
+                PrimaryIcon={DollarSign}
+                OutlineIcon={DollarSign} // Use any valid icon as the outline icon
+              />
+            </Link>
 
           </div>
 
@@ -119,8 +111,6 @@ export default function HomeOverview() {
         {/* Right Section - Appointment & Apps */}
         <div className="lg:col-span-4 flex flex-col items-end h-[423px] gap-6">
           <HomeAppointmentOverview />
-
-
           <HeartRiskCardRed />
         </div>
       </div>
