@@ -1,5 +1,5 @@
 "use client"
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
 import ArrowButton from "../../ui/custom/cd-arrow-button";
@@ -24,9 +24,27 @@ export default function HomeServiceBookingCard({
   gradientTo = "#56A67C",
   href,
 }: HomeServiceBookingCardProps) {
+
+  // State to track window width
+  const [windowWidth, setWindowWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 0);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup listener on component unmount
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  // Determine if the screen width is mobile-sized
+  const isMobile = windowWidth < 1440;
+
   return (
     <Card
-      className={`min-w-[18rem] max-w-[20rem] h-72 bg-gradient-to-b from-[#134F30] to-[#56A67C] border-0 rounded-lg flex flex-col justify-center items-center gap-2.5`}
+      className={`w-full h-72 bg-gradient-to-b from-[#134F30] to-[#56A67C] border-0 rounded-lg flex flex-col justify-center items-center gap-2.5`}
     >
       <div className="h-60 flex flex-col justify-start items-start gap-10 pl-3">
         <div className="h-28 flex flex-col justify-start items-start gap-5">
@@ -44,7 +62,8 @@ export default function HomeServiceBookingCard({
         </div>
 
         <div className="h-20 rounded-lg flex justify-center items-center">
-          <ArrowButton buttonText={buttonText} href={href}/>
+          {/* Conditionally apply "small" size based on window size */}
+          <ArrowButton buttonText={buttonText} href={href} size={isMobile ? "small" : "large"} />
         </div>
       </div>
     </Card>

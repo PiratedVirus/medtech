@@ -37,10 +37,56 @@ export default function HomeAppointmentOverview() {
 
   if (isError || !appointment) {
     return (
-      <div className="p-6 rounded-3xl w-full bg-custom-mutedgreen">
-        <h2 className="text-2xl font-semibold text-gray-800">Upcoming Appointment</h2>
-        <p className="text-gray-600">No upcoming appointments scheduled.</p>
-      </div>
+      <Link href="#" className="block w-full">
+        <Card className="group relative w-full  sm:h-[194px] md:aspect-[484/194]  md:h-[184px] overflow-hidden border-0 bg-gradient-to-tl from-[#134F30] to-[#56A67C] shadow-md transition-all duration-300 hover:shadow-lg">            {/* Large video camera outline in background - adjusted opacity and color */}
+          <div className="absolute -right-12 -top-4 h-64 w-64 opacity-5">
+            <svg viewBox="0 0 24 24" fill="none" className="h-full w-full text-white">
+              <path
+                d="M23 7L16 12L23 17V7Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <rect
+                x="1"
+                y="5"
+                width="15"
+                height="14"
+                rx="2"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+
+          <div className="relative flex h-full p-6 text-white">
+            {/* Left side content */}
+            <div className="flex flex-col justify-between flex-1">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
+                  <Video className="h-6 w-6" />
+                </div>
+                <span className="text-sm font-medium text-white/90"> Upcoming Appointments</span>
+              </div>
+
+              <div>
+                {/* You can add a description or message for the user */}
+                <h3 className="text-2xl font-bold">No upcoming appointments.</h3>
+
+                <div className="mt-2">
+                  {/* Optionally add a button or any additional information */}
+                  <ArrowButton size="small" buttonText="Book now" href="/dashboard/plans" />
+                </div>
+              </div>
+            </div>
+
+
+          </div>
+        </Card>
+      </Link>
     )
   }
 
@@ -51,11 +97,11 @@ export default function HomeAppointmentOverview() {
     year: "numeric",
   })
 
-// className="group relative w-full md:w-[484px] aspect-[484/194] overflow-hidden border-0 shadow-md transition-all duration-300 hover:shadow-lg bg-gradient-to-..."
+  // className="group relative w-full md:w-[484px] aspect-[484/194] overflow-hidden border-0 shadow-md transition-all duration-300 hover:shadow-lg bg-gradient-to-..."
 
   return (
     <Link href={appointmentLink ?? "/join-appointment"} className="block">
-     <Card className="group relative w-full max-w-[484px] h-[194px] md:aspect-[484/194] md:w-[484px] md:h-[184px] overflow-hidden border-0 bg-gradient-to-tl from-[#134F30] to-[#56A67C] shadow-md transition-all duration-300 hover:shadow-lg">
+      <Card className="group relative w-full  h-[194px] md:aspect-[484/194] md:h-[184px] overflow-hidden border-0 bg-gradient-to-tl from-[#134F30] to-[#56A67C] shadow-md transition-all duration-300 hover:shadow-lg">
         {/* Large video camera outline in background - adjusted opacity and color */}
         <div className="absolute -right-12 -top-4 h-64 w-64 opacity-5">
           <svg viewBox="0 0 24 24" fill="none" className="h-full w-full text-white">

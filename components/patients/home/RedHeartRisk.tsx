@@ -6,10 +6,8 @@ import { Card } from "@/components/ui/card";
 
 export default function HeartRiskCardRed() {
   return (
-    <Link href="/heart-risk-predictor" className="block">
-      <Card
-        className="group relative w-full max-w-[484px] h-[194px] md:aspect-[484/194] md:w-[484px] md:h-[184px] overflow-hidden border-0 bg-gradient-to-br from-red-600 to-red-900 shadow-md transition-all duration-300 hover:shadow-lg"
-      >
+    <Link href="/heart-risk-predictor" className="block w-full">
+      <Card className="group relative w-full sm:h-[194px] md:h-[184px] overflow-hidden border-0 bg-gradient-to-br from-red-600 to-red-900 shadow-md transition-all duration-300 hover:shadow-lg">
         {/* Large heart outline in background */}
         <div className="absolute -right-12 -top-4 h-64 w-64 opacity-10">
           <svg viewBox="0 0 24 24" fill="none" className="h-full w-full text-white">

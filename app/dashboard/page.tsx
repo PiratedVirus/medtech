@@ -13,9 +13,9 @@ export default function Home() {
         <div className="">
             <HomeOverview />
 
-            <div className="px-4 md:px-20 bg-muted py-4 flex justify-center w-full">
-                <div className="flex gap-6 overflow-x-auto no-scrollbar md:flex-wrap">
-                    <div className="min-w-[320px] md:min-w-0">
+            <div className="px-4 md:px-20 bg-muted py-4 w-full">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 md:grid-cols-4 w-full">
+                    <div className="w-full">
                         <HomeServiceBookingCard
                             title="GDM Care"
                             description="You can book the appointment from here.."
@@ -24,7 +24,7 @@ export default function Home() {
                             href="/dashboard/plans"
                         />
                     </div>
-                    <div className="min-w-[320px] md:min-w-0">
+                    <div className="w-full">
                         <HomeServiceBookingCard
                             title="Lab Test"
                             description="You can book the appointment from here.."
@@ -33,7 +33,7 @@ export default function Home() {
                             href="/dashboard/labs"
                         />
                     </div>
-                    <div className="min-w-[320px] md:min-w-0">
+                    <div className="w-full">
                         <HomeServiceBookingCard
                             title="Consultation"
                             description="You can book the appointment from here.."
@@ -42,7 +42,7 @@ export default function Home() {
                             href="/dashboard/doctors"
                         />
                     </div>
-                    <div className="min-w-[320px] md:min-w-0">
+                    <div className="w-full">
                         <HomeServiceBookingCard
                             title="Medicine Delivery"
                             description="You can book the appointment from here.."
@@ -52,10 +52,9 @@ export default function Home() {
                         />
                     </div>
                 </div>
-
             </div>
 
-            <HealthInsightsPanel />
+            {/* <HealthInsightsPanel /> */}
 
             <div className="px-20 py-4 flex justify-center w-full">
                 <div className="flex flex-col flex-grow bg-muted justify-start items-center gap-5 rounded-r-lg">
@@ -72,8 +71,6 @@ export default function Home() {
             <AppointmentInfo />
             <ArticlesSection />
             <FooterVideo />
-
-
         </div>
     )
 }

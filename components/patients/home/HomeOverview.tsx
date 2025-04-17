@@ -65,23 +65,21 @@ export default function HomeOverview() {
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Section - Video Carousel */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3 w-full">
           <MedicalCarousel />
         </div>
 
         {/* Middle Section - Program Details */}
-        <div className="lg:col-span-5 flex flex-col h-[423px]">
+        <div className="lg:col-span-5 flex flex-col h-[423px] w-full">
           <div className="space-y-4 mb-6">
-
             {profile?.subscriptionDetails?.subscriptionId ? (
-                <PlanUsageMinimal userId={4} subscriptionId={profile?.subscriptionDetails?.subscriptionId} />
+              <PlanUsageMinimal userId={4} subscriptionId={profile?.subscriptionDetails?.subscriptionId} />
             ) : (
-                <ArrowButton buttonText="Explore our plans" href="/dashboard/plans" />
+              <ArrowButton buttonText="Explore our plans" href="/dashboard/plans" />
             )}
           </div>
-          <div className="flex gap-3">
-            {/* <ViewHealthInsightsCard /> */}
-            <Link href="/health-insights" className="block">
+          <div className="flex gap-3 w-full">
+            <Link href="/health-insights" className="block w-full">
               <HomePageCardSmall
                 href="/health-insights"
                 headerLabel="Health Analytics"
@@ -89,10 +87,10 @@ export default function HomeOverview() {
                 cardDescription="Personalized analysis of your health metrics and trends"
                 ctaText="Explore your insights"
                 PrimaryIcon={LineChart}
-                OutlineIcon={LineChart} // Use any valid icon as the outline icon
+                OutlineIcon={LineChart}
               />
             </Link>
-            <Link href="/health-insights" className="block">
+            <Link href="/health-insights" className="block w-full">
               <HomePageCardSmall
                 href="/health-insights"
                 headerLabel="Plan details"
@@ -100,20 +98,19 @@ export default function HomeOverview() {
                 cardDescription="Personalized analysis of your health metrics and trends"
                 ctaText="Explore your plan"
                 PrimaryIcon={DollarSign}
-                OutlineIcon={DollarSign} // Use any valid icon as the outline icon
+                OutlineIcon={DollarSign}
               />
             </Link>
-
           </div>
-
         </div>
 
         {/* Right Section - Appointment & Apps */}
-        <div className="lg:col-span-4 flex flex-col items-end h-[423px] gap-6">
+        <div className="lg:col-span-4 flex flex-col items-end h-[423px] gap-6 w-full">
           <HomeAppointmentOverview />
           <HeartRiskCardRed />
         </div>
       </div>
+
     </div>
   );
 }
