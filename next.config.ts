@@ -2,7 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    domains: ['images.unsplash.com'],
+    domains: ['images.unsplash.com', 'cdn-images-1.medium.com'],
+
     remotePatterns: [
       {
         protocol: 'https',
@@ -11,8 +12,14 @@ const nextConfig: NextConfig = {
         pathname: '/**',
         search: '',
       },
+        {
+          protocol: 'https',
+          hostname: 'cdn-images-1.medium.com',
+          port: '',
+          pathname: '/**',
+          search: '',
+        },
     ],
   },
 };
 
-export default nextConfig;

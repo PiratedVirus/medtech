@@ -57,7 +57,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <main className="flex-grow">
               {children}
             </main>
-            <Footer />
+            <div className="hidden sm:block">
+              <Footer />
+            </div>
           </ProfileProvider>
     
     );

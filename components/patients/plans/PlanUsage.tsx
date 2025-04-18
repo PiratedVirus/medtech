@@ -370,27 +370,48 @@ function PlanUsageMinimalLayout({
 }
 /** Skeleton loader for minimal usage layout */
 export function PlanUsageMinimalSkeleton() {
-  const Circle = () => (
-    <div className="flex flex-col items-center">
-      <div className="w-20 h-20 rounded-full bg-muted animate-pulse" />
-      <div className="w-16 h-4 bg-muted rounded mt-2 animate-pulse" />
-      <div className="w-24 h-4 bg-muted rounded mt-1 animate-pulse" />
-    </div>
-  )
-
   return (
-    <div className="w-full mx-auto py-4 space-y-6">
-      <div className="flex items-center justify-center gap-6 flex-wrap">
-        {Array.from({ length: 4 }).map((_, idx) => (
-          <Circle key={idx} />
-        ))}
+    <Card className="group relative w-full h-[184px] overflow-hidden bg-custom-mutedgreen shadow-none transition-all duration-300">
+      {/* Background outline icon */}
+      <div className="absolute -right-8 -top-4 h-40 w-40 opacity-5">
+        <svg viewBox="0 0 24 24" fill="none" className="h-full w-full text-[#174b30]">
+          <path
+            d="M21 21H4.6c-.56 0-1.1-.22-1.48-.62C2.76 20 2.53 19.46 2.5 18.9V3"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M21 7L15.5 12.5L11.5 8.5L3 17"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </div>
-      <div className="flex items-center gap-6 px-6">
-        <Circle />
-        <div className="flex-1 flex justify-center">
-          <div className="w-[160px] h-10 bg-muted rounded-full animate-pulse" />
+
+      <div className="relative flex h-full flex-col justify-between p-5">
+        {/* Header (icon + text) */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#F28A2E]/10 to-[#56A67C]/10">
+            <div className="h-5 w-5 bg-muted rounded-full animate-pulse" />
+          </div>
+          <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+        </div>
+
+        {/* Feature usage placeholders */}
+        <div className="flex justify-center items-center gap-4 px-1 mt-2">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <div key={idx} className="flex flex-col items-center">
+              <div className="w-[70px] h-[70px] rounded-full bg-muted animate-pulse" />
+              <div className="w-12 h-3 bg-muted rounded mt-2 animate-pulse" />
+              <div className="w-16 h-3 bg-muted rounded mt-1 animate-pulse" />
+            </div>
+          ))}
         </div>
       </div>
-    </div>
+    </Card>
   )
 }

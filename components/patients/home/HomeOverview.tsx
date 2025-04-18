@@ -1,5 +1,5 @@
 "use client";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, BicepsFlexed } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useProfile } from "@/hooks/context/ProfileContext";
@@ -93,12 +93,12 @@ export default function HomeOverview() {
             <Link href="/health-insights" className="block w-full">
               <HomePageCardSmall
                 href="/health-insights"
-                headerLabel="Plan details"
-                cardTitle="View plan details"
-                cardDescription="Personalized analysis of your health metrics and trends"
-                ctaText="Explore your plan"
-                PrimaryIcon={DollarSign}
-                OutlineIcon={DollarSign}
+                headerLabel="Diet details"
+                cardTitle="View Diet details"
+                cardDescription="Personalized diet plans and meal suggestions"
+                ctaText="Explore your diet"
+                PrimaryIcon={BicepsFlexed}
+                OutlineIcon={BicepsFlexed}
               />
             </Link>
           </div>

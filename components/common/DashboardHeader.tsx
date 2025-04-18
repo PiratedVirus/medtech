@@ -23,6 +23,7 @@ const mobileNavigation = [
   { name: "Doctors", href: "/dashboard/doctors", icon: User },
   { name: "Appointments", href: "/dashboard/appointments", icon: Calendar },
   { name: "Lab", href: "/dashboard/labs", icon: Clipboard },
+  { name: "Profile", href: "/dashboard/profile", icon: User },
 ];
 
 export function DashboardHeader() {
