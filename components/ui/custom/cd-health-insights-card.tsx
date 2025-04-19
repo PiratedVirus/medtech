@@ -103,7 +103,7 @@ export default function HealthInsightsCard({
   return (
     <>
     <ToastContainer />
-    <Card className="w-full max-w-80 p-6 rounded-3xl bg-white border">
+    <Card className="w-60 h-80 p-6 rounded-3xl bg-white border">
       <div className="flex items-center gap-4 mb-8">
         <Image
           className="flex"

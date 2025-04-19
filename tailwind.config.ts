@@ -57,6 +57,15 @@ module.exports = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      keyframes: {
+        beat: {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.1)' },
+        },
+      },
+      animation: {
+        beat: 'beat 1.5s infinite ease-in-out',
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

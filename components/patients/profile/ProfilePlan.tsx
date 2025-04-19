@@ -1,4 +1,8 @@
 "use client";
+import { useDispatch } from "react-redux";
+import { logoutUser } from "@/store/userSlice";
+import type { AppDispatch } from "@/store";
+import { useRouter } from "next/navigation";
 
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -88,6 +92,13 @@ export function ProfileForm() {
 
     fetchUserDetails();
   }, [profile, form]);
+
+  const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
+  const handleLogout = () => {
+    dispatch(logoutUser());
+    router.push("/login");
+  };
 
   async function onSubmit(data: ProfileFormValues) {
     setIsSubmitting(true);
@@ -336,7 +347,10 @@ export function ProfileForm() {
           </Card>
           </div>
 
-          <CardFooter className="flex justify-end mt-6">
+          <CardFooter className="flex justify-between mt-6">
+            <Button variant="destructive" onClick={handleLogout} disabled={isSubmitting}>
+              Logout
+            </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>

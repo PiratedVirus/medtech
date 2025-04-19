@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import HealthInsightsCard from "@/components/ui/custom/cd-health-insights-card";
+import { ArrowRight } from "lucide-react";
 
 /** DB returns data in this shape */
 type MonthData = {
@@ -118,7 +119,7 @@ export default function HealthInsightsPanel() {
   });
 
   return (
-    <div className="px-20 py-4 bg-custom-mutedbg flex flex-col justify-center">
+    <div className="py-4 px-4 md:px-20 bg-custom-mutedbg flex flex-col justify-center">
       <div className="flex items-end w-full pb-5 justify-between my-3">
         <h2 className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-3xl font-semibold bg-clip-text text-transparent">
           Health Insights
@@ -131,9 +132,12 @@ export default function HealthInsightsPanel() {
         </button>
       </div>
 
-      <div className="flex flex-row gap-3">
+      {/* Horizontal scroll container */}
+      <div className="flex gap-6 overflow-x-auto w-full h-[366px]">
         {mappedMetrics.map((metric, index) => (
-          <HealthInsightsCard key={index} {...metric} />
+          <div key={index} className="w-72 h-[366px]">
+            <HealthInsightsCard {...metric} />
+          </div>
         ))}
       </div>
     </div>
