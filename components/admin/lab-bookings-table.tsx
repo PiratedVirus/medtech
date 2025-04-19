@@ -1,47 +1,26 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-
-const labBookings = [
-  {
-    id: "LAB-1234",
-    patient: "Bob Williams",
-    testPackage: "Complete Blood Count (CBC)",
-    date: "2025-04-19",
-    status: "Pending",
-  },
-  {
-    id: "LAB-1235",
-    patient: "Alice Johnson",
-    testPackage: "Lipid Profile",
-    date: "2025-04-19",
-    status: "Sample Collected",
-  },
-  {
-    id: "LAB-1236",
-    patient: "Carol Davis",
-    testPackage: "Thyroid Function Test",
-    date: "2025-04-19",
-    status: "Pending",
-  },
-  {
-    id: "LAB-1237",
-    patient: "David Miller",
-    testPackage: "Liver Function Test",
-    date: "2025-04-19",
-    status: "Processing",
-  },
-  {
-    id: "LAB-1238",
-    patient: "Emma Brown",
-    testPackage: "Vitamin D Test",
-    date: "2025-04-19",
-    status: "Pending",
-  },
-]
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function LabBookingsTable() {
+  const [labBookings, setLabBookings] = useState([]);
+
+  useEffect(() => {
+    const fetchLabBookings = async () => {
+      try {
+        const response = await axios.get("/api/admin-dashboard/lab-bookings");
+        setLabBookings(response.data);
+      } catch (error) {
+        console.error("Failed to fetch lab bookings:", error);
+      }
+    };
+
+    fetchLabBookings();
+  }, []);
+
   return (
     <Table>
       <TableHeader>
@@ -86,5 +65,5 @@ export function LabBookingsTable() {
         ))}
       </TableBody>
     </Table>
-  )
+  );
 }

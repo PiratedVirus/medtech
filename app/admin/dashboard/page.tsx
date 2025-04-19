@@ -19,7 +19,7 @@ const DashboardPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get("/api/admin/insights");
+        const response = await axios.get("/api/admin-dashboard/insights");
         setData(response.data);
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);

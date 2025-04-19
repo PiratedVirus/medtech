@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { BarChart3, CalendarPlus, Clock, DollarSign, FlaskConical, UserPlus, Users } from "lucide-react"
+import { useState, useEffect } from "react"
+import axios from "axios"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,6 +18,28 @@ export const metadata: Metadata = {
 }
 
 export default function DashboardPage() {
+  const [summaryData, setSummaryData] = useState({
+    totalPatients: 0,
+    activeSubscriptions: 0,
+    todaysAppointments: 0,
+    labBookingsPending: 0,
+    monthlyRevenue: 0,
+    newSignupsThisWeek: 0,
+  });
+
+  useEffect(() => {
+    const fetchSummaryData = async () => {
+      try {
+        const response = await axios.get("/api/admin-dashboard/summary");
+        setSummaryData(response.data);
+      } catch (error) {
+        console.error("Failed to fetch summary data:", error);
+      }
+    };
+
+    fetchSummaryData();
+  }, []);
+
   return (
     <div className="flex flex-col">
       <div className="flex items-center justify-between space-y-2 px-2 pt-6 md:px-4">
@@ -37,7 +61,7 @@ export default function DashboardPage() {
       <div className="mt-4 grid gap-4 px-2 md:px-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <SummaryCard
           title="Total Patients"
-          value="2,853"
+          value={summaryData.totalPatients.toString()}
           trend="+12% from last month"
           PrimaryIcon={Users}
           OutlineIcon={Users}
@@ -46,7 +70,7 @@ export default function DashboardPage() {
         />
         <SummaryCard
           title="Active Subscriptions"
-          value="1,486"
+          value={summaryData.activeSubscriptions.toString()}
           trend="+5.2% from last month"
           PrimaryIcon={BarChart3}
           OutlineIcon={BarChart3}
@@ -55,7 +79,7 @@ export default function DashboardPage() {
         />
         <SummaryCard
           title="Today's Appointments"
-          value="24"
+          value={summaryData.todaysAppointments.toString()}
           trend="6 more than yesterday"
           PrimaryIcon={Clock}
           OutlineIcon={Clock}
@@ -64,7 +88,7 @@ export default function DashboardPage() {
         />
         <SummaryCard
           title="Lab Bookings Pending"
-          value="16"
+          value={summaryData.labBookingsPending.toString()}
           trend="4 require immediate attention"
           PrimaryIcon={FlaskConical}
           OutlineIcon={FlaskConical}
@@ -73,7 +97,7 @@ export default function DashboardPage() {
         />
         <SummaryCard
           title="Monthly Revenue"
-          value="$45,231"
+          value={`$${summaryData.monthlyRevenue.toString()}`}
           trend="+20.1% from last month"
           PrimaryIcon={DollarSign}
           OutlineIcon={DollarSign}
@@ -82,7 +106,7 @@ export default function DashboardPage() {
         />
         <SummaryCard
           title="New Sign-ups This Week"
-          value="38"
+          value={summaryData.newSignupsThisWeek.toString()}
           trend="+12 from previous week"
           PrimaryIcon={UserPlus}
           OutlineIcon={UserPlus}

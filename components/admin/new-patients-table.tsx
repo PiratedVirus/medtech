@@ -1,47 +1,26 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-
-const newPatients = [
-  {
-    id: "PAT-1234",
-    name: "Carol Thompson",
-    email: "carol@mail.com",
-    joinedOn: "2025-04-15",
-    plan: "Care+",
-  },
-  {
-    id: "PAT-1235",
-    name: "Michael Rodriguez",
-    email: "michael@mail.com",
-    joinedOn: "2025-04-16",
-    plan: "Standard",
-  },
-  {
-    id: "PAT-1236",
-    name: "Jennifer Martinez",
-    email: "jennifer@mail.com",
-    joinedOn: "2025-04-17",
-    plan: "Basic",
-  },
-  {
-    id: "PAT-1237",
-    name: "Robert Wilson",
-    email: "robert@mail.com",
-    joinedOn: "2025-04-18",
-    plan: "Premium",
-  },
-  {
-    id: "PAT-1238",
-    name: "Sarah Anderson",
-    email: "sarah@mail.com",
-    joinedOn: "2025-04-19",
-    plan: "Standard",
-  },
-]
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function NewPatientsTable() {
+  const [newPatients, setNewPatients] = useState([]);
+
+  useEffect(() => {
+    const fetchNewPatients = async () => {
+      try {
+        const response = await axios.get("/api/admin-dashboard/new-patients");
+        setNewPatients(response.data);
+      } catch (error) {
+        console.error("Failed to fetch new patients:", error);
+      }
+    };
+
+    fetchNewPatients();
+  }, []);
+
   return (
     <Table>
       <TableHeader>
@@ -86,5 +65,5 @@ export function NewPatientsTable() {
         ))}
       </TableBody>
     </Table>
-  )
+  );
 }
