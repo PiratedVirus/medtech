@@ -10,14 +10,15 @@ import LabsPage from "@/app/admin/labs/page";
 import PaymentsPage from "@/app/admin/payments/page";
 import SlotsPage from "@/app/admin/slots/page";
 import PlansPage from "@/app/admin/plans/page";
+import DashboardPage from "@/app/admin/dashboard/page";
 
 export default function AdminPage() {
   return (
     <div className="container mx-auto p-4">
-      <Tabs defaultValue="users">
+      <Tabs defaultValue="dashboard">
         <div className="flex justify-center">
-
           <TabsList className="mb-4">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="clinics">Clinics</TabsTrigger>
             <TabsTrigger value="appointments">Appointments</TabsTrigger>
@@ -30,6 +31,9 @@ export default function AdminPage() {
             <TabsTrigger value="plans">Plans</TabsTrigger>
           </TabsList>
         </div>
+        <TabsContent value="dashboard">
+          <DashboardPage />
+        </TabsContent>
         <TabsContent value="clinics">
           <ClincsPage/>
         </TabsContent>
@@ -39,12 +43,9 @@ export default function AdminPage() {
         <TabsContent value="doctors">
           <DoctorsPage />
         </TabsContent>
-   
-
         <TabsContent value="dieticians">
           <DieticiansPage/>
         </TabsContent>
-
         <TabsContent value="labs">
           <LabsPage/>
         </TabsContent>
@@ -60,7 +61,6 @@ export default function AdminPage() {
         <TabsContent value="plans">
           <PlansPage/>
         </TabsContent>
-     
       </Tabs>
     </div>
   );
