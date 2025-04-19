@@ -34,9 +34,9 @@ export function LabBookingsTable() {
       <TableBody>
         {labBookings.map((booking) => (
           <TableRow key={booking.id} className="hover:bg-[rgba(86,166,124,0.05)]">
-            <TableCell className="font-medium">{booking.patient}</TableCell>
-            <TableCell>{booking.testPackage}</TableCell>
-            <TableCell>{booking.date}</TableCell>
+            <TableCell className="font-medium">{booking.patient.name}</TableCell>
+            <TableCell>{booking.labPackage.name}</TableCell>
+            <TableCell>{new Date(booking.date).toLocaleDateString()}</TableCell>
             <TableCell>
               <Badge
                 variant={

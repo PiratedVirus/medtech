@@ -5,8 +5,18 @@ export async function GET(request: Request) {
   try {
     const appointments = await prisma.appointment.findMany({
       include: {
-        patient: true,
-        doctor: true,
+        patient: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        doctor: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
     return NextResponse.json(appointments);

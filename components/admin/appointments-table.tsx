@@ -35,9 +35,9 @@ export function AppointmentsTable() {
       <TableBody>
         {appointments.map((appointment) => (
           <TableRow key={appointment.id} className="hover:bg-[rgba(242,138,46,0.05)]">
-            <TableCell className="font-medium">{appointment.patient}</TableCell>
-            <TableCell>{appointment.doctor}</TableCell>
-            <TableCell>{appointment.dateTime}</TableCell>
+            <TableCell className="font-medium">{appointment.patient.name}</TableCell>
+            <TableCell>{appointment.doctor.name}</TableCell>
+            <TableCell>{new Date(appointment.dateTime).toLocaleString()}</TableCell>
             <TableCell>{appointment.type}</TableCell>
             <TableCell>
               <Badge

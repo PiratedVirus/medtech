@@ -5,7 +5,7 @@ import axios from "axios";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 
 export function NewPatientsCards() {
   const [newPatients, setNewPatients] = useState([]);
@@ -15,6 +15,7 @@ export function NewPatientsCards() {
     const fetchNewPatients = async () => {
       try {
         const response = await axios.get("/api/admin-dashboard/new-patients");
+        console.log("New Patients Data:", response.data);
         setNewPatients(response.data);
       } catch (error) {
         console.error("Failed to fetch new patients:", error);

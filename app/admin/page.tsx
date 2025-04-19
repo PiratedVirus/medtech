@@ -1,3 +1,4 @@
+'use client'
 import type { Metadata } from "next"
 import Link from "next/link"
 import { BarChart3, CalendarPlus, Clock, DollarSign, FlaskConical, UserPlus, Users } from "lucide-react"
@@ -8,14 +9,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AppointmentsTable } from "@/components/admin/appointments-table"
 import { LabBookingsTable } from "@/components/admin/lab-bookings-table"
-import { NewPatientsTable } from "@/components/admin/new-patients-table"
+import { NewPatientsCards } from "@/components/admin/new-patients-cards"
 import { NotificationsList } from "@/components/admin/notifications-list"
 import { SummaryCard } from "@/components/admin/summary-card"
 
-export const metadata: Metadata = {
-  title: "Dashboard | MedTech Clinic Admin",
-  description: "Clinic administration dashboard",
-}
+
 
 export default function DashboardPage() {
   const [summaryData, setSummaryData] = useState({
@@ -160,7 +158,7 @@ export default function DashboardPage() {
               <CardDescription>Patients who registered in the last 7 days</CardDescription>
             </CardHeader>
             <CardContent>
-              <NewPatientsTable />
+              <NewPatientsCards />
             </CardContent>
           </Card>
         </div>

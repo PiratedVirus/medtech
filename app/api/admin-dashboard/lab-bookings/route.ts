@@ -5,8 +5,18 @@ export async function GET(request: Request) {
   try {
     const labBookings = await prisma.labBooking.findMany({
       include: {
-        patient: true,
-        labPackage: true,
+        patient: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        labPackage: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
     return NextResponse.json(labBookings);
