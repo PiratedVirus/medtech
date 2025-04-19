@@ -1,3 +1,4 @@
+'use client'
 import type { Metadata } from "next"
 import Link from "next/link"
 import { BarChart3, CalendarPlus, Clock, DollarSign, FlaskConical, UserPlus, Users } from "lucide-react"
@@ -12,10 +13,7 @@ import { NewPatientsTable } from "@/components/admin/new-patients-table"
 import { NotificationsList } from "@/components/admin/notifications-list"
 import { SummaryCard } from "@/components/admin/summary-card"
 
-export const metadata: Metadata = {
-  title: "Dashboard | MedTech Clinic Admin",
-  description: "Clinic administration dashboard",
-}
+
 
 export default function DashboardPage() {
   const [summaryData, setSummaryData] = useState({
@@ -62,7 +60,7 @@ export default function DashboardPage() {
         <SummaryCard
           title="Total Patients"
           value={summaryData.totalPatients.toString()}
-          trend="+12% from last month"
+          trend=""
           PrimaryIcon={Users}
           OutlineIcon={Users}
           accentColor="#F28A2E"
@@ -71,7 +69,7 @@ export default function DashboardPage() {
         <SummaryCard
           title="Active Subscriptions"
           value={summaryData.activeSubscriptions.toString()}
-          trend="+5.2% from last month"
+          trend=""
           PrimaryIcon={BarChart3}
           OutlineIcon={BarChart3}
           accentColor="#F28A2E"
@@ -80,7 +78,7 @@ export default function DashboardPage() {
         <SummaryCard
           title="Today's Appointments"
           value={summaryData.todaysAppointments.toString()}
-          trend="6 more than yesterday"
+          trend=""
           PrimaryIcon={Clock}
           OutlineIcon={Clock}
           accentColor="#F28A2E"
@@ -89,7 +87,7 @@ export default function DashboardPage() {
         <SummaryCard
           title="Lab Bookings Pending"
           value={summaryData.labBookingsPending.toString()}
-          trend="4 require immediate attention"
+          trend=""
           PrimaryIcon={FlaskConical}
           OutlineIcon={FlaskConical}
           accentColor="#F28A2E"
@@ -98,7 +96,7 @@ export default function DashboardPage() {
         <SummaryCard
           title="Monthly Revenue"
           value={`$${summaryData.monthlyRevenue.toString()}`}
-          trend="+20.1% from last month"
+          trend=""
           PrimaryIcon={DollarSign}
           OutlineIcon={DollarSign}
           accentColor="#F28A2E"
@@ -107,7 +105,7 @@ export default function DashboardPage() {
         <SummaryCard
           title="New Sign-ups This Week"
           value={summaryData.newSignupsThisWeek.toString()}
-          trend="+12 from previous week"
+          trend=""
           PrimaryIcon={UserPlus}
           OutlineIcon={UserPlus}
           accentColor="#F28A2E"

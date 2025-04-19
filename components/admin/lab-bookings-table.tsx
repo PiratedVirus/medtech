@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -12,6 +12,7 @@ export function LabBookingsTable() {
     const fetchLabBookings = async () => {
       try {
         const response = await axios.get("/api/admin-dashboard/lab-bookings");
+        console.log("Fetched lab bookings:", response.data);
         setLabBookings(response.data);
       } catch (error) {
         console.error("Failed to fetch lab bookings:", error);
@@ -34,28 +35,34 @@ export function LabBookingsTable() {
       <TableBody>
         {labBookings.map((booking) => (
           <TableRow key={booking.id} className="hover:bg-[rgba(86,166,124,0.05)]">
-            <TableCell className="font-medium">{booking.patient}</TableCell>
-            <TableCell>{booking.testPackage}</TableCell>
-            <TableCell>{booking.date}</TableCell>
+            {/* Extract patient name */}
+            <TableCell className="font-medium">{booking.patient?.name || "N/A"}</TableCell>
+            {/* Extract lab package name */}
+            <TableCell>{booking.labPackage?.name || "N/A"}</TableCell>
+            {/* Format lab date */}
+            <TableCell>
+              {new Date(booking.labDate).toLocaleDateString("en-IN")}
+            </TableCell>
+            {/* Display status with badge */}
             <TableCell>
               <Badge
                 variant={
                   booking.status === "Pending"
                     ? "outline"
                     : booking.status === "Sample Collected"
-                      ? "secondary"
-                      : booking.status === "Processing"
-                        ? "default"
-                        : booking.status === "Completed"
-                          ? "default"
-                          : "destructive"
+                    ? "secondary"
+                    : booking.status === "Processing"
+                    ? "default"
+                    : booking.status === "Completed"
+                    ? "default"
+                    : "destructive"
                 }
                 className={
                   booking.status === "Pending"
                     ? "border-[#F28A2E] text-[#F28A2E]"
                     : booking.status === "Sample Collected" || booking.status === "Processing"
-                      ? "bg-[#56A67C] hover:bg-[#134F30]"
-                      : ""
+                    ? "bg-[#56A67C] hover:bg-[#134F30]"
+                    : ""
                 }
               >
                 {booking.status}
