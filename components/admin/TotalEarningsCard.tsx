@@ -38,7 +38,7 @@ const TotalEarningsCard = ({ patientDetails }: Props) => {
   }, [total]);
 
   return (
-    <Card className="group relative w-full overflow-hidden bg-custom-mutedgreen shadow-none transition-all duration-300">
+    <Card className="group relative w-full h-[184px] overflow-hidden bg-custom-mutedgreen shadow-none transition-all duration-300">
       <div className="absolute -right-8 -top-4 h-40 w-40 opacity-5">
         <TrendingUp size={160} />
       </div>

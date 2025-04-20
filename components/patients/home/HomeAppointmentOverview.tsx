@@ -78,7 +78,7 @@ export default function HomeAppointmentOverview() {
 
                 <div className="mt-2">
                   {/* Optionally add a button or any additional information */}
-                  <ArrowButton size="small" buttonText="Book now" href="/dashboard/plans" />
+                  <ArrowButton size="small" buttonText="Book now" href="/dashboard/appointments" />
                 </div>
               </div>
             </div>
