@@ -77,7 +77,15 @@ const PatientDetailsPage = () => {
       date: string;
       status: string;
       dietPlanLink?: string;
-    }[];
+      prescriptionLink?: string | null;
+      doctorName: string;
+      payment?: {
+        amount: number;
+        currency: string;
+        paymentStatus: string;
+        razorpayPaymentId?: string;
+        createdAt: string;
+      } | null;    }[];
   }
   const [uploadingAppointmentId, setUploadingAppointmentId] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -457,21 +465,136 @@ const PatientDetailsPage = () => {
 
           {/* Diet Plans */}
           <Card className=" rounded-lg p-4 bg-slate-50">
-            <h3 className="font-semibold mb-4">Diet Plans</h3>
+            <h3 className="font-semibold text-xl mb-4">Diet Plans</h3>
             <div className="flex flex-wrap gap-4">
               {patientDetails.dieticianAppointments.map(a => (
-                <Card key={a.id} className="bg-custom-mutedgreen rounded-lg p-4 w-36 h-48 flex flex-col">
-                  <h4 className="font-medium mb-2">Dietician Consultation</h4>
-                  <p className="text-sm mb-2">Booked: {new Date(a.date).toLocaleDateString()}</p>
-                  <p className="text-sm mb-4">Status: {a.status}</p>
-                  <div className="mt-auto flex items-center justify-between">
-                    {a.dietPlanLink
-                      ? <Button variant="outline" size="sm">View</Button>
-                      : <Button size="sm">Add Plan</Button>
-                    }
-                    <a href={`/api/admin/dashboard/history/dietplan/${a.id}`} className="text-xs underline">
-                      History
-                    </a>
+                <Card key={a.id}
+                  className="group relative overflow-hidden border border-gray-100 bg-custom-mutedgreen shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center">
+
+                  <Badge variant="outline" className="mb-2 text-primary bg-neutral-50">
+                    # {a.id}
+                  </Badge>
+                  <h4 className="font-medium mb-2">{a.doctorName}</h4>
+                  <p className="text-sm mb-2">
+                    Date: {new Date(a.date).toLocaleDateString('en-GB')}
+                  </p>
+                  {/* <p className="text-sm mb-4">Status: {a.status}</p> */}
+
+                  <div className="mt-auto flex flex-col items-center gap-2">
+                    {a.dietPlanLink ? (
+                      <a
+                        href={a.dietPlanLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button variant="outline" size="sm">View</Button>
+                      </a>
+                    ) : (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button size="sm" onClick={() => setUploadingAppointmentId(a.id)}>
+                            Upload Diet Plan
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogTitle>Upload Diet Plan PDF</DialogTitle>
+                          <div
+                            className="w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary transition"
+                            onDrop={async (e) => {
+                              e.preventDefault();
+                              const file = e.dataTransfer.files?.[0];
+                              if (!file || !uploadingAppointmentId) return;
+                              setUploading(true);
+                              try {
+                                const arrayBuffer = await file.arrayBuffer();
+                                const fileName = `${patientDetails.name.replace(/\s+/g, "-")}-${uploadingAppointmentId}.pdf`;
+                                const { url } = await put(fileName, arrayBuffer, {
+                                  access: "public",
+                                  token: process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN,
+                                });
+                                await axios.put(`/api/admin/dashboard/appointments`, {
+                                  appointmentId: uploadingAppointmentId,
+                                  link: url,
+                                });
+                                const response = await axios.get(
+                                  `/api/admin/dashboard/patients-details?patientId=${patientId}`
+                                );
+                                setPatientDetails(response.data);
+                                setUploadSuccess(true);
+                                toast.success("Diet Plan uploaded successfully.");
+                                setTimeout(() => {
+                                  setUploadingAppointmentId(null);
+                                  setUploadSuccess(false);
+                                }, 4500);
+                              } catch (err) {
+                                console.error("Upload failed", err);
+                              } finally {
+                                setUploading(false);
+                              }
+                            }}
+                            onDragOver={(e) => e.preventDefault()}
+                          >
+                            <div className="flex flex-col items-center gap-2">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-8 w-8 text-gray-500"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16v-4m0 0l-2 2m2-2l2 2m6 4H6a2 2 0 01-2-2V7a2 2 0 012-2h3.586a1 1 0 01.707.293l1.414 1.414A1 1 0 0012 7h8a2 2 0 012 2v7a2 2 0 01-2 2z" />
+                              </svg>
+                              <p className="text-sm text-gray-600">
+                                Drag & drop a PDF here or click below
+                              </p>
+                              <label className="cursor-pointer bg-muted px-3 py-1 text-sm rounded border border-gray-300 mt-2 hover:bg-primary hover:text-white transition">
+                                Browse files
+                                <input
+                                  type="file"
+                                  accept="application/pdf"
+                                  hidden
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file || !uploadingAppointmentId) return;
+                                    setUploading(true);
+                                    try {
+                                      const arrayBuffer = await file.arrayBuffer();
+                                      const fileName = `${patientDetails.name.replace(/\s+/g, "-")}-${uploadingAppointmentId}.pdf`;
+                                      const { url } = await put(fileName, arrayBuffer, {
+                                        access: "public",
+                                        token: process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN,
+                                      });
+                                      await axios.put(`/api/admin/dashboard/appointments`, {
+                                        appointmentId: uploadingAppointmentId,
+                                        link: url,
+                                      });
+                                      const response = await axios.get(
+                                        `/api/admin/dashboard/patients-details?patientId=${patientId}`
+                                      );
+                                      setPatientDetails(response.data);
+                                      toast.success("Diet plan uploaded successfully.");
+                                      setUploadSuccess(true);
+                                      setTimeout(() => {
+                                        setUploadingAppointmentId(null);
+                                        setUploadSuccess(false);
+                                      }, 1500);
+                                    } catch (err) {
+                                      console.error("Upload failed", err);
+                                    } finally {
+                                      setUploading(false);
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          </div>
+                          {uploading && <p>Uploading...</p>}
+                          {uploadSuccess && (
+                            <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
+                          )}
+                        </DialogContent>
+                      </Dialog>
+                    )}
                   </div>
                 </Card>
               ))}

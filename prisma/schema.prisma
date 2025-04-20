@@ -197,7 +197,7 @@ model Appointment {
   fullName             String?
   mobile               String?
   email                String?
-
+  isDietician          Boolean?
   appointmentDate      DateTime?
   appointmentLink      String?
   subscriptionId       Int?

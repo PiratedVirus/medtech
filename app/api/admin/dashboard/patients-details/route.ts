@@ -45,6 +45,7 @@ export async function GET(request: Request) {
               appointmentDate: true,
               consultationType: true,
               status: true,
+              isDietician: true,
               prescriptionLink: true,
               appointmentFor: true,
               doctor: { select: { id: true, name: true } },
@@ -74,8 +75,8 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Patient not found" }, { status: 404 });
       }
       // Split appointments by doctor vs dietician
-      const doctorAppointments = patient.patientAppointments.filter(a => a.appointmentFor !== "dietician");
-      const dieticianAppointments = patient.patientAppointments.filter(a => a.appointmentFor === "dietician");
+      const doctorAppointments = patient.patientAppointments.filter(a => a.isDietician === false);
+      const dieticianAppointments = patient.patientAppointments.filter(a => a.isDietician);
       const formatted = {
         id: patient.id,
         name: patient.name,
@@ -103,7 +104,9 @@ export async function GET(request: Request) {
           date: a.appointmentDate,
           type: a.consultationType,
           status: a.status,
-          dietPlanLink: a.prescriptionLink
+          dietPlanLink: a.prescriptionLink,
+          doctorName: a.doctor.name,
+          payment: a.payment
         })),
         labBookings: patient.labPatientBookings.map(lb => ({
           id: lb.id,

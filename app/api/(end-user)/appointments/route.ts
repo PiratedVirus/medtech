@@ -293,6 +293,8 @@ export async function POST(request: Request) {
         appointmentLink: meetLink,
         consultationType,
         status: "Scheduled",
+        isDietician,
+        subscriptionId,
       },
     });
 

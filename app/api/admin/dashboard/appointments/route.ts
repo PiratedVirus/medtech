@@ -4,7 +4,11 @@ import prisma from "@/lib/prisma";
 export async function GET(request: Request) {
   try {
     const appointments = await prisma.appointment.findMany({
-      include: {
+      select: {
+        id: true,
+        appointmentDate: true,
+        status: true,
+        isDietician: true,
         patient: {
           select: {
             id: true,
