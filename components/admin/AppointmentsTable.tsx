@@ -6,12 +6,21 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function AppointmentsTable() {
-  const [appointments, setAppointments] = useState([]);
+  interface Appointment {
+    id: string;
+    patient: { name: string };
+    doctor: { name: string };
+    dateTime: string;
+    type: string;
+    status: string;
+  }
+
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
 
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
-        const response = await axios.get("/api/admin-dashboard/appointments");
+        const response = await axios.get("/api/admin/dashboard/appointments");
         setAppointments(response.data);
       } catch (error) {
         console.error("Failed to fetch appointments:", error);

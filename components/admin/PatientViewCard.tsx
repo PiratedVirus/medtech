@@ -13,7 +13,7 @@ export function PatientViewCard() {
   useEffect(() => {
     const fetchNewPatients = async () => {
       try {
-        const response = await axios.get("/api/admin-dashboard/patients-details");
+        const response = await axios.get("/api/admin/dashboard/patients-details");
         console.log("New Patients Data:", response.data);
         setNewPatients(response.data);
       } catch (error) {
@@ -41,7 +41,7 @@ export function PatientViewCard() {
   }
 
   const handleCardClick = (patientId: string): void => {
-    router.push(`/admin/patient-details/${patientId}`);
+    router.push(`/admin/patients/${patientId}`);
   };
 
   return (

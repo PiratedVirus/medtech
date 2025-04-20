@@ -7,11 +7,11 @@ import axios from "axios"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { AppointmentsTable } from "@/components/admin/appointments-table"
-import { LabBookingsTable } from "@/components/admin/lab-bookings-table"
+import { AppointmentsTable } from "@/components/admin/AppointmentsTable"
+import { LabBookingsTable } from "@/components/admin/LabBookingsTable"
 import { PatientViewCard } from "@/components/admin/PatientViewCard"
-import { NotificationsList } from "@/components/admin/notifications-list"
-import { SummaryCard } from "@/components/admin/summary-card"
+import { NotificationsList } from "@/components/admin/NotificationsList"
+import { SummaryCard } from "@/components/admin/SummaryCard"
 
 
 
@@ -28,7 +28,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchSummaryData = async () => {
       try {
-        const response = await axios.get("/api/admin-dashboard/summary");
+        const response = await axios.get("/api/admin/dashboard/summary");
         setSummaryData(response.data);
       } catch (error) {
         console.error("Failed to fetch summary data:", error);

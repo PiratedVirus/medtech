@@ -6,8 +6,33 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 
+interface Appointment {
+  id: string;
+  patientName: string;
+  doctorName: string;
+  date: string;
+  time: string;
+}
+
+interface LabBooking {
+  id: string;
+  patientName: string;
+  labName: string;
+  date: string;
+  time: string;
+}
+
+interface DashboardData {
+  upcomingAppointments: Appointment[];
+  upcomingLabBookings: LabBooking[];
+  totalEarnings: number;
+  userStatistics: Record<string, any>;
+  recentActivities: string[];
+  systemHealthStatus: Record<string, any>;
+}
+
 const DashboardPage = () => {
-  const [data, setData] = useState({
+  const [data, setData] = useState<DashboardData>({
     upcomingAppointments: [],
     upcomingLabBookings: [],
     totalEarnings: 0,
@@ -16,18 +41,7 @@ const DashboardPage = () => {
     systemHealthStatus: {},
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get("/api/admin-dashboard/insights");
-        setData(response.data);
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-      }
-    };
 
-    fetchData();
-  }, []);
 
   return (
     <div className="container mx-auto p-4 space-y-4">

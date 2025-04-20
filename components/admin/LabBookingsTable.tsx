@@ -6,12 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function LabBookingsTable() {
-  const [labBookings, setLabBookings] = useState([]);
+  interface LabBooking {
+    id: string;
+    patient: { name: string };
+    labPackage: { name: string };
+    date: string;
+    status: string;
+  }
+
+  const [labBookings, setLabBookings] = useState<LabBooking[]>([]);
 
   useEffect(() => {
     const fetchLabBookings = async () => {
       try {
-        const response = await axios.get("/api/admin-dashboard/lab-bookings");
+        const response = await axios.get("/api/admin/dashboard/lab-bookings");
         setLabBookings(response.data);
       } catch (error) {
         console.error("Failed to fetch lab bookings:", error);

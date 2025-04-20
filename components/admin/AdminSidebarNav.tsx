@@ -48,7 +48,7 @@ export function SidebarNav({ className, ...props }: SidebarNavProps) {
     },
 
     {
-      href: "/admin/patient-details",
+      href: "/admin/patients",
       icon: HeartPulse,
       title: "Patients",
     },
@@ -84,11 +84,6 @@ export function SidebarNav({ className, ...props }: SidebarNavProps) {
       title: "Payments",
     },
     {
-      href: "/admin/prescriptions",
-      icon: ClipboardList,
-      title: "Prescriptions",
-    },
-    {
       href: "/admin/slots",
       icon: Calendar,
       title: "Slots",
@@ -112,7 +107,7 @@ export function SidebarNav({ className, ...props }: SidebarNavProps) {
           <div className="space-y-4 py-4">
             <div className="px-3 py-2">
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-semibold tracking-tight">MedTech Clinic</h2>
+                <h2 className="text-lg font-semibold tracking-tight">CareDiabetics Clinic</h2>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon">
                     <X className="h-5 w-5" />
@@ -159,7 +154,7 @@ export function SidebarNav({ className, ...props }: SidebarNavProps) {
         <div className="space-y-4 py-4 flex flex-col h-full">
           <div className="px-3 py-2">
             <div className="flex items-center justify-between mb-6 px-2">
-              {!collapsed && <h2 className="text-lg font-semibold tracking-tight">MedTech Clinic</h2>}
+              {!collapsed && <h2 className="text-lg font-semibold text-primary tracking-tight">CareDiabetics Clinic</h2>}
               <Button
                 variant="ghost"
                 size="icon"

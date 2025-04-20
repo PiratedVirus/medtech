@@ -8,7 +8,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import CdLoader from "@/components/ui/custom/cd-loader";
-import TotalEarningsCard from "@/components/admin/TotalEarningsCars";
+import TotalEarningsCard from "@/components/admin/TotalEarningsCard";
 
 const PatientDetailsPage = () => {
   interface PatientDetails {
@@ -83,7 +83,7 @@ const PatientDetailsPage = () => {
   useEffect(() => {
     const fetchPatientDetails = async () => {
       try {
-        const response = await axios.get(`/api/admin-dashboard/patients-details?patientId=${patientId}`);
+        const response = await axios.get(`/api/admin/dashboard/patients-details?patientId=${patientId}`);
         setPatientDetails(response.data);
       } catch (error) {
         console.error("Failed to fetch patient details:", error);
@@ -299,7 +299,7 @@ const PatientDetailsPage = () => {
                     ? <Button variant="outline" size="sm">View</Button>
                     : <Button size="sm">Add Report</Button>
                   }
-                  {/* <a href={`/api/admin-dashboard/history/labreport/${lb.id}`} className="text-xs underline">
+                  {/* <a href={`/api/admin/dashboard/history/labreport/${lb.id}`} className="text-xs underline">
                     History
                   </a> */}
                 </div>
@@ -325,7 +325,7 @@ const PatientDetailsPage = () => {
                 {/* <p className="text-sm mb-4">Status: {a.status}</p> */}
                 <div className="mt-auto flex flex-col items-center gap-2">
                   <a
-                    href={`/api/admin-dashboard/history/prescription/${a.id}`}
+                    href={`/api/admin/dashboard/history/prescription/${a.id}`}
                     className="text-xs underline"
                   >
                     History
@@ -355,7 +355,7 @@ const PatientDetailsPage = () => {
                     ? <Button variant="outline" size="sm">View</Button>
                     : <Button size="sm">Add Plan</Button>
                   }
-                  <a href={`/api/admin-dashboard/history/dietplan/${a.id}`} className="text-xs underline">
+                  <a href={`/api/admin/dashboard/history/dietplan/${a.id}`} className="text-xs underline">
                     History
                   </a>
                 </div>
