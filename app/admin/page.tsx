@@ -1,67 +1,168 @@
-"use client";
+'use client'
+import type { Metadata } from "next"
+import Link from "next/link"
+import { BarChart3, CalendarPlus, Clock, DollarSign, FlaskConical, UserPlus, Users } from "lucide-react"
+import { useState, useEffect } from "react"
+import axios from "axios"
 
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import UsersPage from "@/app/admin/users/page"; 
-import ClincsPage from "@/app/admin/clinics/page";
-import AppointmentsPage from "@/app/admin/appointments/page";
-import DieticiansPage from "@/app/admin/dieticians/page";
-import DoctorsPage from "@/app/admin/doctors/page";
-import LabsPage from "@/app/admin/labs/page";
-import PaymentsPage from "@/app/admin/payments/page";
-import SlotsPage from "@/app/admin/slots/page";
-import PlansPage from "@/app/admin/plans/page";
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { AppointmentsTable } from "@/components/admin/AppointmentsTable"
+import { LabBookingsTable } from "@/components/admin/LabBookingsTable"
+import { PatientViewCard } from "@/components/admin/PatientViewCard"
+import { NotificationsList } from "@/components/admin/NotificationsList"
+import { SummaryCard } from "@/components/admin/SummaryCard"
 
-export default function AdminPage() {
+
+
+export default function DashboardPage() {
+  const [summaryData, setSummaryData] = useState({
+    totalPatients: 0,
+    activeSubscriptions: 0,
+    todaysAppointments: 0,
+    labBookingsPending: 0,
+    monthlyRevenue: 0,
+    newSignupsThisWeek: 0,
+  });
+
+  useEffect(() => {
+    const fetchSummaryData = async () => {
+      try {
+        const response = await axios.get("/api/admin/dashboard/summary");
+        setSummaryData(response.data);
+      } catch (error) {
+        console.error("Failed to fetch summary data:", error);
+      }
+    };
+
+    fetchSummaryData();
+  }, []);
+
   return (
-    <div className="container mx-auto p-4">
-      <Tabs defaultValue="users">
-        <div className="flex justify-center">
-
-          <TabsList className="mb-4">
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="clinics">Clinics</TabsTrigger>
-            <TabsTrigger value="appointments">Appointments</TabsTrigger>
-            <TabsTrigger value="dieticians">Dieticians</TabsTrigger>
-            <TabsTrigger value="doctors">Doctors</TabsTrigger>
-            <TabsTrigger value="labs">Labs</TabsTrigger>
-            <TabsTrigger value="payments">Payments</TabsTrigger>
-            <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
-            <TabsTrigger value="slots">Slots</TabsTrigger>
-            <TabsTrigger value="plans">Plans</TabsTrigger>
-          </TabsList>
+    <div className="flex flex-col">
+      <div className="flex items-center justify-between space-y-2 px-2 pt-6 md:px-4">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+          <p className="text-muted-foreground">Overview of your clinic's performance and activities</p>
         </div>
-        <TabsContent value="clinics">
-          <ClincsPage/>
-        </TabsContent>
-        <TabsContent value="users">
-          <UsersPage />
-        </TabsContent>
-        <TabsContent value="doctors">
-          <DoctorsPage />
-        </TabsContent>
-   
+        <div className="flex items-center space-x-2">
+          <Button asChild>
+            <Link href="/appointments/new">
+              <CalendarPlus className="mr-2 h-4 w-4" />
+              New Appointment
+            </Link>
+          </Button>
+        </div>
+      </div>
 
-        <TabsContent value="dieticians">
-          <DieticiansPage/>
-        </TabsContent>
+      {/* Summary Cards */}
+      <div className="mt-4 grid gap-4 px-2 md:px-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <SummaryCard
+          title="Total Patients"
+          value={summaryData.totalPatients.toString()}
+          trend="+12% from last month"
+          PrimaryIcon={Users}
+          OutlineIcon={Users}
+          accentColor="#F28A2E"
+          primaryIconColor="#134F30"
+        />
+        <SummaryCard
+          title="Active Subscriptions"
+          value={summaryData.activeSubscriptions.toString()}
+          trend="+5.2% from last month"
+          PrimaryIcon={BarChart3}
+          OutlineIcon={BarChart3}
+          accentColor="#F28A2E"
+          primaryIconColor="#134F30"
+        />
+        <SummaryCard
+          title="Today's Appointments"
+          value={summaryData.todaysAppointments.toString()}
+          trend="6 more than yesterday"
+          PrimaryIcon={Clock}
+          OutlineIcon={Clock}
+          accentColor="#F28A2E"
+          primaryIconColor="#134F30"
+        />
+        <SummaryCard
+          title="Lab Bookings Pending"
+          value={summaryData.labBookingsPending.toString()}
+          trend="4 require immediate attention"
+          PrimaryIcon={FlaskConical}
+          OutlineIcon={FlaskConical}
+          accentColor="#F28A2E"
+          primaryIconColor="#134F30"
+        />
+        <SummaryCard
+          title="Monthly Revenue"
+          value={`$${summaryData.monthlyRevenue.toString()}`}
+          trend="+20.1% from last month"
+          PrimaryIcon={DollarSign}
+          OutlineIcon={DollarSign}
+          accentColor="#F28A2E"
+          primaryIconColor="#134F30"
+        />
+        <SummaryCard
+          title="New Sign-ups This Week"
+          value={summaryData.newSignupsThisWeek.toString()}
+          trend="+12 from previous week"
+          PrimaryIcon={UserPlus}
+          OutlineIcon={UserPlus}
+          accentColor="#F28A2E"
+          primaryIconColor="#134F30"
+        />
+      </div>
 
-        <TabsContent value="labs">
-          <LabsPage/>
-        </TabsContent>
-        <TabsContent value="appointments">
-          <AppointmentsPage/>
-        </TabsContent>
-        <TabsContent value="slots">
-          <SlotsPage/>
-        </TabsContent>
-        <TabsContent value="payments">
-          <PaymentsPage/>
-        </TabsContent>
-        <TabsContent value="plans">
-          <PlansPage/>
-        </TabsContent>
-     
-      </Tabs>
+      <div className="grid gap-4 px-2 md:px-4 md:grid-cols-3 mt-4">
+        {/* Upcoming Appointments (moved to where Quick Actions was) */}
+        <div className="md:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Upcoming Appointments</CardTitle>
+              <CardDescription>View and manage upcoming patient appointments</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AppointmentsTable />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Notifications Section */}
+        <Card className="md:col-span-1">
+          <CardHeader>
+            <CardTitle>Notifications</CardTitle>
+            <CardDescription>Important alerts</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <NotificationsList />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tables Section */}
+      <div className="mt-4 grid gap-4 px-2 md:px-4">
+        <div className="grid md:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Lab Bookings</CardTitle>
+              <CardDescription>View and manage recent laboratory test bookings</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LabBookingsTable />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>New Patients This Week</CardTitle>
+              <CardDescription>Patients who registered in the last 7 days</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PatientViewCard />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
-  );
+  )
 }

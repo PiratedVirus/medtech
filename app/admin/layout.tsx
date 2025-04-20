@@ -7,6 +7,7 @@ import type { AppDispatch, RootState } from "@/store";
 import "@/app/globals.css";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
+import { SidebarNav } from "@/components/admin/AdminSidebarNav";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -49,9 +50,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   return (
     <ProfileProvider profile={profile}>
-      <main className="flex-grow p-4">
-        {children}
-      </main>
+      <div className="flex min-h-screen">
+          <SidebarNav />
+          <div className="flex-1 md:ml-16">
+            <main className="flex-1 bg-white">{children}</main>
+          </div>
+        </div>
     </ProfileProvider>
   );
 };

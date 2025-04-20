@@ -344,7 +344,7 @@ function PlanUsageMinimalLayout({
               />
             </svg>
           </div>
-          <span className="text-sm font-semibold text-primary">Plan Usage</span>
+          <span className="text-xl font-semibold">{subscriptionTracker.plan?.name} Usage</span>
         </div>
 
         <div className="flex justify-center items-center gap-4 px-1 mt-2">
