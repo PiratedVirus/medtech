@@ -1,5 +1,5 @@
 'use client'
-import { User, Calendar, Phone, Heart, Droplet, Activity, Ruler, Scale, FileText } from "lucide-react";
+import { User, Calendar, Phone, Heart, Droplet, Activity, Ruler, Scale, FileText, Home } from "lucide-react";
 
 import  { PlanUsageMinimal } from "@/components/patients/plans/PlanUsage";
 import { useState, useEffect } from "react";
@@ -15,6 +15,7 @@ const PatientDetailsPage = () => {
     id: number;
     name: string;
     email: string;
+    phoneNumber: string | number;
     joinedOn: string;
     plans: {
       id: number;
@@ -121,14 +122,14 @@ const PatientDetailsPage = () => {
   }
 
   return (
-    <div className="container mx-auto p-4 bg-muted">
+    <div className="container mx-auto p-4">
       {/* Header */}
 
 
       {/* Dashboard Grid */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
         {/* Patient Info */}
-        <Card className="col-span-full relative overflow-hidden rounded-lg bg-muted text-gray-500 p-6">
+        <Card className="col-span-full relative overflow-hidden rounded-lg bg-slate-50 text-gray-700 p-6">
           {/* Background icon */}
           <div className="absolute -right-10 -top-6 opacity-10">
             <User size={200} />
@@ -175,6 +176,29 @@ const PatientDetailsPage = () => {
                 <span className="font-semibold">{patientDetails.profile.gender}</span>
               </div>
               <div className="flex items-center gap-1.5 rounded-full bg-custom-mutedgreen px-3 py-2 text-sm">
+                <Home className="h-4 w-4 flex-shrink-0" />
+                <span className="text-xs ">Address: </span>
+                <span className="font-semibold">
+                  {patientDetails.profile.address || "N/A"}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-full bg-custom-mutedgreen px-3 py-2 text-sm">
+                <Calendar className="h-4 w-4 flex-shrink-0" />
+                <span className="text-xs ">Date of Birth:</span>
+                <span className="font-semibold">
+                  {patientDetails.profile.dateOfBirth
+                    ? new Date(patientDetails.profile.dateOfBirth).toLocaleDateString()
+                    : 'N/A'}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-full bg-custom-mutedgreen px-3 py-2 text-sm">
+                <Phone className="h-4 w-4 flex-shrink-0" />
+                <span className="text-xs ">Mobile:</span>
+                <span className="font-semibold">
+                  {patientDetails.phoneNumber || "N/A"}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-full bg-custom-mutedgreen px-3 py-2 text-sm">
                 <Droplet className="h-4 w-4 flex-shrink-0" />
                 <span className="text-xs ">Allergies:</span>
                 <span className="font-semibold">{patientDetails.profile.allergies || 'None'}</span>
@@ -189,15 +213,7 @@ const PatientDetailsPage = () => {
                 <span className="text-xs ">Emergency Contact:</span>
                 <span className="font-semibold">{patientDetails.profile.emergencyContact}</span>
               </div>
-              <div className="flex items-center gap-1.5 rounded-full bg-custom-mutedgreen px-3 py-2 text-sm">
-                <Calendar className="h-4 w-4 flex-shrink-0" />
-                <span className="text-xs ">Date of Birth:</span>
-                <span className="font-semibold">
-                  {patientDetails.profile.dateOfBirth
-                    ? new Date(patientDetails.profile.dateOfBirth).toLocaleDateString()
-                    : 'N/A'}
-                </span>
-              </div>
+    
             </div>
           </div>
         </Card>
@@ -245,7 +261,7 @@ const PatientDetailsPage = () => {
               dates: planUsage?.ophthalmologistConsultationDates || []
             },
           ].map(sec => (
-            <Card key={sec.label} className="border rounded-lg p-3 bg-white  text-center">
+            <Card key={sec.label} className=" rounded-lg p-3 bg-slate-50  text-center">
               <h4 className="font-semibold mb-3">{sec.label}</h4>
               <div className="flex flex-wrap justify-center gap-2">
                 {sec.dates.map(dt => (
@@ -265,13 +281,13 @@ const PatientDetailsPage = () => {
           ))}
         </div>
         {/* Lab Reports */}
-        <Card className="border rounded-lg p-4 bg-white">
-          <h3 className="font-semibold mb-4">Lab Reports</h3>
+        <Card className=" rounded-lg p-4 bg-custom-mutedgreen">
+          <h3 className="font-semibold text-xl mb-4">Lab Reports</h3>
           <div className="flex flex-wrap gap-4">
             {patientDetails.labBookings.map(lb => (
               <Card
                 key={lb.id}
-                className="group relative overflow-hidden border border-gray-100 bg-custom-mutedgreen shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center"
+                className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center"
               >
                 <div className="absolute -right-4 -top-4 h-24 w-24 opacity-5">
                   <FileText className="h-full w-full" />
@@ -293,12 +309,12 @@ const PatientDetailsPage = () => {
         </Card>
 
         {/* Appointment Prescriptions */}
-        <Card className="border rounded-lg p-4 bg-white">
-          <h3 className="font-semibold mb-4">Appointment Prescriptions</h3>
+        <Card className=" rounded-lg p-4 bg-custom-mutedgreen">
+          <h3 className="font-semibold text-xl mb-4">Appointment Prescriptions</h3>
           <div className="flex flex-wrap gap-4">
             {patientDetails.doctorAppointments.map(a => (
               <Card key={a.id}
-                className="group relative overflow-hidden border border-gray-100 bg-custom-mutedgreen shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center">
+                className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center">
                 {/* <div className="absolute -right-4 -top-4 h-24 w-24 opacity-5">
                   <FileText className="h-full w-full" />
                 </div> */}
@@ -326,7 +342,7 @@ const PatientDetailsPage = () => {
         </Card>
 
         {/* Diet Plans */}
-        <Card className="border rounded-lg p-4 bg-white">
+        <Card className=" rounded-lg p-4 bg-slate-50">
           <h3 className="font-semibold mb-4">Diet Plans</h3>
           <div className="flex flex-wrap gap-4">
             {patientDetails.dieticianAppointments.map(a => (
@@ -351,10 +367,10 @@ const PatientDetailsPage = () => {
 
 
         {/* Payment History */}
-        <div className="border rounded-lg p-4 bg-white">
+        <div className=" rounded-lg p-4 bg-slate-50">
           <h3 className="font-semibold mb-2">Payment History</h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm text-left">
+            <table className="min-w-full bg-white text-sm text-left">
               <thead className="bg-muted text-secondary font-semibold">
                 <tr>
                   <th className="px-4 py-2">Type</th>

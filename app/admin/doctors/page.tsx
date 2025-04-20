@@ -373,7 +373,7 @@ export default function DoctorsPage() {
   };
 
   return (
-    <div className="container mx-auto p-4 space-y-4">
+    <div className="container mx-auto p-4 bg-white space-y-4">
       <ToastContainer />
       {/* Header Section */}
 

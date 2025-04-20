@@ -16,6 +16,12 @@ import {
   Stethoscope,
   Users,
   X,
+  Home,
+  BriefcaseMedical,
+  HeartPulse,
+  Hospital,
+  Leaf
+
 } from "lucide-react"
 import { useState } from "react"
 
@@ -31,47 +37,68 @@ export function SidebarNav({ className, ...props }: SidebarNavProps) {
 
   const routes = [
     {
-      href: "/dashboard",
-      icon: LayoutDashboard,
-      title: "Dashboard",
+      href: "/admin",
+      icon: Home,
+      title: "Home",
     },
     {
-      href: "/patients",
+      href: "/admin/users",
       icon: Users,
+      title: "Users",
+    },
+
+    {
+      href: "/admin/patient-details",
+      icon: HeartPulse,
       title: "Patients",
     },
+
     {
-      href: "/appointments",
+      href: "/admin/dieticians",
+      icon: Leaf,
+      title: "Dieticians",
+    },
+    {
+      href: "/admin/doctors",
+      icon: Stethoscope,
+      title: "Doctors",
+    },
+    {
+      href: "/admin/appointments",
       icon: Calendar,
       title: "Appointments",
     },
     {
-      href: "/lab-bookings",
+      href: "/admin/labs",
       icon: ClipboardList,
-      title: "Lab Bookings",
+      title: "Labs",
     },
     {
-      href: "/subscriptions",
+      href: "/admin/clinics",
+      icon: Hospital,
+      title: "Clinics",
+    },
+    {
+      href: "/admin/payments",
       icon: BarChart,
-      title: "Subscriptions",
+      title: "Payments",
     },
     {
-      href: "/staff",
-      icon: Stethoscope,
-      title: "Staff",
+      href: "/admin/prescriptions",
+      icon: ClipboardList,
+      title: "Prescriptions",
     },
     {
-      href: "/analytics",
-      icon: BarChart,
-      title: "Analytics",
+      href: "/admin/slots",
+      icon: Calendar,
+      title: "Slots",
     },
     {
-      href: "/settings",
+      href: "/admin/plans",
       icon: Settings,
-      title: "Settings",
+      title: "Plans",
     },
   ]
-
   return (
     <>
       {/* Mobile Navigation */}
