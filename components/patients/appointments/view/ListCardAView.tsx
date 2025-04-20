@@ -39,20 +39,20 @@ export default function AppointmentListCard({ appointment }: { appointment: Appo
           <h1 className="text-[#56a67c] text-xl font-bold">
              {appointment?.doctor?.name}
           </h1>
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-700 text-sm">
             {appointment?.doctor?.doctorProfile?.specialty}
           </p>
-          <p className="text-gray-400 text-sm flex items-center gap-1">
+          <p className="text-gray-700 text-sm flex items-center gap-1">
             <Calendar className="h-4 w-4 text-gray-500" />
             {formattedDate} - {appointment.doctorAvailability.startTime}
           </p>
           <p className="text-gray-500 text-sm">
             Consultation:{" "}
-            <span className="text-purple-600">{appointment?.consultationType}</span>
+            <span className="text-gray-700 ">{appointment?.consultationType}</span>
           </p>
           <p className="text-gray-500 text-sm">
             Status:{" "}
-            <span className={`font-semibold ${appointment.status === "Completed" ? "text-green-600" : "text-blue-600"}`}>
+            <span className={` ${appointment.status === "Completed" ? "text-green-600" : "text-gray-700"}`}>
               {appointment.status}
             </span>
           </p>
@@ -61,7 +61,7 @@ export default function AppointmentListCard({ appointment }: { appointment: Appo
         {/* Prescription Button */}
         <div className="text-right">
           <Link href={appointment?.prescriptionLink || "/#"}>
-          <p className="text-gray-700 font-medium cursor-pointer hover:underline">
+          <p className="text-secondary font-medium cursor-pointer hover:underline">
             Prescription
           </p>
           </Link>
