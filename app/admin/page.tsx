@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AppointmentsTable } from "@/components/admin/appointments-table"
 import { LabBookingsTable } from "@/components/admin/lab-bookings-table"
-import { NewPatientsCards } from "@/components/admin/new-patients-cards"
+import { PatientViewCard } from "@/components/admin/PatientViewCard"
 import { NotificationsList } from "@/components/admin/notifications-list"
 import { SummaryCard } from "@/components/admin/summary-card"
 
@@ -158,7 +158,7 @@ export default function DashboardPage() {
               <CardDescription>Patients who registered in the last 7 days</CardDescription>
             </CardHeader>
             <CardContent>
-              <NewPatientsCards />
+              <PatientViewCard />
             </CardContent>
           </Card>
         </div>

@@ -46,7 +46,16 @@ export async function GET(request: Request) {
               status: true,
               prescriptionLink: true,
               appointmentFor: true,
-              doctor: { select: { id: true, name: true } }
+              doctor: { select: { id: true, name: true } },
+              payment: {
+                select: {
+                  amount: true,
+                  currency: true,
+                  paymentStatus: true,
+                  razorpayPaymentId: true,
+                  createdAt: true
+                }
+              }
             }
           },
           labPatientBookings: {
@@ -72,20 +81,21 @@ export async function GET(request: Request) {
         email: patient.email,
         joinedOn: patient.createdAt,
         profile: patient.patientProfile,
-        plans: patient.patientProfile.planTrackers.map(pt => ({
+        plans: patient.patientProfile?.planTrackers?.map(pt => ({
           id: pt.subscriptionId,
           planName: pt.plan.name,
           startDate: pt.startDate,
           endDate: pt.endDate,
           isActive: pt.isActive
-        })),
+        })) || [],
         doctorAppointments: doctorAppointments.map(a => ({
           id: a.id,
           date: a.appointmentDate,
           type: a.consultationType,
           status: a.status,
           prescriptionLink: a.prescriptionLink,
-          doctorName: a.doctor.name
+          doctorName: a.doctor.name,
+          payment: a.payment
         })),
         dieticianAppointments: dieticianAppointments.map(a => ({
           id: a.id,
@@ -106,7 +116,24 @@ export async function GET(request: Request) {
     } else {
       const users = await prisma.user.findMany({
         where: { role: 'PATIENT' },
-        select: { id: true, name: true, email: true, createdAt: true },
+        select: { 
+          id: true,
+          name: true, 
+          email: true, 
+          phoneNumber: true,
+          patientProfile: {
+            select: {
+              planTrackers: {
+                select: {
+                  endDate: true,
+                  isActive: true,
+                  plan: { select: { name: true } }
+                }
+              }
+            }
+          },
+        
+        },
       });
       return NextResponse.json(users);
     }

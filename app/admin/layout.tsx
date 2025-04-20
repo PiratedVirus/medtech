@@ -53,7 +53,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       <div className="flex min-h-screen">
           <SidebarNav />
           <div className="flex-1 md:ml-16">
-            <main className="flex-1">{children}</main>
+            <main className="flex-1 bg-muted">{children}</main>
           </div>
         </div>
     </ProfileProvider>
