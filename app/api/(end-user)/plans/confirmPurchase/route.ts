@@ -74,6 +74,7 @@ export async function POST(request: Request) {
       patientId, // pass patient ID instead
       razorpayOrderId,
       razorpayPaymentId,
+      razorpayResponse
     } = body || {};
 
     console.log("Received planId=", planId, " patientId=", patientId);
@@ -83,128 +84,141 @@ export async function POST(request: Request) {
       throw new Error("planId and patientId are required");
     }
 
-    // 1) Fetch the plan (e.g. "6 Months" or "12 Months")
-    const plan = await prisma.plan.findUnique({
-      where: { id: planId },
-    });
-    console.log("Fetched plan:", plan);
+    const newTracker = await prisma.$transaction(async (tx) => {
+      // 1) Fetch the plan (e.g. "6 Months" or "12 Months")
+      const plan = await tx.plan.findUnique({
+        where: { id: planId },
+      });
+      console.log("Fetched plan:", plan);
 
-    if (!plan) {
-      console.log("Plan not found, throwing error...");
-      throw new Error("Plan not found");
-    }
-
-    // 2) Convert plan.duration (e.g. "6 Months") to a numeric total
-    let monthsToAdd = 0;
-    const durationLower = plan.duration.toLowerCase();
-    if (durationLower.includes("6")) {
-      monthsToAdd = 6;
-    } else if (durationLower.includes("12")) {
-      monthsToAdd = 12;
-    }
-
-    // fallback if needed
-    if (!monthsToAdd) {
-      console.log("Unsupported plan duration:", plan.duration);
-      throw new Error("Unsupported plan duration: " + plan.duration);
-    }
-
-    console.log("Plan is for", monthsToAdd, "months.");
-
-    // 3) Fetch plan features
-    const planFeatureDetails = await prisma.planFeature.findMany({
-      where: { planId },
-    });
-    console.log("Fetched planFeatureDetails:", planFeatureDetails);
-
-    // We'll accumulate all next appointment items here:
-    const allNextAppointmentItems: { featureName: string; date: Date }[] = [];
-
-    // Generate next appointment dates for each feature
-    for (const feature of planFeatureDetails) {
-      const featureDates = generateNextAppointmentDates(
-        feature.featureName,
-        feature.occurrencesPerInterval || 0,
-        feature.intervalInMonths || 0,
-        monthsToAdd
-      );
-      console.log(
-        `Generated ${featureDates.length} dates for feature="${feature.featureName}"`
-      );
-      // Merge into our master array
-      allNextAppointmentItems.push(...featureDates);
-    }
-
-    // 4) Convert that array into a dictionary by featureName => array of dates
-    const featureWiseDatesArray: Record<string, Date[]> = {};
-    for (const item of allNextAppointmentItems) {
-      const { featureName, date } = item;
-      if (!featureWiseDatesArray[featureName]) {
-        featureWiseDatesArray[featureName] = [];
+      if (!plan) {
+        console.log("Plan not found, throwing error...");
+        throw new Error("Plan not found");
       }
-      featureWiseDatesArray[featureName].push(date);
-    }
 
-    console.log("featureWiseDatesArray:", featureWiseDatesArray);
+      // 2) Convert plan.duration (e.g. "6 Months") to a numeric total
+      let monthsToAdd = 0;
+      const durationLower = plan.duration.toLowerCase();
+      if (durationLower.includes("6")) {
+        monthsToAdd = 6;
+      } else if (durationLower.includes("12")) {
+        monthsToAdd = 12;
+      }
 
-    // 5) Prepare data for storing in subscriptionTracker
-    const doctorConsultationDates = featureWiseDatesArray["Doctor Consultation"]?.map(d => d.toISOString()) || [];
-    const labTestsDates = featureWiseDatesArray["Lab Tests"]?.map(d => d.toISOString()) || [];
-    const dieticianConsultationDates = featureWiseDatesArray["Dietician Consultation"]?.map(d => d.toISOString()) || [];
-    const ophthalmologistConsultationDates = featureWiseDatesArray["Ophthalmologist Consultation"]?.map(d => d.toISOString()) || [];
-    const usedMedicines = featureWiseDatesArray["Medicines"]?.map(d => d.toISOString()) || [];
+      // fallback if needed
+      if (!monthsToAdd) {
+        console.log("Unsupported plan duration:", plan.duration);
+        throw new Error("Unsupported plan duration: " + plan.duration);
+      }
 
-    console.log("doctorConsultationDates:", doctorConsultationDates);
-    console.log("labTestsDates:", labTestsDates);
-    console.log("dieticianConsultationDates:", dieticianConsultationDates);
-    console.log("ophthalmologistConsultationDates:", ophthalmologistConsultationDates);
-    console.log("usedMedicines:", usedMedicines);
+      console.log("Plan is for", monthsToAdd, "months.");
 
-    // 6) Compute plan validity
-    const startDate = new Date();
-    const endDate = addMonths(startDate, monthsToAdd);
-    console.log("startDate=", startDate, " endDate=", endDate);
+      // 3) Fetch plan features
+      const planFeatureDetails = await tx.planFeature.findMany({
+        where: { planId },
+      });
+      console.log("Fetched planFeatureDetails:", planFeatureDetails);
 
-    // 7) Create the subscription (PlanTracker / subscriptionTracker)
-    console.log("Creating subscriptionTracker record now...");
-    const newTracker = await prisma.subscriptionTracker.create({
-      data: {
-        planId,
-        patientId: patientId, // patient ID
-        razorpayOrderId,
-        razorpayPaymentId,
-        paymentStatus: "PAID",
+      // We'll accumulate all next appointment items here:
+      const allNextAppointmentItems: { featureName: string; date: Date }[] = [];
 
-        doctorConsultationDates,
-        labTestsDates,
-        dieticianConsultationDates,
-        ophthalmologistConsultationDates,
-        usedMedicines,
+      // Generate next appointment dates for each feature
+      for (const feature of planFeatureDetails) {
+        const featureDates = generateNextAppointmentDates(
+          feature.featureName,
+          feature.occurrencesPerInterval || 0,
+          feature.intervalInMonths || 0,
+          monthsToAdd
+        );
+        console.log(
+          `Generated ${featureDates.length} dates for feature="${feature.featureName}"`
+        );
+        // Merge into our master array
+        allNextAppointmentItems.push(...featureDates);
+      }
 
-        isActive: true,
-        startDate,
-        endDate,
-      },
+      // 4) Convert that array into a dictionary by featureName => array of dates
+      const featureWiseDatesArray: Record<string, Date[]> = {};
+      for (const item of allNextAppointmentItems) {
+        const { featureName, date } = item;
+        if (!featureWiseDatesArray[featureName]) {
+          featureWiseDatesArray[featureName] = [];
+        }
+        featureWiseDatesArray[featureName].push(date);
+      }
+
+      console.log("featureWiseDatesArray:", featureWiseDatesArray);
+
+      // 5) Prepare data for storing in subscriptionTracker
+      const doctorConsultationDates = featureWiseDatesArray["Doctor Consultation"]?.map(d => d.toISOString()) || [];
+      const labTestsDates = featureWiseDatesArray["Lab Tests"]?.map(d => d.toISOString()) || [];
+      const dieticianConsultationDates = featureWiseDatesArray["Dietician Consultation"]?.map(d => d.toISOString()) || [];
+      const ophthalmologistConsultationDates = featureWiseDatesArray["Ophthalmologist Consultation"]?.map(d => d.toISOString()) || [];
+      const usedMedicines = featureWiseDatesArray["Medicines"]?.map(d => d.toISOString()) || [];
+
+      console.log("doctorConsultationDates:", doctorConsultationDates);
+      console.log("labTestsDates:", labTestsDates);
+      console.log("dieticianConsultationDates:", dieticianConsultationDates);
+      console.log("ophthalmologistConsultationDates:", ophthalmologistConsultationDates);
+      console.log("usedMedicines:", usedMedicines);
+
+      // 6) Compute plan validity
+      const startDate = new Date();
+      const endDate = addMonths(startDate, monthsToAdd);
+      console.log("startDate=", startDate, " endDate=", endDate);
+
+      // 7) Create the subscription (PlanTracker / subscriptionTracker)
+      console.log("Creating subscriptionTracker record now...");
+      const newTracker = await tx.subscriptionTracker.create({
+        data: {
+          planId,
+          patientId: patientId, // patient ID
+          razorpayOrderId,
+          razorpayPaymentId,
+          paymentStatus: "PAID",
+
+          doctorConsultationDates,
+          labTestsDates,
+          dieticianConsultationDates,
+          ophthalmologistConsultationDates,
+          usedMedicines,
+
+          isActive: true,
+          startDate,
+          endDate,
+        },
+      });
+      if (razorpayResponse) {
+        console.log("Creating payment record for subscriptionId:", newTracker.subscriptionId, "with razorpayResponse:", razorpayResponse);
+        await tx.payment.create({
+          data: {
+            subscriptionId: newTracker.subscriptionId, // pass subscriptionId here
+            razorpayOrderId: razorpayResponse.razorpay_order_id,
+            razorpayPaymentId: razorpayResponse.razorpay_payment_id,
+            amount: razorpayResponse.amount,
+            currency: razorpayResponse.currency || "INR",
+            paymentStatus: "Paid",
+            paymentMethod: razorpayResponse.method || "upi",
+          },
+        });
+        console.log("Payment record created");
+      }
+      console.log("subscriptionTracker created successfully:", newTracker);
+
+      const updatePatient = await tx.patientProfile.update({
+        where: { id: patientId },
+        data: {
+          planId,
+          subscriptionId: newTracker.subscriptionId,
+        },
+      });
+
+      return newTracker;
     });
-    console.log("subscriptionTracker created successfully:", newTracker);
-
-    const updatePateint = await prisma.patientProfile.update({
-      where: { id: patientId },
-      data: {
-        planId,
-        subscriptionId: newTracker.subscriptionId,
-      },
-    });
-
-    // 8) Return the result with an "isPlanActive" flag
-    // const now = new Date();
-    // const isPlanActive = newTracker.isActive && now < newTracker.endDate;
-    // console.log("isPlanActive=", isPlanActive);
 
     return NextResponse.json({
       success: true,
       subscriptionTracker: newTracker,
-      // isPlanActive,
     });
   } catch (error: any) {
     // Log the error object fully. If error is null or undefined,

@@ -66,7 +66,16 @@ export async function GET(request: Request) {
               labDate: true,
               status: true,
               labResult: true,
-              labPackage: { select: { id: true, name: true } }
+              labPackage: { select: { id: true, name: true } },
+              payment: {
+                select: {
+                  amount: true,
+                  currency: true,
+                  paymentStatus: true,
+                  razorpayPaymentId: true,
+                  createdAt: true
+                }
+              }
             }
           }
         }
@@ -117,7 +126,8 @@ export async function GET(request: Request) {
           date: lb.labDate,
           status: lb.status,
           reportLink: Array.isArray(lb.labResult) ? lb.labResult : lb.labResult ? [lb.labResult] : [],
-          labPackageName: lb.labPackage.name
+          labPackageName: lb.labPackage.name,
+          payment: lb.payment
         }))
       };
       return NextResponse.json(formatted);

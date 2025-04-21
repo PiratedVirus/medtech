@@ -50,6 +50,7 @@ interface Plan {
   startDate: string;
   endDate: string;
   isActive: boolean;
+  payment?: Payment | null; // Added payment property
 }
 
 interface Payment {
@@ -66,6 +67,8 @@ interface LabBooking {
   date: string;
   status: string;
   reportLink?: string | null;
+  payment?: Payment | null;
+
 }
 
 interface DoctorAppointment {
@@ -545,7 +548,7 @@ const PatientDetailsPage = () => {
                 <tr key={`appointment-${appointment.id}`} className="border-b">
                   <td className="px-4 py-2">Appointment</td>
                   <td className="px-4 py-2">{appointment.doctorName}</td>
-                  <td className="px-4 py-2">{appointment.payment.amount} {appointment.payment.currency}</td>
+                  <td className="px-4 py-2">{appointment.payment.currency} {(appointment.payment.amount / 100)}</td>
                   <td className="px-4 py-2">{appointment.payment.paymentStatus}</td>
                   <td className="px-4 py-2">{appointment.payment.razorpayPaymentId ? "Online" : "Offline"}</td>
                   <td className="px-4 py-2">{new Date(appointment.payment.createdAt).toLocaleDateString()}</td>
@@ -559,7 +562,7 @@ const PatientDetailsPage = () => {
                 <tr key={`lab-${labBooking.id}`} className="border-b">
                   <td className="px-4 py-2">Lab Booking</td>
                   <td className="px-4 py-2">{labBooking.labPackageName}</td>
-                  <td className="px-4 py-2">--</td>
+                  <td className="px-4 py-2">{labBooking.payment?.currency ?? 'INR'} {(labBooking.payment?.amount ?? 0) / 100}</td>
                   <td className="px-4 py-2">{labBooking.status}</td>
                   <td className="px-4 py-2">--</td>
                   <td className="px-4 py-2">{new Date(labBooking.date).toLocaleDateString()}</td>
@@ -614,10 +617,10 @@ const PatientDetailsPage = () => {
                 payment: a.payment ? { amount: a.payment.amount } : undefined,
               })),
               plans: patientDetails.plans.map(p => ({
-                amount: undefined,
+                amount: p.payment?.amount,
               })),
               labBookings: patientDetails.labBookings.map(lb => ({
-                paymentOption: undefined,
+                payment: lb.payment ? { amount: lb.payment.amount } : undefined,
               })),
             }}
           />

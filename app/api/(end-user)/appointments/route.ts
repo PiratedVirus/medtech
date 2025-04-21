@@ -1,69 +1,7 @@
-// filepath: /Users/saurabhkulkarni/Desktop/caredb/app/api/(end-user)/appointments/route.ts
 import { NextResponse, NextRequest } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { google } from "googleapis";
 
 const prisma = new PrismaClient();
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
-const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN!;
-const REDIRECT_URI = "https://developers.google.com/oauthplayground";
-
-const oauth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
-oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
-
-async function createGoogleMeetLink(slot: any, doctorId: number, patientId: number) {
-  try {
-    console.log("Creating Google Meet link for slot:", slot);
-    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
-
-    const startDateTime = new Date(slot.date);
-    startDateTime.setHours(
-      parseInt(slot.startTime.split(":")[0], 10),
-      parseInt(slot.startTime.split(":")[1], 10)
-    );
-
-    const endDateTime = new Date(slot.date);
-    endDateTime.setHours(
-      parseInt(slot.endTime.split(":")[0], 10),
-      parseInt(slot.endTime.split(":")[1], 10)
-    );
-
-    const event = {
-      summary: "Doctor Consultation",
-      description: `Consultation with Doctor ID: ${doctorId}`,
-      start: { dateTime: startDateTime.toISOString(), timeZone: "Asia/Kolkata" },
-      end: { dateTime: endDateTime.toISOString(), timeZone: "Asia/Kolkata" },
-      conferenceData: {
-        createRequest: {
-          requestId: `meet-${Date.now()}`,
-          conferenceSolutionKey: { type: "hangoutsMeet" },
-        },
-      },
-      // attendees: [{ email: "patient@example.com" }], // Optional
-    };
-
-    console.log("Event payload for Google Calendar:", event);
-
-    const response = await calendar.events.insert({
-      calendarId: "primary",
-      conferenceDataVersion: 1,
-      requestBody: event,
-    });
-
-    console.log("Google Meet link created:", response.data.hangoutLink);
-    return response.data.hangoutLink || null;
-  } catch (error: any) {
-    console.error("Error creating Google Meet link:", {
-      message: error.message,
-      config: error.config,
-      response: error.response?.data,
-      status: error.response?.status,
-      headers: error.response?.headers,
-    });
-    return null;
-  }
-}
 
 /**
  * GET /api/appointments
@@ -271,70 +209,61 @@ export async function POST(request: Request) {
       );
     }
 
-    // Google Meet link for online consultations
-    let meetLink = null;
-    if (consultationType === "Video") {
-      console.log("Creating Google Meet link...");
-      meetLink = await createGoogleMeetLink(slot, doctorId, patientId);
-      console.log("Google Meet link created:", meetLink);
-    }
-
-    // ✅ First, create the appointment
-    const newAppointment = await prisma.appointment.create({
-      data: {
-        patientId,
-        doctorId,
-        doctorAvailabilityId: slot.id,
-        appointmentFor,
-        fullName,
-        mobile,
-        email,
-        appointmentDate: slot.date ? new Date(slot.date) : null,
-        appointmentLink: meetLink,
-        consultationType,
-        status: "Scheduled",
-        isDietician,
-        subscriptionId,
-      },
-    });
-
-    if (consultationMode === "plan") {
-      await prisma.subscriptionTracker.update({
-        where: { subscriptionId },
-        data: isDietician
-          ? { dieticianConsultationDates: doctorConsultationDates }
-          : { doctorConsultationDates: doctorConsultationDates },
-      });
-    }
-
-    console.log("Appointment created successfully with ID:", newAppointment.id);
-
-    // ✅ Second, update Doctor Availability status
-    await prisma.doctorAvailability.update({
-      where: { id: slot.id },
-      data: { status: "booked" },
-    });
-
-    // ✅ Third, create the Payment (only if online)
-    if (paymentMethod === "online" && razorpayResponse) {
-      console.log("Creating payment record...");
-      await prisma.payment.create({
+    // Wrap all DB actions in a transaction
+    const newAppointment = await prisma.$transaction(async (tx) => {
+      // Create the appointment
+      const appointment = await tx.appointment.create({
         data: {
-          appointmentId: newAppointment.id, // ✅ Now we have the appointmentId
-          razorpayOrderId: razorpayResponse.razorpay_order_id,
-          razorpayPaymentId: razorpayResponse.razorpay_payment_id,
-          amount: razorpayResponse.amount,
-          currency: razorpayResponse.currency || "INR",
-          paymentStatus: "Paid",
-          paymentMethod: razorpayResponse.method || "upi",
+          patientId,
+          doctorId,
+          doctorAvailabilityId: slot.id,
+          appointmentFor,
+          fullName,
+          mobile,
+          email,
+          appointmentDate: slot.date ? new Date(slot.date) : null,
+          consultationType,
+          status: "Scheduled",
+          isDietician,
+          subscriptionId,
         },
       });
-      console.log("Payment record created.");
-    } else {
-      console.log("Skipping payment record as payment method is not online.");
-    }
 
-    console.log("Transaction completed successfully.");
+      // Update subscription tracker if using plan
+      if (consultationMode === "plan") {
+        await tx.subscriptionTracker.update({
+          where: { subscriptionId },
+          data: isDietician
+            ? { dieticianConsultationDates: doctorConsultationDates }
+            : { doctorConsultationDates: doctorConsultationDates },
+        });
+      }
+
+      // Mark the slot as booked
+      await tx.doctorAvailability.update({
+        where: { id: slot.id },
+        data: { status: "booked" },
+      });
+
+      // Create payment record if online
+      if (paymentMethod === "online" && razorpayResponse) {
+        await tx.payment.create({
+          data: {
+            appointmentId: appointment.id,
+            razorpayOrderId: razorpayResponse.razorpay_order_id,
+            razorpayPaymentId: razorpayResponse.razorpay_payment_id,
+            amount: razorpayResponse.amount,
+            currency: razorpayResponse.currency || "INR",
+            paymentStatus: "Paid",
+            paymentMethod: razorpayResponse.method || "upi",
+          },
+        });
+      }
+
+      return appointment;
+    });
+    console.log("Transaction completed successfully, appointment ID:", newAppointment.id);
+
     return NextResponse.json({ success: true, data: newAppointment });
 
   } catch (error) {

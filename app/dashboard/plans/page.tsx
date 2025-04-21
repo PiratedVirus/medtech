@@ -105,6 +105,7 @@ export default function PricingTable() {
             const confirmRes = await axios.post("/api/plans/confirmPurchase", {
               planId,
               patientId: profile?.patientProfile?.id,
+              razorpayResponse: response,
               razorpayOrderId: orderId,
               razorpayPaymentId: response.razorpay_payment_id,
             });

@@ -213,6 +213,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
                 onOptionChange={setPaymentOption}
                 firstValidDate={firstValidDate}
                 consultationType={paymentOption || ""}
+                consultationFee={labBbookingData?.price}
               />
             </div>
 

@@ -12,6 +12,7 @@ interface PaymentSelectionProps {
   onOptionChange: (option: string) => void;
   consultationType: string;
   firstValidDate: any;
+  consultationFee: any
 }
 
 export default function PaymentSelection({
@@ -19,8 +20,10 @@ export default function PaymentSelection({
   onOptionChange,
   consultationType,
   firstValidDate,
+  consultationFee
 }: PaymentSelectionProps) {
   console.log("consultation Type is ", consultationType);
+  console.log("Fees is ", consultationFee);
   const isVideoConsultation = consultationType === "video";
   const subscriptionTracker = useSelector(
     (state: RootState) => state.subscriptionsStore.subscriptionData
@@ -127,7 +130,7 @@ export default function PaymentSelection({
               selectedOption === "online" ? "text-primary" : "text-[#2c2e38]"
             )}
           >
-            ₹ 500 <br /> Pay Online
+            ₹ {consultationFee} <br /> Pay Online
           </p>
         </Card>
 
@@ -150,7 +153,7 @@ export default function PaymentSelection({
                   : "text-[#2c2e38]"
             )}
           >
-            ₹ 500 <br /> Pay later at the clinic
+            ₹ {consultationFee} <br /> Pay later at the clinic
           </p>
         </Card>
       </div>

@@ -209,7 +209,7 @@ model Appointment {
   patient              User @relation("Patient", fields: [patientId], references: [id])
   doctor               User @relation("Doctor", fields: [doctorId], references: [id])
   doctorAvailability   DoctorAvailability @relation(fields: [doctorAvailabilityId], references: [id])
-  payment              Payment?
+  payment              Payment?    @relation("AppointmentPayment")
 
   // Relationships
   subscriptionTracker        SubscriptionTracker? @relation(fields: [subscriptionId], references: [subscriptionId])
@@ -240,22 +240,29 @@ model Complaint {
 }
 
 model Payment {
-  id              Int    @id @default(autoincrement())
-  appointmentId   Int    @unique
-  razorpayOrderId String?
+  id                Int           @id @default(autoincrement())
+  appointmentId     Int?          @unique
+  labBookingId      Int?          @unique
+  subscriptionId    Int?          @unique
+  razorpayOrderId   String?
   razorpayPaymentId String?
-  amount          Int
-  currency        String @default("INR")
-  paymentStatus   String
-  paymentMethod   String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime? @updatedAt
-  deletedAt       DateTime?
+  amount            Int
+  currency          String        @default("INR")
+  paymentStatus     String
+  paymentMethod     String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime?     @updatedAt
+  deletedAt         DateTime?
 
-  appointment     Appointment @relation(fields: [appointmentId], references: [id])
+  // two one‐to‐one relations:
+  appointment       Appointment?  @relation("AppointmentPayment", fields: [appointmentId], references: [id])
+  labBooking        LabBooking?   @relation("LabBookingPayment",  fields: [labBookingId],  references: [id])
+  subscription      SubscriptionTracker? @relation("SubscriptionPayment", fields: [subscriptionId], references: [subscriptionId])
 
   @@index([deletedAt])
 }
+
+
 
 model LabPackage {
   id          Int    @id @default(autoincrement())
@@ -295,7 +302,7 @@ model LabBooking {
   patient       User @relation("LabPatient", fields: [patientId], references: [id])
   labTech       User? @relation("LabTech", fields: [labTechId], references: [id])
   labPackage    LabPackage @relation(fields: [labPackageId], references: [id])
-
+  payment       Payment?    @relation("LabBookingPayment")
   @@index([deletedAt])
 }
 
@@ -367,6 +374,7 @@ model SubscriptionTracker {
   plan                         Plan      @relation(fields: [planId], references: [id])
   user                         PatientProfile      @relation(fields: [patientId], references: [id])
   appointments                 Appointment[]
+  payments                     Payment[] @relation("SubscriptionPayment")
   @@index([deletedAt])
 }
 
