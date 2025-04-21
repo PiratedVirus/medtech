@@ -75,8 +75,12 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Patient not found" }, { status: 404 });
       }
       // Split appointments by doctor vs dietician
-      const doctorAppointments = patient.patientAppointments.filter(a => a.isDietician === false);
-      const dieticianAppointments = patient.patientAppointments.filter(a => a.isDietician);
+      const doctorAppointments = patient.patientAppointments.filter(a => a.isDietician === false)
+        .sort((a, b) => new Date(b.appointmentDate || 0).getTime() - new Date(a.appointmentDate || 0).getTime());
+      const dieticianAppointments = patient.patientAppointments.filter(a => a.isDietician)
+        .sort((a, b) => new Date(b.appointmentDate || 0).getTime() - new Date(a.appointmentDate || 0).getTime());
+      const sortedLabBookings = patient.labPatientBookings
+        .sort((a, b) => new Date(b.labDate).getTime() - new Date(a.labDate).getTime());
       const formatted = {
         id: patient.id,
         name: patient.name,
@@ -108,7 +112,7 @@ export async function GET(request: Request) {
           doctorName: a.doctor.name,
           payment: a.payment
         })),
-        labBookings: patient.labPatientBookings.map(lb => ({
+        labBookings: sortedLabBookings.map(lb => ({
           id: lb.id,
           date: lb.labDate,
           status: lb.status,
