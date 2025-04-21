@@ -112,7 +112,7 @@ export async function GET(request: Request) {
           id: lb.id,
           date: lb.labDate,
           status: lb.status,
-          reportLink: lb.labResult,
+          reportLink: Array.isArray(lb.labResult) ? lb.labResult : lb.labResult ? [lb.labResult] : [],
           labPackageName: lb.labPackage.name
         }))
       };
@@ -144,5 +144,35 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: 'Failed to fetch patient data' }, { status: 500 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { labBookingId, links } = body;
+
+    if (!labBookingId || !Array.isArray(links)) {
+      return NextResponse.json({ error: "Missing or invalid fields" }, { status: 400 });
+    }
+
+    const existing = await prisma.labBooking.findUnique({
+      where: { id: labBookingId },
+      select: { labResult: true },
+    });
+
+    const updated = await prisma.labBooking.update({
+      where: { id: labBookingId },
+      data: {
+        labResult: {
+          set: [...(existing?.labResult || []), ...links],
+        },
+      },
+    });
+
+    return NextResponse.json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Lab report upload error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

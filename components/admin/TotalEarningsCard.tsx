@@ -51,7 +51,7 @@ const TotalEarningsCard = ({ patientDetails }: Props) => {
           <span className="text-xl font-semibold">Total Earnings</span>
         </div>
 
-        <div className="flex justify-end items-end px-3 text-2xl font-bold text-[#134F30]">
+        <div className="flex justify-end items-end px-3 text-3xl font-bold text-[#134F30]">
           ₹&nbsp;
           <CountUp end={displayedTotal / 100} duration={1.5} decimals={2} />
         </div>

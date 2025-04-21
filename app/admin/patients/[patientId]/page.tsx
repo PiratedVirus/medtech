@@ -85,7 +85,8 @@ const PatientDetailsPage = () => {
         paymentStatus: string;
         razorpayPaymentId?: string;
         createdAt: string;
-      } | null;    }[];
+      } | null;
+    }[];
   }
   const [uploadingAppointmentId, setUploadingAppointmentId] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -312,13 +313,130 @@ const PatientDetailsPage = () => {
                   <h4 className="font-medium mb-2"><b>{lb.labPackageName}</b></h4>
                   <p className="text-sm mb-4">Booked on {new Date(lb.date).toLocaleDateString()}</p>
                   <div className="mt-auto flex items-center justify-between">
-                    {lb.reportLink
-                      ? <Button variant="outline" size="sm">View</Button>
-                      : <Button size="sm">Upload Report</Button>
-                    }
-                    {/* <a href={`/api/admin/dashboard/history/labreport/${lb.id}`} className="text-xs underline">
-                    History
-                  </a> */}
+                    {Array.isArray(lb.reportLink) && lb.reportLink.length > 0 ? (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant={"outline"} size="sm">View Reports</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogTitle>Lab Reports</DialogTitle>
+                          <div className="flex flex-wrap gap-2">
+                            {lb.reportLink.map((url, index) => {
+                              const fileName = decodeURIComponent(url.split("/").pop() || `LabReport-${index + 1}`);
+                              return (
+                                <a key={index} href={url} target="_blank" rel="noopener noreferrer">
+                                  <Button variant="outline" size="sm" className="whitespace-nowrap">{fileName}</Button>
+                                </a>
+                              );
+                            })}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    ) : (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button size="sm" onClick={() => setUploadingAppointmentId(lb.id)}>
+                            Upload Report
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogTitle>Upload Lab Report PDF</DialogTitle>
+                          <div
+                            className="w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary transition"
+                            onDrop={async (e) => {
+                              e.preventDefault();
+                              const file = e.dataTransfer.files?.[0];
+                              if (!file || !uploadingAppointmentId) return;
+                              setUploading(true);
+                              try {
+                                const arrayBuffer = await file.arrayBuffer();
+                                const fileName = `${patientDetails.name.replace(/\s+/g, "-")}-lab-${uploadingAppointmentId}.pdf`;
+                                const { url } = await put(fileName, arrayBuffer, {
+                                  access: "public",
+                                  token: process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN,
+                                });
+                                await axios.put(`/api/admin/dashboard/patients-details`, {
+                                  labBookingId: uploadingAppointmentId,
+                                  link: url,
+                                });
+                                const response = await axios.get(`/api/admin/dashboard/patients-details?patientId=${patientId}`);
+                                setPatientDetails(response.data);
+                                setUploadSuccess(true);
+                                toast.success("Lab report uploaded successfully.");
+                                setTimeout(() => {
+                                  setUploadingAppointmentId(null);
+                                  setUploadSuccess(false);
+                                }, 1500);
+                              } catch (err) {
+                                console.error("Upload failed", err);
+                              } finally {
+                                setUploading(false);
+                              }
+                            }}
+                            onDragOver={(e) => e.preventDefault()}
+                          >
+                            <div className="flex flex-col items-center gap-2">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-8 w-8 text-gray-500"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16v-4m0 0l-2 2m2-2l2 2m6 4H6a2 2 0 01-2-2V7a2 2 0 012-2h3.586a1 1 0 01.707.293l1.414 1.414A1 1 0 0012 7h8a2 2 0 012 2v7a2 2 0 01-2 2z" />
+                              </svg>
+                              <p className="text-sm text-gray-600">Drag & drop a PDF here or click below</p>
+                              <label className="cursor-pointer bg-muted px-3 py-1 text-sm rounded border border-gray-300 mt-2 hover:bg-primary hover:text-white transition">
+                                Browse files
+                              <input
+                                type="file"
+                                accept="application/pdf"
+                                multiple
+                                hidden
+                                onChange={async (e) => {
+                                  const files = e.target.files;
+                                  if (!files || !uploadingAppointmentId) return;
+                                  setUploading(true);
+                                  try {
+                                    const uploadedLinks: string[] = [];
+                                    for (const file of files) {
+                                      const arrayBuffer = await file.arrayBuffer();
+                                      const fileName = `${patientDetails.name.replace(/\s+/g, "-")}-lab-${uploadingAppointmentId}-${file.name}`;
+                                      const { url } = await put(fileName, arrayBuffer, {
+                                        access: "public",
+                                        token: process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN,
+                                      });
+                                      uploadedLinks.push(url);
+                                    }
+                                    await axios.put(`/api/admin/dashboard/patients-details`, {
+                                      labBookingId: uploadingAppointmentId,
+                                      links: uploadedLinks,
+                                    });
+                                    const response = await axios.get(`/api/admin/dashboard/patients-details?patientId=${patientId}`);
+                                    setPatientDetails(response.data);
+                                    toast.success("Lab reports uploaded successfully.");
+                                    setUploadSuccess(true);
+                                    setTimeout(() => {
+                                      setUploadingAppointmentId(null);
+                                      setUploadSuccess(false);
+                                    }, 1500);
+                                  } catch (err) {
+                                    console.error("Upload failed", err);
+                                  } finally {
+                                    setUploading(false);
+                                  }
+                                }}
+                              />
+                              </label>
+                            </div>
+                          </div>
+                          {uploading && <p>Uploading...</p>}
+                          {uploadSuccess && (
+                            <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
+                          )}
+                        </DialogContent>
+                      </Dialog>
+                    )}
                   </div>
                 </Card>
               ))}
