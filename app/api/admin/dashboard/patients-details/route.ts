@@ -45,6 +45,7 @@ export async function GET(request: Request) {
               appointmentDate: true,
               consultationType: true,
               status: true,
+              isDietician: true,
               prescriptionLink: true,
               appointmentFor: true,
               doctor: { select: { id: true, name: true } },
@@ -74,8 +75,12 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Patient not found" }, { status: 404 });
       }
       // Split appointments by doctor vs dietician
-      const doctorAppointments = patient.patientAppointments.filter(a => a.appointmentFor !== "dietician");
-      const dieticianAppointments = patient.patientAppointments.filter(a => a.appointmentFor === "dietician");
+      const doctorAppointments = patient.patientAppointments.filter(a => a.isDietician === false)
+        .sort((a, b) => new Date(b.appointmentDate || 0).getTime() - new Date(a.appointmentDate || 0).getTime());
+      const dieticianAppointments = patient.patientAppointments.filter(a => a.isDietician)
+        .sort((a, b) => new Date(b.appointmentDate || 0).getTime() - new Date(a.appointmentDate || 0).getTime());
+      const sortedLabBookings = patient.labPatientBookings
+        .sort((a, b) => new Date(b.labDate).getTime() - new Date(a.labDate).getTime());
       const formatted = {
         id: patient.id,
         name: patient.name,
@@ -103,13 +108,15 @@ export async function GET(request: Request) {
           date: a.appointmentDate,
           type: a.consultationType,
           status: a.status,
-          dietPlanLink: a.prescriptionLink
+          dietPlanLink: a.prescriptionLink,
+          doctorName: a.doctor.name,
+          payment: a.payment
         })),
-        labBookings: patient.labPatientBookings.map(lb => ({
+        labBookings: sortedLabBookings.map(lb => ({
           id: lb.id,
           date: lb.labDate,
           status: lb.status,
-          reportLink: lb.labResult,
+          reportLink: Array.isArray(lb.labResult) ? lb.labResult : lb.labResult ? [lb.labResult] : [],
           labPackageName: lb.labPackage.name
         }))
       };
@@ -141,5 +148,35 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: 'Failed to fetch patient data' }, { status: 500 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { labBookingId, links } = body;
+
+    if (!labBookingId || !Array.isArray(links)) {
+      return NextResponse.json({ error: "Missing or invalid fields" }, { status: 400 });
+    }
+
+    const existing = await prisma.labBooking.findUnique({
+      where: { id: labBookingId },
+      select: { labResult: true },
+    });
+
+    const updated = await prisma.labBooking.update({
+      where: { id: labBookingId },
+      data: {
+        labResult: {
+          set: [...(existing?.labResult || []), ...links],
+        },
+      },
+    });
+
+    return NextResponse.json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Lab report upload error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

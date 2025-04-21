@@ -9,18 +9,29 @@ import CdLoader from "@/components/ui/custom/cd-loader";
 import { CircleCheckBig } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import LabCard from "@/components/patients/labs/view/LabCard";
-import labResult from "@/lib/labResults.json";
+// Removed labResult import, using live data from API
 import LabResultCard from "@/components/patients/labs/view/LabResultCard";
 
 export default function LabsPage() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const { clinicId, isLoading: profileLoading } = useDecryptedProfile();
+  const { profile, isLoading: profileLoading } = useDecryptedProfile();
+  const patientId = profile?.id;
+  const clinicId = profile?.clinicId;
+  const { data: labData = { scheduled: [], completed: [] }, isLoading: loadingResults } = useQuery({
+    queryKey: ["labResults", patientId],
+    queryFn: async () => {
+      const response = await axios.get(`/api/labs?patientId=${patientId}`);
+      return response.data || { scheduled: [], completed: [] };
+    },
+    enabled: !!patientId,
+  });
 
   const handleBookAppointment = (lab: any) => {
     dispatch(setLabBookingData(lab));
     router.push(`/dashboard/labs/${lab.id}`);
   };
+
 
   // Fetch labs using React Query
   const { data: labs, isLoading, isError } = useQuery({
@@ -34,7 +45,7 @@ export default function LabsPage() {
       return response.data.success ? response.data.packages : [];
     },
     staleTime: 1 * 6 * 1, // ✅ Cache valid for 10 minutes
-    gcTime: 60 * 60 * 1000, // ✅ Keeps cache for 1 hour
+    gcTime: 6 * 1 * 1, // ✅ Keeps cache for 1 hour
     refetchOnWindowFocus: false, // ✅ Prevents re-fetching on tab switch
     refetchOnMount: false, // ✅ Prevents re-fetching when navigating back
     refetchOnReconnect: true, // ✅ Fetches only if internet reconnects
@@ -48,7 +59,6 @@ export default function LabsPage() {
   if (isError) {
     return <p className="text-red-500 text-center py-5">Something went wrong. Failed to load labs.</p>;
   }
-
   return (
     <>
       {/* Lab Booking Section */}
@@ -77,12 +87,40 @@ export default function LabsPage() {
       </div>
 
       {/* Past Lab Bookings Section */}
-      <div className="pastPackages">
-      <div className="bg-muted h-fit px-4 sm:px-8 md:px-12 lg:px-20 pb-10">
+      <div className="currentPackages">
+        <div className="bg-muted h-fit px-4 sm:px-8 md:px-12 lg:px-20 pb-10">
           <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
             <div>
               <p className="text-4xl font-bold text-gray-800">
-                {labResult.length} reports available from past bookings
+                Scheduled bookings
+              </p>
+              <div className="flex items-center gap-2 mt-5">
+                <p className="text-lg">
+                  Here you can view your current bookings
+                </p>
+              </div>
+            </div>
+          </div>
+
+
+          {labData.scheduled.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {labData.scheduled.map((result: any) => (
+                <LabResultCard key={result.id} result={result} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center">No scheduled bookings available at the moment.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="pastPackages">
+        <div className="bg-muted h-fit px-4 sm:px-8 md:px-12 lg:px-20 pb-10">
+          <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
+            <div>
+              <p className="text-4xl font-bold text-gray-800">
+                {labData.completed.length} reports available from past bookings
               </p>
               <div className="flex items-center gap-2 mt-5">
                 <p className="text-lg">
@@ -91,15 +129,20 @@ export default function LabsPage() {
               </div>
             </div>
           </div>
-   
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {labResult.map((result: any) => (
-            <LabResultCard key={result.id} result={result} />
-          ))}
-        </div> {/* ✅ Closing div added here */}
+
+          {labData.completed.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {labData.completed.map((result: any) => (
+                <LabResultCard key={result.id} result={result} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center">No past reports available yet.</p>
+          )}
+        </div>
       </div>
-    </div>
+
     </>
   );
 }

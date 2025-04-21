@@ -130,6 +130,12 @@ export async function POST(request: Request) {
     const data = await request.json();
 
     data.doctorId = parseInt(data.doctorId, 10);
+    const doctorProfile = await prisma.doctorProfile.findUnique({
+      where: { userId: data.doctorId },
+      select: { type: true }
+    });
+    
+    const isDietician = doctorProfile?.type === "dietician";
     data.patientId = parseInt(data.patientId, 10);
     data.doctorAvailabilityId = parseInt(data.doctorAvailabilityId, 10);
     const slot = {
@@ -168,6 +174,7 @@ export async function POST(request: Request) {
       mobile: data.patientPhone,
       //@ts-ignore
       appointmentLink: meetLink,
+      isDietician,
     }
   });
 

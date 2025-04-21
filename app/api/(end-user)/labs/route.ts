@@ -3,6 +3,75 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const patientId = searchParams.get("patientId");
+
+    if (!patientId) {
+      return NextResponse.json({ success: false, error: "Missing patientId" }, { status: 400 });
+    }
+
+    const bookings = await prisma.labBooking.findMany({
+      where: {
+        deletedAt: null,
+        patientId: parseInt(patientId, 10),
+      },
+      include: {
+        labPackage: true,
+        patient: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        labDate: "desc",
+      },
+    });
+
+    const scheduled = bookings
+      .filter(b => b.status === "Scheduled")
+      .map((b) => ({
+        id: b.id,
+        resultDate: b.labDate,
+        resultGeneratedBy: "Lab Technician",
+        resultName: `${b.patient.name} - ${b.labPackage.name} - ${new Date(b.labDate).toLocaleDateString("en-GB")}`,
+        reports: [],
+        status: b.status,
+      }));
+
+    const completed = bookings
+      .filter(b => b.status === "COMPLETED")
+      .map((b) => ({
+        id: b.id,
+        resultDate: b.labDate,
+        resultGeneratedBy: "Lab Technician",
+        resultName: `${b.patient.name} - ${b.labPackage.name} - ${new Date(b.labDate).toLocaleDateString("en-GB")}`,
+        reports: Array.isArray(b.labResult)
+          ? b.labResult.map((url) => {
+              const raw = decodeURIComponent(url.split("/").pop() || "");
+              const cleaned = raw
+                .replace(/\.pdf$/, "")
+                .replace(/^.*?-lab-\d+-/, "")
+                .replace(/[-_]/g, " ")
+                .trim();
+              return {
+                name: cleaned || "Unknown Report",
+                pdfUrl: url,
+                values: "",
+              };
+            })
+          : [],
+        status: b.status,
+      }));
+
+    return NextResponse.json({ scheduled, completed });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: "Failed to fetch lab results" }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     console.log("POST /api/lab-bookings called");
