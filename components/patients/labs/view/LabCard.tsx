@@ -34,7 +34,7 @@ export default function LabCard({ labPackage, handleBookAppointment }: LabCardPr
 
             {/* Right Column: Package Details */}
             <div className="flex-1 py-6 px-4 flex flex-col justify-between">
-                <div className="space-y-4">
+                <div className="space-y-3">
                     {/* Row 1: Package Name */}
                     <h3 className="text-xl font-semibold text-primary">
                         <span className="text-black"> Care Diabetics </span>{labPackage.name} <span className="text-black">Package</span>
@@ -67,7 +67,7 @@ export default function LabCard({ labPackage, handleBookAppointment }: LabCardPr
                     </div>
 
                     {/* Row 4: Price */}
-                    <p className="text-lg font-semibold text-green-600">₹{labPackage.price}</p>
+                    <p className="text-lg font-semibold mb-2 text-green-600">₹{labPackage.price}</p>
                 </div>
 
                 {/* Row 5: Book Appointment Button (Centered) */}

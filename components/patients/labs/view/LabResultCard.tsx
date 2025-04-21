@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { DownloadIcon } from "lucide-react";
+import { DownloadIcon, Eye } from "lucide-react";
 
 interface LabResult {
   id: number;
@@ -28,22 +28,26 @@ export default function LabResultCard({ result }: { result: LabResult }) {
 
       <div className="mt-6">
         <p className="text-lg font-bold text-gray-800">Reports</p>
-        <div className="flex  overflow-x-auto space-x-4 mt-4 pb-2 scrollbar-hide">
-          {result.reports.map((report, index) => (
-            <div key={index} className="bg-custom-mutedgreen p-4 rounded-lg flex flex-col items-center min-w-[200px]">
-              <p className="text-lg font-bold text-gray-800 text-center">{report.name}</p>
-              <p className="text-sm text-gray-500 text-center">Values: {report.values}</p>
-              <a
-                href={report.pdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-secondary hover:underline text-sm mt-2"
-              >
-                <DownloadIcon className="w-5 h-5 ml-1" />
-              </a>
-            </div>
-          ))}
-        </div>
+        {result.reports.length > 0 ? (
+          <div className="flex overflow-x-auto space-x-4 mt-4 pb-2 scrollbar-hide">
+            {result.reports.map((report, index) => (
+              <div key={index} className="bg-custom-mutedgreen p-4 rounded-lg flex flex-col items-center min-w-[200px]">
+                <p className="text-lg font-bold text-gray-800 text-center">{report.name}</p>
+                {/* <p className="text-sm text-gray-500 text-center">Values: {report.values}</p> */}
+                <a
+                  href={report.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-secondary hover:underline text-sm mt-2"
+                >
+                  <Eye className="w-5 h-5 ml-1" />
+                </a>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500 mt-4">Reports are not available at the moment.</p>
+        )}
       </div>
     </div>
   );
