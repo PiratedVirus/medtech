@@ -153,7 +153,7 @@ export async function POST(request: Request) {
         await tx.payment.create({
           data: {
             labBookingId: booking.id,
-            amount: labPackageFees*100,
+            amount: Number(labPackageFees)*100,
             currency: "INR",
             paymentStatus: "Pending",
             paymentMethod: "offline",
