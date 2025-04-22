@@ -55,11 +55,25 @@ interface Payment {
   amount: number;
   currency: string;
   paymentStatus: string;
+  labBookingId?: string;
+  subscriptionId?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  paymentMethod?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
 }
 
 interface FetchPaymentsResponse {
   data: Payment[];
   total: number;
+  earnings: {
+    lab: number;
+    appointment: number;
+    subscription: number;
+    total: number;
+  };
 }
 
 const fetchPayments = async (pageIndex: number, pageSize: number): Promise<FetchPaymentsResponse> => {
@@ -68,7 +82,7 @@ const fetchPayments = async (pageIndex: number, pageSize: number): Promise<Fetch
     return response.data;
   } catch (error) {
     console.error("Failed to fetch payments:", error);
-    return { data: [], total: 0 };
+    return { data: [], total: 0, earnings: { lab: 0, appointment: 0, subscription: 0, total: 0 } };
   }
 };
 
@@ -77,6 +91,11 @@ interface CreatePaymentData {
   amount: number;
   currency: string;
   paymentStatus: string;
+  labBookingId?: string;
+  subscriptionId?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  paymentMethod?: string;
 }
 
 const createPayment = async (data: CreatePaymentData): Promise<Payment | null> => {
@@ -94,6 +113,11 @@ interface UpdatePaymentData {
   amount: number;
   currency: string;
   paymentStatus: string;
+  labBookingId?: string;
+  subscriptionId?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  paymentMethod?: string;
 }
 
 const updatePayment = async (id: string, data: UpdatePaymentData): Promise<Payment | null> => {
@@ -122,6 +146,12 @@ const deletePayment = async (id: string): Promise<DeletePaymentResponse | null> 
 
 export default function PaymentsPage() {
   const [data, setData] = useState<{ payments: Payment[]; total: number }>({ payments: [], total: 0 });
+  const [earnings, setEarnings] = useState({
+    lab: 0,
+    appointment: 0,
+    subscription: 0,
+    total: 0,
+  });
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { register, handleSubmit, reset, setValue } = useForm<FormData>();
@@ -164,13 +194,59 @@ export default function PaymentsPage() {
       enableSorting: true,
     },
     {
+      accessorKey: "labBookingId",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Lab Booking ID <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "subscriptionId",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Subscription ID <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "razorpayOrderId",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Razorpay Order ID <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "razorpayPaymentId",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Razorpay Payment ID <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "paymentMethod",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Payment Method <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+    },
+    {
       accessorKey: "amount",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Amount <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
-      enableSorting: true,
+      // enableSorting: true, // Remove or keep as needed
+      cell: ({ row }) => (row.original.amount / 100).toFixed(2),
     },
     {
       accessorKey: "currency",
@@ -191,6 +267,16 @@ export default function PaymentsPage() {
       enableSorting: true,
     },
     {
+      accessorKey: "createdAt",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Created At <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: true,
+      cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleString(),
+    },
+    {
       id: "actions",
       cell: ({ row }) => (
         <div className="space-x-2">
@@ -203,6 +289,11 @@ export default function PaymentsPage() {
               setValue("amount", row.original.amount);
               setValue("currency", row.original.currency);
               setValue("paymentStatus", row.original.paymentStatus);
+              setValue("labBookingId", row.original.labBookingId ?? "");
+              setValue("subscriptionId", row.original.subscriptionId ?? "");
+              setValue("razorpayOrderId", row.original.razorpayOrderId ?? "");
+              setValue("razorpayPaymentId", row.original.razorpayPaymentId ?? "");
+              setValue("paymentMethod", row.original.paymentMethod ?? "");
               setDialogOpen(true);
             }}
           >
@@ -240,8 +331,14 @@ export default function PaymentsPage() {
   });
 
   const fetchData = async () => {
-    const { data, total } = await fetchPayments(pagination.pageIndex, pagination.pageSize);
-    setData({ payments: data, total });
+    const { data: rawPayments, total, earnings: rawEarnings } = await fetchPayments(pagination.pageIndex, pagination.pageSize);
+    setData({ payments: rawPayments.map(p => ({ ...p, amount: p.amount / 100 })), total });
+    setEarnings({
+      lab: rawEarnings.lab / 100,
+      appointment: rawEarnings.appointment / 100,
+      subscription: rawEarnings.subscription / 100,
+      total: rawEarnings.total / 100,
+    });
   };
 
   useEffect(() => {
@@ -254,6 +351,11 @@ export default function PaymentsPage() {
       setValue("amount", selectedPayment.amount);
       setValue("currency", selectedPayment.currency);
       setValue("paymentStatus", selectedPayment.paymentStatus);
+      setValue("labBookingId", selectedPayment.labBookingId ?? "");
+      setValue("subscriptionId", selectedPayment.subscriptionId ?? "");
+      setValue("razorpayOrderId", selectedPayment.razorpayOrderId ?? "");
+      setValue("razorpayPaymentId", selectedPayment.razorpayPaymentId ?? "");
+      setValue("paymentMethod", selectedPayment.paymentMethod ?? "");
     } else {
       reset();
     }
@@ -264,15 +366,21 @@ export default function PaymentsPage() {
     amount: number;
     currency: string;
     paymentStatus: string;
+    labBookingId?: string;
+    subscriptionId?: string;
+    razorpayOrderId?: string;
+    razorpayPaymentId?: string;
+    paymentMethod?: string;
   }
 
   const onSubmit = async (formData: FormData) => {
     try {
+      const payload = { ...formData, amount: Math.round(formData.amount * 100) };
       if (selectedPayment) {
-        await updatePayment(selectedPayment.id, formData);
+        await updatePayment(selectedPayment.id, payload);
         toast.success("Payment updated successfully");
       } else {
-        await createPayment(formData);
+        await createPayment(payload);
         toast.success("Payment created successfully");
       }
       await fetchData();
@@ -303,6 +411,25 @@ export default function PaymentsPage() {
   return (
     <div className="container mx-auto p-4 space-y-4">
       <ToastContainer />
+      {/* Stats Section - Earnings */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="p-4 border rounded-lg bg-custom-mutedgreen flex flex-col items-end">
+          <h3 className="text-lg font-semibold">Lab Earnings</h3>
+          <p className="text-3xl text-primary">₹{earnings.lab.toFixed(2)}</p>
+        </div>
+        <div className="p-4 border rounded-lg bg-custom-mutedgreen flex flex-col items-end">
+          <h3 className="text-lg font-semibold">Appointment Earnings</h3>
+          <p className="text-3xl text-primary">₹{earnings.appointment.toFixed(2)}</p>
+        </div>
+        <div className="p-4 border rounded-lg bg-custom-mutedgreen flex flex-col items-end">
+          <h3 className="text-lg font-semibold">Subscription Earnings</h3>
+          <p className="text-3xl text-primary">₹{earnings.subscription.toFixed(2)}</p>
+        </div>
+        <div className="p-4 border rounded-lg bg-custom-mutedgreen flex flex-col items-end">
+          <h3 className="text-lg font-semibold">Total Earnings</h3>
+          <p className="text-3xl text-primary">₹{earnings.total.toFixed(2)}</p>
+        </div>
+      </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Input
@@ -435,6 +562,11 @@ export default function PaymentsPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Input {...register("appointmentId", { required: true })} placeholder="Appointment ID" />
+            <Input {...register("labBookingId")} placeholder="Lab Booking ID" />
+            <Input {...register("subscriptionId")} placeholder="Subscription ID" />
+            <Input {...register("razorpayOrderId")} placeholder="Razorpay Order ID" />
+            <Input {...register("razorpayPaymentId")} placeholder="Razorpay Payment ID" />
+            <Input {...register("paymentMethod")} placeholder="Payment Method" />
             <Input {...register("amount", { required: true })} placeholder="Amount" />
             <Input {...register("currency", { required: true })} placeholder="Currency" />
             <Input {...register("paymentStatus", { required: true })} placeholder="Status" />
