@@ -97,7 +97,7 @@ interface PatientDetails {
   email: string;
   phoneNumber: string | number;
   joinedOn: string;
-  plans: Plan[];
+  subscriptions: Plan[];
   profile: PatientProfile;
   labBookings: LabBooking[];
   doctorAppointments: DoctorAppointment[];
@@ -129,8 +129,8 @@ const PatientDetailsPage = () => {
   }, [patientId]);
 
   useEffect(() => {
-    if (patientDetails?.plans?.[0]?.id) {
-      fetchPlanUsage(patientDetails.plans[0].id);
+    if (patientDetails?.subscriptions?.[0]?.id) {
+      fetchPlanUsage(patientDetails.subscriptions[0].id);
     }
   }, [patientDetails]);
 
@@ -305,10 +305,10 @@ const PatientDetailsPage = () => {
               Member since <b>{new Date(patientDetails?.joinedOn || '').toLocaleDateString()}</b>
             </p>
           </div>
-          {(patientDetails?.plans ?? []).length > 0 && (
+          {(patientDetails?.subscriptions ?? []).length > 0 && (
             <div className="text-lg px-3 py-1 mr-14">
-              Subscribed to <span className="text-secondary"><strong>{patientDetails?.plans[0].planName}</strong></span> till{" "}
-              {patientDetails?.plans?.[0]?.endDate ? new Date(patientDetails.plans[0].endDate).toLocaleDateString() : 'N/A'}
+              Subscribed to <span className="text-secondary"><strong>{patientDetails?.subscriptions[0].planName}</strong></span> till{" "}
+              {patientDetails?.subscriptions?.[0]?.endDate ? new Date(patientDetails.subscriptions[0].endDate).toLocaleDateString() : 'N/A'}
             </div>
           )}
         </div>
@@ -571,11 +571,11 @@ const PatientDetailsPage = () => {
             ))}
 
             {/* Subscription Payments */}
-            {patientDetails?.plans.map(plan => (
+            {patientDetails?.subscriptions.map(plan => (
               <tr key={`plan-${plan.id}`} className="border-b">
                 <td className="px-4 py-2">Subscription</td>
                 <td className="px-4 py-2">{plan.planName}</td>
-                <td className="px-4 py-2">--</td>
+                <td className="px-4 py-2">{plan.payment?.currency ?? 'INR'} {(plan.payment?.amount ?? 0) / 100}</td>
                 <td className="px-4 py-2">Active</td>
                 <td className="px-4 py-2">Online</td>
                 <td className="px-4 py-2">{new Date(plan.endDate).toLocaleDateString()}</td>
@@ -606,7 +606,7 @@ const PatientDetailsPage = () => {
           <div className="col-span-1">
             <PlanUsageMinimal
               userId={Number(patientDetails.id)}
-              subscriptionId={patientDetails.plans[0]?.id}
+              subscriptionId={patientDetails.subscriptions[0]?.id}
             />
           </div>
 
@@ -616,7 +616,7 @@ const PatientDetailsPage = () => {
               doctorAppointments: patientDetails.doctorAppointments.map(a => ({
                 payment: a.payment ? { amount: a.payment.amount } : undefined,
               })),
-              plans: patientDetails.plans.map(p => ({
+              plans: patientDetails.subscriptions.map(p => ({
                 amount: p.payment?.amount,
               })),
               labBookings: patientDetails.labBookings.map(lb => ({

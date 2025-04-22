@@ -90,6 +90,7 @@ export async function POST(request: Request) {
       paymentOption,
       razorpayResponse,
       consultationType,
+      labPackageFees,
       subscriptionId,
       labTestsDates,
     } = body;
@@ -146,6 +147,18 @@ export async function POST(request: Request) {
           },
         });
         console.log("Payment record created");
+      }
+
+      if(paymentOption === "clinic") {
+        await tx.payment.create({
+          data: {
+            labBookingId: booking.id,
+            amount: labPackageFees*100,
+            currency: "INR",
+            paymentStatus: "Pending",
+            paymentMethod: "offline",
+          },
+        });
       }
 
       return booking;

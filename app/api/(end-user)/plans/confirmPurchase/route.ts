@@ -74,7 +74,8 @@ export async function POST(request: Request) {
       patientId, // pass patient ID instead
       razorpayOrderId,
       razorpayPaymentId,
-      razorpayResponse
+      razorpayResponse,
+      subscriptionPrice
     } = body || {};
 
     console.log("Received planId=", planId, " patientId=", patientId);
@@ -195,7 +196,7 @@ export async function POST(request: Request) {
             subscriptionId: newTracker.subscriptionId, // pass subscriptionId here
             razorpayOrderId: razorpayResponse.razorpay_order_id,
             razorpayPaymentId: razorpayResponse.razorpay_payment_id,
-            amount: razorpayResponse.amount,
+            amount: subscriptionPrice,
             currency: razorpayResponse.currency || "INR",
             paymentStatus: "Paid",
             paymentMethod: razorpayResponse.method || "upi",

@@ -108,6 +108,7 @@ export default function PricingTable() {
               razorpayResponse: response,
               razorpayOrderId: orderId,
               razorpayPaymentId: response.razorpay_payment_id,
+              subscriptionPrice: price*100,
             });
             if (confirmRes.data.success) {
               queryClient.invalidateQueries({ queryKey: ["plans"] });

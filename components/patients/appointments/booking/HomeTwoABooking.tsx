@@ -123,7 +123,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
     }
   };
 
-  const handleConfirmAppointment = async (data: any, razorpayResponse?: any) => {
+  const handleConfirmAppointment = async (data: any, razorpayResponse?: any, doctorConsultationFee?: number) => {
     if (!data) {
       alert("Please fill out the form.");
       return;
@@ -143,6 +143,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
       consultationMode,
       subscriptionId: subscriptionTracker.subscriptionId,
       isDietician,
+      doctorConsultationFee,
       doctorConsultationDates: filteredDoctorConsultationDates, // update them
     };
     console.log("Appointment Data", appointmentData);
@@ -213,7 +214,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
                       if (paymentMethod === "online") {
                         await handlePayment(data, doctor?.doctorProfile.consultationFee);
                       } else {
-                        await handleConfirmAppointment(data);
+                        await handleConfirmAppointment(data, undefined, doctor?.doctorProfile.consultationFee);
                       }
                     })();
                   }

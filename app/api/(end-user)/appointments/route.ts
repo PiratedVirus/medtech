@@ -196,6 +196,7 @@ export async function POST(request: Request) {
       razorpayResponse,
       subscriptionId,
       isDietician,
+      doctorConsultationFee,
       doctorConsultationDates
     } = body;
 
@@ -256,6 +257,18 @@ export async function POST(request: Request) {
             currency: razorpayResponse.currency || "INR",
             paymentStatus: "Paid",
             paymentMethod: razorpayResponse.method || "upi",
+          },
+        });
+      }
+
+      if(paymentMethod === "clinic") {
+        await tx.payment.create({
+          data: {
+            appointmentId: appointment.id,
+            amount: doctorConsultationFee,
+            currency: "INR",
+            paymentStatus: "Pending",
+            paymentMethod: "offline",
           },
         });
       }
