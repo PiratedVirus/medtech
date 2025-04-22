@@ -53,29 +53,29 @@ export default function HomePageCardSmall({
           <OutlineIcon className="h-full w-full" style={{ color: outlineIconColor }} />
         </div>
 
-        <div className="relative flex flex-col justify-between p-5">
-          {/* Header Section */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[rgba(242,138,46,0.1)] to-[rgba(86,166,124,0.1)]">
-              <PrimaryIcon className="h-5 w-5" style={{ color: primaryIconColor }} />
-            </div>
-            <span className="text-sm font-medium" style={{ color: accentColor }}>
-              {headerLabel}
-            </span>
-          </div>
+        <div className="relative flex flex-col justify-between p-5 h-full">
+  {/* Header Section */}
+  <div className="flex items-center gap-3">
+    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[rgba(242,138,46,0.1)] to-[rgba(86,166,124,0.1)]">
+      <PrimaryIcon className="h-5 w-5" style={{ color: primaryIconColor }} />
+    </div>
+    <span className="text-sm font-medium" style={{ color: accentColor }}>
+      {headerLabel}
+    </span>
+  </div>
 
-          {/* Main Content */}
-          <div className="mt-4">
-            <h3 className="mb-1 text-lg font-semibold text-gray-800">{cardTitle}</h3>
-            <p className="mb-3 text-xs text-gray-600">{cardDescription}</p>
+  {/* Main Content */}
+  <div className="mt-4 flex-grow">
+    <h3 className="mb-1 text-lg font-semibold text-gray-800">{cardTitle}</h3>
+    <p className="mb-3 text-xs text-gray-600">{cardDescription}</p>
+  </div>
 
-            {/* Call-to-Action */}
-            <div className="flex items-center text-sm font-medium text-[#134F30] transition-all duration-300 group-hover:translate-x-1">
-              {ctaText}
-              <CTAIcon className="ml-1 h-4 w-4" />
-            </div>
-          </div>
-        </div>
+  {/* Call-to-Action */}
+  <div className="flex items-center text-sm font-medium text-[#134F30] transition-all duration-300 group-hover:translate-x-1">
+    {ctaText}
+    <CTAIcon className="ml-1 h-4 w-4" />
+  </div>
+</div>
       </Card>
     </Link>
   );
