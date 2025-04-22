@@ -1,7 +1,7 @@
 'use client'
 import type { Metadata } from "next"
 import Link from "next/link"
-import { BarChart3, CalendarPlus, Clock, DollarSign, FlaskConical, UserPlus, Users } from "lucide-react"
+import { BarChart3, CalendarPlus, Clock, DollarSign, FlaskConical, IndianRupee, UserPlus, Users } from "lucide-react"
 import { useState, useEffect } from "react"
 import axios from "axios"
 
@@ -60,7 +60,7 @@ export default function DashboardPage() {
         <SummaryCard
           title="Total Patients"
           value={summaryData.totalPatients.toString()}
-          trend="+12% from last month"
+          trend=""
           PrimaryIcon={Users}
           OutlineIcon={Users}
           accentColor="#F28A2E"
@@ -69,7 +69,7 @@ export default function DashboardPage() {
         <SummaryCard
           title="Active Subscriptions"
           value={summaryData.activeSubscriptions.toString()}
-          trend="+5.2% from last month"
+          trend=""
           PrimaryIcon={BarChart3}
           OutlineIcon={BarChart3}
           accentColor="#F28A2E"
@@ -87,7 +87,7 @@ export default function DashboardPage() {
         <SummaryCard
           title="Lab Bookings Pending"
           value={summaryData.labBookingsPending.toString()}
-          trend="4 require immediate attention"
+          trend=""
           PrimaryIcon={FlaskConical}
           OutlineIcon={FlaskConical}
           accentColor="#F28A2E"
@@ -95,17 +95,17 @@ export default function DashboardPage() {
         />
         <SummaryCard
           title="Monthly Revenue"
-          value={`$${summaryData.monthlyRevenue.toString()}`}
-          trend="+20.1% from last month"
-          PrimaryIcon={DollarSign}
-          OutlineIcon={DollarSign}
+          value={`₹ ${summaryData.monthlyRevenue.toString()}`}
+          trend=""
+          PrimaryIcon={IndianRupee}
+          OutlineIcon={IndianRupee}
           accentColor="#F28A2E"
           primaryIconColor="#134F30"
         />
         <SummaryCard
           title="New Sign-ups This Week"
           value={summaryData.newSignupsThisWeek.toString()}
-          trend="+12 from previous week"
+          trend=""
           PrimaryIcon={UserPlus}
           OutlineIcon={UserPlus}
           accentColor="#F28A2E"
