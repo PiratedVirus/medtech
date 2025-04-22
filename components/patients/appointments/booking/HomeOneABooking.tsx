@@ -120,11 +120,12 @@ export default function AppointmentBookingHomeOne({
 
   // Filter slots for the selected day (comparing only the date part)
   const displayedSlots = currentDayDateISO
-    ? availability.filter(
-      (slot) =>
-        slot.date.split("T")[0] ===
-        new Date(currentDayDateISO).toISOString().split("T")[0]
-    )
+    ? availability.filter((slot) => {
+        const localDate = new Date(slot.date);
+        // 'en-CA' gives YYYY-MM-DD format
+        const localDateStr = localDate.toLocaleDateString('en-CA');
+        return localDateStr === currentDayDateISO;
+      })
     : [];
 
   if (selectedSlot) {
