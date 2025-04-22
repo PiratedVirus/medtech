@@ -66,7 +66,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
   const formRef = useRef<{ submitForm: (callback: (data: any) => void) => void } | null>(null);
 
 
-  const handlePayment = async (appointmentData: any) => {
+  const handlePayment = async (appointmentData: any, doctorConsultationFee: number) => {
     try {
       setLoading(true);
       setStatusMessage("Loading Razorpay...");
@@ -77,7 +77,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
         return;
       }
 
-      const amount = 500 * 100; // ₹500 in paisa
+      const amount = doctorConsultationFee * 100; // ₹500 in paisa
       const currency = "INR";
       const receipt = `order_${Date.now()}`;
 
@@ -123,7 +123,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
     }
   };
 
-  const handleConfirmAppointment = async (data: any, razorpayResponse?: any) => {
+  const handleConfirmAppointment = async (data: any, razorpayResponse?: any, doctorConsultationFee?: number) => {
     if (!data) {
       alert("Please fill out the form.");
       return;
@@ -143,6 +143,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
       consultationMode,
       subscriptionId: subscriptionTracker.subscriptionId,
       isDietician,
+      doctorConsultationFee,
       doctorConsultationDates: filteredDoctorConsultationDates, // update them
     };
     console.log("Appointment Data", appointmentData);
@@ -197,6 +198,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
                 onOptionChange={setPaymentMethod}
                 consultationType={consultationMode || ""}
                 firstValidDate={firstValidDate}
+                consultationFee={doctor?.doctorProfile.consultationFee}
               />
             </div>
 
@@ -210,9 +212,9 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
                     // @ts-expect-error
                     formRef.current.submitForm(async (data) => {
                       if (paymentMethod === "online") {
-                        await handlePayment(data);
+                        await handlePayment(data, doctor?.doctorProfile.consultationFee);
                       } else {
-                        await handleConfirmAppointment(data);
+                        await handleConfirmAppointment(data, undefined, doctor?.doctorProfile.consultationFee);
                       }
                     })();
                   }

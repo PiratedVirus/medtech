@@ -143,7 +143,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
     }
   };
 
-  const handleConfirmBooking = async (data: any, razorpayResponse?: any) => {
+  const handleConfirmBooking = async (data: any, razorpayResponse?: any, labPackageFees?: number) => {
     if (!data) {
       alert("Please fill out the form.");
       return;
@@ -162,6 +162,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
       consultationType: paymentOption,
       subscriptionId: subscriptionTracker.subscriptionId,
       labTestsDates: filteredlabTestsDatesDates,
+      labPackageFees
 
     };
 
@@ -213,6 +214,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
                 onOptionChange={setPaymentOption}
                 firstValidDate={firstValidDate}
                 consultationType={paymentOption || ""}
+                consultationFee={labBbookingData?.price}
               />
             </div>
 

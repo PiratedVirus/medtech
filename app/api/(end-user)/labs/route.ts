@@ -90,6 +90,7 @@ export async function POST(request: Request) {
       paymentOption,
       razorpayResponse,
       consultationType,
+      labPackageFees,
       subscriptionId,
       labTestsDates,
     } = body;
@@ -102,36 +103,73 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create the lab booking
-    const newLabBooking = await prisma.labBooking.create({
-      data: {
-        patientId,
-        labPackageId: packageId,
-        appointmentFor,
-        fullName,
-        mobile,
-        email,
-        address,
-        paymentOption,
-        labDate: new Date(date),
-        status: "Scheduled",
-      },
-    });
-
-    if(consultationType === "plan") {
-      await prisma.subscriptionTracker.update({
-        where: { subscriptionId },
+    const newLabBooking = await prisma.$transaction(async (tx) => {
+      // Create the lab booking
+      const booking = await tx.labBooking.create({
         data: {
-          labTestsDates,
+          patientId,
+          labPackageId: packageId,
+          appointmentFor,
+          fullName,
+          mobile,
+          email,
+          address,
+          paymentOption,
+          labDate: new Date(date),
+          status: "Scheduled",
         },
       });
-    }
 
-    console.log("Lab booking created successfully with ID:", newLabBooking.id);
+      console.log("LabBooking created:", booking);
+
+      // Update subscription tracker if using plan
+      if (consultationType === "plan") {
+        console.log("Updating subscriptionTracker for subscriptionId:", subscriptionId, "with labTestsDates:", labTestsDates);
+        await tx.subscriptionTracker.update({
+          where: { subscriptionId },
+          data: { labTestsDates },
+        });
+        console.log("SubscriptionTracker updated");
+      }
+
+      // Create payment record if online
+      if (paymentOption === "online" && razorpayResponse) {
+        console.log("Creating payment record for bookingId:", booking.id, "with razorpayResponse:", razorpayResponse);
+        await tx.payment.create({
+          data: {
+            labBookingId: booking.id,
+            razorpayOrderId: razorpayResponse.razorpay_order_id,
+            razorpayPaymentId: razorpayResponse.razorpay_payment_id,
+            amount: razorpayResponse.amount,
+            currency: razorpayResponse.currency || "INR",
+            paymentStatus: "Paid",
+            paymentMethod: razorpayResponse.method || "upi",
+          },
+        });
+        console.log("Payment record created");
+      }
+
+      if(paymentOption === "clinic") {
+        await tx.payment.create({
+          data: {
+            labBookingId: booking.id,
+            amount: Number(labPackageFees)*100,
+            currency: "INR",
+            paymentStatus: "Pending",
+            paymentMethod: "offline",
+          },
+        });
+      }
+
+      return booking;
+    });
+
+    console.log("Lab booking transaction completed successfully, ID:", newLabBooking.id);
 
     return NextResponse.json({ success: true, labBooking: newLabBooking });
-  } catch (error) {
-    console.error("Error creating lab booking:", error);
-    return NextResponse.json({ success: false, error: "Server error" }, { status: 500 });
+  } catch (err: any) {
+    // console.error("Error creating lab booking:", err);
+    const message = err instanceof Error ? err.message : JSON.stringify(err) || "Server error";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

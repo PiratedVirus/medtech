@@ -15,9 +15,11 @@ interface Props {
     plans: {
       amount?: number;
     }[];
-    labBookings: {
-      paymentOption?: string;
-    }[];
+  labBookings: {
+    payment?: {
+      amount: number;
+    };
+  }[];
   };
 }
 
@@ -28,7 +30,7 @@ const TotalEarningsCard = ({ patientDetails }: Props) => {
 
   const appointmentTotal = appointments.reduce((sum, a) => sum + (a.payment?.amount || 0), 0);
   const subscriptionTotal = subscriptions.reduce((sum, s) => sum + (s.amount || 0), 0);
-  const labTotal = 0; // Placeholder for future lab earnings
+  const labTotal = labs.reduce((sum, l) => sum + (l.payment?.amount || 0), 0);
 
   const total = appointmentTotal + subscriptionTotal + labTotal;
 

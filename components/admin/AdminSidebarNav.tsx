@@ -20,7 +20,8 @@ import {
   BriefcaseMedical,
   HeartPulse,
   Hospital,
-  Leaf
+  Leaf,
+  IndianRupee
 
 } from "lucide-react"
 import { useState } from "react"
@@ -80,7 +81,7 @@ export function SidebarNav({ className, ...props }: SidebarNavProps) {
     },
     {
       href: "/admin/payments",
-      icon: BarChart,
+      icon: IndianRupee,
       title: "Payments",
     },
     {

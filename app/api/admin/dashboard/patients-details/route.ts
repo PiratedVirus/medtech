@@ -34,7 +34,16 @@ export async function GET(request: Request) {
                   startDate: true,
                   endDate: true,
                   isActive: true,
-                  plan: { select: { id: true, name: true } }
+                  plan: { select: { id: true, name: true } },
+                  payments: {
+                    select: {
+                      amount: true,
+                      currency: true,
+                      paymentStatus: true,
+                      razorpayPaymentId: true,
+                      createdAt: true
+                    }
+                  }
                 }
               }
             }
@@ -66,9 +75,34 @@ export async function GET(request: Request) {
               labDate: true,
               status: true,
               labResult: true,
-              labPackage: { select: { id: true, name: true } }
+              labPackage: { select: { id: true, name: true } },
+              payment: {
+                select: {
+                  amount: true,
+                  currency: true,
+                  paymentStatus: true,
+                  razorpayPaymentId: true,
+                  createdAt: true
+                }
+              }
             }
-          }
+          },
+          // subscriptionBookings: {
+          //   select: {
+          //     subscriptionId: true,
+          //     planId: true,
+          //     plan: { select: { id: true, name: true } },
+          //     payment: {
+          //       select: {
+          //         amount: true,
+          //         currency: true,
+          //         paymentStatus: true,
+          //         razorpayPaymentId: true,
+          //         createdAt: true
+          //       }
+          //     }
+          //   }
+          // }
         }
       });
       if (!patient) {
@@ -87,12 +121,19 @@ export async function GET(request: Request) {
         email: patient.email,
         joinedOn: patient.createdAt,
         profile: patient.patientProfile,
-        plans: patient.patientProfile?.planTrackers?.map(pt => ({
+        subscriptions: patient.patientProfile?.planTrackers?.map(pt => ({
           id: pt.subscriptionId,
           planName: pt.plan.name,
           startDate: pt.startDate,
           endDate: pt.endDate,
-          isActive: pt.isActive
+          isActive: pt.isActive,
+          payment: pt.payments?.[0] ? {
+            amount: pt.payments[0].amount,
+            currency: pt.payments[0].currency,
+            paymentStatus: pt.payments[0].paymentStatus,
+            razorpayPaymentId: pt.payments[0].razorpayPaymentId,
+            createdAt: pt.payments[0].createdAt
+          } : undefined
         })) || [],
         doctorAppointments: doctorAppointments.map(a => ({
           id: a.id,
@@ -117,7 +158,8 @@ export async function GET(request: Request) {
           date: lb.labDate,
           status: lb.status,
           reportLink: Array.isArray(lb.labResult) ? lb.labResult : lb.labResult ? [lb.labResult] : [],
-          labPackageName: lb.labPackage.name
+          labPackageName: lb.labPackage.name,
+          payment: lb.payment
         }))
       };
       return NextResponse.json(formatted);
