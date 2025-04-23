@@ -11,6 +11,7 @@ import DoctorCard from "@/components/patients/doctors/DoctorCard";
 import { useQuery } from "@tanstack/react-query";
 
 export default function DoctorsPage() {
+  const activeTab: 'doctors' | 'dieticians' = 'dieticians';
   const router = useRouter();
   const dispatch = useDispatch();
   const { clinicId, isLoading: profileLoading } = useDecryptedProfile();
@@ -49,6 +50,26 @@ export default function DoctorsPage() {
 
   return (
     <div className="bg-muted min-h-screen px-4 sm:px-8 md:px-12 lg:px-20 pb-10">
+      {/* Mobile tab navigation */}
+      <div className="flex justify-center space-x-4 block md:hidden py-3">
+        <button
+          onClick={() => router.push('/dashboard/doctors')}
+          //@ts-ignore
+          className={`px-4 py-2 font-medium ${activeTab === 'doctors'
+            ? 'border-b-2 border-green-700 text-green-700'
+            : 'text-gray-600'}`}
+        >
+          Doctors
+        </button>
+        <button
+          onClick={() => router.push('/dashboard/dieticians')}
+          className={`px-4 py-2 font-medium ${activeTab === 'dieticians'
+            ? 'border-b-2 border-green-700 text-green-700'
+            : 'text-gray-600'}`}
+        >
+          Dieticians
+        </button>
+      </div>
       <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
         <div>
           <p className="text-4xl font-bold text-gray-800">

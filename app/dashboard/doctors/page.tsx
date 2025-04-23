@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 
 export default function DoctorsPage() {
+  const activeTab: 'doctors' | 'dieticians' = 'doctors';
+
   const router = useRouter();
   const dispatch = useDispatch();
   const { clinicId, isLoading: profileLoading } = useDecryptedProfile();
@@ -51,6 +53,26 @@ export default function DoctorsPage() {
 
   return (
     <div className="bg-muted min-h-screen px-4 sm:px-8 md:px-12 lg:px-20 pb-10">
+      {/* Mobile tab navigation */}
+      <div className="flex justify-center space-x-4 block md:hidden py-3">
+        <button
+          onClick={() => router.push('/dashboard/doctors')}
+          className={`px-4 py-2 font-medium ${activeTab === 'doctors'
+            ? 'border-b-2 border-green-700 text-green-700'
+            : 'text-gray-600'}`}
+        >
+          Doctors
+        </button>
+        <button
+          onClick={() => router.push('/dashboard/dieticians')}
+          //@ts-ignore
+          className={`px-4 py-2 font-medium ${activeTab === 'dieticians'
+            ? 'border-b-2 border-green-700 text-green-700'
+            : 'text-gray-600'}`}
+        >
+          Dieticians
+        </button>
+      </div>
       <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
         <div>
           <p className="text-4xl font-bold text-gray-800">
@@ -64,15 +86,7 @@ export default function DoctorsPage() {
           </div>
         </div>
 
-        <Button
-          className="bg-teal-100 border-0 shadow-none rounded-lg p-6 flex items-center justify-center gap-2
-          w-full md:w-auto mt-5 md:mt-0"
-        >
-          <span className="text-green-800">
-            <b>Choose Date</b>
-          </span>
-          <CalendarIcon className="text-green-800 h-6 w-6" />
-        </Button>
+  
       </div>
 
       {doctors.length > 0 ? (

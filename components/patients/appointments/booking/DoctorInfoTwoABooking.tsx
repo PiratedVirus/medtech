@@ -21,7 +21,7 @@ export default function DoctorInfoTwo({
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px]">
-        <div className="bg-muted pt-4 pb-0 sm:p-4 lg:px-20 lg:pb-0">
+        <div className="bg-muted pt-4 pb-0 px-4 sm:px-10 lg:px-20 lg:pb-0">
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-[#2C2E38] mb-4 lg:mb-6 hover:text-[#56A67C] transition-colors"
@@ -75,7 +75,7 @@ export default function DoctorInfoTwo({
           </div>
         </div>
 
-        <div className="bg-gradient-to-t from-[#134F30] to-[#56A67C] px-4 pt-4 pb-0 sm:p-6 lg:p-8 lg:pb-0 text-white">
+        <div className="bg-gradient-to-t from-[#134F30] to-[#56A67C] px-4 py-3 sm:p-6 lg:p-8 lg:pb-0 text-white">
           <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
             <div className="flex items-center gap-3">
               <Calendar className="h-5 w-5" />
@@ -91,7 +91,7 @@ export default function DoctorInfoTwo({
             </div>
           </div>
 
-          <a onClick={onBack} className="w-full cursor-pointer text-[14px] sm:text-[15px] font-medium text-white  hover:bg-white/10 transition-colors mb-1">
+          <a onClick={onBack} className="w-full cursor-pointer text-[14px] sm:text-[15px] font-medium text-white  hover:bg-white/10 transition-colors mb-5">
             Change Date & Time
           </a>
 

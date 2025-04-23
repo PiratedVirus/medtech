@@ -6,9 +6,7 @@ import MobileSignIn from "@/components/common/MobileSignIn";
 export default function Page() {
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      <div className="hidden md:block">
-        <Header />
-      </div>
+
 
       <main className="flex flex-1 overflow-hidden">
         {/* For larger screens */}

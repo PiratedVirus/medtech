@@ -16,7 +16,7 @@ export default function HeroSection() {
       {/* Content Container with backdrop overlay */}
       <div className="relative z-10 flex flex-col h-full">
         {/* Top half */}
-        <div className="flex-1 mb-4 px-10 mt-6">
+        <div className="flex-1 mb-4 px-10 mt-20">
           <h1 className="text-6xl font-semibold text-black-700">Care Diabetics: Sweet Life, Better Control</h1>
           <p className="text-3xl mt-9 text-black-500">India’s leading virtual platform for diabetes care.</p>
         </div>

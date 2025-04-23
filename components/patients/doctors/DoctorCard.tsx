@@ -24,7 +24,7 @@ interface DoctorCardProps {
 export default function DoctorCard({ doctor, onBookAppointment }: DoctorCardProps) {
   return (
     <Card className="w-full max-w-2xl bg-white border-0">
-      <CardContent className="p-0">
+      <CardContent className="p-3 sm:p-1">
         {/* Main Content */}
         <div className="grid md:grid-cols-[180px_1fr] gap-4">
           {/* Image Section */}
