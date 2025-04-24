@@ -328,48 +328,56 @@ export default function PricingTable() {
                   </thead>
 
                   <tbody>
-                    {[
-                      { title: "Doctor Consultation", key: "doctorConsultation" },
-                      { title: "Lab Tests", key: "labTests", showParameters: true },
-                      { title: "Dietician Consultation", key: "dieticianConsultation" },
-                      {
-                        title: "Ophthalmologist Consultation",
-                        key: "ophthalmologistConsultation",
-                        extraNote: "At Clinic*",
-                      },
-                      { title: "Medicines", key: "medicines" },
-                    ].map(({ title, key, showParameters, extraNote }) => {
-                      const basicData = currentPricing.basic?.[key];
-                      const careData = currentPricing.care?.[key];
-                      const carePlusData = currentPricing.carePlus?.[key];
-                      return (
-                        <tr key={key}>
-                          <td className="p-8 align-top">
-                            <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-xl font-semibold bg-clip-text text-transparent">
-                              {title}
-                            </div>
-                            {extraNote && (
-                              <div className="text-xs text-[#349c4b] italic">{extraNote}</div>
-                            )}
-                          </td>
+                    {(() => {
+                      const featureKeys = new Set<string>();
 
-                          {/* BASIC COLUMN */}
-                          <td className="p-8 text-center align-top">
-                            {renderFeatureCell(basicData, key, showParameters)}
-                          </td>
+                      ["basic", "care", "carePlus"].forEach((planKey) => {
+                        const plan = currentPricing[planKey];
+                        if (plan) {
+                          Object.keys(plan).forEach((key) => {
+                            if (!["planId", "name", "price"].includes(key)) {
+                              featureKeys.add(key);
+                            }
+                          });
+                        }
+                      });
 
-                          {/* CARE COLUMN */}
-                          <td className="p-8 text-center align-top bg-custom-mutedgreen">
-                            {renderFeatureCell(careData, key, showParameters)}
-                          </td>
+                      return Array.from(featureKeys).map((key) => {
+                        const title = key
+                          .replace(/([A-Z])/g, " $1")
+                          .replace(/^./, (str) => str.toUpperCase())
+                          .replace("Consultation", " Consultation")
+                          .trim();
+                        const showParameters = key === "labTests";
+                        const extraNote = key === "ophthalmologistConsultation" ? "At Clinic*" : undefined;
 
-                          {/* CARE+ COLUMN */}
-                          <td className="p-8 text-center align-top">
-                            {renderFeatureCell(carePlusData, key, showParameters)}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                        const basicData = currentPricing.basic?.[key];
+                        const careData = currentPricing.care?.[key];
+                        const carePlusData = currentPricing.carePlus?.[key];
+
+                        return (
+                          <tr key={key}>
+                            <td className="p-8 align-top">
+                              <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-xl font-semibold bg-clip-text text-transparent">
+                                {title}
+                              </div>
+                              {extraNote && (
+                                <div className="text-xs text-[#349c4b] italic">{extraNote}</div>
+                              )}
+                            </td>
+                            <td className="p-8 text-center align-top">
+                              {renderFeatureCell(basicData, key, showParameters)}
+                            </td>
+                            <td className="p-8 text-center align-top bg-custom-mutedgreen">
+                              {renderFeatureCell(careData, key, showParameters)}
+                            </td>
+                            <td className="p-8 text-center align-top">
+                              {renderFeatureCell(carePlusData, key, showParameters)}
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
 
                     {/* Final row: Pricing & Buttons */}
                     <tr>

@@ -47,7 +47,7 @@ export default function HomePageCardSmall({
 
   return (
     <Link href={href} className="block">
-      <Card className="group relative w-full h-[194px] sm:h-[184px]  overflow-hidden border border-gray-100 bg-custom-mutedgreen shadow-sm transition-all duration-300 hover:shadow-md">
+      <Card className="group relative w-full h-[194px] sm:h-[184px] overflow-hidden border border-gray-100 bg-custom-mutedgreen shadow-sm transition-all duration-300 hover:shadow-md">
         {/* Background outline icon rendered with reduced opacity */}
         <div className="absolute -right-8 -top-4 h-40 w-40 opacity-5">
           <OutlineIcon className="h-full w-full" style={{ color: outlineIconColor }} />

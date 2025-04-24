@@ -94,7 +94,7 @@ export default function HomeOverview() {
           <div className="flex gap-3 w-full">
             <Link href="/health-insights" className="block w-full">
               <HomePageCardSmall
-                href="/dashboard/health-insights"
+                href="/dashboard/insights"
                 headerLabel="Health Analytics"
                 cardTitle="View Insights"
                 cardDescription="Personalized analysis of your health metrics"
