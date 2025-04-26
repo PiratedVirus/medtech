@@ -22,7 +22,7 @@ export default function PricingTable() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [tab, setTab] = useState<"plans" | "usage">("plans");
   // State for the view parameters dialog
-  const [viewParameters, setViewParameters] = useState<string[]>([]);
+  const [viewParameters, setViewParameters] = useState<Record<string, string[]>>({});
   const [paramsDialogOpen, setParamsDialogOpen] = useState(false);
 
   // Router and profile hooks
@@ -144,11 +144,18 @@ export default function PricingTable() {
   // ---------- VIEW PARAMETERS DIALOG FUNCTIONS ----------
   // Splits the parameters string and opens the dialog
   const handleViewParameters = (parameters: string) => {
-    const paramsArray = parameters
-      .split(",")
-      .map((p) => p.trim())
-      .filter((p) => p.length > 0);
-    setViewParameters(paramsArray);
+    try {
+      const parsed = JSON.parse(parameters);
+      if (typeof parsed === "object" && parsed !== null) {
+        setViewParameters(parsed); // parsed is already in desired structure
+      } else {
+        console.error("Parsed parameters is not an object", parsed);
+        setViewParameters({});
+      }
+    } catch (e) {
+      console.error("Failed to parse parameters JSON", e);
+      setViewParameters({});
+    }
     setParamsDialogOpen(true);
   };
 

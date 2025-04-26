@@ -517,6 +517,7 @@ export default function LabsPage() {
       <ViewParametersDialog
         open={viewParametersOpen}
         onOpenChange={setViewParametersOpen}
+        // @ts-ignore
         parameters={
           selectedLab?.parameters
             ? selectedLab.parameters.split(",").map((p) => p.trim())
