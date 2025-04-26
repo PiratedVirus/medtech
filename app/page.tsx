@@ -31,18 +31,18 @@ export default function LandingPageTailwind() {
         <ServicesSection />
       </div>
       <DoctorsAndConsultationsGrid />
-      <div id="doctors">
+      {/* <div id="doctors">
         <BestDoctorsSection />
         <MeetTeamSection />
-      </div>
+      </div> */}
       <FooterVideo />
-      <div id="testimonials">
+      {/* <div id="testimonials">
         <PatientTestimonials />
-      </div>
+      </div> */}
       <div id="blogs">
         <ArticlesSection />
       </div>
-      <TripleCard />
+      {/* <TripleCard /> */}
       <Footer />
     </>
 
