@@ -575,6 +575,7 @@ export default function PlansPage() {
       <ViewParametersDialog
               open={paramsDialogOpen}
               onOpenChange={setParamsDialogOpen}
+              // @ts-ignore
               parameters={viewParameters}
             />
     </div >

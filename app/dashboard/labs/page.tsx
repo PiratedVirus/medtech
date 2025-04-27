@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import LabCard from "@/components/patients/labs/view/LabCard";
 // Removed labResult import, using live data from API
 import LabResultCard from "@/components/patients/labs/view/LabResultCard";
+import { useState } from "react";
 
 export default function LabsPage() {
   const router = useRouter();
@@ -52,6 +53,12 @@ export default function LabsPage() {
     enabled: !!clinicId, // ✅ Runs only when clinicId exists
   });
 
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredLabs = (labs || []).filter((lab: any) =>
+    lab.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   if (profileLoading || isLoading) {
     return <CdLoader />;
   }
@@ -67,7 +74,7 @@ export default function LabsPage() {
           <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
             <div>
               <p className="text-4xl font-bold text-gray-800">
-                {labs.length} packages available for booking
+                {filteredLabs.length} packages available for booking
               </p>
               <div className="flex items-center gap-2 mt-5">
                 <CircleCheckBig className="text-green-700 h-6 w-6" />
@@ -76,10 +83,19 @@ export default function LabsPage() {
                 </p>
               </div>
             </div>
+            <div className="mt-4 md:mt-0">
+              <input
+                type="text"
+                placeholder="Search lab package..."
+                className="border border-gray-300 rounded-md px-4 py-2 w-full md:w-80 text-gray-500 focus:border-primary focus:outline-none"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
-            {labs.map((lab: any) => (
+            {filteredLabs.map((lab: any) => (
               <LabCard key={lab.id} labPackage={lab} handleBookAppointment={handleBookAppointment} />
             ))}
           </div>

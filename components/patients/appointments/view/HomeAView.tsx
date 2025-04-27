@@ -45,7 +45,7 @@ export default function AppointmentViewHome() {
   const upcoming = futureAppointments.length > 0 ? futureAppointments[0] : null;
 
   return (
-    <div className="py-7 md:px-20 bg-muted">
+    <div className="py-7 px-4 sm:px-20 bg-muted">
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 py-7">
         <div className="md:col-span-8">
           <UpcomingAppointment appointment={upcoming} />

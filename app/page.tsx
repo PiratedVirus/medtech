@@ -32,17 +32,45 @@ export default function LandingPageTailwind() {
       </div>
       <DoctorsAndConsultationsGrid />
       <div id="doctors">
-        <BestDoctorsSection />
-        <MeetTeamSection />
+        {/* <BestDoctorsSection /> */}
+        {/* <MeetTeamSection /> */}
+
+        <div className="flex justify-center items-center bg-custom-mutedgreen py-10">
+          <div className="w-2/3 md:w-1/2">
+            <Image
+              src="/images/interlinked.png"
+              alt="Doctor"
+              width={800}
+              height={600}
+              layout="responsive"
+              objectFit="contain"
+              priority
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-center items-center bg-custom-mutedbg py-10 px-4 md:px-20">
+          <div className="w-full md:w-2/3">
+            <Image
+              src="/images/early-detection.png"
+              alt="Doctor"
+              width={1200}
+              height={800}
+              layout="responsive"
+              objectFit="contain"
+              priority
+            />
+          </div>
+        </div>
       </div>
       <FooterVideo />
-      <div id="testimonials">
+      {/* <div id="testimonials">
         <PatientTestimonials />
-      </div>
+      </div> */}
       <div id="blogs">
         <ArticlesSection />
       </div>
-      <TripleCard />
+      {/* <TripleCard /> */}
       <Footer />
     </>
 

@@ -10,7 +10,7 @@ import ArrowButton from "@/components/ui/custom/cd-arrow-button";
 import { useDispatch } from "react-redux";
 import { setSubscriptionData } from "@/store/subscriptionSlice";
 import axios from "axios";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import HeartRiskCardRed from "./RedHeartRisk";
 import Link from "next/link"
 import { LineChart, DollarSign } from "lucide-react"
@@ -22,6 +22,7 @@ import MedicalCarousel from "@/components/patients/home/MedicalCarousel";
 export default function HomeOverview() {
   //@ts-ignore
   const { profile }: { profile: { id: string; name: string; subscriptionDetails?: { subscriptionId: string } } } = useProfile();
+  const [dieticianLink, setDieticianLink] = useState<string>("");
   const dispatch = useDispatch();
 
   const fetchSubscriptionTracker = async (userId: string) => {
@@ -40,6 +41,18 @@ export default function HomeOverview() {
       fetchSubscriptionTracker(profile.id).then((data) => {
         console.log("Plan Tracker Data", data);
       });
+    // Fetch the latest dietician link
+    const fetchDieticianLink = async () => {
+      try {
+        const dietPlanLinkResponse = await axios.get(`/api/dieticians/diet?id=${profile.id}`); // Await the async function
+        setDieticianLink(dietPlanLinkResponse.data.dietLink); // Set the state with the resolved value
+      } catch (error) {
+        console.error("Error fetching dietician link:", error);
+      }
+    };
+
+    fetchDieticianLink();
+
     }
   }, [profile]);
 
@@ -81,18 +94,18 @@ export default function HomeOverview() {
           <div className="flex gap-3 w-full">
             <Link href="/health-insights" className="block w-full">
               <HomePageCardSmall
-                href="/health-insights"
+                href="/dashboard/insights"
                 headerLabel="Health Analytics"
                 cardTitle="View Insights"
-                cardDescription="Personalized analysis of your health metrics and trends"
+                cardDescription="Personalized analysis of your health metrics"
                 ctaText="Explore your insights"
                 PrimaryIcon={LineChart}
                 OutlineIcon={LineChart}
               />
             </Link>
-            <Link href="/health-insights" className="block w-full">
+            <Link href={dieticianLink} className="block w-full">
               <HomePageCardSmall
-                href="/health-insights"
+                href={dieticianLink}
                 headerLabel="Diet details"
                 cardTitle="View Diet details"
                 cardDescription="Personalized diet plans and meal suggestions"

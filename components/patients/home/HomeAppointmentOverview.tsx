@@ -100,7 +100,7 @@ export default function HomeAppointmentOverview() {
   // className="group relative w-full md:w-[484px] aspect-[484/194] overflow-hidden border-0 shadow-md transition-all duration-300 hover:shadow-lg bg-gradient-to-..."
 
   return (
-    <Link href={appointmentLink ?? "/join-appointment"} className="block">
+    <Link href={appointmentLink ?? "/join-appointment"} className="block w-full">
       <Card className="group relative w-full  h-[194px] md:aspect-[484/194] md:h-[184px] overflow-hidden border-0 bg-gradient-to-tl from-[#134F30] to-[#56A67C] shadow-md transition-all duration-300 hover:shadow-lg">
         {/* Large video camera outline in background - adjusted opacity and color */}
         <div className="absolute -right-12 -top-4 h-64 w-64 opacity-5">

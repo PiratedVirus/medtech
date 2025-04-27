@@ -54,7 +54,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
    
           <ProfileProvider profile={profile}>
             <Header />
-            <main className="flex-grow">
+            <main className="flex-grow pb-14 sm:pb-2">
               {children}
             </main>
             <div className="hidden sm:block">

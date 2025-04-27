@@ -87,7 +87,7 @@ export default function PaymentSelection({
   console.log("isPlanBookingValid", isPlanBookingValid);
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
+    <div className="max-w-3xl mx-auto">
       <h1 className="text-[#2c2e38] text-lg font-medium mb-6">
         Choose a payment option to Book Appointment
       </h1>

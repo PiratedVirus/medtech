@@ -48,6 +48,7 @@ export async function GET(request: Request, props: { params: Promise<{ doctorId:
       where: {
         doctorId: doctorIdNum,
         status: "available",
+        deletedAt: null,
         OR: dayRanges.map(({ start, end }) => ({
           date: { gte: start, lte: end },
         })),
@@ -62,6 +63,7 @@ export async function GET(request: Request, props: { params: Promise<{ doctorId:
           where: {
             doctorId: doctorIdNum,
             status: "available",
+            deletedAt: null,
             date: { gte: start, lte: end },
           },
         });

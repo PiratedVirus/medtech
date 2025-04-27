@@ -37,7 +37,7 @@ export default function AppointmentListCard({ appointment }: { appointment: Appo
         {/* Appointment Info */}
         <div className="flex flex-col flex-1">
           <h1 className="text-[#56a67c] text-xl font-bold">
-             {appointment?.doctor?.name}
+            {appointment?.doctor?.name}
           </h1>
           <p className="text-gray-700 text-sm">
             {appointment?.doctor?.doctorProfile?.specialty}
@@ -59,13 +59,15 @@ export default function AppointmentListCard({ appointment }: { appointment: Appo
         </div>
 
         {/* Prescription Button */}
-        <div className="text-right">
-          <Link href={appointment?.prescriptionLink || "/#"}>
-          <p className="text-secondary font-medium cursor-pointer hover:underline">
-            Prescription
-          </p>
-          </Link>
-        </div>
+        {appointment?.prescriptionLink ? (
+          <div className="text-right">
+            <Link href={appointment?.prescriptionLink || "/#"}>
+              <p className="text-secondary font-medium cursor-pointer hover:underline">
+                Prescription
+              </p>
+            </Link>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

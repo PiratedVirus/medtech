@@ -3,23 +3,33 @@ import { Badge } from "@/components/ui/badge";
 import { EyeIcon } from "lucide-react";
 import ViewParametersDialog from "@/components/common/ViewParametersDialog";
 import { useState } from "react";
-
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
 interface LabCardProps {
     labPackage: {
         name: string;
         description: string;
         shortDescription: string;
         price: number;
-        parameters?: string; // Assuming this is a comma-separated string
+        parameters?: string; // Assuming this can be a JSON string or comma-separated string
         criticalRequirements?: string; // Assuming this is a comma-separated string
     };
     handleBookAppointment?: (labPackage: any) => void;
 }
 
 export default function LabCard({ labPackage, handleBookAppointment }: LabCardProps) {
-    const parametersArray = labPackage.parameters ? labPackage.parameters.split(",") : [];
+    let parsedParameters: Record<string, string[]> = {};
+    try {
+      if (typeof labPackage.parameters === "string") {
+        parsedParameters = JSON.parse(labPackage.parameters);
+      } else if (
+        typeof labPackage.parameters === "object" &&
+        labPackage.parameters !== null
+      ) {
+        parsedParameters = labPackage.parameters;
+      }
+    } catch (e) {
+      console.error("Failed to parse lab parameters", e);
+    }
+    const parameterCount = Object.values(parsedParameters).reduce((acc, arr) => acc + arr.length, 0);
     const [open, setOpen] = useState(false);
 
     return (
@@ -50,8 +60,8 @@ export default function LabCard({ labPackage, handleBookAppointment }: LabCardPr
 
                     {/* Row 3: Parameters with EyeIcon */}
                     <div className="flex items-center gap-2 text-gray-700 text-sm">
-                        <span>{parametersArray.length} Parameters</span>
-                        {parametersArray.length > 0 && (
+                        <span>{parameterCount} Parameters</span>
+                        {parameterCount > 0 && (
                             <>
                                 <EyeIcon
                                     className="h-4 w-4 text-green-600 cursor-pointer"
@@ -60,7 +70,7 @@ export default function LabCard({ labPackage, handleBookAppointment }: LabCardPr
                                 <ViewParametersDialog
                                     open={open}
                                     onOpenChange={setOpen}
-                                    parameters={parametersArray}
+                                    parameters={parsedParameters}
                                 />
                             </>
                         )}
