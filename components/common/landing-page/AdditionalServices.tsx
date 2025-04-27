@@ -1,5 +1,6 @@
 import { CheckCircle } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 export default function AdditionalServices() {
   return (
     <section className="py-12">
@@ -14,6 +15,7 @@ export default function AdditionalServices() {
 
         <div className="grid md:grid-cols-2 gap-8 items-start">
           {/* Programs Card */}
+          <Link href="/dashboard">
           <div className="bg-custom-mutedgreen hover:bg-custom-darkgreen rounded-3xl p-8 max-w-md mx-auto md:mx-0 transition-colors duration-300 group">
             <div className="flex justify-center mb-6">
               <div className="bg-white rounded-full p-4 w-24 h-24 flex items-center justify-center transition-colors duration-300 group-hover:bg-[#E6F4EA]">
@@ -40,6 +42,7 @@ export default function AdditionalServices() {
               and lasting results.
             </p>
           </div>
+          </Link>
 
           {/* Services List */}
           <div className="space-y-6 max-w-lg mx-auto md:mx-0 pt-8">

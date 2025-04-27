@@ -16,17 +16,18 @@ import ArticlesSection from "@/components/patients/home/ArticleSection";
 import TripleCard from "@/components/common/landing-page/TripleCard";
 import Footer from "@/components/common/Footer";
 import HowWorks from "@/components/common/landing-page/HowCardDBWorks";
+import CareDiabeticsWorkflow from "@/components/common/landing-page/HowCdWorks";
 
 export default function LandingPageTailwind() {
   return (
     <>
-      <InfoBar />
+      {/* <InfoBar /> */}
       <Header />
       <div id="home">
         <HeroSection />
       </div>
       <AdditionalServices />
-      <HowWorks />
+      <CareDiabeticsWorkflow /> 
       <div id="services">
         <ServicesSection />
       </div>
@@ -35,19 +36,20 @@ export default function LandingPageTailwind() {
         {/* <BestDoctorsSection /> */}
         {/* <MeetTeamSection /> */}
 
-        <div className="flex justify-center items-center bg-custom-mutedgreen py-10">
-          <div className="w-2/3 md:w-1/2">
+        <div className="flex justify-center items-center bg-custom-mutedgreen py-10 px-4 md:px-20">
+          <div className="w-full md:w-2/3">
             <Image
               src="/images/interlinked.png"
               alt="Doctor"
-              width={800}
-              height={600}
+              width={1200}
+              height={900}
               layout="responsive"
               objectFit="contain"
               priority
             />
           </div>
         </div>
+        
 
         <div className="flex justify-center items-center bg-custom-mutedbg py-10 px-4 md:px-20">
           <div className="w-full md:w-2/3">
