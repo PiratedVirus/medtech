@@ -6,7 +6,7 @@ export default function MobileSignInPage() {
       {/* Header Section */}
       <div className="flex flex-col text-center items-center mt-16 mb-3">
         <Image
-          src="/images/new-new-logo.png"
+          src="/images/new-logo.png"
           alt="Logo"
           width={200}
           height={250}
