@@ -7,14 +7,15 @@ export default function InfoBar() {
       {/* Left side: Map pin + address */}
       <div className="flex items-center space-x-2">
         <MapPin className="w-5 h-5" />
-        <span>121 Ambedkar St, Kanpur VIC-110085, India</span>
+        <span>Flat. No 10, Srushti Redsidency, Garkheda, Chatrapati Sambhajinagar 431001</span>
       </div>
 
       {/* Right side: Clock + hours */}
       <div className="flex items-center space-x-2">
         <Clock className="w-5 h-5" />
-        <span>9am - 5pm EST, Monday - Friday</span>
+        <span>9am - 5pm IST, Monday - Friday</span>
       </div>
     </div>
   );
 }
+

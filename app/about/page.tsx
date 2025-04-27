@@ -264,6 +264,9 @@ const AboutPage: React.FC = () => {
         Padmaram Healthcare Private Limited
 
       </h1>
+      <p className='mt-3 text-lg text-gray-800 text-pretty'><b>Padmaram Healthcare Private Limited</b> is driven by an unwavering commitment to revolutionize healthcare through innovation and technology. Our vision is to make advanced, personalized, and preventive healthcare accessible to all. By combining cutting-edge research, digital solutions, and patient-centric models, we strive to reshape the future of health and wellness.
+      </p>
+      <p  className='mt-3 text-lg text-gray-800 text-pretty'>      <b>CareDiabetics</b>, a flagship product of Padmaram Healthcare, was created with the same vision to provide holistic diabetes management, combining expert medical guidance, lifestyle support, and continuous patient engagement.</p>
       </div>
 
       {/* Policies Navigation Cards Section */}

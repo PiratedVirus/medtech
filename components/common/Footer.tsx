@@ -14,7 +14,7 @@ export default function Footer() {
           <div className="space-y-6 text-center md:text-left">
             <div className="space-y-2 flex flex-col items-center md:items-start">
               <Image
-                src="/images/logo.png"
+                src="/images/new-logo.png"
                 alt="Care Diabetics"
                 width={250}
                 height={50}
@@ -25,7 +25,7 @@ export default function Footer() {
             <p className="text-sm text-center md:text-left">
               Connecting Patients with Doctors, Seamlessly
             </p>
-            <div className="flex gap-2">
+            {/* <div className="flex gap-2">
               <Input
                 type="email"
                 placeholder="Enter Email"
@@ -34,7 +34,7 @@ export default function Footer() {
               <Button variant="secondary" size="icon">
                 <Mail className="h-4 w-4" />
               </Button>
-            </div>
+            </div> */}
           </div>
 
           {/* ✅ Column 2 & 3 - Care Diabetics & Quick Links (Side by Side on Mobile) */}
@@ -49,20 +49,25 @@ export default function Footer() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/about/privacy" className="text-sm hover:underline">
+                  <Link href="/about/policies#privacy-policy" className="text-sm hover:underline">
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link href="/terms" className="text-sm hover:underline">
+                  <Link href="/about/policies#terms-conditions" className="text-sm hover:underline">
                     Terms and Conditions
                   </Link>
                 </li>
                 <li>
+                  <Link href="/about/policies#refund-cancellation" className="text-sm hover:underline">
+                  Refund and Cancellation Policy
+                  </Link>
+                </li>
+                {/* <li>
                   <Link href="/faq" className="text-sm hover:underline">
                     FAQ
                   </Link>
-                </li>
+                </li> */}
               </ul>
             </div>
 
@@ -71,13 +76,13 @@ export default function Footer() {
               <h3 className="text-xl font-semibold mb-4">Quick Links</h3>
               <ul className="space-y-2">
                 <li>
-                  <Link href="/find-doctor" className="text-sm hover:underline">
+                  <Link href="/dashboard/doctors" className="text-sm hover:underline">
                     Find a Doctor
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="/book-appointment"
+                    href="/dashboard/appointments"
                     className="text-sm hover:underline"
                   >
                     Book Appointment
@@ -91,14 +96,17 @@ export default function Footer() {
           <div className="sm:col-span-2 md:col-span-1">
             <h3 className="text-xl font-semibold mb-4">Contact Us</h3>
             <div className="space-y-2 text-sm">
-              <p>121 Ambedkar St, Kanpur</p>
-              <p>VIC-110085, India</p>
-              <p>(888)-123-4587 (9am - 5pm EST, Monday - Friday)</p>
-              <p>Info@example.com</p>
+              <p>Flat. No 10, Srushti Redsidency, Saraswati Nagar</p>
+              <p>Garkheda, Chhatrapati Sambhajinagar 431001 </p>
+              <p>Maharashtra, India</p>
+              <p>connect@carediabetics.com</p>
+              <p>CIN: U47721MH2025PTC440504</p>
             </div>
           </div>
         </div>
       </div>
+
+
 
       {/* ✅ Bottom Bar */}
       <div className="border-t bg-[#134f30] text-white border-white/10">
