@@ -6,11 +6,11 @@ import React from "react";
 export default function HeroSection() {
   return (
     <div className="bg-custom-mutedgreen">
-      <div className="relative w-full px-6 md:px-20 grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-0 py-16 md:py-0">
+      <div className="relative w-full px-6 md:px-20 grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-0 sm:py-16 md:py-0">
         {/* Left Side */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Logo for mobile, above the left section */}
-          <div className="md:hidden flex justify-center mb-8">
+          <div className="md:hidden flex justify-center mt-4 mb-8">
             <Image
               className="object-cover"
               alt="Brand Logo"
@@ -20,7 +20,7 @@ export default function HeroSection() {
             />
           </div>
 
-          <div className="leftSide col-span-1 flex flex-col items-center relative w-full">
+          <div className="leftSide hidden col-span-1 sm:flex flex-col items-center relative w-full">
             {/* Left Side - Doctor Image and Badges */}
             <div className="relative w-full max-w-md mx-auto md:max-w-none md:mx-0 md:absolute md:left-[34px] md:top-[88px] md:w-[584px] md:h-[687px]">
               {/* Doctor Image Container with rotation on desktop */}
@@ -100,25 +100,25 @@ export default function HeroSection() {
           </div>
 
           {/* iPhone + App Stores */}
-{/* iPhone + App Stores */}
-<div className="flex flex-col sm:flex-row  justify-center items-center gap-6 mt-10 mx-auto pr-8">
-  <img
-    className="object-cover w-[220px] h-[225px]"
-    alt="iPhone Pro"
-    src="/images/iphone-large.png"
-  />
+          {/* iPhone + App Stores */}
+          <div className="flex   justify-center items-center gap-6 mt-10 mx-auto pr-8">
+            <img
+              className="object-cover w-[220px] h-[225px]"
+              alt="iPhone Pro"
+              src="/images/iphone-large.png"
+            />
 
-  {/* Store badges */}
-  <div className="flex flex-col gap-4 items-center">
-    <p className="text-xl text-custom-darkgreen">Coming soon on</p>
-    <div
-      className="w-[160px] h-[48px] bg-cover bg-center"
-      style={{
-        backgroundImage: "url('/images/playstore.png')", // Local path update
-      }}
-    />
-  </div>
-</div>
+            {/* Store badges */}
+            <div className="flex flex-col gap-4 items-center">
+              <p className="text-xl text-custom-darkgreen">Coming soon on</p>
+              <div
+                className="w-[160px] h-[48px] bg-cover bg-center"
+                style={{
+                  backgroundImage: "url('/images/playstore.png')", // Local path update
+                }}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

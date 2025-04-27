@@ -53,8 +53,8 @@ export default function Header() {
         <Link href="/#doctors" className="text-gray-900 hover:text-secondary">
           Doctors
         </Link>
-        <Link href="/#blogs" className="text-gray-900 hover:text-secondary">
-          Blogs
+        <Link href="/about/contact-us" className="text-gray-900 hover:text-secondary">
+          Contact Us
         </Link>
 
       </nav>
@@ -80,6 +80,10 @@ export default function Header() {
           <Link href="/about" className="text-gray-900 hover:text-secondary">
             About
           </Link>
+          <Link href="/about/contact-us" className="text-gray-900 hover:text-secondary">
+          Contact Us
+        </Link>
+
         </nav>
       </div>
     </header>
