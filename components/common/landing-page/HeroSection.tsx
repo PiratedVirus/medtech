@@ -22,22 +22,22 @@ export default function HeroSection() {
 
             {/* "Easy Appointment Booking" badge */}
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 md:left-2 md:top-[544px] inline-flex items-center gap-3 px-6 py-2 bg-[#f5f7f9] rounded-[10px] shadow">
-              <img className="w-7 h-7" alt="Star" src="/icons/star.svg" />
-              <div className="text-[#164E2F] text-sm font-medium whitespace-nowrap">
+              <img className="w-8 h-8" alt="Star" src="/icons/star.svg" />
+              <div className="text-[#164E2F] text-base font-medium whitespace-nowrap">
                 Easy Appointment Booking
               </div>
             </div>
 
             {/* "Regular Checkup" badge */}
-            <div className="absolute top-10 left-1/2 transform -translate-x-1/2 md:left-[1px] md:top-[170px] inline-flex items-center gap-2 px-3 py-2 bg-[#f5f7f9] rounded-lg shadow-md">
-              <div className="relative w-[26px] h-[26px]">
+            <div className="absolute top-10 left-1/2 transform -translate-x-1/2 md:left-[1px] md:top-[170px] inline-flex items-center gap-3 px-6 py-2 bg-[#f5f7f9] rounded-[10px] shadow">
+              <div className="relative w-[30px] h-[30px]">
                 <img
-                  className="absolute w-[21px] h-[21px] top-[3px] left-[3px]"
+                  className="absolute w-[24px] h-[24px] top-[3px] left-[3px]"
                   alt="Shield"
                   src="/icons/sheild.svg"
                 />
               </div>
-              <div className="text-[#164E2F] text-sm font-medium">Regular Checkup</div>
+              <div className="text-[#164E2F] text-base font-medium">Regular Checkup</div>
             </div>
 
             {/* Green Heart Circle */}
@@ -53,8 +53,8 @@ export default function HeroSection() {
         </div>
 
         {/* Right Side */}
-        <div className="rightSide col-span-2 flex flex-col items-center md:items-end justify-center text-center md:text-right w-full">
-          <div className="flex flex-col gap-8 w-full md:pr-14">
+        <div className="rightSide col-span-2 flex flex-col items-end text-right w-full">
+          <div className="flex flex-col gap-8 items-end text-right w-full md:pr-14">
             {/* Logo */}
             <div className="flex justify-center md:justify-end">
               <Image

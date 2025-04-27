@@ -49,7 +49,7 @@ export default function Footer() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/privacy" className="text-sm hover:underline">
+                  <Link href="/about/privacy" className="text-sm hover:underline">
                     Privacy Policy
                   </Link>
                 </li>
