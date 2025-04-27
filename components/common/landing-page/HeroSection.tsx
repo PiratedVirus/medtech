@@ -73,14 +73,14 @@ export default function HeroSection() {
           <div className="flex flex-col gap-8 items-center md:items-end text-center md:text-right w-full md:pr-14 md:mt-4">
             {/* Main Heading */}
             <div className="hidden md:flex justify-center mb-8">
-            <Image
-              className="object-cover"
-              alt="Brand Logo"
-              width={420}
-              height={320}
-              src="/images/new-logo.png"
-            />
-          </div>
+              <Image
+                className="object-cover"
+                alt="Brand Logo"
+                width={420}
+                height={320}
+                src="/images/new-logo.png"
+              />
+            </div>
             <p className="text-[32px] md:text-[48px] font-bold leading-normal text-[#2C2E38] w-full md:w-[630px]">
               Programs tailored for your
               <br />
@@ -100,31 +100,25 @@ export default function HeroSection() {
           </div>
 
           {/* iPhone + App Stores */}
-          <div className="flex flex-col md:flex-row justify-center md:justify-end items-center gap-6 mt-10 pr-8">
-            <img
-              className="object-cover w-[220px] h-[225px]"
-              alt="iPhone Pro"
-              src="/images/iphone-large.png"
-            />
+{/* iPhone + App Stores */}
+<div className="flex flex-col sm:flex-row  justify-center items-center gap-6 mt-10 mx-auto pr-8">
+  <img
+    className="object-cover w-[220px] h-[225px]"
+    alt="iPhone Pro"
+    src="/images/iphone-large.png"
+  />
 
-            {/* Store badges */}
-            <div className="flex gap-4">
-              <div
-                className="w-[160px] h-[48px] bg-cover bg-center"
-                style={{
-                  backgroundImage:
-                    "url('https://c.animaapp.com/qvLtwVco/img/playstore-png@2x.png')",
-                }}
-              />
-              <div
-                className="w-[160px] h-[48px] bg-cover bg-center"
-                style={{
-                  backgroundImage:
-                    "url('https://c.animaapp.com/qvLtwVco/img/appstore-png@2x.png')",
-                }}
-              />
-            </div>
-          </div>
+  {/* Store badges */}
+  <div className="flex flex-col gap-4 items-center">
+    <p className="text-xl text-custom-darkgreen">Coming soon on</p>
+    <div
+      className="w-[160px] h-[48px] bg-cover bg-center"
+      style={{
+        backgroundImage: "url('/images/playstore.png')", // Local path update
+      }}
+    />
+  </div>
+</div>
         </div>
       </div>
     </div>
