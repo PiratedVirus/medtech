@@ -20,7 +20,7 @@ import HowWorks from "@/components/common/landing-page/HowCardDBWorks";
 export default function LandingPageTailwind() {
   return (
     <>
-      <InfoBar />
+      {/* <InfoBar /> */}
       <Header />
       <div id="home">
         <HeroSection />
