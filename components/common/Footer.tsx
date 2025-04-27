@@ -20,7 +20,6 @@ export default function Footer() {
                 height={50}
                 className="mb-1"
               />
-              <p className="text-sm">AIIMS (NEW DELHI) ALUMNI INITIATIVE</p>
             </div>
             <p className="text-sm text-center md:text-left">
               Connecting Patients with Doctors, Seamlessly
@@ -96,11 +95,11 @@ export default function Footer() {
           <div className="sm:col-span-2 md:col-span-1">
             <h3 className="text-xl font-semibold mb-4">Contact Us</h3>
             <div className="space-y-2 text-sm">
-              <p>Flat. No 10, Srushti Redsidency, Saraswati Nagar</p>
-              <p>Garkheda, Chhatrapati Sambhajinagar 431001 </p>
-              <p>Maharashtra, India</p>
+              {/* <p>Flat. No 10, Srushti Redsidency, Saraswati Nagar</p> */}
+              {/* <p>Garkheda, Chhatrapati Sambhajinagar 431001 </p> */}
+              {/* <p>Maharashtra, India</p> */}
               <p>connect@carediabetics.com</p>
-              <p>CIN: U47721MH2025PTC440504</p>
+              {/* <p>CIN: U47721MH2025PTC440504</p> */}
             </div>
           </div>
         </div>

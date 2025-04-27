@@ -14,7 +14,7 @@ const AboutPage: React.FC = () => {
       <div className="w-full py-4 flex items-center justify-center">
         <h1 className="text-4xl font-bold text-custom-darkgreen">About Us</h1>
       </div>
-  
+
 
       {/* CEO Info Section */}
       <CeoInfo />
@@ -172,11 +172,11 @@ const AboutPage: React.FC = () => {
           {/* Our Promise */}
           <div className="relative mt-16 text-center">
             <h3 className="text-green-800 text-2xl font-semibold ">
-              Our Promise 
+              Our Promise
             </h3>
             <p className="text-green-800 italic mt-2 mb-8">
-            (What users can expect from us)
-              </p>
+              (What users can expect from us)
+            </p>
             <p className="text-gray-700 font-semibold text-2xl leading-relaxed">
               “At CareDiabetics, we promise care that is compassionate, cutting-edge, and committed to your journey — every step of the way.”
             </p>
@@ -185,11 +185,11 @@ const AboutPage: React.FC = () => {
           {/* Core Values */}
           <div className="relative mt-16 text-center">
             <h3 className="text-green-800 text-2xl font-semibold">
-              Core Values 
+              Core Values
             </h3>
             <p className="text-green-800 italic mt-2 mb-8">
-            (The principles guiding us)
-              </p>
+              (The principles guiding us)
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
               <div className="p-10 bg-custom-darkgreen text-white text-center flex flex-col justify-center items-center">
                 <h4 className="text-xl font-semibold mb-2">Patient First</h4>
@@ -217,15 +217,19 @@ const AboutPage: React.FC = () => {
       </div>
 
       <div className="w-full text-center bg-custom-mutedgreen py-8 px-4 md:px-20">
-      <h1 className="text-xl italic text-custom-darkgreen">A Product by</h1>
-      <img src='/images/parent-logo-nobg.png' alt="Parent Logo" className="w-1/2 md:w-1/4 mx-auto mt-8" />
-      <h1 className=" text-3xl font-bold text-custom-darkgreen mt-4">
-        Padmaram Healthcare Private Limited
+        <h1 className="text-xl italic text-custom-darkgreen">A Product by</h1>
+        <img src='/images/parent-logo-nobg.png' alt="Parent Logo" className="w-1/2 md:w-1/4 mx-auto mt-8" />
+        <h1 className=" text-3xl font-bold text-custom-darkgreen mt-4">
+          Padmaram Healthcare Private Limited
 
-      </h1>
-      <p className='mt-3 text-lg text-gray-800 text-pretty'><b>Padmaram Healthcare Private Limited</b> is driven by an unwavering commitment to revolutionize healthcare through innovation and technology. Our vision is to make advanced, personalized, and preventive healthcare accessible to all. By combining cutting-edge research, digital solutions, and patient-centric models, we strive to reshape the future of health and wellness.
-      </p>
-      <p  className='mt-3 text-lg text-gray-800 text-pretty'>      <b>CareDiabetics</b>, a flagship product of Padmaram Healthcare, was created with the same vision to provide holistic diabetes management, combining expert medical guidance, lifestyle support, and continuous patient engagement.</p>
+        </h1>
+        <p className='mt-3 text-lg text-gray-800 text-pretty'><b>Padmaram Healthcare Private Limited</b> is driven by an unwavering commitment to revolutionize healthcare through innovation and technology. Our vision is to make advanced, personalized, and preventive healthcare accessible to all. By combining cutting-edge research, digital solutions, and patient-centric models, we strive to reshape the future of health and wellness.
+        </p>
+        <p className='mt-3 text-lg text-gray-800 text-pretty'>      <b>CareDiabetics</b>, a flagship product of Padmaram Healthcare, was created with the same vision to provide holistic diabetes management, combining expert medical guidance, lifestyle support, and continuous patient engagement.</p>
+        <div className="space-y-2  text-gray-700 mt-8">
+          <p>Flat. No 10, Srushti Redsidency, Saraswati Nagar, Garkheda, Chhatrapati Sambhajinagar 431001, Maharashtra, India</p>
+          <p>CIN: U47721MH2025PTC440504 | connect@carediabetics.com</p>
+        </div>
       </div>
 
       {/* Policies Navigation Cards Section */}
