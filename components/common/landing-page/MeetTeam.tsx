@@ -65,7 +65,7 @@ export const MeetTeamSection = () => {
   // Define your doctor data
   const doctors = [
     {
-      imageUrl: "https://c.animaapp.com/gmTUL6Tf/img/image-3-3@2x.png",
+      imageUrl: "https://res.cloudinary.com/pirated-virus-cloud/image/upload/v1746005032/drnikhil_o81uyg.png",
       name: "Dr. Nikhil Gupta",
       title: "MBBS (AIIMS, New Delhi), MPH, DABIM, FACE",
       extraTitle:"American Board of Internal Medicine, Clinical Endocrinologist, EDM Institute, Toranto - Canada",
@@ -73,14 +73,14 @@ export const MeetTeamSection = () => {
 
     
     {
-      imageUrl: "https://c.animaapp.com/gmTUL6Tf/img/image-3-3@2x.png",
+      imageUrl: "https://res.cloudinary.com/pirated-virus-cloud/image/upload/v1746005030/drsetu_hfc9ya.png",
       name: "Dr. Setu Gupta",
       title: "MBBS, MD Medicine PGIMER, MRCSE (Endocrinology) - UK",
       extraTitle:"DM Endocrinology, AIIMS, New Delhi. Consultant, Sir Gangaram Hospital, New Delhi. Times 2025 Healthcare Leader award winner",
 
     },
     {
-      imageUrl: "https://c.animaapp.com/gmTUL6Tf/img/image-3-3@2x.png",
+      imageUrl: "https://res.cloudinary.com/pirated-virus-cloud/image/upload/v1746005030/drarun_cdayrd.png",
       name: "Dr. Arun Singh",
       title: "MBBS, Medicine MAMC Delhi",
       extraTitle:"DM Endocrinology, AIIMS, New Delhi.",
