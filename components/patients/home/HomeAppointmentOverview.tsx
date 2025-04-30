@@ -37,7 +37,7 @@ export default function HomeAppointmentOverview() {
 
   if (isError || !appointment) {
     return (
-      <Link href="#" className="block w-full">
+      <Link href="/dashboard/appointments" className="block w-full">
         <Card className="group relative w-full  sm:h-[194px] md:aspect-[484/194]  md:h-[184px] overflow-hidden border-0 bg-gradient-to-tl from-[#134F30] to-[#56A67C] shadow-md transition-all duration-300 hover:shadow-lg">            {/* Large video camera outline in background - adjusted opacity and color */}
           <div className="absolute -right-12 -top-4 h-64 w-64 opacity-5">
             <svg viewBox="0 0 24 24" fill="none" className="h-full w-full text-white">

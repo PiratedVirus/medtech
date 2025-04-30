@@ -69,7 +69,7 @@ export default function HeroSection() {
         </div>
 
         {/* Right Side */}
-        <div className="rightSide col-span-2 flex flex-col items-end text-right w-full">
+        <div className="rightSide px-6 col-span-2 flex flex-col items-end text-right w-full">
           <div className="flex flex-col gap-8 items-center md:items-end text-center md:text-right w-full md:pr-14 md:mt-4">
             {/* Main Heading */}
             <div className="hidden md:flex justify-center mb-8">
@@ -100,23 +100,28 @@ export default function HeroSection() {
           </div>
 
           {/* iPhone + App Stores */}
-          {/* iPhone + App Stores */}
-          <div className="flex   justify-center items-center gap-6 mt-10 mx-auto pr-8">
+          <div className="flex   justify-center items-center gap-6 mt-10 mx-auto px-6">
             <img
-              className="object-cover w-[220px] h-[225px]"
+              className="object-cover w-[220px] h-[225px] "
               alt="iPhone Pro"
               src="/images/iphone-large.png"
             />
 
             {/* Store badges */}
-            <div className="flex flex-col gap-4 items-center">
-              <p className="text-xl text-custom-darkgreen">Coming soon on</p>
+            <div className="flex flex-col sm:flex-row gap-4 items-center">
+              <p className=" text-custom-darkgreen italic">Coming soon on</p>
               <div
-                className="w-[160px] h-[48px] bg-cover bg-center"
+                className="w-[120px] h-[36px] sm:w-[160px] sm:h-[48px] bg-cover bg-center"
                 style={{
                   backgroundImage: "url('/images/playstore.png')", // Local path update
                 }}
               />
+              {/* <div
+                className="w-[120px] h-[36px] sm:w-[160px] sm:h-[48px] bg-cover bg-center"
+                style={{
+                  backgroundImage: "url('/images/appstore.png')", // Local path update
+                }}
+              /> */}
             </div>
           </div>
         </div>

@@ -71,7 +71,7 @@ export default function HomePageCardSmall({
   </div>
 
   {/* Call-to-Action */}
-  <div className="flex items-center text-sm font-medium text-[#134F30] transition-all duration-300 group-hover:translate-x-1">
+  <div className="flex items-center text-sm font-medium text-primary transition-all duration-300 group-hover:translate-x-1">
     {ctaText}
     <CTAIcon className="ml-1 h-4 w-4" />
   </div>

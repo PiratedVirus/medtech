@@ -39,8 +39,8 @@ const PoliciesPage: React.FC = () => {
 
             </div>
 
-            <div id="refund-cancellation" className="w-full py-4 flex items-center justify-center">
-                <h1 className="text-4xl font-bold text-custom-darkgreen">Refund and Cancellation Policy</h1>
+            <div id="refund-cancellation" className="w-full px-4 md:px-20 py-4 flex items-center justify-center">
+                <h1 className="text-4xl text-center font-bold text-custom-darkgreen">Refund and Cancellation Policy</h1>
             </div>
             
             <div className="flex px-4 md:px-20 flex-col md:flex-row items-center md:items-start justify-between gap-10">

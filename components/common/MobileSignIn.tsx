@@ -2,7 +2,7 @@ import SignIn from "@/components/common/SignIn";
 import Image from "next/image";
 export default function MobileSignInPage() {
   return (
-    <div className="flex flex-col h-screen bg-gray-50 p-4">
+    <div className="flex flex-col h-screen bg-gray-50">
       {/* Header Section */}
       <div className="flex flex-col text-center items-center mt-16 mb-3">
         <Image

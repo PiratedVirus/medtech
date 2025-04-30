@@ -60,7 +60,7 @@ export default function FooterVideo() {
 
             <div className="aspect-video w-full">
               <iframe
-                src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1"
+                src="https://www.youtube.com/watch?v=Hfm94aHAbYQ"
                 title="Medical consultation video"
                 className="w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

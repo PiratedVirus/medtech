@@ -23,7 +23,7 @@ export async function POST(request: Request) {
         phoneNumber,
         role: 'PATIENT',
         status: 'ACTIVE',
-        clinicId: 2, // Hardcoded for now
+        clinicId: 1, // Hardcoded for now
         patientProfile: {
           create: {
             age: parseInt(age, 10),

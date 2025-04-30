@@ -16,6 +16,7 @@ import Link from "next/link"
 import { LineChart, DollarSign } from "lucide-react"
 import HomePageCardSmall from "@/components/ui/custom/cd-homepage-card-small"
 import MedicalCarousel from "@/components/patients/home/MedicalCarousel";
+import SubscribeCarePlanCard from "./SubscribePlanCard";
 
 
 
@@ -71,7 +72,7 @@ export default function HomeOverview() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl">
-          {greeting} <span className="text-secondary">{profile?.name}!</span>
+          {greeting} <span className="text-secondary">{profile?.name?.trim().split(/\s+/)[0] ?? ""}!</span>
         </h1>
       </div>
 
@@ -88,7 +89,7 @@ export default function HomeOverview() {
             {profile?.subscriptionDetails?.subscriptionId ? (
               <PlanUsageMinimal userId={4} subscriptionId={profile?.subscriptionDetails?.subscriptionId} />
             ) : (
-              <ArrowButton buttonText="Explore our plans" href="/dashboard/plans" />
+              <SubscribeCarePlanCard />
             )}
           </div>
           <div className="flex gap-3 w-full">
@@ -98,18 +99,18 @@ export default function HomeOverview() {
                 headerLabel="Health Analytics"
                 cardTitle="View Insights"
                 cardDescription="Personalized analysis of your health metrics"
-                ctaText="Explore your insights"
+                ctaText="Explore insights"
                 PrimaryIcon={LineChart}
                 OutlineIcon={LineChart}
               />
             </Link>
             <Link href={dieticianLink} className="block w-full">
               <HomePageCardSmall
-                href={dieticianLink}
+                href={dieticianLink ? dieticianLink : "/dashboard/dieticians"}
                 headerLabel="Diet details"
-                cardTitle="View Diet details"
+                cardTitle="View Diet"
                 cardDescription="Personalized diet plans and meal suggestions"
-                ctaText="Explore your diet"
+                ctaText="Explore diet"
                 PrimaryIcon={BicepsFlexed}
                 OutlineIcon={BicepsFlexed}
               />

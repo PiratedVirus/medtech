@@ -1,5 +1,5 @@
 import React from "react";
-
+import Link from "next/link";
 /**
  * Single Doctor Card component
  */
@@ -15,92 +15,97 @@ function DoctorCard({
   extraTitle?: string;
 }) {
   return (
-    <div className="flex rounded-3xl h-80 shadow overflow-hidden bg-gradient-to-t from-[#134F30] to-[#56A67C] px-4 pt-4 pb-0 sm:p-6 lg:p-8 lg:pb-0 text-white">
+    <div
+      className=" flex flex-col sm:flex-row rounded-3xl overflow-hidden bg-gradient-to-t from-[#134F30] to-[#56A67C] shadow h-auto sm:h-80 px-4 pt-4 pb-0 sm:p-6 lg:p-8 lg:pb-0 text-white"
+    >
       {/* Doctor Image */}
       <img
         src={imageUrl}
         alt={name}
-        className="w-[205px] h-[344px] object-cover"
+        className="w-full max-h-96 sm:w-[205px] sm:max-h-[344px] object-cover"
       />
 
       {/* Right-side Text */}
-      <div className="flex flex-col justify-center gap-3 p-4">
-        {/* Doctor Name */}
-        <h3 className="text-2xl font-bold bg-gradient-to-r from-[#56a67c] to-[#33b46c] text-white bg-clip-text">
+      <div className="flex flex-col justify-center gap-3 p-4 w-full text-center sm:text-left">
+        <h3 className="text-2xl font-bold bg-gradient-to-r from-[#56a67c] to-[#33b46c] bg-clip-text text-slate-100">
           {name}
         </h3>
-        {/* Title/Subheading */}
-        <p className="text-base bg-gradient-to-r from-[#56a67c] to-[#33b46c] text-white bg-clip-text">
+        <p className="text-base bg-gradient-to-r from-[#56a67c] to-[#33b46c] bg-clip-text text-white">
           {title}
-          {extraTitle && <br />}
-          {extraTitle}
+          {extraTitle && (
+            <>
+              <br />
+              <br />
+              <span className="text-gray-100">{extraTitle}</span>
+            </>
+          )}
         </p>
 
-        {/* "Know more>" link */}
-        <a
-          href="#"
-          className="underline text-base bg-gradient-to-r from-[#56a67c] to-[#33b46c] text-white bg-clip-text"
-        >
-          Know more
-        </a>
 
-        {/* "Book appointment" Button */}
-        <button className="inline-flex w-52 items-center gap-2 px-5 py-3 rounded-xl bg-[#f5f7f9] border-none">
-          <span className="bg-gradient-to-r from-[#56a67c] to-[#164E2F] bg-clip-text text-transparent font-semibold">
-            Book appointment
-          </span>
-          <img
-            className="w-4 h-4"
-            alt="arrow"
-            src="https://c.animaapp.com/gmTUL6Tf/img/vector.svg"
-          />
-        </button>
+
+        <Link href="/dashboard" className="mt-2 self-center sm:self-start">
+          <button className="inline-flex w-full sm:w-52 justify-center items-center gap-2 px-5 py-3 rounded-xl bg-[#f5f7f9] border-none">
+            <span className="bg-gradient-to-r from-[#56a67c] to-[#164E2F] bg-clip-text text-transparent font-semibold">
+              Book appointment
+            </span>
+            <img
+              className="w-4 h-4"
+              alt="arrow"
+              src="https://c.animaapp.com/gmTUL6Tf/img/vector.svg"
+            />
+          </button>
+        </Link>
       </div>
     </div>
   );
 }
+
 
 export const MeetTeamSection = () => {
   // Define your doctor data
   const doctors = [
     {
       imageUrl: "https://c.animaapp.com/gmTUL6Tf/img/image-3-3@2x.png",
-      name: "Dr. Satish Ghansala",
-      title: "Management Representee & Head Dental",
+      name: "Dr. Nikhil Gupta",
+      title: "MBBS (AIIMS, New Delhi), MPH, DABIM, FACE",
+      extraTitle:"American Board of Internal Medicine, Clinical Endocrinologist, EDM Institute, Toranto - Canada",
+    },
+
+    
+    {
+      imageUrl: "https://c.animaapp.com/gmTUL6Tf/img/image-3-3@2x.png",
+      name: "Dr. Setu Gupta",
+      title: "MBBS, MD Medicine PGIMER, MRCSE (Endocrinology) - UK",
+      extraTitle:"DM Endocrinology, AIIMS, New Delhi. Consultant, Sir Gangaram Hospital, New Delhi. Times 2025 Healthcare Leader award winner",
+
     },
     {
       imageUrl: "https://c.animaapp.com/gmTUL6Tf/img/image-3-3@2x.png",
-      name: "Dr. Shanu Ghansala",
-      title: "Medical Superintendent and Senior Consultant (General Medicine)",
+      name: "Dr. Arun Singh",
+      title: "MBBS, Medicine MAMC Delhi",
+      extraTitle:"DM Endocrinology, AIIMS, New Delhi.",
+
     },
-    {
-      imageUrl: "https://c.animaapp.com/gmTUL6Tf/img/image-3-3@2x.png",
-      name: "Dr. Manish Ghansala",
-      title: "Medical Director Senior Consultant & Head (Respiratory Medicine)",
-    },
-    {
-      imageUrl: "https://c.animaapp.com/gmTUL6Tf/img/image-3-3@2x.png",
-      name: "Dr. Mohit Ghansala",
-      title: "Medical Superintendent and Senior Consultant (General Medicine)",
-    },
+
   ];
 
   return (
-    <div className="w-full mx-auto flex flex-col justify-center items-center px-20 py-8">
-            <div className="text-4xl pb-8 font-medium leading-normal text-[#2C2E38]">
-                Meet the{" "}
-                <span className="bg-gradient-to-r from-[#164E2F] to-[#33B46C] bg-clip-text text-transparent">
-                  Team
-                </span>
-              </div>
+    <div className="w-full mx-auto flex flex-col justify-center items-center px-4 sm:px-20 py-8">
+      <div className="text-4xl pb-8 font-medium leading-normal text-[#2C2E38]">
+        Meet the{" "}
+        <span className="bg-gradient-to-r from-[#164E2F] to-[#33B46C] bg-clip-text text-transparent">
+          Team
+        </span>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-center">
-  
+
         {doctors.map((doc, idx) => (
           <DoctorCard
             key={idx}
             imageUrl={doc.imageUrl}
             name={doc.name}
             title={doc.title}
+            extraTitle={doc.extraTitle}
           />
         ))}
       </div>

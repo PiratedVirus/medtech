@@ -11,8 +11,8 @@ import { isValidPhoneNumber } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 export default function SignInForm() {
-  const [step, setStep] = useState<"signIn" | "otp" | "register">("otp");
-  const [phoneNumber, setPhoneNumber] = useState<string>("8149306224");
+  const [step, setStep] = useState<"signIn" | "otp" | "register">("signIn");
+  const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [phoneError, setPhoneError] = useState("");
   const [otpError, setOtpError] = useState("");
@@ -50,13 +50,18 @@ export default function SignInForm() {
     if (isValidPhoneNumber(phoneNumber)) {
       try {
         const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+        const trimmedPhoneNumber = formattedPhoneNumber.replace(/\+/g, '').replace(/\s+/g, '');
+
         const response = await axios.post("/api/auth/send-otp", {
-          phoneNumber: formattedPhoneNumber,
+          phoneNumber: trimmedPhoneNumber,
         });
+        // console.log("the response is ", response);
         const data = response.data;
         if (data.success) {
           setStep("otp");
           setPhoneError("");
+          const reqId = response.data.message;
+          localStorage.setItem('reqId', reqId);
         } else {
           setPhoneError(data.error);
         }
@@ -72,11 +77,17 @@ export default function SignInForm() {
     if (otp.every((digit) => digit !== "")) {
       try {
         const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+        const trimmedPhoneNumber = formattedPhoneNumber.replace(/\+/g, '').replace(/\s+/g, '');
+
+        const reqId = localStorage.getItem('reqId');
         const response = await axios.post("/api/auth/verify-otp", {
-          phoneNumber: formattedPhoneNumber,
+          phoneNumber: trimmedPhoneNumber,
           code: otp.join(""),
+          reqId: reqId,
+          widgetId: "356441767046363535383038"
         });
         const data = response.data;
+        console.log("handleOtpSubmit response is ", response)
 
         if (data.success) {
           if (data.userExists) {
@@ -103,7 +114,8 @@ export default function SignInForm() {
         phoneNumber: formatPhoneNumber(phoneNumber),
       });
       if (response.data.success) {
-        alert("Registration Successful!");
+        // alert("Registration Successful!");
+        window.location.href = "/dashboard";
         // Redirect or update state as needed
       } else {
         alert("Registration Failed: " + response.data.error);
@@ -161,7 +173,14 @@ export default function SignInForm() {
                   required
                   placeholder="Enter your number"
                   value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow only numeric values and limit to 10 digits
+                    if (/^\d{0,10}$/.test(value)) {
+                      setPhoneNumber(value);
+                    }
+                  }}
+                  pattern="\d{10}" // Ensures only 10 digits are valid
                   className="border-0 focus-visible:ring-0 text-lg bg-white placeholder:text-gray-300 h-14 px-6"
                 />
               </div>
@@ -224,11 +243,11 @@ export default function SignInForm() {
           {/* Terms and Privacy */}
           <div className="text-center text-[15px] text-gray-600">
             By signing in you agree to our{" "}
-            <Link href="#" className="text-custom-green">
+            <Link href="/about/policies#terms-conditions" className="text-custom-green">
               Terms and Conditions
             </Link>{" "}
             and{" "}
-            <Link href="#" className="text-custom-green">
+            <Link href="/about/policies#privacy-policy" className="text-custom-green">
               Privacy Policy
             </Link>
           </div>

@@ -9,7 +9,7 @@ import DoctorsAndConsultationsGrid from "@/components/common/landing-page/Doctor
 import ServicesSection from "@/components/common/landing-page/ServicesSection";
 import HeroSection from "@/components/common/landing-page/HeroSection";
 import BestDoctorsSection from "@/components/common/landing-page/BestDoctorsSection";
-import { MeetTeamSection } from "@/components/common/landing-page/MeetTeam";
+import {MeetTeamSection}  from "@/components/common/landing-page/MeetTeam";
 import PatientTestimonials from "@/components/common/landing-page/PatientTestimonial";
 import FooterVideo from "@/components/patients/home/FooterVideo";
 import ArticlesSection from "@/components/patients/home/ArticleSection";
@@ -31,10 +31,9 @@ export default function LandingPageTailwind() {
       <div id="services">
         <ServicesSection />
       </div>
-      <DoctorsAndConsultationsGrid />
+      {/* <DoctorsAndConsultationsGrid /> */}
       <div id="doctors">
         {/* <BestDoctorsSection /> */}
-        {/* <MeetTeamSection /> */}
 
         <div className="flex justify-center items-center bg-custom-mutedgreen py-10 px-4 md:px-20">
           <div className="w-full md:w-2/3">
@@ -49,6 +48,9 @@ export default function LandingPageTailwind() {
             />
           </div>
         </div>
+
+        <MeetTeamSection />
+
         
 
         <div className="flex justify-center items-center bg-custom-mutedbg py-10 px-4 md:px-20">

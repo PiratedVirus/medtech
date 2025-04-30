@@ -20,9 +20,11 @@ export async function GET() {
 
     // Step 2: Verify JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
-      phoneNumber: string;
+      plusAddedPhoneNumber: string;
     };
-    if (!decoded.phoneNumber) {
+    console.log("Decoded JWT:", decoded);
+    console.log("Decoded phone number:", decoded.plusAddedPhoneNumber);
+    if (!decoded.plusAddedPhoneNumber) {
       return NextResponse.json(
         { success: false, error: "Invalid token" },
         { status: 403 },
@@ -31,9 +33,10 @@ export async function GET() {
 
     // Step 3: Fetch user details from the database using phoneNumber
     const onlyUser = await prisma.user.findUnique({
-      where: { phoneNumber: decoded.phoneNumber },
+      where: { phoneNumber: decoded.plusAddedPhoneNumber },
       include: { patientProfile: true },
     });
+    console.log("Fetched user:", onlyUser);
 
     const subscriptionDetails = await prisma.subscriptionTracker.findFirst({
       where: {
