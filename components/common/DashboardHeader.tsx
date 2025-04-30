@@ -38,8 +38,8 @@ const fullNavigation = [
 const mobileNavigation = [
   { name: "Home", href: "/dashboard", icon: Home },
   { name: "Doctors", href: "/dashboard/doctors", icon: User },
+  { name: "Plans", href: "/dashboard/plans", icon: BarChart },
   { name: "Appointments", href: "/dashboard/appointments", icon: Calendar },
-  { name: "Lab", href: "/dashboard/labs", icon: Clipboard },
   { name: "Profile", href: "/dashboard/profile", icon: User }, // we’ll replace this one
 ];
 
