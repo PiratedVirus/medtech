@@ -15,7 +15,7 @@ interface DoctorProfile {
 interface Doctor {
   image?: string;
   name: string;
-  profilePicture?: string;
+  userProfilePicture?: string;
   doctorProfile: DoctorProfile;
 }
 interface DoctorCardProps {
@@ -32,7 +32,7 @@ export default function DoctorCard({ doctor, onBookAppointment }: DoctorCardProp
           <div className="flex items-center justify-center p-3">
             <div className="relative w-[180px] h-[270px] rounded-xl overflow-hidden bg-[#daf3ff]">
               <Image
-                src={doctor.profilePicture || "/images/doc.png"}
+                src={doctor.userProfilePicture || "/images/doc.png"}
                 alt={doctor.name}
                 fill
                 className="object-cover"

@@ -42,7 +42,7 @@ export function DoctorInfoOne({ doctor, onBack }: DoctorInfoProps) {
         </div>
         <div className="relative w-48 h-48 rounded-lg overflow-hidden">
           <Image
-            src={doctor.profilePicture || "/images/doc.png"}
+            src={doctor.userProfilePicture || "/images/doc.png"}
             alt="doctor"
             fill
             className="object-cover"

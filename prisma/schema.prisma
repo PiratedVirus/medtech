@@ -58,7 +58,7 @@ model User {
   id          Int    @id @default(autoincrement())
   clinicId    Int?
   phoneNumber String @unique
-  profilePicture String?
+  userProfilePicture String?
   email       String? @unique
   password    String?
   name        String
