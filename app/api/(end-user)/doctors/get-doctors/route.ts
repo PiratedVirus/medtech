@@ -20,14 +20,12 @@ export async function GET(request: Request) {
         role: "DOCTOR",
         status: "ACTIVE",
         clinicId: Number(clinicId),
-        doctorProfile: {
-          type: "doctor", 
-        },
       },
       include: {
         doctorProfile: true,
       },
     });
+    console.log("Fetched doctors: ", doctors);
 
     return NextResponse.json({ success: true, doctors });
   } catch (error) {

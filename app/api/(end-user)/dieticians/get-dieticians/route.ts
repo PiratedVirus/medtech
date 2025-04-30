@@ -20,16 +20,18 @@ export async function GET(request: Request) {
         role: "DIETICIAN",
         status: "ACTIVE",
         clinicId: Number(clinicId),
-        doctorProfile: {
-          type: "dietician", 
-        },
       },
       include: {
-        doctorProfile: true,
+        dieticianProfile: true,
       },
     });
 
-    return NextResponse.json({ success: true, doctors });
+    const normalizedDoctors = doctors.map((doc) => ({
+      ...doc,
+      doctorProfile: doc.dieticianProfile,
+    }));
+
+    return NextResponse.json({ success: true, doctors: normalizedDoctors });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: "Failed to fetch doctors with error " + error },

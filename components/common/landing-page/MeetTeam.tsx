@@ -86,6 +86,13 @@ export const MeetTeamSection = () => {
       extraTitle:"DM Endocrinology, AIIMS, New Delhi.",
 
     },
+    {
+      imageUrl: "https://res.cloudinary.com/pirated-virus-cloud/image/upload/v1746011772/awrv8fhemdpjxh3rq7cp.png",
+      name: "Dr. Suvarna Domde Nitnaware",
+      title: "Specializing  in IBS, diabetes, renal nutrition, and lifestyle management.  ",
+      extraTitle:"Certified in Low FODMAP diet, nutrigenomics, and renal nutrition. Published author and recipient of the Nutristar Award 2024 Runner-Up.",
+
+    },
 
   ];
 
