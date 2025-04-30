@@ -58,6 +58,7 @@ model User {
   id          Int    @id @default(autoincrement())
   clinicId    Int?
   phoneNumber String @unique
+  userProfilePicture String?
   email       String? @unique
   password    String?
   name        String
@@ -112,6 +113,7 @@ model DoctorProfile {
   userId            Int    @unique
   specialty         String
   yearsOfExperience Int?
+  extraInfo         String?
   meetingRoomLink   String?
   ownerToken1       String?
   ownerToken2       String?

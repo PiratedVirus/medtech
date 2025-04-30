@@ -15,6 +15,7 @@ interface DoctorProfile {
 interface Doctor {
   image?: string;
   name: string;
+  userProfilePicture?: string;
   doctorProfile: DoctorProfile;
 }
 interface DoctorCardProps {
@@ -31,7 +32,7 @@ export default function DoctorCard({ doctor, onBookAppointment }: DoctorCardProp
           <div className="flex items-center justify-center p-3">
             <div className="relative w-[180px] h-[270px] rounded-xl overflow-hidden bg-[#daf3ff]">
               <Image
-                src={doctor.image || "/images/doc.png"}
+                src={doctor.userProfilePicture || "/images/doc.png"}
                 alt={doctor.name}
                 fill
                 className="object-cover"
@@ -49,10 +50,10 @@ export default function DoctorCard({ doctor, onBookAppointment }: DoctorCardProp
 
               <div className="space-y-1">
                 <p className="text-gray-400 text-base">
-                  {doctor.doctorProfile.specialty}
+                  {doctor.doctorProfile?.specialty}
                 </p>
                 <p className="text-gray-400 text-sm">
-                  {doctor.doctorProfile.yearsOfExperience} years overall experience
+                  {doctor.doctorProfile?.yearsOfExperience} years overall experience
                 </p>
               </div>
 
@@ -74,20 +75,20 @@ export default function DoctorCard({ doctor, onBookAppointment }: DoctorCardProp
               </div>
 
               <p className="text-gray-400 text-sm">
-                ₹ {doctor.doctorProfile.consultationFee} Consultation fee at clinic
+                ₹ {doctor.doctorProfile?.consultationFee || 299} Consultation fee at clinic
               </p>
 
               <div className="flex items-center gap-2 text-[#56a67c]">
-                <span className="text-base font-semibold">{doctor.doctorProfile.rating || "N/A"}%</span>
+                <span className="text-base font-semibold">{doctor.doctorProfile?.rating || ""}</span>
                 <span className="text-gray-400 text-sm">
-                  • {doctor.doctorProfile.patientStories || 0} Patient stories
+                  • {doctor.doctorProfile?.patientStories || 0} Patient stories
                 </span>
               </div>
 
               <div className="flex items-center gap-2 text-[#56a67c]">
                 <Calendar className="text-green-500 h-4 w-4" />
-                <span className="text-green-500 text-sm">
-                  {doctor?.doctorProfile?.availability?.length > 0 ? "Available Today" : "Not Available"}
+                <span >
+                  {doctor?.doctorProfile?.availability?.length > 0 ? <span className="text-green-500 text-sm">Available Today</span> : <span className="text-red-500 text-sm">Not Available Today</span>}
                 </span>
               </div>
             </div>

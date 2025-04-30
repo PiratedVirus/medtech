@@ -1,21 +1,38 @@
+"use client";
+
 import Link from "next/link";
-import { LogOut, User, Home, Calendar, FileText, Clipboard, BarChart } from "lucide-react";
+import {
+  LogOut,
+  User,
+  Home,
+  Calendar,
+  Clipboard,
+  FileText,
+  BarChart,
+  MoreHorizontal as MoreIcon,
+} from "lucide-react";
 import { useDispatch } from "react-redux";
 import { logoutUser } from "@/store/userSlice";
 import { useProfile } from "@/hooks/context/ProfileContext";
 import { useRouter, usePathname } from "next/navigation";
-import type { AppDispatch, RootState } from "@/store";
+import type { AppDispatch } from "@/store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 const fullNavigation = [
   { name: "Home", href: "/dashboard", current: true, icon: Home },
   { name: "Doctors", href: "/dashboard/doctors", current: false, icon: User },
-  { name: "Dieticians", href: "/dashboard/dieticians", current: false },
+  { name: "Dieticians", href: "/dashboard/dieticians", current: false, icon: User },
   { name: "Lab", href: "/dashboard/labs", current: false, icon: Clipboard },
-  { name: "Prescriptions", href: "/dashboard/prescriptions", current: false },
+  { name: "Prescriptions", href: "/dashboard/prescriptions", current: false, icon: FileText },
   { name: "Appointments", href: "/dashboard/appointments", current: false, icon: Calendar },
-  { name: "Plans", href: "/dashboard/plans", current: false },
+  { name: "Plans", href: "/dashboard/plans", current: false, icon: BarChart },
 ];
 
 const mobileNavigation = [
@@ -23,7 +40,7 @@ const mobileNavigation = [
   { name: "Doctors", href: "/dashboard/doctors", icon: User },
   { name: "Appointments", href: "/dashboard/appointments", icon: Calendar },
   { name: "Lab", href: "/dashboard/labs", icon: Clipboard },
-  { name: "Profile", href: "/dashboard/profile", icon: User },
+  { name: "Profile", href: "/dashboard/profile", icon: User }, // we’ll replace this one
 ];
 
 export function DashboardHeader() {
@@ -56,29 +73,31 @@ export function DashboardHeader() {
       <header className="hidden md:flex w-full h-16 bg-background border-b">
         <div className="container flex items-center justify-between h-full gap-4">
           <div className="pl-20">
-          <nav className="flex items-center gap-9">
-            {navigationItems.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`relative text-sm font-medium hover:text-secondary ${
-                  item.current ? "text-secondary" : "text-foreground"
-                } hover:text-primary transition-colors`}
-              >
-                {item.name}
-                {item.current && (
-                  <span className="absolute bottom-[-2px] right-[1px] w-1/3 h-[1.5px] rounded-full bg-secondary"></span>
-                )}
-              </Link>
-            ))}
-          </nav>
+            <nav className="flex items-center gap-9">
+              {navigationItems.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`relative text-sm font-medium hover:text-secondary ${
+                    item.current ? "text-secondary" : "text-foreground"
+                  } hover:text-primary transition-colors`}
+                >
+                  {item.name}
+                  {item.current && (
+                    <span className="absolute bottom-[-2px] right-[1px] w-1/3 h-[1.5px] rounded-full bg-secondary" />
+                  )}
+                </Link>
+              ))}
+            </nav>
           </div>
           {/* Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <div className="flex items-center gap-3 px-4 py-2 w-32 rounded-xl border border-border cursor-pointer">
                 <User className="h-6 w-6" />
-                <span className="text-sm text-foreground">{profile?.name}</span>
+                <span className="text-sm text-foreground">
+                  {profile?.name?.trim().split(/\s+/)[0] ?? ""}
+                </span>
               </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-white text-black w-32">
@@ -98,7 +117,8 @@ export function DashboardHeader() {
 
       {/* Bottom Navigation for Mobile Screens */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden bg-background border-t">
-        {mobileNavigationItems.map((item) => (
+        {/* Render first four items as before */}
+        {mobileNavigationItems.slice(0, -1).map((item) => (
           <Link
             key={item.name}
             href={item.href}
@@ -110,6 +130,29 @@ export function DashboardHeader() {
             <span className="text-xs">{item.name}</span>
           </Link>
         ))}
+
+        {/* “More” dropdown in place of Profile */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="flex-1 flex flex-col items-center justify-center py-2 text-foreground hover:text-primary transition-colors"
+            >
+              <MoreIcon className="h-6 w-6" />
+              <span className="text-xs">More</span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="bg-white text-black" align="center">
+            <DropdownMenuItem onClick={() => router.push("/dashboard/labs")}>
+              Labs
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/dashboard/dieticians")}>
+              Dieticians
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
+              Profile
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </nav>
     </>
   );

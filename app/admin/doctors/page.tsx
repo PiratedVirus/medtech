@@ -530,6 +530,28 @@ export default function DoctorsPage() {
             <DialogTitle>{selectedDoctor ? "Edit Doctor" : "Create New Doctor"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+              <label className="block font-medium">Select Clinic</label>
+              <Controller
+                control={control}
+                name="clinicId"
+                rules={{ required: true }}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value ? field.value.toString() : ""}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Clinic" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white text-black">
+                      {Array.isArray(clinics) && clinics.map((clinic) => (
+                        <SelectItem key={clinic.id} value={clinic.id.toString()}>
+                          {clinic.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
     
             {/* User Dropdown (filtered by clinic) */}
             <div>
