@@ -160,7 +160,7 @@ export default function PricingTable() {
   };
 
   // ---------- HELPER FUNCTIONS FOR RENDERING CELLS ----------
-  // Helper to render consultation lines
+  // Helper to render consultation lines with dynamic total calculation based on duration
   const formatConsultationLine = (
     total: number,
     frequency: number,
@@ -168,20 +168,19 @@ export default function PricingTable() {
     singularLabel: string,
     pluralLabel: string
   ) => {
-    if (!total) return "-";
-    const totalString = `${total} ${total > 1 ? pluralLabel : singularLabel}`;
-    if (frequency > 0 && interval > 0) {
-      const freqString = `${frequency} ${frequency > 1 ? pluralLabel : singularLabel
-        } every ${interval} month${interval > 1 ? "s" : ""}`;
-      return (
-        <>
-          <div className="font-bold text-lg">{totalString}</div>
-          <div className="text-sm text-gray-500 italic">({freqString})</div>
-        </>
-      );
-    } else {
-      return <div className="font-bold text-lg">{totalString}</div>;
-    }
+    if (!frequency || !interval) return "-";
+
+    const durationInMonths = duration === "6months" ? 6 : 12;
+    const calculatedTotal = Math.floor((durationInMonths / interval) * frequency);
+    const totalString = `${calculatedTotal} ${calculatedTotal > 1 ? pluralLabel : singularLabel}`;
+    const freqString = `${frequency} ${frequency > 1 ? pluralLabel : singularLabel} every ${interval} month${interval > 1 ? "s" : ""}`;
+
+    return (
+      <>
+        <div className="font-bold text-lg">{totalString}</div>
+        <div className="text-sm text-gray-500 italic">({freqString})</div>
+      </>
+    );
   };
 
   const formatMedicines = (discount: number) => {
