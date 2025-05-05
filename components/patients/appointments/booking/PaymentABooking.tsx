@@ -13,6 +13,7 @@ interface PaymentSelectionProps {
   consultationType: string;
   firstValidDate: any;
   consultationFee: any
+  isPlanBookable?: boolean;
 }
 
 export default function PaymentSelection({
@@ -20,7 +21,8 @@ export default function PaymentSelection({
   onOptionChange,
   consultationType,
   firstValidDate,
-  consultationFee
+  consultationFee,
+  isPlanBookable = true,
 }: PaymentSelectionProps) {
   console.log("consultation Type is ", consultationType);
   console.log("Fees is ", consultationFee);
@@ -51,7 +53,7 @@ export default function PaymentSelection({
     }
   }, [isPlanBookingValid, hasAutoSelectedPlan, onOptionChange]);
 
-  const planCardDisabled = !isPlanBookingValid;
+  const planCardDisabled = !isPlanBookingValid || !isPlanBookable;
 
   // Plan card styles
   const planCardClasses = cn(

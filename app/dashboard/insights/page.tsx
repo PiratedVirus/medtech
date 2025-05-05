@@ -163,7 +163,7 @@ export default function DetailedHealthInsights() {
   const metrics: MetricData[] = Array.from(metricsMap.values());
 
   return (
-    <div className="bg-muted min-h-screen px-20 py-6">
+    <div className="bg-muted min-h-screen px-4 sm:px-8 md:px-16 lg:px-20 py-6">
       <button
         onClick={() => router.push("/dashboard")}
         className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4"
@@ -215,9 +215,9 @@ function MetricChartRow({
     : config.statusLabel;
 
   return (
-    <div className="flex gap-5 mb-8">
+    <div className="flex flex-col lg:flex-row gap-5 mb-8 items-center lg:items-start">
       {/* Graph in a rounded card */}
-      <div className="bg-white rounded-xl p-6 w-2/3">
+      <div className="bg-white rounded-xl p-6 w-full lg:w-2/3">
         <h2 className="text-xl font-semibold mb-4">{metric.metricName}</h2>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart
@@ -255,7 +255,7 @@ function MetricChartRow({
       </div>
 
       {/* Insights Card */}
-      <div className="w-1/3 pl-6">
+      <div className="w-full lg:w-1/3 pl-0 lg:pl-6 mt-6 lg:mt-0">
         <HealthInsightsCard
           title={metric.metricName}
           reading={latest}
