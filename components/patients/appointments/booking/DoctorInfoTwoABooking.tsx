@@ -42,7 +42,7 @@ export default function DoctorInfoTwo({
 
             <div className="relative w-24 h-24 hidden sm:block rounded-full overflow-hidden shrink-0">
               <Image
-                src="/images/doc.png"
+                src={doctor?.userProfilePicture || "/images/doc.png"}
                 alt=""
                 fill
                 className="object-cover"
@@ -62,7 +62,7 @@ export default function DoctorInfoTwo({
                   clinic
                 </span>{" "}
               </div>
-              <div className="flex items-center gap-2">
+              {/* <div className="flex items-center gap-2">
                 <span className="text-[#56A67C] font-medium">100%</span>
                 <Link
                   href="#"
@@ -70,7 +70,7 @@ export default function DoctorInfoTwo({
                 >
                   69 Patient stories
                 </Link>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

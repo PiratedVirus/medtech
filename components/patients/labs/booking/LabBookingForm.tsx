@@ -21,7 +21,10 @@ const formSchema = z.object({
   appointmentFor: z.enum(["self", "other"]),
   fullName: z.string().min(1, { message: "Full name is required" }),
   mobile: z.string().min(1, { message: "Mobile number is required" }),
-  email: z.string().email({ message: "Please enter a valid email" }),
+  email: z.string().optional().or(z.literal("")).refine(
+    (val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
+    { message: "Please enter a valid email" }
+  ),
   date: z.string().min(1, { message: "Date is required" }),
   address: z.string().min(1, { message: "Address is required" }),
 });
@@ -141,7 +144,7 @@ export const LabBookingForm = forwardRef(({ }, ref) => {
             render={({ field }) => (
               <FormItem className="space-y-2">
                 <FormLabel className="text-[#2c2e38] text-lg">
-                  Email<span className="text-red-500">*</span>
+                  Email<span className="text-red-500"></span>
                 </FormLabel>
                 <FormControl>
                   <Input

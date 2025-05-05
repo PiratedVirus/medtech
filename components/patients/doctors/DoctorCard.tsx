@@ -105,14 +105,14 @@ export default function DoctorCard({ doctor, onBookAppointment }: DoctorCardProp
             >
               Book video visit
             </Button>
-            <Button
+            {/* <Button
               size="lg"
               variant="outline"
               onClick={() => onBookAppointment(doctor, 'clinic')}
               className="border-[#f28a2e] text-[#f28a2e] hover:bg-[#f28a2e]/10 rounded-full px-6"
             >
               Book clinic visit
-            </Button>
+            </Button> */}
           </div>
         </div>
       </CardContent>

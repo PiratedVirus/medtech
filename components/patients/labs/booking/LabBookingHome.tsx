@@ -31,7 +31,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
   const subscriptionTracker = useSelector((state: RootState) => state.subscriptionsStore.subscriptionData);
   const [firstValidDate, setFirstValidDate] = useState<string | null>(null);
   const [filteredlabTestsDatesDates, setFilteredlabTestsDatesDates] = useState<string[] | null>(null);
-  const [paramsOpen, setParamsOpen] = useState(false);
+  const [isLabPlanBookable, setIsLabPlanBookable] = useState(false);
 
   const parametersArray = labBbookingData.parameters
     ? labBbookingData.parameters.split(",").map((p: string) => p.trim())
@@ -80,6 +80,13 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
     }) || null;
 
     setFilteredlabTestsDatesDates(filtered);
+
+    if(subscriptionTracker?.planName === labBbookingData?.name){
+      setIsLabPlanBookable(true);
+      console.log("subscriptionTracker?.planName", subscriptionTracker?.planName);
+      console.log("labBbookingData?.name", labBbookingData?.name);
+
+    }
 
   }, [subscriptionTracker]);
 
@@ -180,7 +187,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
         setTimeout(() => {
           setShowSuccessModal(false);
           setStatusMessage(""); // Reset status
-          router.push("/dashboard/labs");
+          router.replace("/dashboard/labs");
         }, 3000);
 
       } else {
@@ -194,6 +201,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
     }
   };
 
+
   return (
     <>
       <PackageInfo labPackage={labBbookingData} onBack={onBack} />
@@ -204,6 +212,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
           <div className="bg-white flex pt-0 pl-0 p-6">
             <LabBookingForm ref={formRef} />
           </div>
+          
 
           {/* Right column - Payment Selection and Button */}
           <div className="flex flex-col gap-1 pt-0 h-full">
@@ -215,6 +224,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
                 firstValidDate={firstValidDate}
                 consultationType={paymentOption || ""}
                 consultationFee={labBbookingData?.price}
+                isPlanBookable={isLabPlanBookable}
               />
             </div>
 
@@ -230,7 +240,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
                       if (paymentOption === "online") {
                         await handlePayment(data);
                       } else {
-                        await handleConfirmBooking(data);
+                        await handleConfirmBooking(data, undefined, labBbookingData.price);
                       }
                     })();
                   }
@@ -249,7 +259,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
         </div>
       </div>
 
-      <SuccessModal open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
+      <SuccessModal text="Lab package booked successfully" open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
     </>
   );
 }

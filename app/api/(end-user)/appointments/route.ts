@@ -231,7 +231,7 @@ export async function POST(request: Request) {
       });
 
       // Update subscription tracker if using plan
-      if (consultationMode === "plan") {
+      if (paymentMethod === "plan") {
         await tx.subscriptionTracker.update({
           where: { subscriptionId },
           data: isDietician

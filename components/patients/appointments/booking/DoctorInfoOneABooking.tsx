@@ -26,17 +26,17 @@ export function DoctorInfoOne({ doctor, onBack }: DoctorInfoProps) {
       <div className="flex justify-between items-start border-b-2 mb-20">
         <div className="space-y-4 pb-8">
           <h1 className="text-3xl font-bold">{doctor?.name}</h1>
-          <p className="text-gray-600">{doctor?.doctorProfile.specialty}</p>
+          <p className="text-gray-600">{doctor?.doctorProfile?.specialty}</p>
           <p className="text-gray-500">
-            {doctor?.doctorProfile.yearsOfExperience} years overall experience
+            {doctor?.doctorProfile?.yearsOfExperience} years overall experience
           </p>
           <p className="text-gray-600">
-            ₹ {doctor?.doctorProfile.consultationFee} Consultation fee at clinic
+            ₹ {doctor?.doctorProfile?.consultationFee} Consultation fee at clinic
           </p>
           <div className="flex items-center gap-4">
             <ThumbsUp className="h-4 w-4 text-green-400" />
             <span className="text-green-600 font-semibold">
-              {doctor?.doctorProfile.rating}
+              {doctor?.doctorProfile?.rating}
             </span>
           </div>
         </div>

@@ -13,14 +13,19 @@ export async function GET(request: Request, props: { params: Promise<{ doctorId:
     // console.log("Received request for doctor availability");
 
     // 1) Extract and validate doctorId from route params
-    const doctorIdNum = parseInt(params.doctorId, 10);
-    if (isNaN(doctorIdNum)) {
-      console.error("Invalid doctor ID:", params.doctorId);
-      return NextResponse.json(
-        { success: false, error: "Invalid doctor ID" },
-        { status: 400 }
-      );
+    const userId = parseInt(params.doctorId, 10); // rename this param
+    if (isNaN(userId)) {
+      return NextResponse.json({ success: false, error: "Invalid user ID" }, { status: 400 });
     }
+    const doctorProfile = await prisma.doctorProfile.findUnique({
+      where: { userId },
+    });
+    
+    if (!doctorProfile) {
+      return NextResponse.json({ success: false, error: "Doctor profile not found" }, { status: 404 });
+    }
+    
+    
     // console.log("Doctor ID:", doctorIdNum);
 
     // 2) Determine current page and compute day offset
@@ -46,7 +51,7 @@ export async function GET(request: Request, props: { params: Promise<{ doctorId:
     // 4) Fetch available slots for the doctor within the generated day ranges
     const availability = await prisma.doctorAvailability.findMany({
       where: {
-        doctorId: doctorIdNum,
+        doctorId: doctorProfile.id,
         status: "available",
         deletedAt: null,
         OR: dayRanges.map(({ start, end }) => ({
@@ -61,7 +66,7 @@ export async function GET(request: Request, props: { params: Promise<{ doctorId:
       dayRanges.map(async ({ start, end, dateObj }) => {
         const count = await prisma.doctorAvailability.count({
           where: {
-            doctorId: doctorIdNum,
+            doctorId: doctorProfile.id,
             status: "available",
             deletedAt: null,
             date: { gte: start, lte: end },
@@ -76,7 +81,7 @@ export async function GET(request: Request, props: { params: Promise<{ doctorId:
 
     // 6) Fetch doctor details with associated profile
     const doctorDetails = await prisma.user.findUnique({
-      where: { id: doctorIdNum },
+      where: { id: userId },
       include: { doctorProfile: true },
     });
 

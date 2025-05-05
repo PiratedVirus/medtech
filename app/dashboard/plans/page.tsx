@@ -24,6 +24,8 @@ export default function PricingTable() {
   // State for the view parameters dialog
   const [viewParameters, setViewParameters] = useState<Record<string, string[]>>({});
   const [paramsDialogOpen, setParamsDialogOpen] = useState(false);
+  // State for processing/loading overlay
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Router and profile hooks
   const router = useRouter();
@@ -69,7 +71,7 @@ export default function PricingTable() {
     return <div className="p-4">No plan data for {duration} found.</div>;
   }
 
-  // Handler for payment (omitted here for brevity; unchanged from your code)
+  // Handler for payment
   const handlePurchasePlan = async (planKey: "basic" | "care" | "carePlus") => {
     try {
       const planData = currentPricing[planKey];
@@ -102,13 +104,14 @@ export default function PricingTable() {
         order_id: orderId,
         handler: async (response: any) => {
           try {
+            setIsProcessing(true);
             const confirmRes = await axios.post("/api/plans/confirmPurchase", {
               planId,
               patientId: profile?.patientProfile?.id,
               razorpayResponse: response,
               razorpayOrderId: orderId,
               razorpayPaymentId: response.razorpay_payment_id,
-              subscriptionPrice: price*100,
+              subscriptionPrice: price * 100,
             });
             if (confirmRes.data.success) {
               queryClient.invalidateQueries({ queryKey: ["plans"] });
@@ -123,6 +126,8 @@ export default function PricingTable() {
           } catch (err) {
             console.error("Error confirming purchase:", err);
             alert("An error occurred while confirming the purchase.");
+          } finally {
+            setIsProcessing(false);
           }
         },
         prefill: {
@@ -160,7 +165,7 @@ export default function PricingTable() {
   };
 
   // ---------- HELPER FUNCTIONS FOR RENDERING CELLS ----------
-  // Helper to render consultation lines
+  // Helper to render consultation lines with dynamic total calculation based on duration
   const formatConsultationLine = (
     total: number,
     frequency: number,
@@ -168,20 +173,17 @@ export default function PricingTable() {
     singularLabel: string,
     pluralLabel: string
   ) => {
-    if (!total) return "-";
-    const totalString = `${total} ${total > 1 ? pluralLabel : singularLabel}`;
-    if (frequency > 0 && interval > 0) {
-      const freqString = `${frequency} ${frequency > 1 ? pluralLabel : singularLabel
-        } every ${interval} month${interval > 1 ? "s" : ""}`;
-      return (
-        <>
-          <div className="font-bold text-lg">{totalString}</div>
-          <div className="text-sm text-gray-500 italic">({freqString})</div>
-        </>
-      );
-    } else {
-      return <div className="font-bold text-lg">{totalString}</div>;
-    }
+    const durationInMonths = duration === "6months" ? 6 : 12;
+    const calculatedTotal = Math.floor((durationInMonths / interval) * frequency);
+    const totalString = `${calculatedTotal} ${calculatedTotal > 1 ? pluralLabel : singularLabel}`;
+    const freqString = `${frequency} ${frequency > 1 ? pluralLabel : singularLabel} every ${interval} month${interval > 1 ? "s" : ""}`;
+  
+    return (
+      <>
+        <div className="font-bold text-lg">{totalString}</div>
+        <div className="text-sm text-gray-500 italic">({freqString})</div>
+      </>
+    );
   };
 
   const formatMedicines = (discount: number) => {
@@ -208,6 +210,7 @@ export default function PricingTable() {
 
   // Render cell helper for various feature keys
   function renderFeatureCell(featureData: any, key: string, showParameters?: boolean) {
+    console.log("featureData", featureData);
     if (!featureData) return "-";
     if (key === "medicines") {
       return <div className="font-bold text-lg">{formatMedicines(featureData.discount)}</div>;
@@ -349,7 +352,12 @@ export default function PricingTable() {
                         }
                       });
 
-                      return Array.from(featureKeys).map((key) => {
+                      const sortedKeys = Array.from(featureKeys).sort((a, b) => {
+                        if (a === "medicines") return 1;
+                        if (b === "medicines") return -1;
+                        return 0;
+                      });
+                      return sortedKeys.map((key) => {
                         const title = key
                           .replace(/([A-Z])/g, " $1")
                           .replace(/^./, (str) => str.toUpperCase())
@@ -452,7 +460,8 @@ export default function PricingTable() {
             </main>
 
             {/* Success Modal */}
-            <SuccessModal open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
+            <SuccessModal open={isProcessing} text="Processing your plan..." isLoading onClose={() => {}} />
+            <SuccessModal text="Plan booked successfully!" open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
 
             {/* Dialog for Viewing Parameters */}
             <ViewParametersDialog
