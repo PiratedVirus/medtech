@@ -168,13 +168,11 @@ export default function PricingTable() {
     singularLabel: string,
     pluralLabel: string
   ) => {
-    if (!frequency || !interval) return "-";
-
     const durationInMonths = duration === "6months" ? 6 : 12;
     const calculatedTotal = Math.floor((durationInMonths / interval) * frequency);
     const totalString = `${calculatedTotal} ${calculatedTotal > 1 ? pluralLabel : singularLabel}`;
     const freqString = `${frequency} ${frequency > 1 ? pluralLabel : singularLabel} every ${interval} month${interval > 1 ? "s" : ""}`;
-
+  
     return (
       <>
         <div className="font-bold text-lg">{totalString}</div>
@@ -207,6 +205,7 @@ export default function PricingTable() {
 
   // Render cell helper for various feature keys
   function renderFeatureCell(featureData: any, key: string, showParameters?: boolean) {
+    console.log("featureData", featureData);
     if (!featureData) return "-";
     if (key === "medicines") {
       return <div className="font-bold text-lg">{formatMedicines(featureData.discount)}</div>;
@@ -348,7 +347,12 @@ export default function PricingTable() {
                         }
                       });
 
-                      return Array.from(featureKeys).map((key) => {
+                      const sortedKeys = Array.from(featureKeys).sort((a, b) => {
+                        if (a === "medicines") return 1;
+                        if (b === "medicines") return -1;
+                        return 0;
+                      });
+                      return sortedKeys.map((key) => {
                         const title = key
                           .replace(/([A-Z])/g, " $1")
                           .replace(/^./, (str) => str.toUpperCase())
