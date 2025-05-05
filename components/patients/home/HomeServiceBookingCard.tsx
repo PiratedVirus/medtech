@@ -63,7 +63,7 @@ export default function HomeServiceBookingCard({
 
         <div className="h-20 rounded-lg flex justify-center items-center">
           {/* Conditionally apply "small" size based on window size */}
-          <ArrowButton buttonText={buttonText} href={href} size={isMobile ? "small" : "large"} />
+          <ArrowButton buttonText={buttonText} href={href || "#"} size={isMobile ? "small" : "large"} />
         </div>
       </div>
     </Card>
