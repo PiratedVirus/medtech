@@ -24,6 +24,8 @@ export default function PricingTable() {
   // State for the view parameters dialog
   const [viewParameters, setViewParameters] = useState<Record<string, string[]>>({});
   const [paramsDialogOpen, setParamsDialogOpen] = useState(false);
+  // State for processing/loading overlay
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Router and profile hooks
   const router = useRouter();
@@ -69,7 +71,7 @@ export default function PricingTable() {
     return <div className="p-4">No plan data for {duration} found.</div>;
   }
 
-  // Handler for payment (omitted here for brevity; unchanged from your code)
+  // Handler for payment
   const handlePurchasePlan = async (planKey: "basic" | "care" | "carePlus") => {
     try {
       const planData = currentPricing[planKey];
@@ -102,13 +104,14 @@ export default function PricingTable() {
         order_id: orderId,
         handler: async (response: any) => {
           try {
+            setIsProcessing(true);
             const confirmRes = await axios.post("/api/plans/confirmPurchase", {
               planId,
               patientId: profile?.patientProfile?.id,
               razorpayResponse: response,
               razorpayOrderId: orderId,
               razorpayPaymentId: response.razorpay_payment_id,
-              subscriptionPrice: price*100,
+              subscriptionPrice: price * 100,
             });
             if (confirmRes.data.success) {
               queryClient.invalidateQueries({ queryKey: ["plans"] });
@@ -123,6 +126,8 @@ export default function PricingTable() {
           } catch (err) {
             console.error("Error confirming purchase:", err);
             alert("An error occurred while confirming the purchase.");
+          } finally {
+            setIsProcessing(false);
           }
         },
         prefill: {
@@ -455,7 +460,8 @@ export default function PricingTable() {
             </main>
 
             {/* Success Modal */}
-            <SuccessModal open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
+            <SuccessModal open={isProcessing} text="Processing your plan..." isLoading onClose={() => {}} />
+            <SuccessModal text="Plan booked successfully!" open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
 
             {/* Dialog for Viewing Parameters */}
             <ViewParametersDialog

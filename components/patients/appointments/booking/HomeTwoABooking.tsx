@@ -61,6 +61,9 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
       : consultationDates;
     
     setFilteredDoctorConsultationDates(filtered);
+    console.log("Filtered Dates", filtered);
+    console.log("First Valid Date", foundDate);
+    console.log("Current Date", currentDate);
   }, [subscriptionTracker, consultationDates]);
 
   const formRef = useRef<{ submitForm: (callback: (data: any) => void) => void } | null>(null);
@@ -232,7 +235,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
           </div>
         </div>
       </div>
-      <SuccessModal open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
+      <SuccessModal text="Booking Successfull!" open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
     </>
   );
 }

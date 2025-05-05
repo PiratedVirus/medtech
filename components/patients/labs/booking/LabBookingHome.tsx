@@ -180,7 +180,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
         setTimeout(() => {
           setShowSuccessModal(false);
           setStatusMessage(""); // Reset status
-          router.push("/dashboard/labs");
+          router.replace("/dashboard/labs");
         }, 3000);
 
       } else {
@@ -230,7 +230,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
                       if (paymentOption === "online") {
                         await handlePayment(data);
                       } else {
-                        await handleConfirmBooking(data);
+                        await handleConfirmBooking(data, undefined, labBbookingData.price);
                       }
                     })();
                   }
@@ -249,7 +249,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
         </div>
       </div>
 
-      <SuccessModal open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
+      <SuccessModal text="Lab package booked successfully" open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
     </>
   );
 }

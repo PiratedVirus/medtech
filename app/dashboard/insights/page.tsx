@@ -67,6 +67,16 @@ const METRIC_CONFIG: Record<
   },
 };
 
+// Default metrics to show when no data is available
+const DEFAULT_METRICS = [
+  "Blood Glucose",
+  "Body Fat",
+  "Muscle Mass",
+  "BMI",
+  "Body Water",
+  "Visceral Fat"
+];
+
 type MonthData = {
   month: string;
   average: number;
@@ -83,11 +93,32 @@ function formatMonthLabel(ymString: string) {
   return date.toLocaleString("default", { month: "short" });
 }
 
+// Generate empty data for last 6 months
+function generateEmptyMonthlyData() {
+  const data = [];
+  const today = new Date();
+  
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date();
+    date.setMonth(today.getMonth() - i);
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    
+    data.push({
+      month: `${year}-${month}`,
+      average: 0
+    });
+  }
+  
+  return data;
+}
+
 export default function DetailedHealthInsights() {
   const { profile } = useDecryptedProfile();
   const router = useRouter();
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["insights", profile?.id],
     queryFn: async () => {
       if (!profile?.id) return null;
@@ -104,14 +135,32 @@ export default function DetailedHealthInsights() {
       </div>
     );
   }
-  if (isError || !data) {
-    return <div className="p-8">Failed to load insights.</div>;
-  }
-  if (!data.success || data.metrics.length === 0) {
-    return <div className="p-8">No Insights Available</div>;
-  }
 
-  const metrics: MetricData[] = data.metrics;
+  // Initialize metrics - always ensure all DEFAULT_METRICS are included
+  let metricsMap = new Map();
+  
+  // First, prepare all default metrics with zero values
+  DEFAULT_METRICS.forEach(metricName => {
+    metricsMap.set(metricName, {
+      metricName,
+      data: generateEmptyMonthlyData()
+    });
+  });
+  
+  // Then, override with actual data where available
+  if (data?.success && data?.metrics?.length > 0) {
+    data.metrics.forEach((metric: MetricData) => {
+      metricsMap.set(metric.metricName, metric);
+      
+      // Also add any additional metrics from API that weren't in our defaults
+      if (!DEFAULT_METRICS.includes(metric.metricName)) {
+        metricsMap.set(metric.metricName, metric);
+      }
+    });
+  }
+  
+  // Convert map to array
+  const metrics: MetricData[] = Array.from(metricsMap.values());
 
   return (
     <div className="bg-muted min-h-screen px-20 py-6">
@@ -159,6 +208,11 @@ function MetricChartRow({
     statusLabel: "Normal",
   };
   const { profile } = useDecryptedProfile();
+  
+  // Update status label if no data
+  const statusLabel = latest === 0 && metric.data.every(m => m.average === 0) 
+    ? "No Data" 
+    : config.statusLabel;
 
   return (
     <div className="flex gap-5 mb-8">
@@ -206,7 +260,7 @@ function MetricChartRow({
           title={metric.metricName}
           reading={latest}
           unit={config.unit}
-          statusLabel={config.statusLabel}
+          statusLabel={statusLabel}
           color={config.color}
           imageSrc={config.imageSrc}
           data={lastSixMonths.map((d) => ({ value: d.average }))}

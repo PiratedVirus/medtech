@@ -1,21 +1,20 @@
+import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 interface ArrowButtonProps {
   buttonText: string;
-  href?: string;
+  href: string; // Make href required for Link
   size?: "small" | "large";
 }
 
 export default function ArrowButton({ buttonText, href, size = "large" }: ArrowButtonProps) {
-  const router = useRouter();
   const [isHovered, setIsHovered] = useState(false);
   const isSmall = size === "small";
 
   return (
-    <button
-      onClick={() => href && router.push(href)}
+    <Link
+      href={href}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={`${isSmall ? "w-40 h-12" : "w-64 h-20"} pl-6 pr-3 rounded-full flex items-center justify-between transition-all duration-500 ease-in-out`}
@@ -51,6 +50,6 @@ export default function ArrowButton({ buttonText, href, size = "large" }: ArrowB
           />
         </div>
       </div>
-    </button>
+    </Link>
   );
 }

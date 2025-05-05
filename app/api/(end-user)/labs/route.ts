@@ -123,7 +123,7 @@ export async function POST(request: Request) {
       console.log("LabBooking created:", booking);
 
       // Update subscription tracker if using plan
-      if (consultationType === "plan") {
+      if (paymentOption === "plan") {
         console.log("Updating subscriptionTracker for subscriptionId:", subscriptionId, "with labTestsDates:", labTestsDates);
         await tx.subscriptionTracker.update({
           where: { subscriptionId },

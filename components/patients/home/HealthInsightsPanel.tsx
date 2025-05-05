@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import HealthInsightsCard from "@/components/ui/custom/cd-health-insights-card";
-import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 /** DB returns data in this shape */
 type MonthData = {
@@ -62,12 +62,22 @@ const METRIC_CONFIG: Record<
   },
 };
 
+// Default metrics to show when no data is available
+const DEFAULT_METRICS = [
+  "Blood Glucose",
+  "Body Fat",
+  "Muscle Mass",
+  "BMI",
+  "Body Water",
+  "Visceral Fat"
+];
+
 export default function HealthInsightsPanel() {
   const { profile } = useDecryptedProfile();
   const router = useRouter();
 
   // 1) Fetch data from the same endpoint used by Detailed Insights
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["insightsPanel", profile?.id],
     queryFn: async () => {
       if (!profile?.id) return null;
@@ -84,39 +94,52 @@ export default function HealthInsightsPanel() {
       </div>
     );
   }
-  if (isError || !data) {
-    return <div className="p-4">Failed to load insights.</div>;
-  }
-  if (!data.success || data.metrics.length === 0) {
-    return <div className="p-4">No Insights Available</div>;
-  }
 
-  // data.metrics is an array of MetricData from DB
-  const metrics: MetricData[] = data.metrics;
-
-  // 2) Transform each metric to the shape needed by HealthInsightsCard
-  const mappedMetrics = metrics.map((m) => {
-    const config = METRIC_CONFIG[m.metricName] || {
-      color: "#EEE",
-      imageSrc: "/icons/blood.svg",
-      unit: "",
-      statusLabel: "Normal",
-    };
-    // latest reading = last monthly average
-    const lastValue = m.data.slice(-1)[0]?.average ?? 0;
-
-    return {
-      title: m.metricName,
-      reading: lastValue,
+  // Initialize metrics - always ensure all DEFAULT_METRICS are included
+  let metricsMap = new Map();
+  
+  // First, prepare all default metrics with zero values
+  DEFAULT_METRICS.forEach(metricName => {
+    const config = METRIC_CONFIG[metricName];
+    metricsMap.set(metricName, {
+      title: metricName,
+      reading: 0,
       unit: config.unit,
-      statusLabel: config.statusLabel,
+      statusLabel: "No Data",
       color: config.color,
       imageSrc: config.imageSrc,
-      // We can map the monthly data to the "data" array for a mini-sparkline if you want
-      data: m.data.map((x) => ({ value: x.average })),
+      data: [{ value: 0 }],
       userId: Number(profile?.id)
-    };
+    });
   });
+  
+  // Then, override with actual data where available
+  if (data?.success && data?.metrics?.length > 0) {
+    data.metrics.forEach((m: MetricData) => {
+      const config = METRIC_CONFIG[m.metricName] || {
+        color: "#EEE",
+        imageSrc: "/icons/blood.svg",
+        unit: "",
+        statusLabel: "Normal",
+      };
+      
+      const lastValue = m.data.slice(-1)[0]?.average ?? 0;
+      
+      metricsMap.set(m.metricName, {
+        title: m.metricName,
+        reading: lastValue,
+        unit: config.unit,
+        statusLabel: config.statusLabel,
+        color: config.color,
+        imageSrc: config.imageSrc,
+        data: m.data.map((x: MonthData) => ({ value: x.average })),
+        userId: Number(profile?.id)
+      });
+    });
+  }
+  
+  // Convert map to array
+  const mappedMetrics = Array.from(metricsMap.values());
 
   return (
     <div className="py-4 px-4 md:px-20 bg-custom-mutedbg flex flex-col justify-center">
@@ -124,12 +147,12 @@ export default function HealthInsightsPanel() {
         <h2 className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-3xl font-semibold bg-clip-text text-transparent">
           Health Insights
         </h2>
-        <button
-          className="text-primary text-xl underline p-1 rounded-full transition-colors"
-          onClick={() => router.push("/dashboard/insights")}
-        >
-          View Insights
-        </button>
+        <Link
+    href="/dashboard/insights"
+    className="text-primary text-xl underline p-1 rounded-full transition-colors"
+  >
+    View Insights
+  </Link>
       </div>
 
       {/* Horizontal scroll container */}

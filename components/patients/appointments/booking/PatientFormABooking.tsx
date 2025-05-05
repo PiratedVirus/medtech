@@ -21,7 +21,11 @@ const formSchema = z.object({
   appointmentFor: z.enum(["self", "other"]),
   fullName: z.string().min(1, { message: "Full name is required" }),
   mobile: z.string().min(1, { message: "Mobile number is required" }),
-  email: z.string().email({ message: "Please enter a valid email" }),
+  email: z
+  .string()
+  .email({ message: "Please enter a valid email" })
+  .or(z.literal(""))
+  .optional(),
 });
 
 export const PatientForm = forwardRef(({ }, ref) => {
@@ -35,7 +39,7 @@ export const PatientForm = forwardRef(({ }, ref) => {
       // @ts-expect-error
       mobile: profile?.phoneNumber || "",
       // @ts-expect-error
-      email: profile?.email || "",
+      email: profile?.email ?? "",
     },
   });
 
