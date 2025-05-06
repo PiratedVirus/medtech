@@ -27,7 +27,7 @@ export async function GET(request: Request) {
               prescriptionLink: true,
             },
           });
-        const dietLink = appt?.prescriptionLink || "#";
+        const dietLink = appt?.prescriptionLink;
     
         return NextResponse.json({ success: true, dietLink });
     } catch (error) {
