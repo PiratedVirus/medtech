@@ -89,7 +89,6 @@ export default function MedicalCarousel() {
                     {slide.buttonText} <ChevronRight className="ml-2 h-4 w-4" />
                   </Button>
                   
-                  {/* <ArrowButton size="small" buttonText={slide.buttonText} href="#" /> */}
                   
                 </div>
               </CardContent>

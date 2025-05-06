@@ -65,12 +65,12 @@ export default function DoctorCard({ doctor, onBookAppointment }: DoctorCardProp
                       Video Consultation
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  {/* <div className="flex items-center gap-2">
                     <Calendar className="text-pink-500 h-4 w-4" />
                     <span className="text-pink-500 text-sm">
                       Physical Consultation
                     </span>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 

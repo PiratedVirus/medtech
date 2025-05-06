@@ -175,7 +175,12 @@ export default function PricingTable() {
   ) => {
     const durationInMonths = duration === "6months" ? 6 : 12;
     const calculatedTotal = Math.floor((durationInMonths / interval) * frequency);
-    const totalString = `${calculatedTotal} ${calculatedTotal > 1 ? pluralLabel : singularLabel}`;
+    const isTest = singularLabel.toLowerCase().includes("test");
+    console.log("isTest: ", singularLabel, isTest);
+    const label = isTest
+      ? `${calculatedTotal} ${calculatedTotal === 1 ? "test" : "tests"}`
+      : `${calculatedTotal} ${calculatedTotal > 1 ? pluralLabel : singularLabel}`;
+    const totalString = label;
     const freqString = `${frequency} ${frequency > 1 ? pluralLabel : singularLabel} every ${interval} month${interval > 1 ? "s" : ""}`;
   
     return (
@@ -187,7 +192,7 @@ export default function PricingTable() {
   };
 
   const formatMedicines = (discount: number) => {
-    return discount > 0 ? `${discount}% off` : "-";
+    return discount > 0 ? `Upto ${discount}% off` : "-";
   };
 
   // formatParameters displays the count and an Eye icon which opens a dialog when clicked.
@@ -214,7 +219,7 @@ export default function PricingTable() {
     if (!featureData) return "-";
     if (key === "medicines") {
       return <div className="font-bold text-lg">{formatMedicines(featureData.discount)}</div>;
-    } else if (key === "labTests") {
+    } else if (key === "labTests" || key === "biosthesiometerTestNerveSensitivityTest" || key === "bPBodyCompositionAnalysistest") {
       return (
         <>
           {formatConsultationLine(
@@ -265,7 +270,7 @@ export default function PricingTable() {
         <TabsContent value="plans">
 
           <>
-            <main className="max-w-7xl mx-auto px-3 py-2">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
               {/* Top Header */}
               <div className="flex items-center justify-center h-24">
                 <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-4xl font-semibold bg-clip-text text-transparent">
@@ -303,33 +308,33 @@ export default function PricingTable() {
                   </div>
                 </div>
                 <div className="h-5 mt-2 text-xs font-bold text-[#f28a2e] text-center">
-                  {duration === "6months" ? "SAVE UP TO 33% ON 12 MONTHS PLAN" : ""}
+                  {duration === "6months" ? "SAVE UP TO 16.66% ON 12 MONTHS PLAN" : ""}
                 </div>
               </div>
 
               {/* Pricing Table */}
               <div className="w-full overflow-x-auto mt-3">
-                <table className="table-auto mx-5 border-collapse bg-white rounded-xl">
+                <table className="table-auto w-full min-w-[800px] mx-0 border-collapse bg-white rounded-xl">
                   <colgroup>
                     <col className="w-12 bg-muted" />
                     <col className="w-64" />
-                    <col className="w-80" />
+                    <col className="w-64" />
                     <col className="w-64" />
                   </colgroup>
                   <thead>
                     <tr>
-                      <th className="p-8"></th>
-                      <th className="p-8 text-center">
+                      <th className="p-4 sm:p-6 md:p-8 sticky bg-muted left-0 z-10"></th>
+                      <th className="p-4 sm:p-6 md:p-8 text-center">
                         <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
                           {currentPricing.basic?.name}
                         </div>
                       </th>
-                      <th className="p-8 text-center bg-custom-mutedgreen">
+                      <th className="p-4 sm:p-6 md:p-8 text-center bg-custom-mutedgreen">
                         <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
                           {currentPricing.care?.name}
                         </div>
                       </th>
-                      <th className="p-8 text-center">
+                      <th className="p-4 sm:p-6 md:p-8 text-center">
                         <div className="text-2xl bg-gradient-to-bl from-[#F4813F] via-[#FDB047] to-[#FDB047] bg-clip-text text-transparent">
                           {currentPricing.carePlus?.name}
                         </div>
@@ -372,7 +377,7 @@ export default function PricingTable() {
 
                         return (
                           <tr key={key}>
-                            <td className="p-8 align-top">
+                            <td className="p-4 sm:p-6 md:p-8 align-top sticky left-0 z-10 bg-muted">
                               <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-xl font-semibold bg-clip-text text-transparent">
                                 {title}
                               </div>
@@ -380,13 +385,13 @@ export default function PricingTable() {
                                 <div className="text-xs text-[#349c4b] italic">{extraNote}</div>
                               )}
                             </td>
-                            <td className="p-8 text-center align-top">
+                            <td className="p-4 sm:p-6 md:p-8 text-center align-top">
                               {renderFeatureCell(basicData, key, showParameters)}
                             </td>
-                            <td className="p-8 text-center align-top bg-custom-mutedgreen">
+                            <td className="p-4 sm:p-6 md:p-8 text-center align-top bg-custom-mutedgreen">
                               {renderFeatureCell(careData, key, showParameters)}
                             </td>
-                            <td className="p-8 text-center align-top">
+                            <td className="p-4 sm:p-6 md:p-8 text-center align-top">
                               {renderFeatureCell(carePlusData, key, showParameters)}
                             </td>
                           </tr>
@@ -396,10 +401,10 @@ export default function PricingTable() {
 
                     {/* Final row: Pricing & Buttons */}
                     <tr>
-                      <td className="p-8"></td>
+                      <td className="p-4 sm:p-6 md:p-8 sticky left-0 z-10 bg-muted"></td>
 
                       {/* BASIC Price & Button */}
-                      <td className="p-8 text-center align-top">
+                      <td className="p-4 sm:p-6 md:p-8 text-center align-top">
                         <div className="text-2xl font-bold mb-4">
                           {currentPricing.basic
                             ? `Rs.${currentPricing.basic.price}/-`
@@ -418,7 +423,7 @@ export default function PricingTable() {
                       </td>
 
                       {/* CARE Price & Button */}
-                      <td className="p-8 text-center align-top bg-custom-mutedgreen">
+                      <td className="p-4 sm:p-6 md:p-8 text-center align-top bg-custom-mutedgreen">
                         <div className="text-2xl font-bold mb-4">
                           {currentPricing.care
                             ? `Rs.${currentPricing.care.price}/-`
@@ -436,7 +441,7 @@ export default function PricingTable() {
                       </td>
 
                       {/* CARE+ Price & Button */}
-                      <td className="p-8 text-center align-top">
+                      <td className="p-4 sm:p-6 md:p-8 text-center align-top">
                         <div className="text-2xl font-bold mb-4">
                           {currentPricing.carePlus
                             ? `Rs.${currentPricing.carePlus.price}/-`
