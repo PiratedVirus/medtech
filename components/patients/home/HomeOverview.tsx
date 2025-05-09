@@ -68,7 +68,7 @@ export default function HomeOverview() {
   }
 
   return (
-    <div className="bg-muted md:px-20 px-5 pt-5">
+    <div className="bg-muted lg:px-20 px-5 pt-5">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl">

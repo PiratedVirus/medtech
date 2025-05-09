@@ -74,7 +74,7 @@ export default function HomeAppointmentOverview() {
 
               <div>
                 {/* You can add a description or message for the user */}
-                <h3 className="text-2xl font-bold">No upcoming appointments.</h3>
+                <h3 className="text-[clamp(1rem,2vw,1.5rem)] truncate font-bold">No upcoming appointments.</h3>
 
                 <div className="mt-2">
                   {/* Optionally add a button or any additional information */}

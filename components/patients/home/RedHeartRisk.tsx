@@ -31,8 +31,10 @@ export default function HeartRiskCardRed() {
           </div>
 
           <div>
-            <h3 className="mb-2 text-2xl font-bold">Heart Risk Predictor</h3>
-            <p className="mb-4 text-sm text-red-200/90">
+          <h3 className="mb-2 font-bold text-[clamp(1rem,2vw,1.5rem)]">
+  Heart Risk Predictor
+</h3>
+            <p className="mb-4 truncate text-sm text-red-200/90">
               Advanced analysis of your cardiovascular health metrics
             </p>
 
