@@ -5,10 +5,11 @@ import {
   LogOut,
   User,
   Home,
-  Calendar,
+  LayoutGrid,
   Clipboard,
   FileText,
-  BarChart,
+  ShieldPlus,
+  TestTubeDiagonal,
   MoreHorizontal as MoreIcon,
 } from "lucide-react";
 import { useDispatch } from "react-redux";
@@ -27,19 +28,19 @@ import {
 
 const fullNavigation = [
   { name: "Home", href: "/dashboard", current: true, icon: Home },
-  { name: "Doctors", href: "/dashboard/doctors", current: false, icon: User },
-  { name: "Dieticians", href: "/dashboard/dieticians", current: false, icon: User },
+  { name: "Doctors", href: "/dashboard/doctors", current: false, icon: ShieldPlus },
+  { name: "Dieticians", href: "/dashboard/dieticians", current: false, icon: ShieldPlus },
   { name: "Lab", href: "/dashboard/labs", current: false, icon: Clipboard },
   { name: "Prescriptions", href: "/dashboard/prescriptions", current: false, icon: FileText },
-  { name: "Appointments", href: "/dashboard/appointments", current: false, icon: Calendar },
-  { name: "Plans", href: "/dashboard/plans", current: false, icon: BarChart },
+  { name: "Appointments", href: "/dashboard/appointments", current: false, icon: TestTubeDiagonal },
+  { name: "Plans", href: "/dashboard/plans", current: false, icon: LayoutGrid },
 ];
 
 const mobileNavigation = [
   { name: "Home", href: "/dashboard", icon: Home },
-  { name: "Doctors", href: "/dashboard/doctors", icon: User },
-  { name: "Plans", href: "/dashboard/plans", icon: BarChart },
-  { name: "Appointments", href: "/dashboard/appointments", icon: Calendar },
+  { name: "Doctors", href: "/dashboard/doctors", icon: ShieldPlus },
+  { name: "Plans", href: "/dashboard/plans", icon: LayoutGrid },
+  { name: "Labs", href: "/dashboard/labs", icon: TestTubeDiagonal },
   { name: "Profile", href: "/dashboard/profile", icon: User }, // we’ll replace this one
 ];
 
@@ -142,8 +143,8 @@ export function DashboardHeader() {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="bg-white text-black" align="center">
-            <DropdownMenuItem onClick={() => router.push("/dashboard/labs")}>
-              Labs
+            <DropdownMenuItem onClick={() => router.push("/dashboard/appointments")}>
+              Appointments
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push("/dashboard/dieticians")}>
               Dieticians

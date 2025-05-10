@@ -44,7 +44,7 @@ export default function HomePageCardSmall({
 }: HomePageCardSmallProps) {
   // Use the provided CTA icon or fallback to the default ArrowRight icon
   const CTAIcon = CtaIcon ? CtaIcon : ArrowRight;
-
+console.log("href is ", href);
   return (
     <Link href={href} className="block">
       <Card className="group relative w-full h-[194px] sm:h-[184px] overflow-hidden border border-gray-100 bg-custom-mutedgreen shadow-sm transition-all duration-300 hover:shadow-md">
@@ -54,28 +54,28 @@ export default function HomePageCardSmall({
         </div>
 
         <div className="relative flex flex-col justify-between p-5 h-full">
-  {/* Header Section */}
-  <div className="flex items-center gap-3">
-    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[rgba(242,138,46,0.1)] to-[rgba(86,166,124,0.1)]">
-      <PrimaryIcon className="h-5 w-5" style={{ color: primaryIconColor }} />
-    </div>
-    <span className="text-sm font-medium" style={{ color: accentColor }}>
-      {headerLabel}
-    </span>
-  </div>
+          {/* Header Section */}
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[rgba(242,138,46,0.1)] to-[rgba(86,166,124,0.1)]">
+              <PrimaryIcon className="h-5 w-5" style={{ color: primaryIconColor }} />
+            </div>
+            <span className="text-sm font-medium" style={{ color: accentColor }}>
+              {headerLabel}
+            </span>
+          </div>
 
-  {/* Main Content */}
-  <div className="mt-4 flex-grow">
-    <h3 className="mb-1 text-lg font-semibold text-gray-800">{cardTitle}</h3>
-    <p className="mb-3 text-xs text-gray-600">{cardDescription}</p>
-  </div>
+          {/* Main Content */}
+          <div className="mt-4 flex-grow">
+            <h3 className="mb-1 text-lg font-semibold text-gray-800">{cardTitle}</h3>
+            <p className="mb-3 text-xs text-gray-600">{cardDescription}</p>
+          </div>
 
-  {/* Call-to-Action */}
-  <div className="flex items-center text-sm font-medium text-primary transition-all duration-300 group-hover:translate-x-1">
-    {ctaText}
-    <CTAIcon className="ml-1 h-4 w-4" />
-  </div>
-</div>
+          {/* Call-to-Action */}
+          <div className="flex items-center text-sm font-medium text-primary transition-all duration-300 group-hover:translate-x-1">
+            {ctaText}
+            <CTAIcon className="ml-1 h-4 w-4" />
+          </div>
+        </div>
       </Card>
     </Link>
   );

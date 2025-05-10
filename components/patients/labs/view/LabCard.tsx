@@ -33,7 +33,7 @@ export default function LabCard({ labPackage, handleBookAppointment }: LabCardPr
     const [open, setOpen] = useState(false);
 
     return (
-        <div className="flex h-72 bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 w-[400px]">
+        <div className="flex h-72 bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 w-full md:w-96">
             {/* Left Column: Rotated Package Name */}
             
             <div className=" text-white bg-custom-mutedgreen px-3 py-5 flex items-center justify-center w-12 md:w-16">
@@ -47,7 +47,7 @@ export default function LabCard({ labPackage, handleBookAppointment }: LabCardPr
                 <div className="space-y-3">
                     {/* Row 1: Package Name */}
                     <h3 className="text-xl font-semibold text-primary">
-                        <span className="text-black"> Care Diabetics </span>{labPackage.name} <span className="text-black">Package</span>
+                        <span className="text-black"> Care Diabetics </span>{labPackage.name} <span className="text-black"></span>
                     </h3>
 
                     {/* Row 2: Package Description */}
@@ -84,12 +84,14 @@ export default function LabCard({ labPackage, handleBookAppointment }: LabCardPr
                 <div className="flex justify-center gap-3">
                     <Button
                         onClick={() => handleBookAppointment?.(labPackage)}
+                        size={"sm"}
                         className="px-6 py-2 rounded-full bg-primary text-white"
                     >
-                        Book Package
+                        Book
                     </Button>
                     <Button
                         variant="outline"
+                        size={"sm"}
                         onClick={() => setOpen(true)}
                         className="px-6 py-2 rounded-full border-primary  text-primary"
                     >

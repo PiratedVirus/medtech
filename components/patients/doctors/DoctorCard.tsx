@@ -65,25 +65,25 @@ export default function DoctorCard({ doctor, onBookAppointment }: DoctorCardProp
                       Video Consultation
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  {/* <div className="flex items-center gap-2">
                     <Calendar className="text-pink-500 h-4 w-4" />
                     <span className="text-pink-500 text-sm">
                       Physical Consultation
                     </span>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
               <p className="text-gray-400 text-sm">
                 ₹ {doctor.doctorProfile?.consultationFee || 299} Consultation fee at clinic
               </p>
-
+{/* 
               <div className="flex items-center gap-2 text-[#56a67c]">
                 <span className="text-base font-semibold">{doctor.doctorProfile?.rating || ""}</span>
                 <span className="text-gray-400 text-sm">
                   • {doctor.doctorProfile?.patientStories || 0} Patient stories
                 </span>
-              </div>
+              </div> */}
 
               <div className="flex items-center gap-2 text-[#56a67c]">
                 <Calendar className="text-green-500 h-4 w-4" />

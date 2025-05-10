@@ -42,17 +42,17 @@ export default function HomeOverview() {
       fetchSubscriptionTracker(profile.id).then((data) => {
         console.log("Plan Tracker Data", data);
       });
-    // Fetch the latest dietician link
-    const fetchDieticianLink = async () => {
-      try {
-        const dietPlanLinkResponse = await axios.get(`/api/dieticians/diet?id=${profile.id}`); // Await the async function
-        setDieticianLink(dietPlanLinkResponse.data.dietLink); // Set the state with the resolved value
-      } catch (error) {
-        console.error("Error fetching dietician link:", error);
-      }
-    };
+      // Fetch the latest dietician link
+      const fetchDieticianLink = async () => {
+        try {
+          const dietPlanLinkResponse = await axios.get(`/api/dieticians/diet?id=${profile.id}`); // Await the async function
+          setDieticianLink(dietPlanLinkResponse.data.dietLink); // Set the state with the resolved value
+        } catch (error) {
+          console.error("Error fetching dietician link:", error);
+        }
+      };
 
-    fetchDieticianLink();
+      fetchDieticianLink();
 
     }
   }, [profile]);
@@ -68,7 +68,7 @@ export default function HomeOverview() {
   }
 
   return (
-    <div className="bg-muted md:px-20 px-5 pt-5">
+    <div className="bg-muted lg:px-20 px-5 pt-5">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl">
@@ -104,9 +104,9 @@ export default function HomeOverview() {
                 OutlineIcon={LineChart}
               />
             </Link>
-            <Link href={dieticianLink} className="block w-full">
+            <Link href={dieticianLink || "/dashboard/dieticians"} className="block w-full">
               <HomePageCardSmall
-                href={dieticianLink ? dieticianLink : "/dashboard/dieticians"}
+                href={dieticianLink || "/dashboard/dieticians"}
                 headerLabel="Diet details"
                 cardTitle="View Diet"
                 cardDescription="Personalized diet plans and meal suggestions"

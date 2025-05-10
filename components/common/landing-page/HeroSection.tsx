@@ -6,7 +6,7 @@ import React from "react";
 export default function HeroSection() {
   return (
     <div className="bg-custom-mutedgreen">
-      <div className="relative w-full px-6 md:px-20 grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-0 sm:py-16 md:py-0">
+      <div className="relative w-full px-6 md:px-20 grid grid-cols-1 md:grid-cols-3 sm:py-16 md:py-0">
         {/* Left Side */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Logo for mobile, above the left section */}

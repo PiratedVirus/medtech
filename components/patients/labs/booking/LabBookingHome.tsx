@@ -205,7 +205,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
   return (
     <>
       <PackageInfo labPackage={labBbookingData} onBack={onBack} />
-      <div className="flex flex-col px-20 pb-5">
+      <div className="flex flex-col sm:px-20 px-5 pb-5">
         <div className="text-3xl pt-4">Patient Details</div>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 h-full">
           {/* Left column - Patient Form */}

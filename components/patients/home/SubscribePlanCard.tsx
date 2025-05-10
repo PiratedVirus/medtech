@@ -4,6 +4,7 @@ import React from "react";
 import { Card } from "@/components/ui/card";
 import ArrowButton from "@/components/ui/custom/cd-arrow-button";
 import { ClipboardCheck, Activity, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 export default function SubscribePlanCard() {
   const accentColor = "#F28A2E";
@@ -47,7 +48,7 @@ export default function SubscribePlanCard() {
           </h3>
           <p className="mb-3 text-xs text-gray-600">
             Take control of your health with personalized monitoring, expert
-            insights, and proactive care. 
+            insights, and proactive care.
           </p>
         </div>
 
@@ -55,9 +56,11 @@ export default function SubscribePlanCard() {
 
 
         <div className="flex items-center text-sm font-medium text-primary transition-all duration-300 group-hover:translate-x-1">
-    Explore our plans
-    <ArrowRight className="ml-1 h-4 w-4" />
-  </div>
+          <Link href="/dashboard/plans" className="flex items-center">
+            Explore our plans
+            <ArrowRight className="ml-1 h-4 w-4" />
+          </Link>
+        </div>
 
       </div>
     </Card>

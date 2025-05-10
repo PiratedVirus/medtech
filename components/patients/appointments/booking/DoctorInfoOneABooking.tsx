@@ -17,7 +17,7 @@ export function DoctorInfoOne({ doctor, onBack }: DoctorInfoProps) {
       {/* Back Button */}
       <button
         onClick={onBackClick}
-        className="inline-flex items-center text-gray-600 hover:text-gray-900"
+        className="inline-flex items-center text-primary"
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back

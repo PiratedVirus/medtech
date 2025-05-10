@@ -8,28 +8,32 @@ import { useKeenSlider } from "keen-slider/react"
 import "keen-slider/keen-slider.min.css"
 import { Arrow } from "@radix-ui/react-dropdown-menu"
 import ArrowButton from "@/components/ui/custom/cd-arrow-button"
+import Link from "next/link";
 
 const slides = [
   {
     type: "image",
     title: "Curated Medical support",
-    src: "/images/overview-col.png",
+    src: "/images/best-doc-grid-3.png",
     gradient: "from-blue-900/80",
-    buttonText: "Explore our Docotrs",
+    buttonText: "Explore our Doctors",
+    link: "/dashboard/doctors"
   },
   {
     type: "video",
     title: "Innovative Digital Solutions",
-    src: "https://www.w3schools.com/html/mov_bbb.mp4",
+    src: "https://res.cloudinary.com/pirated-virus-cloud/video/upload/v1746563653/nig69wllzqhq1lbss06u.mp4",
     gradient: "from-emerald-900/80",
     buttonText: "Watch Full Video",
+    link: "https://youtu.be/0szGKVQWqFI?si=0THNz77h-YcHbfwG"
   },
   {
     type: "image",
-    title: "Cutting-Edge Technology",
+    title: "Detailed Health Insights",
     src: "/images/bp-body-bmi.png",
     gradient: "from-purple-900/80",
     buttonText: "Discover More",
+    link: "/dashboard/insights"
   },
 ]
 
@@ -82,14 +86,15 @@ export default function MedicalCarousel() {
                 <div className={`absolute inset-0 bg-gradient-to-t ${slide.gradient} to-transparent`} />
                 <div className="absolute inset-0 flex flex-col justify-end p-6 text-white">
                   <h3 className="text-2xl font-bold mb-3">{slide.title}</h3>
-                  <Button
-                    variant="outline"
-                    className="w-fit border-white rounded-full text-black hover:bg-white/20 hover:text-white transition-all"
-                  >
-                    {slide.buttonText} <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
+                  <Link href={slide.link}>
+                    <Button
+                      variant="outline"
+                      className="w-fit border-white rounded-full text-black hover:bg-white/20 hover:text-white transition-all"
+                    >
+                      {slide.buttonText} <ChevronRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
                   
-                  {/* <ArrowButton size="small" buttonText={slide.buttonText} href="#" /> */}
                   
                 </div>
               </CardContent>

@@ -17,10 +17,10 @@ export default function PackageInfo({ labPackage, onBack }: PackageInfoProps) {
   if (!labPackage) return <CdLoader />;
   const parametersArray = labPackage?.parameters ? labPackage.parameters.split(",") : [];
   return (
-    <div className="space-y-8 px-20">
+    <div className="space-y-8 px-5 sm:px-20">
       {/* Back Button */}
-      <button onClick={() => router.push("/dashboard/labs")} className="inline-flex pt-5 items-center text-gray-600 hover:text-gray-900">
-        <ArrowLeft className="h-4 w-4 mr-2" />
+      <button onClick={() => router.push("/dashboard/labs")} className="inline-flex pt-5 items-center text-primary">
+        <ArrowLeft className="h-4 w-4 mr-2 " />
         Back
       </button>
       {/* Package Info */}
@@ -44,7 +44,7 @@ export default function PackageInfo({ labPackage, onBack }: PackageInfoProps) {
               </>
             )}
           </div>
-          <h2 className="text-primary font-semibold">₹ {labPackage?.price}</h2>
+          <h2 className="text-primary text-2xl font-semibold">₹ {labPackage?.price}</h2>
 
         </div>
      
