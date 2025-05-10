@@ -24,7 +24,7 @@ export default function DoctorInfoTwo({
         <div className="bg-muted pt-4 pb-0 px-4 sm:px-10 lg:px-20 lg:pb-0">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-[#2C2E38] mb-4 lg:mb-6 hover:text-[#56A67C] transition-colors"
+            className="flex items-center gap-2 text-primary mb-4 lg:mb-6 transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
             <span className="text-[15px]">Back</span>

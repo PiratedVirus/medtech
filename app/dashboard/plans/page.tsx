@@ -174,13 +174,16 @@ export default function PricingTable() {
     pluralLabel: string
   ) => {
     const durationInMonths = duration === "6months" ? 6 : 12;
-    const calculatedTotal = Math.floor((durationInMonths / interval) * frequency);
+    const calculatedTotal =
+      Number.isFinite(frequency) && Number.isFinite(interval) && interval !== 0
+        ? Math.floor((durationInMonths / interval) * frequency)
+        : NaN;
     const isTest = singularLabel.toLowerCase().includes("test");
     console.log("isTest: ", singularLabel, isTest);
     const label = isTest
       ? `${calculatedTotal} ${calculatedTotal === 1 ? "test" : "tests"}`
       : `${calculatedTotal} ${calculatedTotal > 1 ? pluralLabel : singularLabel}`;
-    const totalString = label;
+    const totalString = isNaN(calculatedTotal) ? "-" : label;
     const freqString = `${frequency} ${frequency > 1 ? pluralLabel : singularLabel} every ${interval} month${interval > 1 ? "s" : ""}`;
   
     return (
@@ -377,8 +380,8 @@ export default function PricingTable() {
 
                         return (
                           <tr key={key}>
-                            <td className="p-4 sm:p-6 md:p-8 align-top sticky left-0 z-10 bg-muted">
-                              <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-xl font-semibold bg-clip-text text-transparent">
+                            <td className="px-2 py-5 sm:px-4 align-top sticky left-0 z-10 bg-muted min-w-[120px]">
+                              <div className="bg-gradient-to-r from-[#134F30] to-[#56A67C] text-sm sm:text-base md:text-lg font-semibold bg-clip-text text-transparent leading-snug">
                                 {title}
                               </div>
                               {extraNote && (

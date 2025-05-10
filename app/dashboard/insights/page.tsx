@@ -166,7 +166,7 @@ export default function DetailedHealthInsights() {
     <div className="bg-muted min-h-screen px-4 sm:px-8 md:px-16 lg:px-20 py-6">
       <button
         onClick={() => router.push("/dashboard")}
-        className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4"
+        className="inline-flex items-center text-primary mb-4"
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back
