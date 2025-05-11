@@ -15,23 +15,23 @@ export async function GET(request: Request) {
         { status: 400 }
       );
     }
-    const doctors = await prisma.user.findMany({
+    const dieticians = await prisma.user.findMany({
       where: {
-        role: "DIETICIAN",
+        role: "DOCTOR",
         status: "ACTIVE",
         clinicId: Number(clinicId),
+        doctorProfile: {
+          isDietician: true, // Filter by isDietician flag
+        },
       },
       include: {
-        dieticianProfile: true,
+        doctorProfile: true,
       },
     });
 
-    const normalizedDoctors = doctors.map((doc) => ({
-      ...doc,
-      doctorProfile: doc.dieticianProfile,
-    }));
 
-    return NextResponse.json({ success: true, doctors: normalizedDoctors });
+
+    return NextResponse.json({ success: true, dieticians });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: "Failed to fetch doctors with error " + error },

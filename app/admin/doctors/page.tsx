@@ -57,6 +57,7 @@ type Doctor = {
   yearsOfExperience: number;
   consultationFee: number;
   createdAt: string;
+  isDietician: boolean
   // Relation from doctorProfile to user
   user: {
     id: number;
@@ -81,6 +82,7 @@ type DoctorsPageFormData = {
   consultationFee: number;
   status: string;
   clinicId: number;
+  isDietician: boolean; // Added this field
 };
 
 export default function DoctorsPage() {
@@ -113,7 +115,8 @@ export default function DoctorsPage() {
   const fetchAvailableUsers = async (clinicId: number) => {
     try {
       // This endpoint should return users for the specified clinic
-      const res = await axios.get(`/api/admin/users?clinicId=${clinicId}`);
+      const res = await axios.get(`/api/admin/users?role=DOCTOR`);
+      console.log("Available users for clinic:", res.data.data);
       setAvailableUsers(res.data.data);
     } catch (error) {
       console.error("Error fetching available users:", error);
@@ -314,6 +317,7 @@ export default function DoctorsPage() {
       setValue("consultationFee", selectedDoctor.consultationFee);
       setValue("status", selectedDoctor.user.status);
       setValue("userId", selectedDoctor.user.id);
+      setValue("isDietician", selectedDoctor.isDietician || false);
     } else {
       reset();
     }
@@ -326,6 +330,7 @@ export default function DoctorsPage() {
         ...formData,
         yearsOfExperience: Number(formData.yearsOfExperience),
         consultationFee: Number(formData.consultationFee),
+        isDietician: formData.isDietician || false,
       };
 
       if (selectedDoctor) {
@@ -530,7 +535,7 @@ export default function DoctorsPage() {
             <DialogTitle>{selectedDoctor ? "Edit Doctor" : "Create New Doctor"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
+            <div>
               <label className="block font-medium">Select Clinic</label>
               <Controller
                 control={control}
@@ -552,7 +557,7 @@ export default function DoctorsPage() {
                 )}
               />
             </div>
-    
+
             {/* User Dropdown (filtered by clinic) */}
             <div>
               <label className="block font-medium">Select User</label>
@@ -603,6 +608,25 @@ export default function DoctorsPage() {
                     <SelectItem value="SUSPENDED">Suspended</SelectItem>
                   </SelectContent>
                 </Select>
+              )}
+            />
+            <Controller
+              control={control}
+              name="isDietician"
+              defaultValue={false}
+              render={({ field }) => (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isDietician"
+                    checked={field.value}
+                    onChange={(e) => field.onChange(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor="isDietician" className="text-sm font-medium">
+                    Mark as Dietician
+                  </label>
+                </div>
               )}
             />
             <DialogFooter>

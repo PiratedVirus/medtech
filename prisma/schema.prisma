@@ -118,6 +118,7 @@ model DoctorProfile {
   ownerToken1       String?
   ownerToken2       String?
   licenseNumber     String? @unique
+  isDietician       Boolean?
   consultationFee   Int
   rating            Float?
   type              String?

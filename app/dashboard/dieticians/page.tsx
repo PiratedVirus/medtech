@@ -22,7 +22,7 @@ export default function DoctorsPage() {
   };
 
   // Fetch dieticians using React Query
-  const { data: doctors, isLoading, isError } = useQuery({
+  const { data: dieticians, isLoading, isError } = useQuery({
     queryKey: ["dieticians", clinicId], // Unique cache key
     queryFn: async () => {
       if (!clinicId) return [];
@@ -30,7 +30,8 @@ export default function DoctorsPage() {
         `/api/dieticians/get-dieticians?clinicId=${clinicId}`,
         { withCredentials: true }
       );
-      return response.data.success ? response.data.doctors : [];
+      console.log("Dieticians response", response.data);
+      return response.data.success ? response.data.dieticians : [];
     },
     staleTime: 1 * 6 * 1, //  Keeps cache valid for 10 minutes
     gcTime: 6 * 1 * 1, //  Keeps cache for 1 hour
@@ -73,7 +74,7 @@ export default function DoctorsPage() {
       <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
         <div>
           <p className="text-4xl font-bold text-gray-800">
-            {doctors.length} Dieticians available for consultation
+            {dieticians.length} Dieticians available for consultation
           </p>
           <div className="flex items-center gap-2 mt-5">
             <CircleCheckBig className="text-green-700 h-6 w-6" />
@@ -85,9 +86,9 @@ export default function DoctorsPage() {
 
       </div>
 
-      {doctors.length > 0 ? (
+      {dieticians.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {doctors.map((doctor: any) => (
+          {dieticians.map((doctor: any) => (
             <DoctorCard key={doctor.id} doctor={doctor} onBookAppointment={handleBookAppointment} />
           ))}
         </div>

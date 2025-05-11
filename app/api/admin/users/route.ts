@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+//TODO: ClinicId filter
+
 // Enhanced GET endpoint with filtering and role counts
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
-    const pageSize = parseInt(searchParams.get("pageSize") || "10");
+    const pageSize = parseInt(searchParams.get("pageSize") || "20");
     const role = searchParams.get("role");
 
     // If a role is passed, return a simplified response (user id and name only)

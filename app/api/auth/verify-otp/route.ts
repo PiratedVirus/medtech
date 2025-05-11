@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     if (verificationCheck.type === "success" || verificationCheck.status === "success") {
       const userExists = await checkUserExists(plusAddedPhoneNumber);
       const token = jwt.sign({ plusAddedPhoneNumber, userExists }, process.env.JWT_SECRET!, {
-        expiresIn: "2592000",
+        expiresIn: "2d",
       });
       
       const response = NextResponse.json({ success: true, userExists });

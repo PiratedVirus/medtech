@@ -83,10 +83,15 @@ const fetchDoctorAvailability = async (pageIndex: number, pageSize: number): Pro
 
 const fetchDoctors = async () => {
   try {
-    const response = await axios.get("/api/admin/doctors");
-    return response.data.data;
+    const [doctorRes] = await Promise.all([
+      axios.get("/api/admin/doctors"),
+    ]);
+
+    const doctors = doctorRes.data.data || [];
+
+    return doctors;
   } catch (error) {
-    console.error("Failed to fetch doctors:", error);
+    console.error("Failed to fetch doctors and dieticians:", error);
     return [];
   }
 };
@@ -101,8 +106,19 @@ interface CreateDoctorAvailabilityData {
 
 const createDoctorAvailability = async (data: CreateDoctorAvailabilityData): Promise<DoctorAvailability | null> => {
   console.log("Data for booking is ", data);
+  if (typeof data.doctorId === "string") {
+    try {
+      data.doctorId = JSON.parse(data.doctorId)?.id || Number(data.doctorId);
+    } catch (error) {
+      console.error("Error parsing doctorId:", error);
+    }
+  } 
+  const payload = {
+    ...data,
+    doctorId: Number(data.doctorId),
+  };
   try {
-    const response = await axios.post("/api/admin/slots", data);
+    const response = await axios.post("/api/admin/slots", payload);
     return response.data;
   } catch (error) {
     console.error("Failed to create doctor availability:", error);
@@ -145,7 +161,7 @@ const deleteDoctorAvailability = async (id: number): Promise<DeleteDoctorAvailab
 
 export default function DoctorAvailabilityPage() {
   const [data, setData] = useState<{ availabilities: DoctorAvailability[], total: number }>({ availabilities: [], total: 0 });
-  const [doctors, setDoctors] = useState<{ id: number; user: { name: string } }[]>([]);
+  const [doctors, setDoctors] = useState<{ id: number; userId:number; user: { name: string } }[]>([]);
 
   const [selectedAvailability, setSelectedAvailability] = useState<DoctorAvailability | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -506,10 +522,9 @@ export default function DoctorAvailabilityPage() {
                     <SelectValue placeholder="Select Doctor" />
                   </SelectTrigger>
                   <SelectContent className="bg-white text-black">
-                    {doctors.map((doctor) => (
-                      // @ts-ignore
-                      <SelectItem key={doctor.id} value={doctor.id}>
-                        {doctor.user.name}
+                  {doctors.map((doc) => (
+                      <SelectItem key={doc.userId} value={JSON.stringify({ id: doc.id, doctorId: doc.userId })}>
+                        {doc.user.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

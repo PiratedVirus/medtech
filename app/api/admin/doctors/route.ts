@@ -133,6 +133,7 @@ export async function POST(request: Request) {
         meetingRoomLink: dailyRoom.url,
         ownerToken1: ownerTokens[0],
         ownerToken2: ownerTokens[1],
+        isDietician: data.isDietician || false,
         user: { connect: { id: Number(data.userId) } },
       },
     });
@@ -148,32 +149,44 @@ export async function POST(request: Request) {
 }
 export async function PUT(request: Request) {
   try {
-    const { id, ...data } = await request.json();
-    if (data.userId) {
+    const { id, userId, status, isDietician, clinicId, ...data } = await request.json();
+
+    if (userId) {
       const user = await prisma.user.findUnique({
-        where: { id: Number(data.userId) },
+        where: { id: Number(userId) },
         include: { clinic: true },
       });
       if (!user) {
         return NextResponse.json({ error: "User not found" }, { status: 400 });
       }
-      if (data.clinicId && user.clinic?.id !== Number(data.clinicId)) {
+      if (clinicId && user.clinic?.id !== Number(clinicId)) {
         return NextResponse.json(
           { error: "Selected user does not belong to the chosen clinic" },
           { status: 400 }
         );
       }
     }
-    const doctor = await prisma.doctorProfile.update({
-      where: { id },
-      data: {
-        specialty: data.specialty,
-        yearsOfExperience: data.yearsOfExperience,
-        status: data.status,
-        ...(data.userId && { user: { connect: { id: Number(data.userId) } } }),
-      },
+
+    const result = await prisma.$transaction(async (tx) => {
+      if (userId && status) {
+        await tx.user.update({
+          where: { id: Number(userId) },
+          data: { status },
+        });
+      }
+
+      return await tx.doctorProfile.update({
+        where: { id },
+        data: {
+          specialty: data.specialty,
+          yearsOfExperience: data.yearsOfExperience,
+          consultationFee: data.consultationFee,
+          isDietician: isDietician || false
+        },
+      });
     });
-    return NextResponse.json(doctor);
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Failed to update doctor" }, { status: 500 });
