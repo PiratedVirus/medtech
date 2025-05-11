@@ -1,5 +1,5 @@
 "use client";
-
+import { PlusIcon, User2Icon } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { ChangeEvent } from "react";
 // Add this function to upload the image to Cloudinary
@@ -62,7 +62,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
+import { ChevronDown, ArrowUpDown, EditIcon, Trash, PlusIcon as LucidePlusIcon } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -75,6 +75,7 @@ type User = {
   status: string;
   clinic?: { name: string; id: number };
   createdAt: string;
+  userProfilePicture?: string; // Optional field for profile picture URL
 };
 
 export default function UsersPage() {
@@ -269,23 +270,30 @@ export default function UsersPage() {
 
   const onSubmit = async (formData: any) => {
     try {
-      // Upload image to Cloudinary and get the image URL
       let imageUrl = null;
+
+      // Check if a new profile picture was uploaded
       if (profilePicture) {
+        // Upload the image to Cloudinary and get the image URL
         imageUrl = await uploadImageToCloudinary(profilePicture);
+      } else if (selectedUser?.userProfilePicture) {
+        // If no new image was uploaded, use the existing user profile picture URL
+        imageUrl = selectedUser.userProfilePicture;
       }
 
       const payload = {
         ...formData,
         clinicId: formData.clinicId ? Number(formData.clinicId) : null,
         status: formData.status || "ACTIVE",
-        userProfilePicture: imageUrl,  // Add image URL to the form data
+        userProfilePicture: imageUrl,  // Add image URL (new or existing) to the form data
       };
 
       if (selectedUser) {
+        // PUT request to update the user (overwrite if new image is uploaded)
         await axios.put("/api/admin/users", { id: selectedUser.id, ...payload });
         toast.success("User updated successfully");
       } else {
+        // POST request to create a new user
         await axios.post("/api/admin/users", payload);
         toast.success("User created successfully");
       }
@@ -300,7 +308,6 @@ export default function UsersPage() {
       toast.error("Failed to save user");
     }
   };
-
   const deleteUser = async (id: number) => {
     try {
       await axios.delete("/api/admin/users", { data: { id } });
@@ -492,16 +499,39 @@ export default function UsersPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {/* Profile Picture Upload */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Profile Picture</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="mt-2 p-2 border border-gray-300 rounded-md"
-              />
-              {profilePicture && <p className="text-sm text-gray-500">{profilePicture.name}</p>}
+            <div className="flex flex-col items-center">
+        <label className="block text-sm font-medium text-gray-700">Profile Picture</label>
+
+        {/* Display Profile Image or Fallback Icon */}
+        <div className="relative w-32 h-32 mt-4">
+          {profilePicture || selectedUser?.userProfilePicture ? (
+            <img
+              src={profilePicture ? URL.createObjectURL(profilePicture) : selectedUser?.userProfilePicture}
+              alt="Profile"
+              className="w-full h-full object-cover rounded-full"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <User2Icon className="text-gray-500" size={48} />
             </div>
+          )}
+        </div>
+
+        {/* Upload Box with Dotted Border and Media Icon */}
+        <div className="w-full border-dashed border-2 border-gray-300 rounded-md py-4 flex flex-col items-center justify-center cursor-pointer relative">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            tabIndex={-1}
+          />
+          <LucidePlusIcon className="text-gray-500" size={24} />
+          <p className="text-sm text-gray-500 mt-2">Upload Image</p>
+          <p className="text-xs text-gray-500 mt-1">Click to upload or drag and drop an image</p>
+        </div>
+      </div>
+
             <Input {...register("name", { required: true })} placeholder="Full Name" />
             <Input {...register("phoneNumber", { required: true })} placeholder="Phone Number" />
             <Input {...register("email")} type="email" placeholder="Email" />
