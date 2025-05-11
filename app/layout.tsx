@@ -11,8 +11,6 @@ import { useState, useEffect } from "react";
 import { initializeUserProfile } from "@/store/userSlice"; // Update this path as needed
 import CdLoader from '@/components/ui/custom/cd-loader';
 
-
-
 const lato = Lato({
   subsets: ['latin'],
   weight: ['400', '700'],
@@ -60,8 +58,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Google Analytics Script */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-FVBPV9ZVNF"></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-FVBPV9ZVNF');
+            `,
+          }}
+        />
+      </head>
       <body className={`${lato.variable} antialiased min-h-screen flex flex-col`}>
-      
         <ClientSideWrapper>
           {children}
         </ClientSideWrapper>
