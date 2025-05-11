@@ -1,6 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import type { ChangeEvent } from "react";
+// Add this function to upload the image to Cloudinary
+const uploadImageToCloudinary = async (file: File) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", "client-unsigned");  // Replace with your Cloudinary upload preset
+  formData.append("cloud_name", "pirated-virus-cloud");        // Replace with your Cloudinary cloud name
+
+  try {
+    const response = await axios.post("https://api.cloudinary.com/v1_1/pirated-virus-cloud/image/upload", formData);
+    return response.data.secure_url;  // This will be the URL of the uploaded image
+  } catch (error) {
+    toast.error("Failed to upload image to Cloudinary");
+    console.error("Error uploading image to Cloudinary:", error);
+    return null;
+  }
+};
 import axios from "axios";
 import { useForm } from "react-hook-form";
 import {
@@ -67,6 +84,7 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { register, handleSubmit, reset, setValue } = useForm();
+  const [profilePicture, setProfilePicture] = useState<File | null>(null);  // Add state for profile picture
   const [sorting, setSorting] = useState<SortingState>([{ id: "createdAt", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -233,17 +251,35 @@ export default function UsersPage() {
       setValue("role", selectedUser.role);
       setValue("clinicId", selectedUser.clinic?.id);
       setValue("status", selectedUser.status);
+      // Optionally, could set a preview for profilePicture here if desired.
+      setProfilePicture(null);
     } else {
       reset();
+      setProfilePicture(null);
     }
   }, [selectedUser, setValue, reset]);
 
+  // Function to handle file input change
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setProfilePicture(file);
+    }
+  };
+
   const onSubmit = async (formData: any) => {
     try {
+      // Upload image to Cloudinary and get the image URL
+      let imageUrl = null;
+      if (profilePicture) {
+        imageUrl = await uploadImageToCloudinary(profilePicture);
+      }
+
       const payload = {
         ...formData,
         clinicId: formData.clinicId ? Number(formData.clinicId) : null,
         status: formData.status || "ACTIVE",
+        userProfilePicture: imageUrl,  // Add image URL to the form data
       };
 
       if (selectedUser) {
@@ -258,6 +294,7 @@ export default function UsersPage() {
       setDialogOpen(false);
       reset();
       setSelectedUser(null);
+      setProfilePicture(null);
     } catch (error) {
       console.error("Error saving user:", error);
       toast.error("Failed to save user");
@@ -454,6 +491,17 @@ export default function UsersPage() {
             <DialogTitle>{selectedUser ? "Edit User" : "Create New User"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Profile Picture Upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Profile Picture</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="mt-2 p-2 border border-gray-300 rounded-md"
+              />
+              {profilePicture && <p className="text-sm text-gray-500">{profilePicture.name}</p>}
+            </div>
             <Input {...register("name", { required: true })} placeholder="Full Name" />
             <Input {...register("phoneNumber", { required: true })} placeholder="Phone Number" />
             <Input {...register("email")} type="email" placeholder="Email" />
@@ -496,6 +544,7 @@ export default function UsersPage() {
               <Button type="button" variant="outline" onClick={() => {
                 setDialogOpen(false);
                 setSelectedUser(null);
+                setProfilePicture(null);
               }}>
                 Cancel
               </Button>
