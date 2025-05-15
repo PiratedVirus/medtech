@@ -164,7 +164,7 @@ model LabTechProfile {
 model DoctorAvailability {
   id         Int    @id @default(autoincrement())
   doctorId   Int
-  date       DateTime
+  date       DateTime @db.Date
   startTime  String
   endTime    String
   status     String

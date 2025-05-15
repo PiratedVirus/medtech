@@ -3,6 +3,10 @@ import axios from "axios";
 import jwt from "jsonwebtoken";
 import { checkUserExists } from "@/lib/check-user";
 
+// JWT + cookie lifetime (in days)
+const TOKEN_LIFETIME_DAYS = 15;   // ⬅️ change this to whatever “more than a week” means to you
+const TOKEN_LIFETIME_SECONDS = TOKEN_LIFETIME_DAYS * 24 * 60 * 60;
+
 // Get your tokenAuth and widgetId from environment variables
 const verifyOtpWithMsg91 = async (phoneNumber: string, otpCode: string, reqId: string, widgetId: string) => {
   const trimmedPhoneNumber = phoneNumber.replace(/\+/g, '').replace(/\s+/g, '');
@@ -47,16 +51,18 @@ export async function POST(request: Request) {
     // Adjust this check based on the response format from MSG91
     if (verificationCheck.type === "success" || verificationCheck.status === "success") {
       const userExists = await checkUserExists(plusAddedPhoneNumber);
-      const token = jwt.sign({ plusAddedPhoneNumber, userExists }, process.env.JWT_SECRET!, {
-        expiresIn: "2d",
-      });
+      const token = jwt.sign(
+        { plusAddedPhoneNumber, userExists },
+        process.env.JWT_SECRET!,
+        { expiresIn: `${TOKEN_LIFETIME_DAYS}d` }   // e.g. "15d"
+      );
       
       const response = NextResponse.json({ success: true, userExists });
       response.cookies.set("token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
-        maxAge: 14400,
+        maxAge: TOKEN_LIFETIME_SECONDS,
         path: "/",
       });
       

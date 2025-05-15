@@ -135,8 +135,21 @@ interface UpdateDoctorAvailabilityData {
 }
 
 const updateDoctorAvailability = async (id: number, data: UpdateDoctorAvailabilityData): Promise<DoctorAvailability | null> => {
+  // doctorId may come through as a JSON‑stringified object from the <Select>
+  if (typeof data.doctorId === "string") {
+    try {
+      data.doctorId = JSON.parse(data.doctorId)?.id || Number(data.doctorId);
+    } catch (error) {
+      console.error("Error parsing doctorId:", error);
+    }
+  }
+  const payload = {
+    ...data,
+    doctorId: Number(data.doctorId),
+  };
+
   try {
-    const response = await axios.put(`/api/admin/slots?id=${id}`, data);
+    const response = await axios.put(`/api/admin/slots?id=${id}`, payload);
     return response.data;
   } catch (error) {
     console.error("Failed to update doctor availability:", error);
@@ -157,6 +170,11 @@ const deleteDoctorAvailability = async (id: number): Promise<DeleteDoctorAvailab
     console.error("Failed to delete doctor availability:", error);
     return null;
   }
+};
+
+const convertToIST = (date: string) => {
+  const utcDate = new Date(date); // Convert to Date object (UTC)
+  return format(utcDate, 'dd/MM/yyyy'); // Format the date to display in IST
 };
 
 export default function DoctorAvailabilityPage() {
@@ -222,7 +240,9 @@ export default function DoctorAvailabilityPage() {
           Date <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
-      cell: ({ row }) => new Date(row.getValue("date")).toLocaleDateString(),
+      // cell: ({ row }) => new Date(row.getValue("date")).toLocaleDateString(),
+      cell: ({ row }) => convertToIST(row.getValue("date")),  // Convert and format date to IST
+
       enableSorting: true,
     },
     {
@@ -550,7 +570,7 @@ export default function DoctorAvailabilityPage() {
                       //@ts-ignore
                       selected={field.value}
                       onSelect={field.onChange}
-                      disabled={(date) => date < new Date()}
+                      // disabled={(date) => date <= new Date()}
                       initialFocus
                       className="bg-white text-black"
                     />
