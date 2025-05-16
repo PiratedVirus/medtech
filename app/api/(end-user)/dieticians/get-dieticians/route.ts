@@ -22,6 +22,7 @@ export async function GET(request: Request) {
         clinicId: Number(clinicId),
         doctorProfile: {
           isDietician: true, // Filter by isDietician flag
+          deletedAt: null
         },
       },
       include: {

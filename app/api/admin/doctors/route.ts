@@ -196,14 +196,35 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const body = await request.json();
+
     if (body.ids && Array.isArray(body.ids)) {
-      await prisma.doctorProfile.deleteMany({
-        where: { id: { in: body.ids } },
+      const ids = body.ids.map((i: any) => Number(i));
+      // fetch affected userIds
+      const profiles = await prisma.doctorProfile.findMany({
+        where: { id: { in: ids } },
+        select: { userId: true },
       });
+      const userIds = profiles.map((p) => p.userId);
+
+      // soft-delete profiles & reset user statuses in one transaction
+      await prisma.$transaction(async (tx) => {
+        await tx.doctorProfile.deleteMany({ where: { id: { in: ids } } });
+        await tx.user.updateMany({
+          where: { id: { in: userIds } },
+          data: { role: 'NOT_SET' },
+        });
+      });
+
       return NextResponse.json({ message: "Doctors deleted successfully" });
     } else if (body.id) {
-      await prisma.doctorProfile.delete({
-        where: { id: body.id },
+      const id = Number(body.id);
+      // soft-delete the profile and reset the user's status
+      await prisma.$transaction(async (tx) => {
+        const deleted = await tx.doctorProfile.delete({ where: { id } });
+        await tx.user.update({
+          where: { id: deleted.userId },
+          data: { role: 'NOT_SET' },
+        });
       });
       return NextResponse.json({ message: "Doctor deleted successfully" });
     } else {

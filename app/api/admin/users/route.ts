@@ -80,14 +80,14 @@ export async function DELETE(request: Request) {
   try {
     const body = await request.json();
     if (body.ids && Array.isArray(body.ids)) {
-      // Use deleteMany for bulk deletion
+      // Use deleteMany which will trigger the soft delete extension
       await prisma.user.deleteMany({
-        where: { id: { in: body.ids } },
+        where: { id: { in: body.ids } }
       });
       return NextResponse.json({ message: "Users deleted successfully" });
     } else if (body.id) {
       await prisma.user.delete({
-        where: { id: body.id },
+        where: { id: body.id }
       });
       return NextResponse.json({ message: "User deleted successfully" });
     } else {

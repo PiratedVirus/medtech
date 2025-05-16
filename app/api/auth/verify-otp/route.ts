@@ -28,7 +28,7 @@ const verifyOtpWithMsg91 = async (phoneNumber: string, otpCode: string, reqId: s
         }
       }
     );
-    console.log("MSG91 Verification Response:", response);
+    // console.log("MSG91 Verification Response:", response);
     
     return response.data;
   } catch (error) {
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   
   try {
     const verificationCheck = await verifyOtpWithMsg91(phoneNumber, code, reqId, widgetId);
-    console.log("Verification Check Response:", verificationCheck);
+    // console.log("Verification Check Response:", verificationCheck);
     const plusAddedPhoneNumber = "+" + phoneNumber
     // Adjust this check based on the response format from MSG91
     if (verificationCheck.type === "success" || verificationCheck.status === "success") {

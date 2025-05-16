@@ -20,6 +20,10 @@ export async function GET(request: Request) {
         role: "DOCTOR",
         status: "ACTIVE",
         clinicId: Number(clinicId),
+        doctorProfile: {
+          isDietician: false,
+          deletedAt: null
+        }
       },
       include: {
         doctorProfile: true,

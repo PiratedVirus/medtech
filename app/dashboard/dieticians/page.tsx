@@ -33,8 +33,8 @@ export default function DoctorsPage() {
       console.log("Dieticians response", response.data);
       return response.data.success ? response.data.dieticians : [];
     },
-    staleTime: 1 * 6 * 1, //  Keeps cache valid for 10 minutes
-    gcTime: 6 * 1 * 1, //  Keeps cache for 1 hour
+    staleTime: 1 * 1 * 1, //  Keeps cache valid for 10 minutes
+    gcTime: 1 * 1 * 1, //  Keeps cache for 1 hour
     refetchOnWindowFocus: false, //  Prevents re-fetching on tab switch
     refetchOnMount: false, //  Prevents re-fetching when navigating back
     refetchOnReconnect: true, //  Fetches only if internet reconnects
