@@ -95,7 +95,7 @@ export default function DashboardPage() {
         />
         <SummaryCard
           title="Monthly Revenue"
-          value={`₹ ${summaryData.monthlyRevenue.toString()}`}
+          value={`₹ ${(summaryData.monthlyRevenue/100).toString()}`}
           trend=""
           PrimaryIcon={IndianRupee}
           OutlineIcon={IndianRupee}

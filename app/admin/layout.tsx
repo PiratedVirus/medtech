@@ -20,16 +20,16 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     (state: RootState) => state.user,
   );
 
-  useEffect(() => {
-    if (storedProfile) {
-      dispatch({
-        type: "user/fetchUserProfile/fulfilled",
-        payload: storedProfile,
-      });
-    } else {
-      dispatch(fetchUserProfile());
-    }
-  }, [dispatch]);
+  // useEffect(() => {
+  //   if (storedProfile) {
+  //     dispatch({
+  //       type: "user/fetchUserProfile/fulfilled",
+  //       payload: storedProfile,
+  //     });
+  //   } else {
+  //     dispatch(fetchUserProfile());
+  //   }
+  // }, [dispatch]);
 
   if (loading) {
     return (
@@ -49,14 +49,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   }
 
   return (
-    <ProfileProvider profile={profile}>
       <div className="flex min-h-screen">
           <SidebarNav />
           <div className="flex-1 md:ml-16">
             <main className="flex-1 bg-white">{children}</main>
           </div>
         </div>
-    </ProfileProvider>
   );
 };
 

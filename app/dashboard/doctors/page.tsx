@@ -35,8 +35,8 @@ export default function DoctorsPage() {
       );
       return response.data.success ? response.data.doctors : [];
     },
-    staleTime: 10 * 60 * 1000, // Keeps cache valid for 10 minutes
-    gcTime: 60 * 60 * 1000, // Keeps cache for 1 hour
+    staleTime: 1 * 1 * 1, // Keeps cache valid for 10 minutes
+    gcTime: 1 * 1 * 1, // Keeps cache for 1 hour
     refetchOnWindowFocus: false, // Prevents re-fetching on tab switch
     refetchOnMount: false, // Prevents re-fetching when navigating back
     refetchOnReconnect: true, // Fetches only if internet reconnects
@@ -48,7 +48,7 @@ export default function DoctorsPage() {
   }
 
   if (isError) {
-    return <p className="text-red-500 text-center py-5">Something went wrong. Failed to load doctors.</p>;
+    return <p className="text-red-500 text-center py-5">Something went wrong. Failed to load doctors?.</p>;
   }
 
   return (
@@ -76,7 +76,7 @@ export default function DoctorsPage() {
       <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
         <div>
           <p className="text-4xl font-bold text-gray-800">
-            {doctors.length} Doctors available for consultation
+            {doctors?.length} Doctors available for consultation
           </p>
           <div className="flex items-center gap-2 mt-5">
             <CircleCheckBig className="text-green-700 h-6 w-6" />
@@ -89,9 +89,9 @@ export default function DoctorsPage() {
   
       </div>
 
-      {doctors.length > 0 ? (
+      {doctors?.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {doctors.map((doctor: any) => (
+          {doctors?.map((doctor: any) => (
             <DoctorCard
               key={doctor.id}
               doctor={doctor}

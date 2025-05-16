@@ -60,11 +60,12 @@ export async function POST(request: Request) {
   try {
     const data = await request.json();
     console.log("Daata for slot booking is ", data);
+    const dateInUTC = new Date(data.date).toISOString();
     
     const newSlot = await prisma.doctorAvailability.create({
       data: {
         doctorId: Number(data.doctorId),
-        date: new Date(data.date),
+        date: dateInUTC,
         startTime: data.startTime,
         endTime: data.endTime,
         status: data.status
@@ -89,11 +90,13 @@ export async function PUT(request: Request) {
     const id = parseInt(searchParams.get("id") || "0");
     const data = await request.json();
 
+    const dateInUTC = new Date(data.date).toISOString();
+
     const updatedSlot = await prisma.doctorAvailability.update({
       where: { id },
       data: {
         doctorId: data.doctorId,
-        date: new Date(data.date),
+        date: dateInUTC,
         startTime: data.startTime,
         endTime: data.endTime,
         status: data.status

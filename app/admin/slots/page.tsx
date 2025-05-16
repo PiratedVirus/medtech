@@ -83,10 +83,15 @@ const fetchDoctorAvailability = async (pageIndex: number, pageSize: number): Pro
 
 const fetchDoctors = async () => {
   try {
-    const response = await axios.get("/api/admin/doctors");
-    return response.data.data;
+    const [doctorRes] = await Promise.all([
+      axios.get("/api/admin/doctors"),
+    ]);
+
+    const doctors = doctorRes.data.data || [];
+
+    return doctors;
   } catch (error) {
-    console.error("Failed to fetch doctors:", error);
+    console.error("Failed to fetch doctors and dieticians:", error);
     return [];
   }
 };
@@ -101,8 +106,19 @@ interface CreateDoctorAvailabilityData {
 
 const createDoctorAvailability = async (data: CreateDoctorAvailabilityData): Promise<DoctorAvailability | null> => {
   console.log("Data for booking is ", data);
+  if (typeof data.doctorId === "string") {
+    try {
+      data.doctorId = JSON.parse(data.doctorId)?.id || Number(data.doctorId);
+    } catch (error) {
+      console.error("Error parsing doctorId:", error);
+    }
+  } 
+  const payload = {
+    ...data,
+    doctorId: Number(data.doctorId),
+  };
   try {
-    const response = await axios.post("/api/admin/slots", data);
+    const response = await axios.post("/api/admin/slots", payload);
     return response.data;
   } catch (error) {
     console.error("Failed to create doctor availability:", error);
@@ -119,8 +135,21 @@ interface UpdateDoctorAvailabilityData {
 }
 
 const updateDoctorAvailability = async (id: number, data: UpdateDoctorAvailabilityData): Promise<DoctorAvailability | null> => {
+  // doctorId may come through as a JSON‑stringified object from the <Select>
+  if (typeof data.doctorId === "string") {
+    try {
+      data.doctorId = JSON.parse(data.doctorId)?.id || Number(data.doctorId);
+    } catch (error) {
+      console.error("Error parsing doctorId:", error);
+    }
+  }
+  const payload = {
+    ...data,
+    doctorId: Number(data.doctorId),
+  };
+
   try {
-    const response = await axios.put(`/api/admin/slots?id=${id}`, data);
+    const response = await axios.put(`/api/admin/slots?id=${id}`, payload);
     return response.data;
   } catch (error) {
     console.error("Failed to update doctor availability:", error);
@@ -143,9 +172,14 @@ const deleteDoctorAvailability = async (id: number): Promise<DeleteDoctorAvailab
   }
 };
 
+const convertToIST = (date: string) => {
+  const utcDate = new Date(date); // Convert to Date object (UTC)
+  return format(utcDate, 'dd/MM/yyyy'); // Format the date to display in IST
+};
+
 export default function DoctorAvailabilityPage() {
   const [data, setData] = useState<{ availabilities: DoctorAvailability[], total: number }>({ availabilities: [], total: 0 });
-  const [doctors, setDoctors] = useState<{ id: number; user: { name: string } }[]>([]);
+  const [doctors, setDoctors] = useState<{ id: number; userId:number; user: { name: string } }[]>([]);
 
   const [selectedAvailability, setSelectedAvailability] = useState<DoctorAvailability | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -206,7 +240,9 @@ export default function DoctorAvailabilityPage() {
           Date <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
-      cell: ({ row }) => new Date(row.getValue("date")).toLocaleDateString(),
+      // cell: ({ row }) => new Date(row.getValue("date")).toLocaleDateString(),
+      cell: ({ row }) => convertToIST(row.getValue("date")),  // Convert and format date to IST
+
       enableSorting: true,
     },
     {
@@ -506,10 +542,9 @@ export default function DoctorAvailabilityPage() {
                     <SelectValue placeholder="Select Doctor" />
                   </SelectTrigger>
                   <SelectContent className="bg-white text-black">
-                    {doctors.map((doctor) => (
-                      // @ts-ignore
-                      <SelectItem key={doctor.id} value={doctor.id}>
-                        {doctor.user.name}
+                  {doctors.map((doc) => (
+                      <SelectItem key={doc.userId} value={JSON.stringify({ id: doc.id, doctorId: doc.userId })}>
+                        {doc.user.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -535,7 +570,7 @@ export default function DoctorAvailabilityPage() {
                       //@ts-ignore
                       selected={field.value}
                       onSelect={field.onChange}
-                      disabled={(date) => date < new Date()}
+                      // disabled={(date) => date <= new Date()}
                       initialFocus
                       className="bg-white text-black"
                     />

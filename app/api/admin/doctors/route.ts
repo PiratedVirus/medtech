@@ -133,6 +133,7 @@ export async function POST(request: Request) {
         meetingRoomLink: dailyRoom.url,
         ownerToken1: ownerTokens[0],
         ownerToken2: ownerTokens[1],
+        isDietician: data.isDietician || false,
         user: { connect: { id: Number(data.userId) } },
       },
     });
@@ -148,32 +149,44 @@ export async function POST(request: Request) {
 }
 export async function PUT(request: Request) {
   try {
-    const { id, ...data } = await request.json();
-    if (data.userId) {
+    const { id, userId, status, isDietician, clinicId, ...data } = await request.json();
+
+    if (userId) {
       const user = await prisma.user.findUnique({
-        where: { id: Number(data.userId) },
+        where: { id: Number(userId) },
         include: { clinic: true },
       });
       if (!user) {
         return NextResponse.json({ error: "User not found" }, { status: 400 });
       }
-      if (data.clinicId && user.clinic?.id !== Number(data.clinicId)) {
+      if (clinicId && user.clinic?.id !== Number(clinicId)) {
         return NextResponse.json(
           { error: "Selected user does not belong to the chosen clinic" },
           { status: 400 }
         );
       }
     }
-    const doctor = await prisma.doctorProfile.update({
-      where: { id },
-      data: {
-        specialty: data.specialty,
-        yearsOfExperience: data.yearsOfExperience,
-        status: data.status,
-        ...(data.userId && { user: { connect: { id: Number(data.userId) } } }),
-      },
+
+    const result = await prisma.$transaction(async (tx) => {
+      if (userId && status) {
+        await tx.user.update({
+          where: { id: Number(userId) },
+          data: { status },
+        });
+      }
+
+      return await tx.doctorProfile.update({
+        where: { id },
+        data: {
+          specialty: data.specialty,
+          yearsOfExperience: data.yearsOfExperience,
+          consultationFee: data.consultationFee,
+          isDietician: isDietician || false
+        },
+      });
     });
-    return NextResponse.json(doctor);
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Failed to update doctor" }, { status: 500 });
@@ -183,14 +196,35 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const body = await request.json();
+
     if (body.ids && Array.isArray(body.ids)) {
-      await prisma.doctorProfile.deleteMany({
-        where: { id: { in: body.ids } },
+      const ids = body.ids.map((i: any) => Number(i));
+      // fetch affected userIds
+      const profiles = await prisma.doctorProfile.findMany({
+        where: { id: { in: ids } },
+        select: { userId: true },
       });
+      const userIds = profiles.map((p) => p.userId);
+
+      // soft-delete profiles & reset user statuses in one transaction
+      await prisma.$transaction(async (tx) => {
+        await tx.doctorProfile.deleteMany({ where: { id: { in: ids } } });
+        await tx.user.updateMany({
+          where: { id: { in: userIds } },
+          data: { role: 'NOT_SET' },
+        });
+      });
+
       return NextResponse.json({ message: "Doctors deleted successfully" });
     } else if (body.id) {
-      await prisma.doctorProfile.delete({
-        where: { id: body.id },
+      const id = Number(body.id);
+      // soft-delete the profile and reset the user's status
+      await prisma.$transaction(async (tx) => {
+        const deleted = await tx.doctorProfile.delete({ where: { id } });
+        await tx.user.update({
+          where: { id: deleted.userId },
+          data: { role: 'NOT_SET' },
+        });
       });
       return NextResponse.json({ message: "Doctor deleted successfully" });
     } else {
