@@ -84,7 +84,7 @@ const fetchDoctorAvailability = async (pageIndex: number, pageSize: number): Pro
 const fetchDoctors = async () => {
   try {
     const [doctorRes] = await Promise.all([
-      axios.get("/api/admin/doctors"),
+      axios.get("/api/admin/doctors?showActiveOnly=true"),
     ]);
 
     const doctors = doctorRes.data.data || [];
@@ -377,21 +377,27 @@ export default function DoctorAvailabilityPage() {
     }
   };
 
-  const deleteSelected = async () => {
-    const selectedIds = Object.keys(rowSelection).map(
-      (index) => data.availabilities[parseInt(index)].id
-    );
-    try {
-      await axios.delete("/api/admin/doctorsavailability", { data: { ids: selectedIds } });
-      toast.success("Selected availabilities deleted successfully");
-      await fetchData();
-      setRowSelection({});
-    } catch (error) {
-      console.error("Error deleting availabilities:", error);
-      toast.error("Failed to delete selected availabilities");
+const deleteSelected = async () => {
+  const selectedIds = Object.keys(rowSelection).map(
+    (index) => data.availabilities[parseInt(index)].id
+  );
+  try {
+    if (selectedIds.length === 0) {
+      toast.info("No availabilities selected");
+      return;
     }
-  };
-
+    // Call deleteDoctorAvailability for each selected ID sequentially or batch
+    // Since deleteDoctorAvailability only deletes one ID, let's do Promise.all:
+    await Promise.all(selectedIds.map((id) => deleteDoctorAvailability(id)));
+    
+    toast.success("Selected availabilities deleted successfully");
+    await fetchData();
+    setRowSelection({});
+  } catch (error) {
+    console.error("Error deleting availabilities:", error);
+    toast.error("Failed to delete selected availabilities");
+  }
+};
   return (
     <div className="container mx-auto p-4 space-y-4">
       <ToastContainer />

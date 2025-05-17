@@ -6,13 +6,29 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
-    let where = {};
+    const showActiveOnly = searchParams.get("showActiveOnly") === "true";
+
+    let where: any = {};
     if (searchParams.get("doctorId")) {
       where = { userId: JSON.parse(searchParams.get("doctorId") as string) };
     }
 
     if (searchParams.get("clinicId")) {
-      where = { ...where, user: { clinicId: JSON.parse(searchParams.get("clinicId") as string) } };
+      where = { 
+        ...where, 
+        user: { clinicId: JSON.parse(searchParams.get("clinicId") as string) } 
+      };
+    }
+
+    // Add filter for ACTIVE user status if showActiveOnly=true
+    if (showActiveOnly) {
+      where = { 
+        ...where, 
+        user: {
+          ...where.user,
+          status: "ACTIVE"
+        }
+      };
     }
 
     const [doctors, total, groupData] = await prisma.$transaction([
@@ -27,7 +43,7 @@ export async function GET(request: Request) {
         },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.doctorProfile.count(),
+      prisma.doctorProfile.count({ where }),
       prisma.user.groupBy({
         by: ["role"],
         _count: { role: true },
@@ -51,7 +67,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Failed to fetch doctors" }, { status: 500 });
   }
 }
-
 export async function POST(request: Request) {
   try {
     const data = await request.json();

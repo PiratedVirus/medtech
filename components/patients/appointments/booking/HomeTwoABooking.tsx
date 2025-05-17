@@ -51,7 +51,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
       const diffInMs = consultationDate.getTime() - currentDate.getTime();
       const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
   
-      return diffInDays >= -1 && diffInDays <= 10;
+      return diffInDays >= -5 && diffInDays <= 10;
     }) || null;
     setFirstValidDate(foundDate);
   

@@ -118,6 +118,7 @@ const PatientDetailsPage = () => {
   const [uploadingAppointmentId, setUploadingAppointmentId] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [activeSubscription, setActiveSubscription] = useState<Plan | null>(null);
 
   // Hooks
   const router = useRouter();
@@ -128,11 +129,14 @@ const PatientDetailsPage = () => {
     fetchPatientDetails();
   }, [patientId]);
 
-  useEffect(() => {
-    if (patientDetails?.subscriptions?.[0]?.id) {
-      fetchPlanUsage(patientDetails.subscriptions[0].id);
-    }
-  }, [patientDetails]);
+useEffect(() => {
+  const activeSubscription = patientDetails?.subscriptions?.find(sub => sub.isActive);
+  setActiveSubscription(activeSubscription || null);
+  if (activeSubscription?.id) {
+    console.log("Fetching plan usage for subscription ID:", activeSubscription.id);
+    fetchPlanUsage(activeSubscription.id);
+  }
+}, [patientDetails]);
 
   const fetchPatientDetails = async () => {
     try {
@@ -146,7 +150,8 @@ const PatientDetailsPage = () => {
   const fetchPlanUsage = async (subscriptionId: number) => {
     try {
       const res = await axios.get(`/api/plans/planUsage?subscriptionId=${subscriptionId}`);
-      setPlanUsage(res.data.data.subscriptionTracker);
+      console.log("Plan Usage Data:", res.data);
+      setPlanUsage(res?.data?.data?.subscriptionTracker);
     } catch (err) {
       console.error("Failed to fetch plan usage:", err);
     }
@@ -594,6 +599,7 @@ const PatientDetailsPage = () => {
 
   // Main Render
   return (
+
     <>
       <ToastContainer />
       <div className="container mx-auto p-4">
@@ -606,7 +612,7 @@ const PatientDetailsPage = () => {
           <div className="col-span-1">
             <PlanUsageMinimal
               userId={Number(patientDetails.id)}
-              subscriptionId={patientDetails.subscriptions[0]?.id}
+              subscriptionId={activeSubscription?.id}
             />
           </div>
 
