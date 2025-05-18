@@ -557,7 +557,7 @@ const deleteSelected = async () => {
                 </Select>
               )}
             />
-            {/* Date Picker remains unchanged */}
+            {/* Date Picker */}
             <Controller
               control={control}
               name="date"
@@ -567,16 +567,18 @@ const deleteSelected = async () => {
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full justify-start text-left font-normal">
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                      {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
                     <Calendar
                       mode="single"
-                      //@ts-ignore
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      // disabled={(date) => date <= new Date()}
+                      selected={field.value ? new Date(field.value) : undefined}
+                      onSelect={(date) => {
+                        // Format the date as YYYY-MM-DD before setting it
+                        const formattedDate = date ? format(date, 'yyyy-MM-dd') : undefined;
+                        field.onChange(formattedDate);
+                      }}
                       initialFocus
                       className="bg-white text-black"
                     />

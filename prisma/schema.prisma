@@ -74,7 +74,7 @@ model PatientProfile {
   allergies        String?
   medicalHistory   String?
   emergencyContact String?
-  dateOfBirth      DateTime?
+  dateOfBirth      DateTime?            @db.Date
   address          String?
   profilePicture   String?
   createdAt        DateTime              @default(now())
@@ -174,7 +174,7 @@ model Appointment {
   mobile               String?
   email                String?
   isDietician          Boolean?
-  appointmentDate      DateTime?
+  appointmentDate      DateTime?            @db.Date
   appointmentLink      String?
   subscriptionId       Int?
   status               String
@@ -262,7 +262,7 @@ model LabBooking {
   address        String?
   paymentOption  String?
   status         String
-  labDate        DateTime
+  labDate        DateTime   @db.Date
   labResult      String[]   @default([])
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
@@ -318,8 +318,8 @@ model SubscriptionTracker {
   razorpayOrderId                  String?
   razorpayPaymentId                String?
   paymentStatus                    String?        @default("PENDING")
-  startDate                        DateTime       @default(now())
-  endDate                          DateTime?
+  startDate                        DateTime       @default(now()) @db.Date
+  endDate                          DateTime?      @db.Date
   isActive                         Boolean        @default(true)
   createdAt                        DateTime       @default(now())
   updatedAt                        DateTime       @updatedAt

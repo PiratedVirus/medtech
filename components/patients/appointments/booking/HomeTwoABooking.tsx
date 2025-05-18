@@ -202,6 +202,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
                 consultationType={consultationMode || ""}
                 firstValidDate={firstValidDate}
                 consultationFee={doctor?.doctorProfile.consultationFee}
+                isDietician={isDietician}
               />
             </div>
 
