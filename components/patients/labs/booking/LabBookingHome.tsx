@@ -225,6 +225,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
                 consultationType={paymentOption || ""}
                 consultationFee={labBbookingData?.price}
                 isPlanBookable={isLabPlanBookable}
+                isDietician={false}
               />
             </div>
 
