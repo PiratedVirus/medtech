@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { addDays, startOfDay, endOfDay } from "date-fns";
+import { addDays, startOfDay,  addMilliseconds } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
 const prisma = new PrismaClient();
@@ -39,14 +39,15 @@ export async function GET(request: Request, props: { params: Promise<{ doctorId:
     const todayUTC = new Date(todayIST.getTime() - todayIST.getTimezoneOffset() * 60000);
 
     // 3) Generate day ranges for the days per page
-    const dayRanges = Array.from({ length: DAYS_PER_PAGE }, (_, i) => {
-      const d = addDays(todayUTC, dayOffset + i);
-      return {
-        dateObj: d,
-        start: startOfDay(d),
-        end: endOfDay(d),
-      };
-    });
+
+const dayRanges = Array.from({ length: DAYS_PER_PAGE }, (_, i) => {
+  const d = addDays(todayUTC, dayOffset + i);
+  return {
+    dateObj: d,
+    start: d,
+    end: addMilliseconds(addDays(d, 1), -1),
+  };
+});
 
     // 4) Fetch available slots for the doctor within the generated day ranges
     const availability = await prisma.doctorAvailability.findMany({
@@ -64,6 +65,7 @@ export async function GET(request: Request, props: { params: Promise<{ doctorId:
     // 5) Count available slots per day
     const slotCounts = await Promise.all(
       dayRanges.map(async ({ start, end, dateObj }) => {
+        // console.log("Counting slots for day:", dateObj.toISOString(), "start:", start, "end:", end);
         const count = await prisma.doctorAvailability.count({
           where: {
             doctorId: doctorProfile.id,

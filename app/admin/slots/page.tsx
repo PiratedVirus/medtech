@@ -84,7 +84,7 @@ const fetchDoctorAvailability = async (pageIndex: number, pageSize: number): Pro
 const fetchDoctors = async () => {
   try {
     const [doctorRes] = await Promise.all([
-      axios.get("/api/admin/doctors"),
+      axios.get("/api/admin/doctors?showActiveOnly=true"),
     ]);
 
     const doctors = doctorRes.data.data || [];
@@ -377,21 +377,27 @@ export default function DoctorAvailabilityPage() {
     }
   };
 
-  const deleteSelected = async () => {
-    const selectedIds = Object.keys(rowSelection).map(
-      (index) => data.availabilities[parseInt(index)].id
-    );
-    try {
-      await axios.delete("/api/admin/doctorsavailability", { data: { ids: selectedIds } });
-      toast.success("Selected availabilities deleted successfully");
-      await fetchData();
-      setRowSelection({});
-    } catch (error) {
-      console.error("Error deleting availabilities:", error);
-      toast.error("Failed to delete selected availabilities");
+const deleteSelected = async () => {
+  const selectedIds = Object.keys(rowSelection).map(
+    (index) => data.availabilities[parseInt(index)].id
+  );
+  try {
+    if (selectedIds.length === 0) {
+      toast.info("No availabilities selected");
+      return;
     }
-  };
-
+    // Call deleteDoctorAvailability for each selected ID sequentially or batch
+    // Since deleteDoctorAvailability only deletes one ID, let's do Promise.all:
+    await Promise.all(selectedIds.map((id) => deleteDoctorAvailability(id)));
+    
+    toast.success("Selected availabilities deleted successfully");
+    await fetchData();
+    setRowSelection({});
+  } catch (error) {
+    console.error("Error deleting availabilities:", error);
+    toast.error("Failed to delete selected availabilities");
+  }
+};
   return (
     <div className="container mx-auto p-4 space-y-4">
       <ToastContainer />
@@ -551,7 +557,7 @@ export default function DoctorAvailabilityPage() {
                 </Select>
               )}
             />
-            {/* Date Picker remains unchanged */}
+            {/* Date Picker */}
             <Controller
               control={control}
               name="date"
@@ -561,16 +567,18 @@ export default function DoctorAvailabilityPage() {
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full justify-start text-left font-normal">
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                      {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
                     <Calendar
                       mode="single"
-                      //@ts-ignore
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      // disabled={(date) => date <= new Date()}
+                      selected={field.value ? new Date(field.value) : undefined}
+                      onSelect={(date) => {
+                        // Format the date as YYYY-MM-DD before setting it
+                        const formattedDate = date ? format(date, 'yyyy-MM-dd') : undefined;
+                        field.onChange(formattedDate);
+                      }}
                       initialFocus
                       className="bg-white text-black"
                     />

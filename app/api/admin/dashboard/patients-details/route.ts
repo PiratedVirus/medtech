@@ -127,12 +127,12 @@ export async function GET(request: Request) {
           startDate: pt.startDate,
           endDate: pt.endDate,
           isActive: pt.isActive,
-          payment: pt.payments?.[0] ? {
-            amount: pt.payments[0].amount,
-            currency: pt.payments[0].currency,
-            paymentStatus: pt.payments[0].paymentStatus,
-            razorpayPaymentId: pt.payments[0].razorpayPaymentId,
-            createdAt: pt.payments[0].createdAt
+          payment: pt.payments ? {
+            amount: pt.payments.amount,
+            currency: pt.payments.currency,
+            paymentStatus: pt.payments.paymentStatus,
+            razorpayPaymentId: pt.payments.razorpayPaymentId,
+            createdAt: pt.payments.createdAt
           } : undefined
         })) || [],
         doctorAppointments: doctorAppointments.map(a => ({
