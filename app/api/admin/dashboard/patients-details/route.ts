@@ -37,6 +37,7 @@ export async function GET(request: Request) {
                   plan: { select: { id: true, name: true } },
                   payments: {
                     select: {
+                      id: true,
                       amount: true,
                       currency: true,
                       paymentStatus: true,
@@ -60,6 +61,7 @@ export async function GET(request: Request) {
               doctor: { select: { id: true, name: true } },
               payment: {
                 select: {
+                  id: true,
                   amount: true,
                   currency: true,
                   paymentStatus: true,
@@ -78,6 +80,7 @@ export async function GET(request: Request) {
               labPackage: { select: { id: true, name: true } },
               payment: {
                 select: {
+                  id: true,
                   amount: true,
                   currency: true,
                   paymentStatus: true,
@@ -197,7 +200,16 @@ export async function PUT(request: Request) {
   try {
     const body = await request.json();
     console.log("PUT /api/admin/dashboard/patients-details called with body:", body);
-    const { labBookingId, links, status } = body;
+    const { labBookingId, links, status, paymentId } = body;
+
+    // Handle manual payment collection
+    if (paymentId) {
+      const updatedPayment = await prisma.payment.update({
+        where: { id: paymentId },
+        data: { paymentStatus: "PAID" },
+      });
+      return NextResponse.json({ success: true, data: updatedPayment });
+    }
 
     if (!labBookingId || !Array.isArray(links)) {
       return NextResponse.json({ error: "Missing or invalid fields" }, { status: 400 });

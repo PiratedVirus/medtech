@@ -6,7 +6,7 @@ import { put } from "@vercel/blob";
 import axios from "axios";
 
 // UI Components
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -532,6 +532,18 @@ useEffect(() => {
     </Card>
   );
 
+  // Manual payment collection handler
+  const handleCollectPayment = async (paymentId: number) => {
+    try {
+      await axios.put("/api/admin/dashboard/patients-details", { paymentId });
+      await fetchPatientDetails();
+      toast.success("Payment marked as PAID.");
+    } catch (err) {
+      console.error("Payment update failed", err);
+      toast.error("Failed to collect payment.");
+    }
+  };
+
   const PaymentHistorySection = () => (
     <div className="rounded-lg p-4 bg-slate-50">
       <h3 className="font-semibold mb-2">Payment History</h3>
@@ -555,7 +567,29 @@ useEffect(() => {
                   <td className="px-4 py-2">Appointment</td>
                   <td className="px-4 py-2">{appointment.doctorName}</td>
                   <td className="px-4 py-2">{appointment.payment.currency} {(appointment.payment.amount / 100)}</td>
-                  <td className="px-4 py-2">{appointment.payment.paymentStatus}</td>
+                  <td className="px-4 py-2 flex items-center gap-2">
+                    {appointment.payment.paymentStatus === "Pending" ? (
+                      <>
+                        <Badge variant="destructive">Pending</Badge>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button size="sm">Collect</Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogTitle>Confirm Payment Collection</DialogTitle>
+                            <p>Are you sure you want to mark this payment as PAID?</p>
+                            <div className="mt-4 flex justify-end gap-2">
+                              <Button variant="outline" onClick={() => handleCollectPayment((appointment as any).payment.id)}>
+                                Confirm
+                              </Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </>
+                    ) : (
+                      <span>Paid</span>
+                    )}
+                  </td>
                   <td className="px-4 py-2">{appointment.payment.razorpayPaymentId ? "Online" : "Offline"}</td>
                   <td className="px-4 py-2">{new Date(appointment.payment.createdAt).toLocaleDateString()}</td>
                 </tr>
@@ -569,7 +603,29 @@ useEffect(() => {
                   <td className="px-4 py-2">Lab Booking</td>
                   <td className="px-4 py-2">{labBooking.labPackageName}</td>
                   <td className="px-4 py-2">{labBooking.payment?.currency ?? 'INR'} {(labBooking.payment?.amount ?? 0) / 100}</td>
-                  <td className="px-4 py-2">{labBooking.payment.paymentStatus}</td>
+                  <td className="px-4 py-2 flex items-center gap-2">
+                    {labBooking.payment.paymentStatus === "Pending" ? (
+                      <>
+                        <Badge variant="destructive">Pending</Badge>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant={"ghost"} className="text-secondary" size="sm">Collect</Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogTitle>Confirm Payment Collection</DialogTitle>
+                            <p>Are you sure you want to mark this payment as PAID?</p>
+                            <div className="mt-4 flex justify-end gap-2">
+                              <Button variant="outline" onClick={() => handleCollectPayment((labBooking as any).payment.id)}>
+                                Confirm
+                              </Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </>
+                    ) : (
+                      <span>Paid</span>
+                    )}
+                  </td>
                   <td className="px-4 py-2">{labBooking.payment.razorpayPaymentId ? "Online" : "Offline"}</td>
                   <td className="px-4 py-2">{new Date(labBooking.date).toLocaleDateString()}</td>
                 </tr>
@@ -582,7 +638,29 @@ useEffect(() => {
                 <td className="px-4 py-2">Subscription</td>
                 <td className="px-4 py-2">{plan.planName}</td>
                 <td className="px-4 py-2">{plan.payment?.currency ?? 'INR'} {(plan.payment?.amount ?? 0) / 100}</td>
-                <td className="px-4 py-2">Active</td>
+                <td className="px-4 py-2 flex items-center gap-2">
+                  {plan.payment?.paymentStatus === "Pending" ? (
+                    <>
+                      <Badge variant="destructive">Pending</Badge>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant={"ghost"} className="text-secondary" size="sm">Collect</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogTitle>Confirm Payment Collection</DialogTitle>
+                          <p>Are you sure you want to mark this payment as PAID?</p>
+                          <div className="mt-4 flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => handleCollectPayment((plan as any).payment.id)}>
+                              Confirm
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </>
+                  ) : (
+                    <span>Paid</span>
+                  )}
+                </td>
                 <td className="px-4 py-2">Online</td>
                 <td className="px-4 py-2">{new Date(plan.endDate).toLocaleDateString()}</td>
               </tr>
@@ -620,15 +698,15 @@ useEffect(() => {
           {/* Earnings Card */}
           <TotalEarningsCard
             patientDetails={{
-              doctorAppointments: patientDetails.doctorAppointments.map(a => ({
-                payment: a.payment ? { amount: a.payment.amount } : undefined,
-              })),
-              plans: patientDetails.subscriptions.map(p => ({
-                amount: p.payment?.amount,
-              })),
-              labBookings: patientDetails.labBookings.map(lb => ({
-                payment: lb.payment ? { amount: lb.payment.amount } : undefined,
-              })),
+              doctorAppointments: patientDetails.doctorAppointments
+                .filter(a => a.payment?.paymentStatus.toLowerCase() === "paid")
+                .map(a => ({ payment: { amount: a.payment!.amount } })),
+              plans: patientDetails.subscriptions
+                .filter(p => p.payment?.paymentStatus.toLowerCase() === "paid")
+                .map(p => ({ amount: p.payment!.amount })),
+              labBookings: patientDetails.labBookings
+                .filter(lb => lb.payment?.paymentStatus.toLowerCase() === "paidnp")
+                .map(lb => ({ payment: { amount: lb.payment!.amount } })),
             }}
           />
 
