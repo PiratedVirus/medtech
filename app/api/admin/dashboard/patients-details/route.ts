@@ -196,7 +196,8 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { labBookingId, links } = body;
+    console.log("PUT /api/admin/dashboard/patients-details called with body:", body);
+    const { labBookingId, links, status } = body;
 
     if (!labBookingId || !Array.isArray(links)) {
       return NextResponse.json({ error: "Missing or invalid fields" }, { status: 400 });
@@ -213,6 +214,7 @@ export async function PUT(request: Request) {
         labResult: {
           set: [...(existing?.labResult || []), ...links],
         },
+        ...(status ? { status } : {}), // update status only if provided
       },
     });
 

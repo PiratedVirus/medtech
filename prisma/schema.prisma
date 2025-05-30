@@ -245,6 +245,7 @@ model LabPackage {
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
   deletedAt            DateTime?
+  isLabPackage         Boolean      @default(false)
   labBookings          LabBooking[]
 
   @@index([deletedAt])

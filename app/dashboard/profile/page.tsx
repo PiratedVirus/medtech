@@ -23,7 +23,7 @@ export default function ProfilePage() {
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center text-red-500 hover:text-red-600"
+            className="flex items-center text-red-500 hover:text-red-600 md:hidden"
           >
             <LogOut className="h-5 w-5 mr-1" />
             Logout

@@ -152,9 +152,10 @@ export default function SignInForm() {
           </div>
         ) : (
           // **Registration View**
-          <div className="text-center">
-            <h1 className="text-custom-green text-2xl font-normal">Register</h1>
-            <div className="h-0.5 w-12 bg-custom-green mt-2 mx-auto" />
+          <div className=" max-h-[calc(100vh-4rem)] overflow-y-auto pb-20 px-2">
+            <h1 className="text-custom-green text-center text-2xl font-normal">Register</h1>
+            <div className="h-0.5 w-12 bg-custom-green  text-center mt-2 mx-auto" />
+            <RegistrationForm onSubmit={handleRegistrationSubmit} />
           </div>
         )}
 
@@ -214,9 +215,7 @@ export default function SignInForm() {
                 Resend OTP
               </button>
             </div>
-          ) : (
-            <RegistrationForm onSubmit={handleRegistrationSubmit} />
-          )}
+          ) : null}
 
           {/* Button: Get OTP */}
           {step === "signIn" && (

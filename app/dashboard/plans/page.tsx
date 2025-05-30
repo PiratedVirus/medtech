@@ -199,22 +199,40 @@ export default function PricingTable() {
   };
 
   // formatParameters displays the count and an Eye icon which opens a dialog when clicked.
-  const formatParameters = (parameters?: string) => {
-    if (!parameters) return null;
-    const paramsArray = parameters
+const formatParameters = (parameters?: string) => {
+  if (!parameters) return null;
+
+  let parsed: Record<string, string[]> = {};
+  try {
+    parsed = JSON.parse(parameters);
+  } catch {
+    // fallback if it's comma-separated
+    const array = parameters
       .split(",")
       .map((p) => p.trim())
       .filter((p) => p.length > 0);
     return (
       <div className="inline-flex items-center text-sm text-[#349c4b] mt-1">
-        {paramsArray.length} Parameters
+        {array.length} Parameters
         <Eye
           className="ml-1 h-4 w-4 cursor-pointer hover:text-green-500"
           onClick={() => handleViewParameters(parameters)}
         />
       </div>
     );
-  };
+  }
+
+  const count = Object.values(parsed).reduce((acc, arr) => acc + arr.length, 0);
+  return (
+    <div className="inline-flex items-center text-sm text-[#349c4b] mt-1">
+      {count} Parameters
+      <Eye
+        className="ml-1 h-4 w-4 cursor-pointer hover:text-green-500"
+        onClick={() => handleViewParameters(parameters)}
+      />
+    </div>
+  );
+};
 
   // Render cell helper for various feature keys
   function renderFeatureCell(featureData: any, key: string, showParameters?: boolean) {

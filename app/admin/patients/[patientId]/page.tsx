@@ -180,8 +180,8 @@ useEffect(() => {
         : `/api/admin/dashboard/appointments`;
 
       const payload = type === 'labReport'
-        ? { labBookingId: id, link: url }
-        : { appointmentId: id, link: url };
+        ? { labBookingId: id, link: url, status: "COMPLETED" }
+        : { appointmentId: id, link: url, status: "COMPLETED" };
 
       await axios.put(endpoint, payload);
 
@@ -230,6 +230,7 @@ useEffect(() => {
       await axios.put(`/api/admin/dashboard/patients-details`, {
         labBookingId: id,
         links: uploadedLinks,
+        status: "COMPLETED"
       });
 
       // Refresh data
@@ -563,13 +564,13 @@ useEffect(() => {
 
             {/* Lab Bookings Payments */}
             {patientDetails?.labBookings.map(labBooking => (
-              labBooking.reportLink ? (
+              labBooking.payment ? (
                 <tr key={`lab-${labBooking.id}`} className="border-b">
                   <td className="px-4 py-2">Lab Booking</td>
                   <td className="px-4 py-2">{labBooking.labPackageName}</td>
                   <td className="px-4 py-2">{labBooking.payment?.currency ?? 'INR'} {(labBooking.payment?.amount ?? 0) / 100}</td>
-                  <td className="px-4 py-2">{labBooking.status}</td>
-                  <td className="px-4 py-2">--</td>
+                  <td className="px-4 py-2">{labBooking.payment.paymentStatus}</td>
+                  <td className="px-4 py-2">{labBooking.payment.razorpayPaymentId ? "Online" : "Offline"}</td>
                   <td className="px-4 py-2">{new Date(labBooking.date).toLocaleDateString()}</td>
                 </tr>
               ) : null
