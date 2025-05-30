@@ -23,20 +23,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   );
 
   useEffect(() => {
-    if (storedProfile) {
-      dispatch({
-        type: "user/fetchUserProfile/fulfilled",
-        payload: storedProfile,
-      });
-    } else {
+    // Only fetch if we don't have a profile in Redux store
+    if (!profile && !storedProfile) {
       dispatch(fetchUserProfile());
     }
-  }, [dispatch]);
+  }, [dispatch, profile, storedProfile]);
 
   if (loading) {
-        return (
-      <CdLoader />
-    );
+    return <CdLoader />;
   }
 
   if (error) {
@@ -50,19 +44,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     );
   }
 
-    return (
-   
-          <ProfileProvider profile={profile}>
-            <Header />
-            <main className="flex-grow pb-14 sm:pb-2">
-              {children}
-            </main>
-            <div className="hidden sm:block">
-              <Footer />
-            </div>
-          </ProfileProvider>
-    
-    );
+  return (
+    <ProfileProvider profile={profile || storedProfile}>
+      <Header />
+      <main className="flex-grow pb-14 sm:pb-2">
+        {children}
+      </main>
+      <div className="hidden sm:block">
+        <Footer />
+      </div>
+    </ProfileProvider>
+  );
 };
 
 export default DashboardLayout;

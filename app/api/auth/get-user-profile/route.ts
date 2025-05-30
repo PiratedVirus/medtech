@@ -32,7 +32,20 @@ export async function GET() {
     // Step 3: Fetch user details from the database using phoneNumber
     const onlyUser = await prisma.user.findUnique({
       where: { phoneNumber: decoded.plusAddedPhoneNumber },
-      include: { patientProfile: true },
+      select: {
+        id: true,
+        clinicId: true,
+        phoneNumber: true,
+        email: true,
+        name: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        deletedAt: true,
+        userProfilePicture: true,
+        patientProfile: true,
+      },
     });
     console.log("Fetched user:", onlyUser);
 
