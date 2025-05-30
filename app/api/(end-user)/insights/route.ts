@@ -9,11 +9,11 @@ function getMonthString(date: Date) {
 
 /** The fixed order you want in the final JSON */
 const METRIC_ORDER = [
+  "Blood Pressure",
   "Blood Glucose",
   "Body Fat",
   "Muscle Mass",
   "BMI",
-  "Body Water",
   "Visceral Fat",
 ];
 
