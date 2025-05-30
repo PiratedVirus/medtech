@@ -705,7 +705,7 @@ useEffect(() => {
                 .filter(p => p.payment?.paymentStatus.toLowerCase() === "paid")
                 .map(p => ({ amount: p.payment!.amount })),
               labBookings: patientDetails.labBookings
-                .filter(lb => lb.payment?.paymentStatus.toLowerCase() === "paidnp")
+                .filter(lb => lb.payment?.paymentStatus.toLowerCase() === "paid")
                 .map(lb => ({ payment: { amount: lb.payment!.amount } })),
             }}
           />
