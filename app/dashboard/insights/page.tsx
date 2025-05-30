@@ -53,27 +53,27 @@ const METRIC_CONFIG: Record<
     unit: "",
     statusLabel: "Normal",
   },
-  "Body Water": {
+  "Blood Pressure": {
     color: "#E0C6FC",
     imageSrc: "/icons/water.svg",
-    unit: "%",
+    unit: "mm/hg",
     statusLabel: "Normal",
   },
   "Visceral Fat": {
     color: "#C6DAFC",
     imageSrc: "/icons/v-fat.svg",
-    unit: "%",
+    unit: "level",
     statusLabel: "Normal",
   },
 };
 
 // Default metrics to show when no data is available
 const DEFAULT_METRICS = [
+  "Blood Pressure",
   "Blood Glucose",
   "Body Fat",
   "Muscle Mass",
   "BMI",
-  "Body Water",
   "Visceral Fat"
 ];
 

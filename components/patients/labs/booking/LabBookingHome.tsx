@@ -167,7 +167,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
       paymentOption,
       razorpayResponse,
       consultationType: paymentOption,
-      subscriptionId: subscriptionTracker.subscriptionId,
+      subscriptionId: subscriptionTracker?.subscriptionId || null, 
       labTestsDates: filteredlabTestsDatesDates,
       labPackageFees
 

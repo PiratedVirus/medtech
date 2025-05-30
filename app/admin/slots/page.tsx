@@ -291,7 +291,15 @@ export default function DoctorAvailabilityPage() {
           >
             <EditIcon className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="destructive" onClick={() => deleteDoctorAvailability(row.original.id)}>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={async () => {
+              await deleteDoctorAvailability(row.original.id);
+              await fetchData(); // refresh the table data
+                            toast.success("Slot deleted successfully");
+            }}
+          >
             <Trash className="h-4 w-4" />
           </Button>
         </div>

@@ -142,7 +142,7 @@ export function ProfileForm() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           {/* Personal Information Card */}
-          <div className="grid grid-cols-12 gap-6 w-full px-8 py-4">
+          <div className="grid grid-cols-12 gap-6 w-full px-4 md:px-8 py-4 max-w-screen-xl mx-auto">
           <Card className="w-full col-span-12 border">
             <CardHeader>
               <CardTitle>Personal Information</CardTitle>
