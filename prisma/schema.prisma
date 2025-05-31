@@ -47,6 +47,7 @@ model User {
   updatedAt           DateTime          @updatedAt
   deletedAt           DateTime?
   userProfilePicture  String?
+  doctorCode          String?           @unique
   doctorAppointments  Appointment[]     @relation("Doctor")
   patientAppointments Appointment[]     @relation("Patient")
   dieticianProfile    DieticianProfile?
@@ -95,6 +96,7 @@ model DoctorProfile {
   ownerToken1       String?
   ownerToken2       String?
   licenseNumber     String?              @unique
+  doctorCode        String?              @unique
   consultationFee   Int
   rating            Float?
   type              String?

@@ -100,7 +100,7 @@ export default function DoctorCard({ doctor, onBookAppointment }: DoctorCardProp
           <div className="flex flex-col sm:flex-row gap-3 justify-center px-4">
             <Button
               size="lg"
-              onClick={() => onBookAppointment(doctor, 'video')}
+              onClick={() => onBookAppointment(doctor, "video")}
               className="bg-[#f28a2e] hover:bg-[#f28a2e]/90 text-white rounded-full px-6"
             >
               Book video visit

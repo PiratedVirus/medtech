@@ -57,7 +57,8 @@ type Doctor = {
   yearsOfExperience: number;
   consultationFee: number;
   createdAt: string;
-  isDietician: boolean
+  isDietician: boolean;
+  doctorCode: string | null;
   // Relation from doctorProfile to user
   user: {
     id: number;
@@ -82,7 +83,8 @@ type DoctorsPageFormData = {
   consultationFee: number;
   status: string;
   clinicId: number;
-  isDietician: boolean; // Added this field
+  isDietician: boolean;
+  doctorCode: string;
 };
 
 export default function DoctorsPage() {
@@ -255,6 +257,8 @@ export default function DoctorsPage() {
               setValue("status", row.original.user.status);
               setValue("clinicId", row.original.user.clinic?.id ?? 0);
               setValue("userId", row.original.user.id);
+              setValue("isDietician", row.original.isDietician || false);
+              setValue("doctorCode", row.original.doctorCode || "");
               setDialogOpen(true);
             }}
           >
@@ -318,6 +322,7 @@ export default function DoctorsPage() {
       setValue("status", selectedDoctor.user.status);
       setValue("userId", selectedDoctor.user.id);
       setValue("isDietician", selectedDoctor.isDietician || false);
+      setValue("doctorCode", selectedDoctor.doctorCode || "");
     } else {
       reset();
     }
@@ -331,6 +336,7 @@ export default function DoctorsPage() {
         yearsOfExperience: Number(formData.yearsOfExperience),
         consultationFee: Number(formData.consultationFee),
         isDietician: formData.isDietician || false,
+        doctorCode: formData.doctorCode.toUpperCase(),
       };
 
       if (selectedDoctor) {
@@ -628,6 +634,21 @@ export default function DoctorsPage() {
                   </label>
                 </div>
               )}
+            />
+            <Input
+              {...register("doctorCode", {
+                required: true,
+                pattern: {
+                  value: /^[A-Z0-9]{6}$/,
+                  message: "Doctor code must be 6 characters long and contain only uppercase letters and numbers"
+                }
+              })}
+              placeholder="Doctor Code (6 characters)"
+              maxLength={6}
+              onChange={(e) => {
+                const value = e.target.value.toUpperCase();
+                setValue("doctorCode", value);
+              }}
             />
             <DialogFooter>
               <Button

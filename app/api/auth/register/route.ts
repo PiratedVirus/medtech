@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 export async function POST(request: Request) {
-  const { name, age, gender, phoneNumber } = await request.json();
+  const { name, age, gender, phoneNumber, doctorCode } = await request.json();
 
   try {
     // Check if user already exists
@@ -14,6 +14,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'User already exists' });
     }
 
+    // If doctor code is provided, validate it
+    if (doctorCode) {
+      const doctor = await prisma.doctorProfile.findUnique({
+        where: { doctorCode },
+        include: { user: true }
+      });
+
+      if (!doctor) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Invalid doctor code' 
+        });
+      }
+
+      if (doctor.user.status !== 'ACTIVE') {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'The doctor associated with this code is not active' 
+        });
+      }
+    }
+
     // Create new user
     const newUser = await prisma.user.create({
       data: {
@@ -21,7 +43,8 @@ export async function POST(request: Request) {
         phoneNumber,
         role: 'PATIENT',
         status: 'ACTIVE',
-        clinicId: 1, // Hardcoded for now
+        clinicId: doctorCode ? undefined : 1, // Use doctor's clinic if code provided
+        doctorCode: doctorCode || null, // Store the doctor code
         patientProfile: {
           create: {
             age: parseInt(age, 10),
@@ -35,10 +58,32 @@ export async function POST(request: Request) {
           },
         },
       },
+      include: {
+        patientProfile: true,
+      },
     });
+
+    // If doctor code was provided, update the user's clinic to match the doctor's clinic
+    if (doctorCode) {
+      const doctor = await prisma.doctorProfile.findUnique({
+        where: { doctorCode },
+        include: { user: true }
+      });
+
+      if (doctor?.user.clinicId) {
+        await prisma.user.update({
+          where: { id: newUser.id },
+          data: { clinicId: doctor.user.clinicId }
+        });
+      }
+    }
 
     return NextResponse.json({ success: true, user: newUser });
   } catch (error) {
-    return NextResponse.json({ success: false, error: (error as any).message });
+    console.error('Registration error:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: (error as any).message || 'Failed to register user' 
+    });
   }
 }
