@@ -188,6 +188,7 @@ model Appointment {
   payment              Payment?             @relation("AppointmentPayment")
 
   @@index([deletedAt])
+  @@index([patientId, isDietician])
 }
 
 model Medicine {
