@@ -8,30 +8,26 @@ import "@/app/globals.css";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { SidebarNav } from "@/components/admin/AdminSidebarNav";
+import { useRouter } from 'next/navigation';
+import { useAdminAuth } from '@/hooks/use-admin-auth';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
-  const dispatch = useDispatch<AppDispatch>();
-  const { profile: storedProfile } = useDecryptedProfile();
-  const { profile, loading, error } = useSelector(
-    (state: RootState) => state.user,
-  );
 
-  // useEffect(() => {
-  //   if (storedProfile) {
-  //     dispatch({
-  //       type: "user/fetchUserProfile/fulfilled",
-  //       payload: storedProfile,
-  //     });
-  //   } else {
-  //     dispatch(fetchUserProfile());
-  //   }
-  // }, [dispatch]);
+  const { admin, loading: adminLoading, isAuthenticated, logout } = useAdminAuth();
+  const error = !adminLoading && !isAuthenticated;
+  const router = useRouter();
 
-  if (loading) {
+  useEffect(() => {
+    if (!adminLoading && !isAuthenticated) {
+      router.push('/admin/login');
+    }
+  }, [adminLoading, isAuthenticated, router]);
+
+  if (adminLoading) {
     return (
       <CdLoader />
     );
@@ -48,14 +44,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     );
   }
 
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
-      <div className="flex min-h-screen">
-          <SidebarNav />
-          <div className="flex-1 md:ml-16">
-            <main className="flex-1 bg-white">{children}</main>
-          </div>
+    <div className="flex min-h-screen">
+        <SidebarNav logout={logout}/>
+        <div className="flex-1 md:ml-16">
+          <main className="flex-1 bg-white">{children}</main>
         </div>
-  );
+      </div>
+);
 };
 
 export default AdminLayout;
