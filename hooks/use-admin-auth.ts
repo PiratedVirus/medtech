@@ -33,7 +33,6 @@ export function useAdminAuth() {
 
   const logout = async () => {
     try {
-      console.log("Logging out");
       await axios.post('/api/admin/auth/logout');
       setAdmin(null);
       router.push('/admin/login');

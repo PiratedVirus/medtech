@@ -18,10 +18,8 @@ async function verifyJWT(token: string, secret: string): Promise<any> {
 const verifyAdminToken = async (token: string) => {
   try {
     const decoded = await verifyJWT(token, process.env.JWT_SECRET!);
-    console.log("decoded admin token is: ", decoded);
     return decoded;
   } catch (error) {
-    console.log("error in verifying admin token: ", error);
     return null;
   }
 };
@@ -38,7 +36,6 @@ const verifyUserToken = async (token: string) => {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  console.log("pathname", pathname);
 
   // Admin routes protection
   if (pathname.startsWith("/admin")) {
@@ -48,15 +45,12 @@ export async function middleware(request: NextRequest) {
     }
 
     const adminToken = request.cookies.get("admin_token")?.value;
-    console.log("adminToken is: ", adminToken);
 
     if (!adminToken) {
-      console.log("No admin token found");
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
 
     const decodedAdmin = await verifyAdminToken(adminToken);
-    console.log("decodedAdmin", decodedAdmin);
     if (!decodedAdmin || decodedAdmin.role !== "ADMIN") {
       console.log("Invalid admin token as role not matching");
       return NextResponse.redirect(new URL("/admin/login", request.url));
