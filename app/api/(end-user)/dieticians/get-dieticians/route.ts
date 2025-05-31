@@ -26,9 +26,13 @@ export async function GET(request: Request) {
           plusAddedPhoneNumber: string;
         };
         
+
         if (decoded.plusAddedPhoneNumber) {
-          const user = await prisma.user.findUnique({
-            where: { phoneNumber: decoded.plusAddedPhoneNumber },
+          const user = await prisma.user.findFirst({
+            where: { 
+              phoneNumber: decoded.plusAddedPhoneNumber,
+              deletedAt: null
+            },
             select: { doctorCode: true }
           });
           userDoctorCode = user?.doctorCode;

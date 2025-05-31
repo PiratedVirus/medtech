@@ -3,11 +3,13 @@ import prisma from '@/lib/prisma';
 
 export async function POST(request: Request) {
   const { name, age, gender, phoneNumber, doctorCode } = await request.json();
-
   try {
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { phoneNumber },
+    const existingUser = await prisma.user.findFirst({
+      where: { 
+        phoneNumber,
+        deletedAt: null 
+      },
     });
 
     if (existingUser) {
@@ -80,10 +82,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, user: newUser });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('Registration error:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json({ 
       success: false, 
-      error: (error as any).message || 'Failed to register user' 
-    });
+      error: error instanceof Error ? error.message : 'Failed to register user'
+    }, { status: 500 });
   }
 }

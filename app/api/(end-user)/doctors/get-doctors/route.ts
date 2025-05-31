@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const clinicId = searchParams.get('clinicId');
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
 
     if (!clinicId) {
@@ -25,10 +25,13 @@ export async function GET(request: Request) {
         const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
           plusAddedPhoneNumber: string;
         };
-        
+
         if (decoded.plusAddedPhoneNumber) {
-          const user = await prisma.user.findUnique({
-            where: { phoneNumber: decoded.plusAddedPhoneNumber },
+          const user = await prisma.user.findFirst({
+            where: { 
+              phoneNumber: decoded.plusAddedPhoneNumber,
+              deletedAt: null
+            },
             select: { doctorCode: true }
           });
           userDoctorCode = user?.doctorCode;

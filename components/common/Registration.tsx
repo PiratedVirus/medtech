@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label"
+import { useEffect } from "react"
 
 const registrationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -22,20 +23,37 @@ const registrationSchema = z.object({
   }, "Doctor code must be 6 characters long and contain only uppercase letters and numbers"),
 })
 
-export default function RegistrationForm({ onSubmit }: { onSubmit: (data: any) => void }) {
+interface RegistrationFormProps {
+  onSubmit: (data: any) => void;
+  preFilledDoctorCode?: string | null;
+  isDoctorCodeDisabled?: boolean;
+}
+
+export default function RegistrationForm({ 
+  onSubmit, 
+  preFilledDoctorCode,
+  isDoctorCodeDisabled = false 
+}: RegistrationFormProps) {
   const form = useForm({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
       name: "",
       age: "",
       gender: "Male" as "Male" | "Female" | "Other",
-      doctorCode: "",
+      doctorCode: preFilledDoctorCode || "",
     },
-  })
+  });
+
+  // Update form when preFilledDoctorCode changes
+  useEffect(() => {
+    if (preFilledDoctorCode) {
+      form.setValue("doctorCode", preFilledDoctorCode);
+    }
+  }, [preFilledDoctorCode, form]);
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="name"
@@ -70,22 +88,16 @@ export default function RegistrationForm({ onSubmit }: { onSubmit: (data: any) =
               <FormLabel>Gender</FormLabel>
               <FormControl>
                 <RadioGroup
+                  value={field.value}
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  className="flex flex-col space-y-1"
+                  className="flex gap-4"
                 >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Male" id="male" />
-                    <Label htmlFor="male">Male</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Female" id="female" />
-                    <Label htmlFor="female">Female</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Other" id="other" />
-                    <Label htmlFor="other">Other</Label>
-                  </div>
+                  <RadioGroupItem value="Male" id="male" />
+                  <FormLabel htmlFor="male">Male</FormLabel>
+                  <RadioGroupItem value="Female" id="female" />
+                  <FormLabel htmlFor="female">Female</FormLabel>
+                  <RadioGroupItem value="Other" id="other" />
+                  <FormLabel htmlFor="other">Other</FormLabel>
                 </RadioGroup>
               </FormControl>
               <FormMessage />
@@ -97,20 +109,22 @@ export default function RegistrationForm({ onSubmit }: { onSubmit: (data: any) =
           name="doctorCode"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Doctor Code (Optional)</FormLabel>
+              <FormLabel>Doctor Code {!isDoctorCodeDisabled && "(Optional)"}</FormLabel>
               <FormControl>
-                <Input 
-                  placeholder="Enter doctor code (6 characters)" 
-                  {...field} 
+                <Input
+                  placeholder="Enter doctor code"
+                  {...field}
                   maxLength={6}
+                  disabled={isDoctorCodeDisabled}
                   onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                  className={isDoctorCodeDisabled ? "bg-gray-100" : ""}
                 />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full">Register</Button>
+        <Button type="submit" className="w-full mt-5">Register</Button>
       </form>
     </Form>
   )

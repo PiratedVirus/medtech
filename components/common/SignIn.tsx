@@ -8,7 +8,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import RegistrationForm from "@/components/common/Registration";
 import { isValidPhoneNumber } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function SignInForm() {
   const [step, setStep] = useState<"signIn" | "otp" | "register">("signIn");
@@ -16,6 +16,8 @@ export default function SignInForm() {
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [phoneError, setPhoneError] = useState("");
   const [otpError, setOtpError] = useState("");
+  const searchParams = useSearchParams();
+  const doctorCode = searchParams.get("doctorCode");
   const inputRefs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -112,11 +114,10 @@ export default function SignInForm() {
       const response = await axios.post("/api/auth/register", {
         ...data,
         phoneNumber: formatPhoneNumber(phoneNumber),
+        doctorCode: doctorCode || data.doctorCode,
       });
       if (response.data.success) {
-        // alert("Registration Successful!");
         window.location.href = "/dashboard";
-        // Redirect or update state as needed
       } else {
         alert("Registration Failed: " + response.data.error);
       }
@@ -152,10 +153,14 @@ export default function SignInForm() {
           </div>
         ) : (
           // **Registration View**
-          <div className=" max-h-[calc(100vh-4rem)] overflow-y-auto pb-20 px-2">
+          <div className="max-h-[calc(100vh-4rem)] overflow-y-auto pb-20 px-2">
             <h1 className="text-custom-green text-center text-2xl font-normal">Register</h1>
-            <div className="h-0.5 w-12 bg-custom-green  text-center mt-2 mx-auto" />
-            <RegistrationForm onSubmit={handleRegistrationSubmit} />
+            <div className="h-0.5 w-12 bg-custom-green text-center mt-2 mx-auto" />
+            <RegistrationForm 
+              onSubmit={handleRegistrationSubmit} 
+              preFilledDoctorCode={doctorCode}
+              isDoctorCodeDisabled={!!doctorCode}
+            />
           </div>
         )}
 
