@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { encryptData } from "@/lib/encryption";
 
 export async function POST(request: Request) {
   try {
@@ -33,9 +34,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate referral link
+    // Encrypt the doctor code
+    const encryptedCode = encryptData({ doctorCode });
+
+    // Generate referral link with encrypted code
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const referralLink = `${baseUrl}/login?doctorCode=${doctorCode}`;
+    const referralLink = `${baseUrl}/login?code=${encodeURIComponent(encryptedCode)}`;
 
     return NextResponse.json({
       success: true,

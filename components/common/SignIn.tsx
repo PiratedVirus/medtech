@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { Input } from "@/components/ui/input";
 import LoadingButton from "@/components/ui/custom/cd-loading-button";
@@ -9,6 +9,7 @@ import Link from "next/link";
 import RegistrationForm from "@/components/common/Registration";
 import { isValidPhoneNumber } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
+import { decryptData } from "@/lib/encryption";
 
 export default function SignInForm() {
   const [step, setStep] = useState<"signIn" | "otp" | "register">("signIn");
@@ -17,7 +18,8 @@ export default function SignInForm() {
   const [phoneError, setPhoneError] = useState("");
   const [otpError, setOtpError] = useState("");
   const searchParams = useSearchParams();
-  const doctorCode = searchParams.get("doctorCode");
+  const encryptedCode = searchParams.get("code");
+  const [doctorCode, setDoctorCode] = useState<string | null>(null);
   const inputRefs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -25,6 +27,22 @@ export default function SignInForm() {
     useRef<HTMLInputElement>(null),
   ];
   const router = useRouter();
+
+  // Decrypt the doctor code if present in URL
+  useEffect(() => {
+    if (encryptedCode) {
+      try {
+        const decrypted = decryptData(encryptedCode);
+        if (decrypted && decrypted.doctorCode) {
+          setDoctorCode(decrypted.doctorCode);
+        }
+      } catch (error) {
+        console.error("Error decrypting doctor code:", error);
+        // If decryption fails, just ignore the code
+        setDoctorCode(null);
+      }
+    }
+  }, [encryptedCode]);
 
   const handleOtpChange = (index: number, value: string) => {
     if (value.length <= 1) {
