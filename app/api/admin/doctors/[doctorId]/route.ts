@@ -33,7 +33,7 @@ interface DoctorWithRelations extends DoctorProfile {
 
 export async function GET(
   request: Request,
-  { params }: { params: { doctorId: string } }
+  { params }: any
 ) {
   try {
     const doctorId = parseInt(params.doctorId);

@@ -1,17 +1,23 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
 
-    if (!session?.user?.doctorProfile?.id) {
+    // Check if session or session.user is null
+    if (!session || !session.user) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const doctorId = session.user.doctorProfile.id;
+    const user = session.user;
+
+    if (!user?.doctorProfile?.id) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const doctorId = user.doctorProfile.id;
 
     const appointments = await prisma.appointment.findMany({
       where: {
@@ -25,13 +31,6 @@ export async function GET() {
         deletedAt: null,
       },
       include: {
-        patient: {
-          select: {
-            id: true,
-            name: true,
-            phoneNumber: true,
-          },
-        },
         payment: {
           select: {
             amount: true,
@@ -62,7 +61,7 @@ export async function GET() {
     // Transform the appointments to match the expected interface
     const transformedAppointments = appointments.map((appointment) => ({
       id: appointment.id,
-      patient: appointment.patient,
+      patientId: appointment.patientId,
       date: appointment.doctorAvailability.date.toISOString(),
       startTime: appointment.doctorAvailability.startTime,
       endTime: appointment.doctorAvailability.endTime,

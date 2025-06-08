@@ -37,6 +37,6 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "**/*.cjs"
-  ],
+, "app/api/doctor/stats/route.js", "app/api/doctor/appointments/upcoming/route.js"  ],
   "exclude": ["node_modules"]
 }
