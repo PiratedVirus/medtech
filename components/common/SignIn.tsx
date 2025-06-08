@@ -111,7 +111,13 @@ export default function SignInForm() {
 
         if (data.success) {
           if (data.userExists) {
-            window.location.href = "/dashboard";
+            // Check user role and redirect accordingly
+            const userProfile = decryptData(sessionStorage.getItem("userProfile") || "");
+            if (userProfile?.role === "DOCTOR") {
+              window.location.href = "/doctor";
+            } else {
+              window.location.href = "/dashboard";
+            }
           } else {
             setStep("register");
           }
@@ -135,7 +141,12 @@ export default function SignInForm() {
         doctorCode: doctorCode || data.doctorCode,
       });
       if (response.data.success) {
-        window.location.href = "/dashboard";
+        // Redirect based on the role from registration response
+        if (response.data.user.role === "DOCTOR") {
+          window.location.href = "/doctor";
+        } else {
+          window.location.href = "/dashboard";
+        }
       } else {
         alert("Registration Failed: " + response.data.error);
       }
