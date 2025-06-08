@@ -72,9 +72,11 @@ export default function AppointmentBookingHomeOne({
   useEffect(() => {
     console.log("Profile", profile);
     if (profile?.id) {
+      if (profile?.subscriptionDetails?.subscriptionId) {
       fetchSubscriptionTracker(profile.id).then((data) => {
-        console.log("Plan Tracker Data", data);
-      });
+          console.log("Plan Tracker Data", data);
+        });
+      }
     }
   }, [profile]); 
 

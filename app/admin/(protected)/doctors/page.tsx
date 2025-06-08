@@ -45,10 +45,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
+import { ChevronDown, ArrowUpDown, EditIcon, Trash, Copy, Check, LayoutGrid, Table as TableIcon } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Clinic } from "@prisma/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useRouter } from "next/navigation";
 
 // Types for doctor profile data and related user
 type Doctor = {
@@ -57,7 +60,8 @@ type Doctor = {
   yearsOfExperience: number;
   consultationFee: number;
   createdAt: string;
-  isDietician: boolean
+  isDietician: boolean;
+  doctorCode: string | null;
   // Relation from doctorProfile to user
   user: {
     id: number;
@@ -82,7 +86,8 @@ type DoctorsPageFormData = {
   consultationFee: number;
   status: string;
   clinicId: number;
-  isDietician: boolean; // Added this field
+  isDietician: boolean;
+  doctorCode: string;
 };
 
 export default function DoctorsPage() {
@@ -108,6 +113,11 @@ export default function DoctorsPage() {
     pageIndex: 0,
     pageSize: 10,
   });
+  const [referralLink, setReferralLink] = useState<string>("");
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [viewMode, setViewMode] = useState<"table" | "card">("table");
+  const router = useRouter();
 
   // Watch clinicId to filter available users
   const selectedClinicId = watch("clinicId");
@@ -255,6 +265,8 @@ export default function DoctorsPage() {
               setValue("status", row.original.user.status);
               setValue("clinicId", row.original.user.clinic?.id ?? 0);
               setValue("userId", row.original.user.id);
+              setValue("isDietician", row.original.isDietician || false);
+              setValue("doctorCode", row.original.doctorCode || "");
               setDialogOpen(true);
             }}
           >
@@ -318,6 +330,7 @@ export default function DoctorsPage() {
       setValue("status", selectedDoctor.user.status);
       setValue("userId", selectedDoctor.user.id);
       setValue("isDietician", selectedDoctor.isDietician || false);
+      setValue("doctorCode", selectedDoctor.doctorCode || "");
     } else {
       reset();
     }
@@ -331,6 +344,7 @@ export default function DoctorsPage() {
         yearsOfExperience: Number(formData.yearsOfExperience),
         consultationFee: Number(formData.consultationFee),
         isDietician: formData.isDietician || false,
+        doctorCode: formData.doctorCode.toUpperCase(),
       };
 
       if (selectedDoctor) {
@@ -376,6 +390,115 @@ export default function DoctorsPage() {
       toast.error("Failed to delete selected doctors");
     }
   };
+
+  const generateReferralLink = async (doctorCode: string) => {
+    try {
+      setIsGeneratingLink(true);
+      const response = await axios.post("/api/admin/doctors/generate-referral-link", {
+        doctorCode
+      });
+      if (response.data.success) {
+        setReferralLink(response.data.referralLink);
+      } else {
+        toast.error(response.data.error || "Failed to generate referral link");
+      }
+    } catch (error) {
+      console.error("Error generating referral link:", error);
+      toast.error("Failed to generate referral link");
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast.success("Link copied to clipboard!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast.error("Failed to copy link");
+    }
+  };
+
+  const DoctorCard = ({ doctor }: { doctor: Doctor }) => (
+    <Card className="hover:shadow-lg bg-custom-mutedgreen transition-shadow duration-200">
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-xl font-semibold">{doctor.user.name}</CardTitle>
+            <p className="text-sm text-gray-500">{doctor.user.email}</p>
+          </div>
+          <Badge variant={doctor.user.status === "ACTIVE" ? "secondary" : "destructive"}>
+            {doctor.user.status}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Specialty:</span>
+            <span className="font-medium">{doctor.specialty}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Experience:</span>
+            <span className="font-medium">{doctor.yearsOfExperience} years</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Consultation Fee:</span>
+            <span className="font-medium">₹{doctor.consultationFee}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Clinic:</span>
+            <span className="font-medium">{doctor.user.clinic?.name || "N/A"}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Doctor Code:</span>
+            <span className="font-medium">{doctor.doctorCode || "Not set"}</span>
+          </div>
+        </div>
+        <div className="flex justify-between items-center mt-4 pt-4 border-t">
+          {/* Left: View Details */}
+          <Button
+            size="sm"
+            variant="outline"
+            className="bg-transparent text-custom-darkgreen border-0 shadow-none"
+            onClick={() => router.push(`/admin/doctors/${doctor.id}`)}
+          >
+            View Details
+          </Button>
+          {/* Right: Edit and Delete */}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="bg-transparent text-primary border-0 shadow-none"
+              onClick={() => {
+                setSelectedDoctor(doctor);
+                setValue("specialty", doctor.specialty);
+                setValue("yearsOfExperience", doctor.yearsOfExperience);
+                setValue("consultationFee", doctor.consultationFee);
+                setValue("status", doctor.user.status);
+                setValue("clinicId", doctor.user.clinic?.id ?? 0);
+                setValue("userId", doctor.user.id);
+                setValue("isDietician", doctor.isDietician || false);
+                setValue("doctorCode", doctor.doctorCode || "");
+                setDialogOpen(true);
+              }}
+            >
+              <EditIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              className="bg-transparent text-primary border-0 shadow-none"
+              onClick={() => deleteDoctor(doctor.id)}
+            >
+              <Trash className="h-4 w-4 text-red-500" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="container mx-auto p-4 bg-white space-y-4">
@@ -441,94 +564,117 @@ export default function DoctorsPage() {
           )}
         </div>
         {/* Right group */}
-        <div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setViewMode(viewMode === "table" ? "card" : "table")}
+            title={viewMode === "table" ? "Switch to Card View" : "Switch to Table View"}
+          >
+            {viewMode === "table" ? <LayoutGrid className="h-4 w-4" /> : <TableIcon className="h-4 w-4" />}
+          </Button>
           <Button onClick={() => setDialogOpen(true)}>Add Doctor</Button>
         </div>
       </div>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader className="bg-custom-mutedgreen text-gray-950">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow className="text-center" key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="text-black text-center">
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow className="text-center" key={row.id} data-state={row.getIsSelected() && "selected"}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
+
+      {/* View Content */}
+      {viewMode === "table" ? (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader className="bg-custom-mutedgreen text-gray-950">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow className="text-center" key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id} className="text-black text-center">
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
                   ))}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow className="text-center">
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      <div className="flex items-center justify-between px-2">
-        <div className="text-sm text-muted-foreground">
-          Showing {pagination.pageIndex * pagination.pageSize + 1}-
-          {Math.min((pagination.pageIndex + 1) * pagination.pageSize, data.total)} of {data.total} doctors
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow className="text-center" key={row.id} data-state={row.getIsSelected() && "selected"}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow className="text-center">
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    No results.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
-        <div className="flex items-center space-x-6 lg:space-x-8">
-          <div className="flex items-center space-x-2">
-            <p className="text-sm font-medium">Rows per page</p>
-            <Select
-              value={`${pagination.pageSize}`}
-              onValueChange={(value) => {
-                setPagination((prev) => ({
-                  ...prev,
-                  pageSize: Number(value),
-                  pageIndex: 0,
-                }));
-              }}
-            >
-              <SelectTrigger className="h-8 w-[70px]">
-                <SelectValue placeholder={pagination.pageSize} />
-              </SelectTrigger>
-              <SelectContent side="top">
-                {[10, 20, 30, 40, 50].map((pageSize) => (
-                  <SelectItem key={pageSize} value={`${pageSize}`}>
-                    {pageSize}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {data.doctors.map((doctor) => (
+            <DoctorCard key={doctor.id} doctor={doctor} />
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {viewMode === "table" && (
+        <div className="flex items-center justify-between px-2">
+          <div className="text-sm text-muted-foreground">
+            Showing {pagination.pageIndex * pagination.pageSize + 1}-
+            {Math.min((pagination.pageIndex + 1) * pagination.pageSize, data.total)} of {data.total} doctors
           </div>
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              Next
-            </Button>
+          <div className="flex items-center space-x-6 lg:space-x-8">
+            <div className="flex items-center space-x-2">
+              <p className="text-sm font-medium">Rows per page</p>
+              <Select
+                value={`${pagination.pageSize}`}
+                onValueChange={(value) => {
+                  setPagination((prev) => ({
+                    ...prev,
+                    pageSize: Number(value),
+                    pageIndex: 0,
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-8 w-[70px]">
+                  <SelectValue placeholder={pagination.pageSize} />
+                </SelectTrigger>
+                <SelectContent side="top">
+                  {[10, 20, 30, 40, 50].map((pageSize) => (
+                    <SelectItem key={pageSize} value={`${pageSize}`}>
+                      {pageSize}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -629,6 +775,52 @@ export default function DoctorsPage() {
                 </div>
               )}
             />
+            <Input
+              {...register("doctorCode", {
+                required: true,
+                pattern: {
+                  value: /^[A-Z0-9]{6}$/,
+                  message: "Doctor code must be 6 characters long and contain only uppercase letters and numbers"
+                }
+              })}
+              placeholder="Doctor Code (6 characters)"
+              maxLength={6}
+              onChange={(e) => {
+                const value = e.target.value.toUpperCase();
+                setValue("doctorCode", value);
+                setReferralLink(""); // Clear referral link when code changes
+              }}
+            />
+            {selectedDoctor && (
+              <div className="space-y-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => generateReferralLink(selectedDoctor.doctorCode || "")}
+                  disabled={isGeneratingLink || !selectedDoctor.doctorCode}
+                >
+                  {isGeneratingLink ? "Generating..." : "Generate Referral Link"}
+                </Button>
+                {referralLink && (
+                  <div className="flex items-center gap-2 p-2 border rounded-md bg-gray-50">
+                    <Input
+                      value={referralLink}
+                      readOnly
+                      className="flex-1 bg-transparent border-0 focus-visible:ring-0"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(referralLink)}
+                    >
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
             <DialogFooter>
               <Button
                 type="button"
@@ -636,6 +828,7 @@ export default function DoctorsPage() {
                 onClick={() => {
                   setDialogOpen(false);
                   setSelectedDoctor(null);
+                  setReferralLink("");
                 }}
               >
                 Cancel

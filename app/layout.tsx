@@ -8,7 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { useState, useEffect } from "react";
-import { initializeUserProfile } from "@/store/userSlice"; // Update this path as needed
+import { initializeUserProfile, fetchUserProfile } from "@/store/userSlice";
 import CdLoader from '@/components/ui/custom/cd-loader';
 
 const lato = Lato({
@@ -31,11 +31,18 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
     setIsReady(true);
     
     // Initialize user profile from sessionStorage if available
-    store.dispatch(initializeUserProfile());
+    const initializeProfile = async () => {
+      const storedProfile = await store.dispatch(initializeUserProfile());
+      if (!storedProfile) {
+        // Only fetch if not in storage
+        await store.dispatch(fetchUserProfile());
+      }
+    };
+    
+    initializeProfile();
   }, []);
 
   if (!isReady) {
-    // Return a simple loading state or skeleton
     return <CdLoader />;
   }
 
@@ -44,9 +51,7 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
       client={queryClient} 
       persistOptions={{ persister }}
     >
-      <Provider store={store}>
-        {children}
-      </Provider>
+      {children}
     </PersistQueryClientProvider>
   );
 }
@@ -73,9 +78,11 @@ export default function RootLayout({
         />
       </head>
       <body className={`${lato.variable} antialiased min-h-screen flex flex-col`}>
-        <ClientSideWrapper>
-          {children}
-        </ClientSideWrapper>
+        <Provider store={store}>
+          <ClientSideWrapper>
+            {children}
+          </ClientSideWrapper>
+        </Provider>
       </body>
     </html>
   );

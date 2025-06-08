@@ -22,7 +22,8 @@ import {
   Hospital,
   Leaf,
   IndianRupee,
-  LogOut
+  LogOut,
+  Link as LinkIcon
 } from "lucide-react"
 import { useState } from "react"
 
@@ -65,6 +66,11 @@ export function SidebarNav({ className, logout, ...props }: SidebarNavProps) {
       href: "/admin/doctors",
       icon: Stethoscope,
       title: "Doctors",
+    },
+    {
+      href: "/admin/doctors/referral-links",
+      icon: LinkIcon,
+      title: "Referral Links",
     },
     {
       href: "/admin/appointments",

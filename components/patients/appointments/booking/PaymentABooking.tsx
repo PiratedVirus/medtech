@@ -100,6 +100,7 @@ export default function PaymentSelection({
 
   // Clinic card styles
   const isClinicDisabled = isVideoConsultation;
+  console.log("isClinicDisabled", isClinicDisabled);
   const clinicCardClasses = cn(
     "p-2 flex flex-col items-center justify-center transition-all",
     isClinicDisabled

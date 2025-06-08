@@ -37,7 +37,7 @@ model ClinicSpecialization {
 model User {
   id                  Int               @id @default(autoincrement())
   clinicId            Int?
-  phoneNumber         String            @unique
+  phoneNumber         String            
   email               String?           @unique
   password            String?
   name                String
@@ -47,6 +47,7 @@ model User {
   updatedAt           DateTime          @updatedAt
   deletedAt           DateTime?
   userProfilePicture  String?
+  doctorCode          String?           
   doctorAppointments  Appointment[]     @relation("Doctor")
   patientAppointments Appointment[]     @relation("Patient")
   dieticianProfile    DieticianProfile?
@@ -59,6 +60,7 @@ model User {
   clinic              Clinic?           @relation(fields: [clinicId], references: [id])
 
   @@index([deletedAt])
+  @@unique([phoneNumber, deletedAt])
 }
 
 model PatientProfile {
@@ -95,6 +97,7 @@ model DoctorProfile {
   ownerToken1       String?
   ownerToken2       String?
   licenseNumber     String?              @unique
+  doctorCode        String?              @unique
   consultationFee   Int
   rating            Float?
   type              String?
@@ -188,6 +191,7 @@ model Appointment {
   payment              Payment?             @relation("AppointmentPayment")
 
   @@index([deletedAt])
+  @@index([patientId, isDietician])
 }
 
 model Medicine {

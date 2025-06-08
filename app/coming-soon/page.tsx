@@ -33,14 +33,14 @@ export default function ComingSoonOption3() {
             <div>
             <Image src="/images/new-logo.png" alt="Logo" width={300} height={300} className="my-8" />
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary leading-tight">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-secondary leading-tight">
                   Coming Soon
               </h1>
               <p className="mt-5 text-lg text-slate-600 dark:text-slate-300">
                 We're building a comprehensive healthcare platform that prioritizes your wellbeing with cutting-edge
                 technology and compassionate care.
               </p>
-              <Button variant={"outline"} className="mt-6 bg-primary hover:bg-primary text-white">
+              <Button variant={"outline"} className="mt-6 bg-secondary hover:bg-secondary border-none hover:text-white text-slate-100">
                 <a href="/dashboard">Back to Dashboard</a>
               </Button>
             </div>
@@ -91,7 +91,7 @@ export default function ComingSoonOption3() {
         </div>
 
         {/* Right Side - Large Icon */}
-        <div className="hidden md:flex w-1/2 bg-secondary items-center justify-center">
+        <div className="hidden md:flex w-1/2 bg-primary items-center justify-center">
           <div className="p-16">
             <Stethoscope className="w-64 h-64 text-white opacity-90" strokeWidth={1} />
           </div>

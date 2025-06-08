@@ -36,7 +36,7 @@ export default function AppointmentPage() {
   // Dispatch data to Redux when available
   useEffect(() => {
     if (doctorData) {
-      dispatch(setBookingData({ doctor: doctorData, type: bookingData?.type ?? null , isDietician}));
+      dispatch(setBookingData({ doctor: doctorData, type:bookingData?.type ?? "video", isDietician}));
     }
   }, [doctorData, dispatch]);
 
@@ -51,7 +51,7 @@ export default function AppointmentPage() {
   return (
     <AppointmentBookingHomeOne
       doctor={doctorData}
-      consultationType={bookingData?.type ?? null}
+      consultationType={bookingData?.type ?? "video"}
       onBack={() => {
         router.push("/dashboard/appointments");
         dispatch(clearBookingData());
