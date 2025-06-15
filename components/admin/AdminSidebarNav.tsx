@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  FlaskConical,
   LayoutDashboard,
   Menu,
   Settings,
@@ -73,6 +74,11 @@ export function SidebarNav({ className, ...props }: SidebarNavProps) {
       href: "/admin/labs",
       icon: ClipboardList,
       title: "Labs",
+    },
+    {
+      href: "/admin/lab-bookings",
+      icon: FlaskConical,
+      title: "Lab Bookings",
     },
     {
       href: "/admin/clinics",
