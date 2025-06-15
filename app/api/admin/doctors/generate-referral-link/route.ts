@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const encryptedCode = encryptData({ doctorCode });
 
     // Generate referral link with encrypted code
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const baseUrl = new URL(request.url).origin;
     const referralLink = `${baseUrl}/login?code=${encodeURIComponent(encryptedCode)}`;
 
     return NextResponse.json({
