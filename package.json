@@ -9,7 +9,11 @@
     "storybook": "concurrently \"npm run watch:storybook\" \"npm run watch:build:css\"",
     "watch:storybook": "storybook dev -p 6006",
     "watch:build:css": "tailwindcss -i ./app/globals.css -o ./styles/globals.css",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:prod": "prisma migrate deploy",
+    "generate:prisma": "prisma generate",
+    "deploy": "npm run migrate:prod && npm run generate:prisma && npm run build && npm run start"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.77.0",
