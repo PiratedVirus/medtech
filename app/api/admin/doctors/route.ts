@@ -6,13 +6,29 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
-    let where = {};
+    const showActiveOnly = searchParams.get("showActiveOnly") === "true";
+
+    let where: any = {};
     if (searchParams.get("doctorId")) {
       where = { userId: JSON.parse(searchParams.get("doctorId") as string) };
     }
 
     if (searchParams.get("clinicId")) {
-      where = { ...where, user: { clinicId: JSON.parse(searchParams.get("clinicId") as string) } };
+      where = { 
+        ...where, 
+        user: { clinicId: JSON.parse(searchParams.get("clinicId") as string) } 
+      };
+    }
+
+    // Add filter for ACTIVE user status if showActiveOnly=true
+    if (showActiveOnly) {
+      where = { 
+        ...where, 
+        user: {
+          ...where.user,
+          status: "ACTIVE"
+        }
+      };
     }
 
     const [doctors, total, groupData] = await prisma.$transaction([
@@ -27,7 +43,7 @@ export async function GET(request: Request) {
         },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.doctorProfile.count(),
+      prisma.doctorProfile.count({ where }),
       prisma.user.groupBy({
         by: ["role"],
         _count: { role: true },
@@ -51,7 +67,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Failed to fetch doctors" }, { status: 500 });
   }
 }
-
 export async function POST(request: Request) {
   try {
     const data = await request.json();
@@ -69,6 +84,28 @@ export async function POST(request: Request) {
         { error: "Selected user does not belong to the chosen clinic" },
         { status: 400 }
       );
+    }
+
+    // Validate doctor code format
+    if (data.doctorCode) {
+      if (!/^[A-Z0-9]{6}$/.test(data.doctorCode)) {
+        return NextResponse.json(
+          { error: "Doctor code must be 6 characters long and contain only uppercase letters and numbers" },
+          { status: 400 }
+        );
+      }
+
+      // Check if doctor code is already in use
+      const existingDoctor = await prisma.doctorProfile.findUnique({
+        where: { doctorCode: data.doctorCode }
+      });
+
+      if (existingDoctor) {
+        return NextResponse.json(
+          { error: "Doctor code is already in use" },
+          { status: 400 }
+        );
+      }
     }
 
     const roomName = `doctor-${user.id}-${Date.now()}`;
@@ -134,13 +171,13 @@ export async function POST(request: Request) {
         ownerToken1: ownerTokens[0],
         ownerToken2: ownerTokens[1],
         isDietician: data.isDietician || false,
+        doctorCode: data.doctorCode?.toUpperCase() || null,
         user: { connect: { id: Number(data.userId) } },
       },
     });
     return NextResponse.json(doctor);
   } catch (error: any) {
     console.error("Error creating doctor:", error);
-    // Make sure to always pass an object to NextResponse.json
     return NextResponse.json(
       { error: "Failed to create doctor", details: error?.toString() || "Unknown error" },
       { status: 500 }
@@ -149,7 +186,7 @@ export async function POST(request: Request) {
 }
 export async function PUT(request: Request) {
   try {
-    const { id, userId, status, isDietician, clinicId, ...data } = await request.json();
+    const { id, userId, status, isDietician, clinicId, doctorCode, ...data } = await request.json();
 
     if (userId) {
       const user = await prisma.user.findUnique({
@@ -162,6 +199,31 @@ export async function PUT(request: Request) {
       if (clinicId && user.clinic?.id !== Number(clinicId)) {
         return NextResponse.json(
           { error: "Selected user does not belong to the chosen clinic" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate doctor code format if provided
+    if (doctorCode) {
+      if (!/^[A-Z0-9]{6}$/.test(doctorCode)) {
+        return NextResponse.json(
+          { error: "Doctor code must be 6 characters long and contain only uppercase letters and numbers" },
+          { status: 400 }
+        );
+      }
+
+      // Check if doctor code is already in use by another doctor
+      const existingDoctor = await prisma.doctorProfile.findFirst({
+        where: {
+          doctorCode: doctorCode,
+          id: { not: id } // Exclude current doctor
+        }
+      });
+
+      if (existingDoctor) {
+        return NextResponse.json(
+          { error: "Doctor code is already in use" },
           { status: 400 }
         );
       }
@@ -181,7 +243,8 @@ export async function PUT(request: Request) {
           specialty: data.specialty,
           yearsOfExperience: data.yearsOfExperience,
           consultationFee: data.consultationFee,
-          isDietician: isDietician || false
+          isDietician: isDietician || false,
+          doctorCode: doctorCode?.toUpperCase() || null
         },
       });
     });

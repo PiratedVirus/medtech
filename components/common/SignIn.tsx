@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { Input } from "@/components/ui/input";
 import LoadingButton from "@/components/ui/custom/cd-loading-button";
@@ -8,7 +8,8 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import RegistrationForm from "@/components/common/Registration";
 import { isValidPhoneNumber } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { decryptData } from "@/lib/encryption";
 
 export default function SignInForm() {
   const [step, setStep] = useState<"signIn" | "otp" | "register">("signIn");
@@ -16,6 +17,9 @@ export default function SignInForm() {
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [phoneError, setPhoneError] = useState("");
   const [otpError, setOtpError] = useState("");
+  const searchParams = useSearchParams();
+  const encryptedCode = searchParams.get("code");
+  const [doctorCode, setDoctorCode] = useState<string | null>(null);
   const inputRefs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -23,6 +27,22 @@ export default function SignInForm() {
     useRef<HTMLInputElement>(null),
   ];
   const router = useRouter();
+
+  // Decrypt the doctor code if present in URL
+  useEffect(() => {
+    if (encryptedCode) {
+      try {
+        const decrypted = decryptData(encryptedCode);
+        if (decrypted && decrypted.doctorCode) {
+          setDoctorCode(decrypted.doctorCode);
+        }
+      } catch (error) {
+        console.error("Error decrypting doctor code:", error);
+        // If decryption fails, just ignore the code
+        setDoctorCode(null);
+      }
+    }
+  }, [encryptedCode]);
 
   const handleOtpChange = (index: number, value: string) => {
     if (value.length <= 1) {
@@ -112,11 +132,10 @@ export default function SignInForm() {
       const response = await axios.post("/api/auth/register", {
         ...data,
         phoneNumber: formatPhoneNumber(phoneNumber),
+        doctorCode: doctorCode || data.doctorCode,
       });
       if (response.data.success) {
-        // alert("Registration Successful!");
         window.location.href = "/dashboard";
-        // Redirect or update state as needed
       } else {
         alert("Registration Failed: " + response.data.error);
       }
@@ -152,9 +171,14 @@ export default function SignInForm() {
           </div>
         ) : (
           // **Registration View**
-          <div className="text-center">
-            <h1 className="text-custom-green text-2xl font-normal">Register</h1>
-            <div className="h-0.5 w-12 bg-custom-green mt-2 mx-auto" />
+          <div className="max-h-[calc(100vh-4rem)] overflow-y-auto pb-20 px-2">
+            <h1 className="text-custom-green text-center text-2xl font-normal">Register</h1>
+            <div className="h-0.5 w-12 bg-custom-green text-center mt-2 mx-auto" />
+            <RegistrationForm 
+              onSubmit={handleRegistrationSubmit} 
+              preFilledDoctorCode={doctorCode}
+              isDoctorCodeDisabled={!!doctorCode}
+            />
           </div>
         )}
 
@@ -214,9 +238,7 @@ export default function SignInForm() {
                 Resend OTP
               </button>
             </div>
-          ) : (
-            <RegistrationForm onSubmit={handleRegistrationSubmit} />
-          )}
+          ) : null}
 
           {/* Button: Get OTP */}
           {step === "signIn" && (

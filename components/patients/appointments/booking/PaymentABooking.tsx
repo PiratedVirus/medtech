@@ -14,6 +14,7 @@ interface PaymentSelectionProps {
   firstValidDate: any;
   consultationFee: any
   isPlanBookable?: boolean;
+  isDietician: boolean;
 }
 
 export default function PaymentSelection({
@@ -23,6 +24,7 @@ export default function PaymentSelection({
   firstValidDate,
   consultationFee,
   isPlanBookable = true,
+  isDietician,
 }: PaymentSelectionProps) {
   console.log("consultation Type is ", consultationType);
   console.log("Fees is ", consultationFee);
@@ -31,17 +33,39 @@ export default function PaymentSelection({
     (state: RootState) => state.subscriptionsStore.subscriptionData
   );
 
-  // Extract doctorConsultationDates from subscription
+  // Extract consultation dates from subscription based on type
+  const consultationDates = isDietician 
+    ? subscriptionTracker?.dieticianConsultationDates 
+    : subscriptionTracker?.doctorConsultationDates;
+
   console.log("firstValidDate yaha ", firstValidDate);
 
   // Calculate isPlanBookingValid
   let isPlanBookingValid = false;
 
   if (firstValidDate) {
-    isPlanBookingValid = true;
+    const currentDate = new Date();
+    const validDate = new Date(firstValidDate);
+    
+    // Calculate 5 days before and 10 days after
+    const fiveDaysBefore = new Date(validDate);
+    fiveDaysBefore.setDate(validDate.getDate() - 5);
+    
+    const tenDaysAfter = new Date(validDate);
+    tenDaysAfter.setDate(validDate.getDate() + 10);
+    
+    // Check if current date is within the range
+    isPlanBookingValid = currentDate >= fiveDaysBefore && currentDate <= tenDaysAfter;
+    
     console.log("First valid date is:", firstValidDate);
+    console.log("Date range for booking:", {
+      from: fiveDaysBefore.toISOString(),
+      to: tenDaysAfter.toISOString(),
+      isValid: isPlanBookingValid,
+      type: isDietician ? "Dietician" : "Doctor"
+    });
   } else {
-    console.log("No valid date found within 10 days.");
+    console.log("No valid date found.");
   }
 
   const [hasAutoSelectedPlan, setHasAutoSelectedPlan] = useState(false);
@@ -76,6 +100,7 @@ export default function PaymentSelection({
 
   // Clinic card styles
   const isClinicDisabled = isVideoConsultation;
+  console.log("isClinicDisabled", isClinicDisabled);
   const clinicCardClasses = cn(
     "p-2 flex flex-col items-center justify-center transition-all",
     isClinicDisabled

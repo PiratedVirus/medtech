@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 
-const prisma = new PrismaClient();
-
-// Fetch all doctors along with their profile & availability
+// Fetch all dieticians along with their profile & availability
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -15,27 +13,34 @@ export async function GET(request: Request) {
         { status: 400 }
       );
     }
+
+
+
+    // Build the where clause
+    const where: any = {
+      role: "DOCTOR",
+      status: "ACTIVE",
+      clinicId: Number(clinicId),
+      doctorProfile: {
+        isDietician: true,
+        deletedAt: null
+      }
+    };
+
+
+
     const dieticians = await prisma.user.findMany({
-      where: {
-        role: "DOCTOR",
-        status: "ACTIVE",
-        clinicId: Number(clinicId),
-        doctorProfile: {
-          isDietician: true, // Filter by isDietician flag
-          deletedAt: null
-        },
-      },
+      where,
       include: {
         doctorProfile: true,
       },
     });
 
-
-
     return NextResponse.json({ success: true, dieticians });
   } catch (error) {
+    console.error("Error fetching dieticians:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch doctors with error " + error },
+      { success: false, error: "Failed to fetch dieticians" },
       { status: 500 }
     );
   }

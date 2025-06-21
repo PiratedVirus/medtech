@@ -8,6 +8,350 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model Clinic {
+  id              Int                    @id @default(autoincrement())
+  name            String                 @unique
+  subdomain       String?                @unique
+  domain          String?                @unique
+  address         String?
+  contactInfo     String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  deletedAt       DateTime?
+  specializations ClinicSpecialization[]
+  users           User[]
+
+  @@index([deletedAt])
+}
+
+model ClinicSpecialization {
+  id        Int       @id @default(autoincrement())
+  clinicId  Int
+  name      String
+  deletedAt DateTime?
+  clinic    Clinic    @relation(fields: [clinicId], references: [id])
+
+  @@index([deletedAt])
+}
+
+model User {
+  id                  Int               @id @default(autoincrement())
+  clinicId            Int?
+  phoneNumber         String
+  email               String?           @unique
+  password            String?
+  name                String
+  role                UserRole
+  status              UserStatus        @default(ACTIVE)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  deletedAt           DateTime?
+  userProfilePicture  String?
+  doctorCode          String?
+  doctorAppointments  Appointment[]     @relation("Doctor")
+  patientAppointments Appointment[]     @relation("Patient")
+  dieticianProfile    DieticianProfile?
+  doctorProfile       DoctorProfile?
+  healthMetrics       HealthMetric[]
+  labTechBookings     LabBooking[]      @relation("LabTech")
+  labPatientBookings  LabBooking[]      @relation("LabPatient")
+  labTechProfile      LabTechProfile?
+  patientProfile      PatientProfile?
+  clinic              Clinic?           @relation(fields: [clinicId], references: [id])
+
+  @@unique([phoneNumber, deletedAt])
+  @@index([deletedAt])
+}
+
+model PatientProfile {
+  id               Int                   @id @default(autoincrement())
+  userId           Int                   @unique
+  subscriptionId   Int?
+  planId           Int?
+  age              Int
+  weight           Float?
+  height           Float?
+  gender           String
+  bloodGroup       String?
+  allergies        String?
+  medicalHistory   String?
+  emergencyContact String?
+  dateOfBirth      DateTime?             @db.Date
+  address          String?
+  profilePicture   String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  deletedAt        DateTime?
+  user             User                  @relation(fields: [userId], references: [id])
+  planTrackers     SubscriptionTracker[]
+
+  @@index([deletedAt])
+}
+
+model DoctorProfile {
+  id                Int                  @id @default(autoincrement())
+  userId            Int                  @unique
+  specialty         String
+  yearsOfExperience Int?
+  meetingRoomLink   String?
+  ownerToken1       String?
+  ownerToken2       String?
+  licenseNumber     String?              @unique
+  consultationFee   Int
+  rating            Float?
+  type              String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  deletedAt         DateTime?
+  extraInfo         String?
+  isDietician       Boolean?
+  doctorCode        String?              @unique
+  availability      DoctorAvailability[]
+  user              User                 @relation(fields: [userId], references: [id])
+
+  @@index([deletedAt])
+}
+
+model DieticianProfile {
+  id                Int                     @id @default(autoincrement())
+  userId            Int                     @unique
+  specialty         String?
+  yearsOfExperience Int?
+  certifications    String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  deletedAt         DateTime?
+  availability      DieticianAvailability[]
+  user              User                    @relation(fields: [userId], references: [id])
+
+  @@index([deletedAt])
+}
+
+model LabTechProfile {
+  id             Int       @id @default(autoincrement())
+  userId         Int       @unique
+  specialization String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+  user           User      @relation(fields: [userId], references: [id])
+
+  @@index([deletedAt])
+}
+
+model DoctorAvailability {
+  id           Int           @id @default(autoincrement())
+  doctorId     Int
+  date         DateTime      @db.Date
+  startTime    String
+  endTime      String
+  status       String
+  deletedAt    DateTime?
+  appointments Appointment[]
+  doctor       DoctorProfile @relation(fields: [doctorId], references: [id])
+
+  @@index([deletedAt])
+}
+
+model DieticianAvailability {
+  id          Int              @id @default(autoincrement())
+  dieticianId Int
+  dayOfWeek   String
+  startTime   String
+  endTime     String
+  deletedAt   DateTime?
+  dietician   DieticianProfile @relation(fields: [dieticianId], references: [id])
+
+  @@index([deletedAt])
+}
+
+model Appointment {
+  id                   Int                  @id @default(autoincrement())
+  patientId            Int
+  doctorId             Int
+  consultationType     String
+  doctorAvailabilityId Int
+  prescriptionLink     String?
+  appointmentFor       String?
+  fullName             String?
+  mobile               String?
+  email                String?
+  isDietician          Boolean?
+  appointmentDate      DateTime?            @db.Date
+  appointmentLink      String?
+  subscriptionId       Int?
+  status               String
+  createdAt            DateTime?            @default(now())
+  updatedAt            DateTime?            @updatedAt
+  deletedAt            DateTime?
+  doctorAvailability   DoctorAvailability   @relation(fields: [doctorAvailabilityId], references: [id])
+  doctor               User                 @relation("Doctor", fields: [doctorId], references: [id])
+  patient              User                 @relation("Patient", fields: [patientId], references: [id])
+  subscriptionTracker  SubscriptionTracker? @relation(fields: [subscriptionId], references: [subscriptionId])
+  payment              Payment?             @relation("AppointmentPayment")
+
+  @@index([deletedAt])
+  @@index([patientId, isDietician])
+}
+
+model Medicine {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  category    String?
+  description String?
+  price       Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([deletedAt])
+}
+
+model Complaint {
+  id        Int       @id @default(autoincrement())
+  text      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([deletedAt])
+}
+
+model Payment {
+  id                Int                  @id @default(autoincrement())
+  appointmentId     Int?                 @unique
+  labBookingId      Int?                 @unique
+  subscriptionId    Int?                 @unique
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  amount            Int
+  currency          String               @default("INR")
+  paymentStatus     String
+  paymentMethod     String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime?            @updatedAt
+  deletedAt         DateTime?
+  appointment       Appointment?         @relation("AppointmentPayment", fields: [appointmentId], references: [id])
+  labBooking        LabBooking?          @relation("LabBookingPayment", fields: [labBookingId], references: [id])
+  subscription      SubscriptionTracker? @relation("SubscriptionPayment", fields: [subscriptionId], references: [subscriptionId])
+
+  @@index([deletedAt])
+}
+
+model LabPackage {
+  id                   Int          @id @default(autoincrement())
+  name                 String       @unique
+  shortDescription     String?
+  description          String?
+  price                Int
+  parameters           Json?
+  criticalRequirements String?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  deletedAt            DateTime?
+  isLabPackage         Boolean      @default(false)
+  labBookings          LabBooking[]
+
+  @@index([deletedAt])
+}
+
+model LabBooking {
+  id             Int        @id @default(autoincrement())
+  patientId      Int
+  labTechId      Int?
+  labPackageId   Int
+  appointmentFor String?
+  fullName       String?
+  mobile         String?
+  email          String?
+  address        String?
+  paymentOption  String?
+  status         String
+  labDate        DateTime   @db.Date
+  labResult      String[]   @default([])
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  deletedAt      DateTime?
+  labPackage     LabPackage @relation(fields: [labPackageId], references: [id])
+  labTech        User?      @relation("LabTech", fields: [labTechId], references: [id])
+  patient        User       @relation("LabPatient", fields: [patientId], references: [id])
+  payment        Payment?   @relation("LabBookingPayment")
+
+  @@index([deletedAt])
+}
+
+model Plan {
+  id                 Int                   @id @default(autoincrement())
+  name               String
+  duration           String
+  price              Decimal?              @db.Decimal(10, 2)
+  discountPercentage Int?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  deletedAt          DateTime?
+  planFeatures       PlanFeature[]
+  planTrackers       SubscriptionTracker[]
+
+  @@index([deletedAt])
+}
+
+model PlanFeature {
+  id                     Int       @id @default(autoincrement())
+  planId                 Int
+  featureName            String
+  occurrencesPerInterval Int?
+  intervalInMonths       Int?
+  parameters             String?
+  notes                  String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  deletedAt              DateTime?
+  plan                   Plan      @relation(fields: [planId], references: [id])
+
+  @@index([deletedAt])
+}
+
+model SubscriptionTracker {
+  subscriptionId                   Int            @id @default(autoincrement())
+  patientId                        Int
+  planId                           Int
+  doctorConsultationDates          String[]       @default([])
+  dieticianConsultationDates       String[]       @default([])
+  labTestsDates                    String[]       @default([])
+  ophthalmologistConsultationDates String[]       @default([])
+  usedMedicines                    String[]       @default([])
+  razorpayOrderId                  String?
+  razorpayPaymentId                String?
+  paymentStatus                    String?        @default("PENDING")
+  startDate                        DateTime       @default(now()) @db.Date
+  endDate                          DateTime?      @db.Date
+  isActive                         Boolean        @default(true)
+  createdAt                        DateTime       @default(now())
+  updatedAt                        DateTime       @updatedAt
+  deletedAt                        DateTime?
+  appointments                     Appointment[]
+  payments                         Payment?       @relation("SubscriptionPayment")
+  user                             PatientProfile @relation(fields: [patientId], references: [id])
+  plan                             Plan           @relation(fields: [planId], references: [id])
+
+  @@index([deletedAt])
+}
+
+model HealthMetric {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  metricName String
+  reading    Float
+  recordedAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@index([deletedAt])
+  @@index([userId])
+}
+
 enum UserRole {
   PATIENT
   DOCTOR
@@ -23,377 +367,4 @@ enum UserStatus {
   INACTIVE
   SUSPENDED
   DELETED
-}
-
-model Clinic {
-  id                Int    @id @default(autoincrement())
-  name              String @unique
-  subdomain         String? @unique
-  domain            String? @unique
-  address           String?
-  contactInfo       String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  deletedAt         DateTime?
-
-  // Relationships
-  users             User[]
-  specializations   ClinicSpecialization[]
-
-
-  @@index([deletedAt])
-}
-
-model ClinicSpecialization {
-  id        Int @id @default(autoincrement())
-  clinicId  Int
-  name      String
-  deletedAt DateTime?
-
-  clinic    Clinic @relation(fields: [clinicId], references: [id])
-
-  @@index([deletedAt])
-}
-
-model User {
-  id          Int    @id @default(autoincrement())
-  clinicId    Int?
-  phoneNumber String @unique
-  userProfilePicture String?
-  email       String? @unique
-  password    String?
-  name        String
-  role        UserRole
-  status      UserStatus @default(ACTIVE)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
-
-  // Relationships
-  clinic           Clinic? @relation(fields: [clinicId], references: [id])
-  patientProfile   PatientProfile?
-  doctorProfile    DoctorProfile?
-  labTechProfile   LabTechProfile?
-  dieticianProfile DieticianProfile?
-  patientAppointments Appointment[] @relation("Patient")
-  doctorAppointments  Appointment[] @relation("Doctor")
-  labPatientBookings LabBooking[]   @relation("LabPatient")
-  labTechBookings    LabBooking[]   @relation("LabTech")
-  healthMetrics     HealthMetric[]
-  @@index([deletedAt])
-}
-
-model PatientProfile {
-  id               Int    @id @default(autoincrement())
-  userId           Int    @unique
-  subscriptionId   Int?
-  planId           Int?
-  age              Int
-  weight           Float?
-  height           Float?
-  gender           String
-  bloodGroup       String?
-  allergies        String?
-  medicalHistory   String?
-  emergencyContact String?
-  dateOfBirth      DateTime?
-  address          String?
-  profilePicture   String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  deletedAt        DateTime?
-
-  user             User @relation(fields: [userId], references: [id])
-  planTrackers     SubscriptionTracker[]
-
-  @@index([deletedAt])
-}
-
-model DoctorProfile {
-  id                Int    @id @default(autoincrement())
-  userId            Int    @unique
-  specialty         String
-  yearsOfExperience Int?
-  extraInfo         String?
-  meetingRoomLink   String?
-  ownerToken1       String?
-  ownerToken2       String?
-  licenseNumber     String? @unique
-  isDietician       Boolean?
-  consultationFee   Int
-  rating            Float?
-  type              String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  deletedAt         DateTime?
-
-  user              User @relation(fields: [userId], references: [id])
-  availability      DoctorAvailability[]
-
-  @@index([deletedAt])
-}
-
-model DieticianProfile {
-  id                Int    @id @default(autoincrement())
-  userId            Int    @unique
-  specialty         String?
-  yearsOfExperience Int?
-  certifications    String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  deletedAt         DateTime?
-
-  user              User @relation(fields: [userId], references: [id])
-  availability      DieticianAvailability[]
-
-  @@index([deletedAt])
-}
-
-model LabTechProfile {
-  id              Int    @id @default(autoincrement())
-  userId          Int    @unique
-  specialization  String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  deletedAt       DateTime?
-
-  user            User @relation(fields: [userId], references: [id])
-
-  @@index([deletedAt])
-}
-
-model DoctorAvailability {
-  id         Int    @id @default(autoincrement())
-  doctorId   Int
-  date       DateTime @db.Date
-  startTime  String
-  endTime    String
-  status     String
-  deletedAt  DateTime?
-
-  doctor     DoctorProfile @relation(fields: [doctorId], references: [id])
-  appointments Appointment[]
-
-  @@index([deletedAt])
-}
-
-model DieticianAvailability {
-  id           Int    @id @default(autoincrement())
-  dieticianId  Int
-  dayOfWeek    String
-  startTime    String
-  endTime      String
-  deletedAt    DateTime?
-
-  dietician    DieticianProfile @relation(fields: [dieticianId], references: [id])
-
-  @@index([deletedAt])
-}
-
-model Appointment {
-  id                   Int    @id @default(autoincrement())
-  patientId            Int
-  doctorId             Int
-  consultationType     String
-  doctorAvailabilityId Int
-  prescriptionLink     String?
-  appointmentFor       String?
-  fullName             String?
-  mobile               String?
-  email                String?
-  isDietician          Boolean?
-  appointmentDate      DateTime?
-  appointmentLink      String?
-  subscriptionId       Int?
-  status               String
-  createdAt            DateTime? @default(now())
-  updatedAt            DateTime? @updatedAt
-  deletedAt            DateTime?
-
-  patient              User @relation("Patient", fields: [patientId], references: [id])
-  doctor               User @relation("Doctor", fields: [doctorId], references: [id])
-  doctorAvailability   DoctorAvailability @relation(fields: [doctorAvailabilityId], references: [id])
-  payment              Payment?    @relation("AppointmentPayment")
-
-  // Relationships
-  subscriptionTracker        SubscriptionTracker? @relation(fields: [subscriptionId], references: [subscriptionId])
-  @@index([deletedAt])
-}
-
-model Medicine {
-  id          Int    @id @default(autoincrement())
-  name        String @unique
-  category    String?
-  description String?
-  price       Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
-
-  @@index([deletedAt])
-}
-
-model Complaint {
-  id          Int    @id @default(autoincrement())
-  text        String @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
-
-  @@index([deletedAt])
-}
-
-model Payment {
-  id                Int           @id @default(autoincrement())
-  appointmentId     Int?          @unique
-  labBookingId      Int?          @unique
-  subscriptionId    Int?          @unique
-  razorpayOrderId   String?
-  razorpayPaymentId String?
-  amount            Int
-  currency          String        @default("INR")
-  paymentStatus     String
-  paymentMethod     String?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime?     @updatedAt
-  deletedAt         DateTime?
-
-  // two one‐to‐one relations:
-  appointment       Appointment?  @relation("AppointmentPayment", fields: [appointmentId], references: [id])
-  labBooking        LabBooking?   @relation("LabBookingPayment",  fields: [labBookingId],  references: [id])
-  subscription      SubscriptionTracker? @relation("SubscriptionPayment", fields: [subscriptionId], references: [subscriptionId])
-
-  @@index([deletedAt])
-}
-
-
-
-model LabPackage {
-  id          Int    @id @default(autoincrement())
-  name        String @unique
-  shortDescription String?
-  description String?
-  price       Int
-  parameters  Json?
-  criticalRequirements String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
-
-  labBookings LabBooking[]
-
-  @@index([deletedAt])
-}
-
-model LabBooking {
-  id            Int    @id @default(autoincrement())
-  patientId     Int
-  labTechId     Int?
-  labPackageId  Int
-  appointmentFor String?
-  fullName      String?
-  mobile        String?
-  email         String?
-  address       String?
-  paymentOption String?
-  status        String
-  labDate       DateTime
-  labResult     String[] @default([])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  deletedAt     DateTime?
-
-  patient       User @relation("LabPatient", fields: [patientId], references: [id])
-  labTech       User? @relation("LabTech", fields: [labTechId], references: [id])
-  labPackage    LabPackage @relation(fields: [labPackageId], references: [id])
-  payment       Payment?    @relation("LabBookingPayment")
-  @@index([deletedAt])
-}
-
-model Plan {
-  id                  Int       @id @default(autoincrement())
-  name                String    // e.g. "Basic", "Care+"
-  duration            String    // e.g. "6 Months", "12 Months"
-  price               Decimal?  @db.Decimal(10, 2)
-  discountPercentage  Int?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  deletedAt           DateTime?
-
-  // Relationship: each Plan can have many PlanFeatures
-  planFeatures        PlanFeature[]
-  planTrackers        SubscriptionTracker[]
-
-  @@index([deletedAt])
-}
-
-model PlanFeature {
-  id                     Int       @id @default(autoincrement())
-  planId                 Int
-  featureName            String    // e.g. "Doctor Consultation", "Lab Tests", etc.
-
-  // Instead of a single “frequency” string, we store numeric frequency data:
-  occurrencesPerInterval Int?      // e.g. "2" for "2 times every X months"
-  intervalInMonths       Int?      // e.g. "5" for "every 5 months"
-
-  parameters             String?      // e.g. number of lab parameters
-  notes                  String?   // Free-form text if needed
-
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-  deletedAt              DateTime?
-
-  plan                   Plan      @relation(fields: [planId], references: [id])
-
-  @@index([deletedAt])
-}
-
-model SubscriptionTracker {
-  subscriptionId               Int       @id @default(autoincrement())
-  patientId                    Int
-  planId                       Int
-
-  // Usage counters for each feature (initialized to 0)
-  doctorConsultationDates       String[]    @default([])
-  dieticianConsultationDates    String[]    @default([])
-  labTestsDates                 String[]    @default([])
-  ophthalmologistConsultationDates String[] @default([])
-  usedMedicines                 String[]    @default([])
-
-  // Payment info
-  razorpayOrderId              String?
-  razorpayPaymentId            String?
-  paymentStatus                String?   @default("PENDING")
-
-  // Plan period or validity
-  startDate                    DateTime  @default(now())
-  endDate                      DateTime?
-  isActive                     Boolean    @default(true)
-
-  createdAt                    DateTime  @default(now())
-  updatedAt                    DateTime  @updatedAt
-  deletedAt                    DateTime?
-
-  // Relations
-  plan                         Plan      @relation(fields: [planId], references: [id])
-  user                         PatientProfile      @relation(fields: [patientId], references: [id])
-  appointments                 Appointment[]
-  payments                     Payment[] @relation("SubscriptionPayment")
-  @@index([deletedAt])
-}
-
-model HealthMetric {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  metricName  String
-  reading     Float
-  recordedAt  DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
-
-  user        User     @relation(fields: [userId], references: [id])
-
-  @@index([deletedAt])
-  @@index([userId])
 }

@@ -50,9 +50,11 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
   useEffect(() => {
     console.log("Profile", profile);
     if (profile?.id) {
-      fetchSubscriptionTracker(profile.id).then((data) => {
-        console.log("Plan Tracker Data", data);
-      });
+      if (profile?.subscriptionDetails?.subscriptionId) {
+        fetchSubscriptionTracker(profile.id).then((data) => {
+          console.log("Plan Tracker Data", data);
+        });
+      }
     }
   }, [profile]);
 
@@ -167,7 +169,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
       paymentOption,
       razorpayResponse,
       consultationType: paymentOption,
-      subscriptionId: subscriptionTracker.subscriptionId,
+      subscriptionId: subscriptionTracker?.subscriptionId || null, 
       labTestsDates: filteredlabTestsDatesDates,
       labPackageFees
 
@@ -225,6 +227,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
                 consultationType={paymentOption || ""}
                 consultationFee={labBbookingData?.price}
                 isPlanBookable={isLabPlanBookable}
+                isDietician={false}
               />
             </div>
 

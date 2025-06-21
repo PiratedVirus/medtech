@@ -30,7 +30,7 @@ export default function ServiceCard() {
                         description="You can book the appointment from here.."
                         buttonText="Book Medicines"
                         iconSrc="/images/medicines-delivery.png"
-                        href="/dashboard/medicines"
+                        href="/coming-soon"
                     />
                 </div>
                 <div className="w-full">
@@ -39,7 +39,7 @@ export default function ServiceCard() {
                         description="You can book the appointment from here.."
                         buttonText="Explore our Plans"
                         iconSrc="/icons/mother.svg"
-                        href="/dashboard/plans"
+                        href="/coming-soon"
                     />
                 </div>
             </div>
