@@ -53,11 +53,16 @@ export default function LabsPage() {
     enabled: !!clinicId, // ✅ Runs only when clinicId exists
   });
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchPackages, setSearchPackages] = useState("");
+  const [searchTests, setSearchTests] = useState("");
 
-  const filteredLabs = (labs || []).filter((lab: any) =>
-    lab.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const labPackages = (labs || [])
+    .filter((lab: any) => lab.isLabPackage === true)
+    .filter((lab: any) => lab.name.toLowerCase().includes(searchPackages.toLowerCase()));
+
+  const individualTests = (labs || [])
+    .filter((lab: any) => lab.isLabPackage === false)
+    .filter((lab: any) => lab.name.toLowerCase().includes(searchTests.toLowerCase()));
 
   if (profileLoading || isLoading) {
     return <CdLoader />;
@@ -73,29 +78,77 @@ export default function LabsPage() {
         <div className="bg-muted h-fit px-4 sm:px-8 md:px-12 lg:px-20 pb-4">
           <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
             <div>
-              <p className="text-4xl font-bold text-gray-800">
-                {filteredLabs.length} packages available for booking
-              </p>
-              <div className="flex items-center gap-2 mt-5">
-                <CircleCheckBig className="text-green-700 h-6 w-6" />
-                <p className="text-lg">
-                  Book Lab package with certified Lab Technicians
-                </p>
-              </div>
+              <>
+                {labPackages.length > 0 && (
+                  <>
+                    <p className="text-4xl font-bold text-gray-800">
+                      {labPackages.length} packages available for booking
+                    </p>
+                    <div className="flex items-center gap-2 mt-5">
+                      <CircleCheckBig className="text-green-700 h-6 w-6" />
+                      <p className="text-lg">
+                        Book Lab package with certified Lab Technicians
+                      </p>
+                    </div>
+                  </>
+                )}
+
+              </>
+
             </div>
             <div className="mt-4 md:mt-0">
               <input
                 type="text"
                 placeholder="Search lab package..."
                 className="border border-gray-300 rounded-md px-4 py-2 w-full md:w-80 text-gray-500 focus:border-primary focus:outline-none"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchPackages}
+                onChange={(e) => setSearchPackages(e.target.value)}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
-            {filteredLabs.map((lab: any) => (
+            {labPackages.map((lab: any) => (
+              <LabCard key={lab.id} labPackage={lab} handleBookAppointment={handleBookAppointment} />
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="bookPackages">
+        <div className="bg-muted h-fit px-4 sm:px-8 md:px-12 lg:px-20 pb-4">
+          <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
+            <div>
+              <>
+                {individualTests.length > 0 && (
+                  <>
+                    <p className="text-4xl font-bold text-gray-800">
+                      {individualTests.length} tests available for booking
+                    </p>
+                    <div className="flex items-center gap-2 mt-5">
+                      <CircleCheckBig className="text-green-700 h-6 w-6" />
+                      <p className="text-lg">
+                        Book Lab tests with certified Lab Technicians
+                      </p>
+                    </div>
+                  </>
+                )}
+
+              </>
+
+            </div>
+            <div className="mt-4 md:mt-0">
+              <input
+                type="text"
+                placeholder="Search lab tests..."
+                className="border border-gray-300 rounded-md px-4 py-2 w-full md:w-80 text-gray-500 focus:border-primary focus:outline-none"
+                value={searchTests}
+                onChange={(e) => setSearchTests(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
+            {individualTests.map((lab: any) => (
               <LabCard key={lab.id} labPackage={lab} handleBookAppointment={handleBookAppointment} />
             ))}
           </div>

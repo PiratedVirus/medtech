@@ -22,8 +22,9 @@ import {
   HeartPulse,
   Hospital,
   Leaf,
-  IndianRupee
-
+  IndianRupee,
+  LogOut,
+  Link as LinkIcon
 } from "lucide-react"
 import { useState } from "react"
 
@@ -31,12 +32,14 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
-interface SidebarNavProps extends React.HTMLAttributes<HTMLDivElement> {}
 
-export function SidebarNav({ className, ...props }: SidebarNavProps) {
+interface SidebarNavProps extends React.HTMLAttributes<HTMLDivElement> {
+  logout: () => void;
+}
+
+export function SidebarNav({ className, logout, ...props }: SidebarNavProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(true) // Set to true for default collapsed state
-
   const routes = [
     {
       href: "/admin",
@@ -64,6 +67,11 @@ export function SidebarNav({ className, ...props }: SidebarNavProps) {
       href: "/admin/doctors",
       icon: Stethoscope,
       title: "Doctors",
+    },
+    {
+      href: "/admin/doctors/referral-links",
+      icon: LinkIcon,
+      title: "Referral Links",
     },
     {
       href: "/admin/appointments",
@@ -139,11 +147,9 @@ export function SidebarNav({ className, ...props }: SidebarNavProps) {
             </div>
           </div>
           <div className="px-3 py-2 border-t">
-            <Button variant="outline" className="w-full justify-start" asChild>
-              <Link href="/logout">
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign Out
-              </Link>
+            <Button onClick={logout} variant="outline" className="w-full justify-start">
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
             </Button>
           </div>
         </SheetContent>
@@ -189,36 +195,13 @@ export function SidebarNav({ className, ...props }: SidebarNavProps) {
             </div>
           </div>
           <div className="mt-auto px-3 py-2 border-t">
-            <Button variant="outline" className={cn("w-full", collapsed ? "justify-center" : "justify-start")} asChild>
-              <Link href="/logout" title={collapsed ? "Sign Out" : undefined}>
-                <LogOut className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Sign Out"}
-              </Link>
+            <Button onClick={logout} variant="outline" className="w-full justify-start">
+              <LogOut className={cn("h-4 w-4", !collapsed && "mr-1")} />
+              {!collapsed && "Sign Out"}
             </Button>
           </div>
         </div>
       </div>
     </>
-  )
-}
-
-function LogOut(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" x2="9" y1="12" y2="12" />
-    </svg>
   )
 }

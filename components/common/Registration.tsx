@@ -8,23 +8,48 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label"
+import { useEffect } from "react"
+
 const registrationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   age: z.string().min(1, "Age must be at least 1."),
   gender: z.enum(["Male", "Female", "Other"]).refine((val) => val !== undefined, {
     message: "Please select a gender.",
   }),
+  doctorCode: z.string().optional().refine((val) => {
+    if (!val) return true; // Optional field
+    return /^[A-Z0-9]{6}$/.test(val); // 6 characters, alphanumeric, uppercase
+  }, "Doctor code must be 6 characters long and contain only uppercase letters and numbers"),
 })
 
-export default function RegistrationForm({ onSubmit }: { onSubmit: (data: any) => void }) {
+interface RegistrationFormProps {
+  onSubmit: (data: any) => void;
+  preFilledDoctorCode?: string | null;
+  isDoctorCodeDisabled?: boolean;
+}
+
+export default function RegistrationForm({ 
+  onSubmit, 
+  preFilledDoctorCode,
+  isDoctorCodeDisabled = false 
+}: RegistrationFormProps) {
   const form = useForm({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
       name: "",
       age: "",
       gender: "Male" as "Male" | "Female" | "Other",
+      doctorCode: preFilledDoctorCode || "",
     },
-  })
+  });
+
+  // Update form when preFilledDoctorCode changes
+  useEffect(() => {
+    if (preFilledDoctorCode) {
+      form.setValue("doctorCode", preFilledDoctorCode);
+    }
+  }, [preFilledDoctorCode, form]);
 
   return (
     <Form {...form}>
@@ -34,15 +59,11 @@ export default function RegistrationForm({ onSubmit }: { onSubmit: (data: any) =
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-gray-600 text-sm font-medium">Name</FormLabel>
+              <FormLabel>Name</FormLabel>
               <FormControl>
-                <Input
-                  placeholder="Enter your name"
-                  {...field}
-                  className="h-14 px-6 rounded-[16px] border-gray-200 bg-white text-lg placeholder:text-gray-300 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-custom-green"
-                />
+                <Input placeholder="Enter your name" {...field} />
               </FormControl>
-              <FormMessage className="text-sm" />
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -51,20 +72,15 @@ export default function RegistrationForm({ onSubmit }: { onSubmit: (data: any) =
           name="age"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-gray-600 text-sm font-medium">Age</FormLabel>
+              <FormLabel>Age</FormLabel>
               <FormControl>
-                <Input
-                  type="text"
-                  placeholder="Enter your age"
-                  {...field}
-                  className="h-14 px-6 rounded-[16px] border-gray-200 bg-white text-lg placeholder:text-gray-300 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-custom-green"
-                />
+                <Input type="number" placeholder="Enter your age" {...field} />
               </FormControl>
-              <FormMessage className="text-sm" />
+              <FormMessage />
             </FormItem>
           )}
         />
-      <FormField
+        <FormField
           control={form.control}
           name="gender"
           render={({ field }) => (
@@ -88,12 +104,27 @@ export default function RegistrationForm({ onSubmit }: { onSubmit: (data: any) =
             </FormItem>
           )}
         />
-        <Button
-          type="submit"
-          className="w-full mt-3 h-14 bg-[#f28a2e] hover:bg-[#f28a2e]/90 rounded-[16px] text-white text-lg font-normal shadow-[0px_12px_21px_4px_rgba(224,126,41,0.33)]"
-        >
-          Register
-        </Button>
+        <FormField
+          control={form.control}
+          name="doctorCode"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Doctor Code {!isDoctorCodeDisabled && "(Optional)"}</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="Enter doctor code"
+                  {...field}
+                  maxLength={6}
+                  disabled={isDoctorCodeDisabled}
+                  onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                  className={isDoctorCodeDisabled ? "bg-gray-100" : ""}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" className="w-full mt-5">Register</Button>
       </form>
     </Form>
   )

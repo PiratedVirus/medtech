@@ -6,13 +6,14 @@ import { put } from "@vercel/blob";
 import axios from "axios";
 
 // UI Components
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import TotalEarningsCard from "@/components/admin/TotalEarningsCard";
 import { PlanUsageMinimal } from "@/components/patients/plans/PlanUsage";
+import { HealthInsightsPanel } from "@/components/admin/HealthInsightsPanel";
 
 // Icons
 import {
@@ -50,10 +51,11 @@ interface Plan {
   startDate: string;
   endDate: string;
   isActive: boolean;
-  payment?: Payment | null; // Added payment property
+  payment?: Payment | null;
 }
 
 interface Payment {
+  id?: number;
   amount: number;
   currency: string;
   paymentStatus: string;
@@ -66,9 +68,8 @@ interface LabBooking {
   labPackageName: string;
   date: string;
   status: string;
-  reportLink?: string | null;
+  reportLink?: string[] | null;
   payment?: Payment | null;
-
 }
 
 interface DoctorAppointment {
@@ -111,26 +112,34 @@ interface PlanUsage {
   ophthalmologistConsultationDates?: string[];
 }
 
-const PatientDetailsPage = () => {
+interface PatientDetailsClientProps {
+  patientId: string;
+}
+
+const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
   // State Management
   const [patientDetails, setPatientDetails] = useState<PatientDetails | null>(null);
   const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
   const [uploadingAppointmentId, setUploadingAppointmentId] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [activeSubscription, setActiveSubscription] = useState<Plan | null>(null);
 
   // Hooks
   const router = useRouter();
-  const { patientId } = useParams();
 
   // Data Fetching
   useEffect(() => {
-    fetchPatientDetails();
+    if (patientId) {
+      fetchPatientDetails();
+    }
   }, [patientId]);
 
   useEffect(() => {
-    if (patientDetails?.subscriptions?.[0]?.id) {
-      fetchPlanUsage(patientDetails.subscriptions[0].id);
+    const activeSub = patientDetails?.subscriptions?.find(sub => sub.isActive);
+    setActiveSubscription(activeSub || null);
+    if (activeSub?.id) {
+      fetchPlanUsage(activeSub.id);
     }
   }, [patientDetails]);
 
@@ -146,7 +155,7 @@ const PatientDetailsPage = () => {
   const fetchPlanUsage = async (subscriptionId: number) => {
     try {
       const res = await axios.get(`/api/plans/planUsage?subscriptionId=${subscriptionId}`);
-      setPlanUsage(res.data.data.subscriptionTracker);
+      setPlanUsage(res?.data?.data?.subscriptionTracker || null);
     } catch (err) {
       console.error("Failed to fetch plan usage:", err);
     }
@@ -175,14 +184,12 @@ const PatientDetailsPage = () => {
         : `/api/admin/dashboard/appointments`;
 
       const payload = type === 'labReport'
-        ? { labBookingId: id, link: url }
-        : { appointmentId: id, link: url };
+        ? { labBookingId: id, links: [url], status: "COMPLETED" }
+        : { appointmentId: id, link: url, status: "COMPLETED" };
 
       await axios.put(endpoint, payload);
 
-      // Refresh data
       await fetchPatientDetails();
-
       setUploadSuccess(true);
       toast.success(`${type === 'prescription' ? 'Prescription' : type === 'dietPlan' ? 'Diet Plan' : 'Lab Report'} uploaded successfully.`);
 
@@ -198,7 +205,6 @@ const PatientDetailsPage = () => {
     }
   };
 
-  // Multiple Files Upload Handler
   const handleMultipleFilesUpload = async (
     files: FileList,
     id: number,
@@ -213,23 +219,20 @@ const PatientDetailsPage = () => {
       for (const file of files) {
         const arrayBuffer = await file.arrayBuffer();
         const fileName = `${patientDetails?.name.replace(/\s+/g, "-")}-${type}-${id}-${file.name}`;
-
         const { url } = await put(fileName, arrayBuffer, {
           access: "public",
           token: process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN,
         });
-
         uploadedLinks.push(url);
       }
 
       await axios.put(`/api/admin/dashboard/patients-details`, {
         labBookingId: id,
         links: uploadedLinks,
+        status: "COMPLETED"
       });
 
-      // Refresh data
       await fetchPatientDetails();
-
       setUploadSuccess(true);
       toast.success("Lab reports uploaded successfully.");
 
@@ -295,7 +298,6 @@ const PatientDetailsPage = () => {
       <div className="absolute -right-10 -top-6 opacity-10">
         <User size={200} />
       </div>
-
       {/* Content */}
       <div className="relative space-y-4">
         <div className="flex justify-between items-center my-4">
@@ -312,7 +314,6 @@ const PatientDetailsPage = () => {
             </div>
           )}
         </div>
-
         <div className="flex flex-wrap gap-2 mt-4">
           {patientDetails && [
             { icon: <Calendar className="h-4 w-4 flex-shrink-0" />, label: "Age", value: `${patientDetails.profile.age} yrs` },
@@ -526,6 +527,18 @@ const PatientDetailsPage = () => {
     </Card>
   );
 
+  // Manual payment collection handler
+  const handleCollectPayment = async (paymentId: number) => {
+    try {
+      await axios.put("/api/admin/dashboard/patients-details", { paymentId });
+      await fetchPatientDetails();
+      toast.success("Payment marked as PAID.");
+    } catch (err) {
+      console.error("Payment update failed", err);
+      toast.error("Failed to collect payment.");
+    }
+  };
+
   const PaymentHistorySection = () => (
     <div className="rounded-lg p-4 bg-slate-50">
       <h3 className="font-semibold mb-2">Payment History</h3>
@@ -549,7 +562,29 @@ const PatientDetailsPage = () => {
                   <td className="px-4 py-2">Appointment</td>
                   <td className="px-4 py-2">{appointment.doctorName}</td>
                   <td className="px-4 py-2">{appointment.payment.currency} {(appointment.payment.amount / 100)}</td>
-                  <td className="px-4 py-2">{appointment.payment.paymentStatus}</td>
+                  <td className="px-4 py-2 flex items-center gap-2">
+                    {appointment.payment.paymentStatus === "Pending" ? (
+                      <>
+                        <Badge variant="destructive">Pending</Badge>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button size="sm">Collect</Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogTitle>Confirm Payment Collection</DialogTitle>
+                            <p>Are you sure you want to mark this payment as PAID?</p>
+                            <div className="mt-4 flex justify-end gap-2">
+                              <Button variant="outline" onClick={() => handleCollectPayment((appointment as any).payment.id!)}>
+                                Confirm
+                              </Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </>
+                    ) : (
+                      <span>Paid</span>
+                    )}
+                  </td>
                   <td className="px-4 py-2">{appointment.payment.razorpayPaymentId ? "Online" : "Offline"}</td>
                   <td className="px-4 py-2">{new Date(appointment.payment.createdAt).toLocaleDateString()}</td>
                 </tr>
@@ -558,13 +593,35 @@ const PatientDetailsPage = () => {
 
             {/* Lab Bookings Payments */}
             {patientDetails?.labBookings.map(labBooking => (
-              labBooking.reportLink ? (
+              labBooking.payment ? (
                 <tr key={`lab-${labBooking.id}`} className="border-b">
                   <td className="px-4 py-2">Lab Booking</td>
                   <td className="px-4 py-2">{labBooking.labPackageName}</td>
                   <td className="px-4 py-2">{labBooking.payment?.currency ?? 'INR'} {(labBooking.payment?.amount ?? 0) / 100}</td>
-                  <td className="px-4 py-2">{labBooking.status}</td>
-                  <td className="px-4 py-2">--</td>
+                  <td className="px-4 py-2 flex items-center gap-2">
+                    {labBooking.payment.paymentStatus === "Pending" ? (
+                      <>
+                        <Badge variant="destructive">Pending</Badge>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant={"ghost"} className="text-secondary" size="sm">Collect</Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogTitle>Confirm Payment Collection</DialogTitle>
+                            <p>Are you sure you want to mark this payment as PAID?</p>
+                            <div className="mt-4 flex justify-end gap-2">
+                              <Button variant="outline" onClick={() => handleCollectPayment((labBooking as any).payment.id!)}>
+                                Confirm
+                              </Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </>
+                    ) : (
+                      <span>Paid</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2">{labBooking.payment.razorpayPaymentId ? "Online" : "Offline"}</td>
                   <td className="px-4 py-2">{new Date(labBooking.date).toLocaleDateString()}</td>
                 </tr>
               ) : null
@@ -576,7 +633,29 @@ const PatientDetailsPage = () => {
                 <td className="px-4 py-2">Subscription</td>
                 <td className="px-4 py-2">{plan.planName}</td>
                 <td className="px-4 py-2">{plan.payment?.currency ?? 'INR'} {(plan.payment?.amount ?? 0) / 100}</td>
-                <td className="px-4 py-2">Active</td>
+                <td className="px-4 py-2 flex items-center gap-2">
+                  {plan.payment?.paymentStatus === "Pending" ? (
+                    <>
+                      <Badge variant="destructive">Pending</Badge>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant={"ghost"} className="text-secondary" size="sm">Collect</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogTitle>Confirm Payment Collection</DialogTitle>
+                          <p>Are you sure you want to mark this payment as PAID?</p>
+                          <div className="mt-4 flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => handleCollectPayment((plan as any).payment!.id!)}>
+                              Confirm
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </>
+                  ) : (
+                    <span>Paid</span>
+                  )}
+                </td>
                 <td className="px-4 py-2">Online</td>
                 <td className="px-4 py-2">{new Date(plan.endDate).toLocaleDateString()}</td>
               </tr>
@@ -606,22 +685,22 @@ const PatientDetailsPage = () => {
           <div className="col-span-1">
             <PlanUsageMinimal
               userId={Number(patientDetails.id)}
-              subscriptionId={patientDetails.subscriptions[0]?.id}
+              subscriptionId={activeSubscription?.id}
             />
           </div>
 
           {/* Earnings Card */}
           <TotalEarningsCard
             patientDetails={{
-              doctorAppointments: patientDetails.doctorAppointments.map(a => ({
-                payment: a.payment ? { amount: a.payment.amount } : undefined,
-              })),
-              plans: patientDetails.subscriptions.map(p => ({
-                amount: p.payment?.amount,
-              })),
-              labBookings: patientDetails.labBookings.map(lb => ({
-                payment: lb.payment ? { amount: lb.payment.amount } : undefined,
-              })),
+              doctorAppointments: patientDetails.doctorAppointments
+                .filter(a => a.payment?.paymentStatus.toLowerCase() === "paid")
+                .map(a => ({ payment: { amount: a.payment!.amount } })),
+              plans: patientDetails.subscriptions
+                .filter(p => p.payment?.paymentStatus.toLowerCase() === "paid")
+                .map(p => ({ amount: p.payment!.amount })),
+              labBookings: patientDetails.labBookings
+                .filter(lb => lb.payment?.paymentStatus.toLowerCase() === "paid")
+                .map(lb => ({ payment: { amount: lb.payment!.amount } })),
             }}
           />
 
@@ -639,10 +718,15 @@ const PatientDetailsPage = () => {
 
           {/* Payment History */}
           <PaymentHistorySection />
+
+          {/* Health Insights */}
+          <div className="col-span-full">
+            <HealthInsightsPanel patientId={patientId} />
+          </div>
         </div>
       </div>
     </>
   );
 };
 
-export default PatientDetailsPage;
+export default PatientDetailsClient;

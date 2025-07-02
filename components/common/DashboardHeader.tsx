@@ -25,6 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { useDecryptedProfile } from "@/hooks/use-profile";
 
 const fullNavigation = [
   { name: "Home", href: "/dashboard", current: true, icon: Home },
@@ -41,11 +42,12 @@ const mobileNavigation = [
   { name: "Doctors", href: "/dashboard/doctors", icon: ShieldPlus },
   { name: "Plans", href: "/dashboard/plans", icon: LayoutGrid },
   { name: "Labs", href: "/dashboard/labs", icon: TestTubeDiagonal },
-  { name: "Profile", href: "/dashboard/profile", icon: User }, // we’ll replace this one
+  { name: "Profile", href: "/dashboard/profile", icon: User }, // we'll replace this one
 ];
 
 export function DashboardHeader() {
   const { profile } = useProfile();
+  const { isDoctor } = useDecryptedProfile();
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const pathname = usePathname();
@@ -67,6 +69,14 @@ export function DashboardHeader() {
     ...item,
     current: pathname === item.href,
   }));
+
+  const handleProfileClick = () => {
+    if (isDoctor) {
+      router.push("/dashboard/profile");
+    } else {
+      router.push("/dashboard/patient-profile");
+    }
+  };
 
   return (
     <>
@@ -102,7 +112,7 @@ export function DashboardHeader() {
               </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-white text-black w-32">
-              <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
+              <DropdownMenuItem onClick={handleProfileClick}>
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
@@ -132,7 +142,7 @@ export function DashboardHeader() {
           </Link>
         ))}
 
-        {/* “More” dropdown in place of Profile */}
+        {/* "More" dropdown in place of Profile */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -149,7 +159,7 @@ export function DashboardHeader() {
             <DropdownMenuItem onClick={() => router.push("/dashboard/dieticians")}>
               Dieticians
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
+            <DropdownMenuItem onClick={handleProfileClick}>
               Profile
             </DropdownMenuItem>
           </DropdownMenuContent>

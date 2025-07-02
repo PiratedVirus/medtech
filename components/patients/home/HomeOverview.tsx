@@ -39,9 +39,11 @@ export default function HomeOverview() {
   useEffect(() => {
     console.log("Profile", profile);
     if (profile?.id) {
-      fetchSubscriptionTracker(profile.id).then((data) => {
-        console.log("Plan Tracker Data", data);
-      });
+      if (profile?.subscriptionDetails?.subscriptionId) {
+        fetchSubscriptionTracker(profile.id).then((data) => {
+          console.log("Plan Tracker Data", data);
+        });
+      }
       // Fetch the latest dietician link
       const fetchDieticianLink = async () => {
         try {

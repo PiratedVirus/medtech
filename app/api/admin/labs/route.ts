@@ -31,7 +31,12 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    const labPackage = await prisma.labPackage.create({ data });
+    const labPackage = await prisma.labPackage.create({
+      data: {
+        ...data,
+        isLabPackage: data.isLabPackage ?? false,
+      },
+    });
     return NextResponse.json({ data: labPackage, message: "Lab created successfully" });
   } catch (error) {
     return NextResponse.json({ error: "Failed to create labPackage" }, { status: 500 });
@@ -46,7 +51,10 @@ export async function PUT(request: Request) {
 
     const labPackage = await prisma.labPackage.update({
       where: { id },
-      data,
+      data: {
+        ...data,
+        isLabPackage: data.isLabPackage ?? false,
+      },
     });
     return NextResponse.json({ data: labPackage, message: "Lab updated successfully" });
   } catch (error) {

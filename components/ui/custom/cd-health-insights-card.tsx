@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Pencil } from "lucide-react";
 import { AreaChart } from "@/components/ui/chart";
 import Image from "next/image";
+import { useQueryClient } from "@tanstack/react-query";
 
 // -- shadcn UI imports --
 import {
@@ -70,6 +71,9 @@ export default function HealthInsightsCard({
   const [newReading, setNewReading] = useState("");
   const [recordedAt, setRecordedAt] = useState("");
 
+  // Get query client for cache invalidation
+  const queryClient = useQueryClient();
+
   // Handle form submission
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -88,7 +92,9 @@ export default function HealthInsightsCard({
       if (json.success) {
         toast.success("New record added!");
         setIsModalOpen(false);
-        // Optionally re-fetch data or invalidate React Query
+        // Invalidate both the insights panel and detailed insights queries
+        await queryClient.invalidateQueries({ queryKey: ["insightsPanel", userId] });
+        await queryClient.invalidateQueries({ queryKey: ["insights", userId] });
       } else {
         toast.error(`Error: ${json.error}`);
       }

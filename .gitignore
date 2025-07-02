@@ -1,8 +1,10 @@
 .next
 .git
-.env
+.env*
 .DS_Store
 node_modules
 next-env.d.ts
 prisma/migrations
 prisma/seeds
+/*.sql
+/*.dump

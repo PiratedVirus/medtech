@@ -58,6 +58,7 @@ interface Lab {
   price: number;
   parameters?: string;
   criticalRequirements?: string;
+  isLabPackage?: boolean;
 }
 
 interface FetchLabsResponse {
@@ -78,9 +79,11 @@ const fetchLabs = async (pageIndex: number, pageSize: number): Promise<FetchLabs
 interface CreateLabData {
   name: string;
   description?: string;
+  shortDescription?: string;
   price: number;
   parameters?: string;
   criticalRequirements?: string;
+  isLabPackage?: boolean;
 }
 
 const createLab = async (data: CreateLabData): Promise<Lab | null> => {
@@ -100,6 +103,7 @@ interface UpdateLabData {
   price: number;
   parameters?: string;
   criticalRequirements?: string;
+  isLabPackage?: boolean;
 }
 
 const updateLab = async (id: number, data: UpdateLabData): Promise<Lab | null> => {
@@ -299,6 +303,7 @@ export default function LabsPage() {
       setValue("price", selectedLab.price);
       setValue("parameters", selectedLab.parameters);
       setValue("criticalRequirements", selectedLab.criticalRequirements);
+      setValue("isLabPackage", selectedLab.isLabPackage ?? false);
     } else {
       reset();
     }
@@ -311,6 +316,7 @@ export default function LabsPage() {
     price: number;
     parameters?: string;
     criticalRequirements?: string;
+    isLabPackage?: boolean;
   }
 
   const onSubmit = async (formData: FormData) => {
@@ -325,7 +331,11 @@ export default function LabsPage() {
           .join(", ");
       }
 
-  
+      // Ensure isLabPackage is always boolean
+      if (!formData.isLabPackage) {
+        formData.isLabPackage = false;
+      }
+
       if (selectedLab) {
         await updateLab(selectedLab.id, formData);
         toast.success("Lab updated successfully");
@@ -498,6 +508,10 @@ export default function LabsPage() {
             <Input type="number" {...register("price", { required: true })} placeholder="Price" />
             <Input {...register("parameters")} placeholder="Parameters (comma-separated)" />
             <Input {...register("criticalRequirements")} placeholder="Critical Requirements" />
+            <label className="flex items-center space-x-2">
+              <input type="checkbox" {...register("isLabPackage")} />
+              <span>Is it a Lab Package Test?</span>
+            </label>
             <DialogFooter>
               <Button
                 type="button"
