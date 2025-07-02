@@ -203,16 +203,16 @@ export default function AdminLabBookingsPage() {
         uploadedLinks.push(url);
       }
 
-      await axios.patch(`/api/admin/dashboard/lab-bookings`, {
+      const res = await axios.patch(`/api/admin/dashboard/lab-bookings`, {
         id,
         links: uploadedLinks,
       });
 
       await fetchData();
+      setSelectedBooking(res.data.data);
       setUploadSuccess(true);
       toast.success("Lab reports uploaded successfully.");
       setTimeout(() => {
-        setUploadingBookingId(null);
         setUploadSuccess(false);
       }, 1500);
     } catch (err) {
@@ -271,9 +271,10 @@ export default function AdminLabBookingsPage() {
 
   const removeReport = async (id: number, url: string) => {
     try {
-      await axios.patch(`/api/admin/dashboard/lab-bookings`, { id, remove: url });
+      const res = await axios.patch(`/api/admin/dashboard/lab-bookings`, { id, remove: url });
       toast.success("Report removed");
       await fetchData();
+      setSelectedBooking(res.data.data);
     } catch (err) {
       console.error("Remove failed", err);
       toast.error("Failed to remove report");
