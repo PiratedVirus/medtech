@@ -6,22 +6,22 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { useRouter } from "next/navigation";
 import { User } from "lucide-react";
 
-export function PatientViewCard() {
-  const [newPatients, setNewPatients] = useState<Patient[]>([]);
+export function AllPatientsCard() {
+  const [allPatients, setAllPatients] = useState<Patient[]>([]);
   const router = useRouter();
 
   useEffect(() => {
-    const fetchNewPatients = async () => {
+    const fetchAllPatients = async () => {
       try {
-        const response = await axios.get("/api/admin/dashboard/recent-patients");
-        console.log("New Patients Data:", response.data);
-        setNewPatients(response.data);
+        const response = await axios.get("/api/admin/dashboard/patients-details");
+        console.log("All Patients Data:", response.data);
+        setAllPatients(response.data);
       } catch (error) {
-        console.error("Failed to fetch new patients:", error);
+        console.error("Failed to fetch all patients:", error);
       }
     };
 
-    fetchNewPatients();
+    fetchAllPatients();
   }, []);
 
   interface Patient {
@@ -44,8 +44,8 @@ export function PatientViewCard() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {newPatients.map((patient) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {allPatients.map((patient) => (
         <Card
           key={patient.id}
           onClick={() => handleCardClick(patient.id)}
@@ -77,4 +77,4 @@ export function PatientViewCard() {
       ))}
     </div>
   );
-}
+} 

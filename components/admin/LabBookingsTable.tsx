@@ -7,11 +7,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 export function LabBookingsTable() {
   interface LabBooking {
-    id: string;
-    patient: { name: string };
-    labPackage: { name: string };
-    date: string;
-    status: string;
+    id: number
+    patient: { name: string }
+    labPackage: { name: string }
+    labDate: string
+    status: string
   }
 
   const [labBookings, setLabBookings] = useState<LabBooking[]>([]);
@@ -19,8 +19,8 @@ export function LabBookingsTable() {
   useEffect(() => {
     const fetchLabBookings = async () => {
       try {
-        const response = await axios.get("/api/admin/dashboard/lab-bookings");
-        setLabBookings(response.data);
+        const response = await axios.get("/api/admin/dashboard/lab-bookings?pageSize=5");
+        setLabBookings(response.data.data);
       } catch (error) {
         console.error("Failed to fetch lab bookings:", error);
       }
@@ -44,7 +44,7 @@ export function LabBookingsTable() {
           <TableRow key={booking.id} className="hover:bg-[rgba(86,166,124,0.05)]">
             <TableCell className="font-medium">{booking.patient.name}</TableCell>
             <TableCell>{booking.labPackage.name}</TableCell>
-            <TableCell>{new Date(booking.date).toLocaleDateString()}</TableCell>
+            <TableCell>{new Date(booking.labDate).toLocaleDateString()}</TableCell>
             <TableCell>
               <Badge
                 variant={

@@ -144,8 +144,17 @@ export default function DashboardPage() {
         <div className="grid md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Lab Bookings</CardTitle>
-              <CardDescription>View and manage recent laboratory test bookings</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Recent Lab Bookings</CardTitle>
+                  <CardDescription>View and manage recent laboratory test bookings</CardDescription>
+                </div>
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/admin/lab-bookings">
+                    Manage Lab Bookings
+                  </Link>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <LabBookingsTable />
@@ -154,8 +163,17 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>New Patients This Week</CardTitle>
-              <CardDescription>Patients who registered in the last 7 days</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>New Patients This Week</CardTitle>
+                  <CardDescription>Patients who registered in the last 7 days</CardDescription>
+                </div>
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/admin/patients">
+                    View All Patients
+                  </Link>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <PatientViewCard />
