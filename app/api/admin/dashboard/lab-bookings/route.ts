@@ -60,3 +60,19 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Failed to update lab booking" }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { id } = await request.json();
+
+    if (!id) {
+      return NextResponse.json({ error: "Missing id" }, { status: 400 });
+    }
+
+    await prisma.labBooking.delete({ where: { id } });
+
+    return NextResponse.json({ message: "Lab booking deleted" });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to delete lab booking" }, { status: 500 });
+  }
+}

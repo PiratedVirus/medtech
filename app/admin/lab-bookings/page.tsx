@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { EditIcon, Trash } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -32,7 +33,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Card } from "@/components/ui/card";
 
 interface LabBooking {
   id: number;
@@ -73,6 +73,9 @@ export default function AdminLabBookingsPage() {
   const [uploadingBookingId, setUploadingBookingId] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<LabBooking | null>(null);
+  const [editStatus, setEditStatus] = useState<string>("");
 
   const columns: ColumnDef<LabBooking>[] = [
     {
@@ -96,24 +99,9 @@ export default function AdminLabBookingsPage() {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => (
-        <Select
-          value={row.original.status}
-          onValueChange={async (value) => {
-            await updateStatus(row.original.id, value);
-            await fetchData();
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder={row.original.status} />
-          </SelectTrigger>
-          <SelectContent className="bg-white text-black">
-            {statusOptions.map((s) => (
-              <SelectItem key={s} value={s} className="capitalize">
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Badge variant="outline" className="capitalize">
+          {row.original.status}
+        </Badge>
       ),
     },
     {
@@ -146,6 +134,32 @@ export default function AdminLabBookingsPage() {
               </DialogContent>
             </Dialog>
           )}
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => (
+        <div className="space-x-2">
+          <Button
+            size="sm"
+            className="bg-transparent text-primary border-0 shadow-none"
+            onClick={() => {
+              setSelectedBooking(row.original);
+              setEditStatus(row.original.status);
+              setDialogOpen(true);
+            }}
+          >
+            <EditIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => deleteBooking(row.original.id)}
+          >
+            <Trash className="h-4 w-4" />
+          </Button>
         </div>
       ),
     },
@@ -254,6 +268,17 @@ export default function AdminLabBookingsPage() {
     </div>
   );
 
+  const deleteBooking = async (id: number) => {
+    try {
+      await axios.delete("/api/admin/dashboard/lab-bookings", { data: { id } });
+      toast.success("Lab booking deleted successfully");
+      await fetchData();
+    } catch (error) {
+      console.error("Error deleting lab booking:", error);
+      toast.error("Failed to delete lab booking");
+    }
+  };
+
   return (
     <div className="container mx-auto p-4 space-y-4 bg-white">
       <ToastContainer />
@@ -316,63 +341,44 @@ export default function AdminLabBookingsPage() {
           </Button>
         </div>
       </div>
-      <Card className="rounded-lg p-4 bg-custom-mutedgreen">
-        <h3 className="font-semibold text-xl mb-4">Lab Results</h3>
-        <div className="flex flex-wrap gap-4">
-          {data.bookings.map((booking) => (
-            <Card
-              key={booking.id}
-              className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center"
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogTitle>Edit Booking Status</DialogTitle>
+          <Select value={editStatus} onValueChange={setEditStatus}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent className="bg-white text-black">
+              {statusOptions.map((s) => (
+                <SelectItem key={s} value={s} className="capitalize">
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
             >
-              <h4 className="font-medium mb-2">
-                <b>{booking.labPackage?.name}</b>
-              </h4>
-              <p className="text-sm mb-4">
-                Booked on {new Date(booking.labDate).toLocaleDateString()}
-              </p>
-              <div className="mt-auto flex items-center justify-between">
-                {Array.isArray(booking.labResult) && booking.labResult.length > 0 ? (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        View Reports
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogTitle>Lab Reports</DialogTitle>
-                      <div className="flex flex-wrap gap-2">
-                        {booking.labResult.map((url, index) => (
-                          <a key={index} href={url} target="_blank" rel="noopener noreferrer">
-                            <Button variant="outline" size="sm" className="whitespace-nowrap">
-                              {decodeURIComponent(url.split("/").pop() || `LabReport-${index + 1}`)}
-                            </Button>
-                          </a>
-                        ))}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                ) : (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button size="sm" onClick={() => setUploadingBookingId(booking.id)}>
-                        Upload Report
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogTitle>Upload Lab Report PDF</DialogTitle>
-                      <UploadDropZone />
-                      {uploading && <p>Uploading...</p>}
-                      {uploadSuccess && (
-                        <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
-                      )}
-                    </DialogContent>
-                  </Dialog>
-                )}
-              </div>
-            </Card>
-          ))}
-        </div>
-      </Card>
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (selectedBooking) {
+                  await updateStatus(selectedBooking.id, editStatus);
+                  setDialogOpen(false);
+                  setSelectedBooking(null);
+                  await fetchData();
+                }
+              }}
+            >
+              Save
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
