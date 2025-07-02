@@ -126,7 +126,7 @@ export default function AdminLabBookingsPage() {
               </DialogTrigger>
               <DialogContent>
                 <DialogTitle>Upload Lab Report PDF</DialogTitle>
-                <UploadDropZone />
+                <UploadDropZone bookingId={uploadingBookingId} />
                 {uploading && <p>Uploading...</p>}
                 {uploadSuccess && (
                   <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
@@ -147,7 +147,8 @@ export default function AdminLabBookingsPage() {
             className="bg-transparent text-primary border-0 shadow-none"
             onClick={() => {
               setSelectedBooking(row.original);
-              setEditStatus(row.original.status);
+              setEditStatus(row.original.status.toLowerCase());
+              setUploadingBookingId(row.original.id);
               setDialogOpen(true);
             }}
           >
@@ -202,8 +203,8 @@ export default function AdminLabBookingsPage() {
         uploadedLinks.push(url);
       }
 
-      await axios.put(`/api/admin/dashboard/patients-details`, {
-        labBookingId: id,
+      await axios.patch(`/api/admin/dashboard/lab-bookings`, {
+        id,
         links: uploadedLinks,
       });
 
@@ -222,14 +223,14 @@ export default function AdminLabBookingsPage() {
     }
   };
 
-  const UploadDropZone = () => (
+  const UploadDropZone = ({ bookingId }: { bookingId: number | null }) => (
     <div
       className="w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary transition"
       onDrop={async (e) => {
         e.preventDefault();
         const files = e.dataTransfer.files;
-        if (files && uploadingBookingId) {
-          await handleMultipleFilesUpload(files, uploadingBookingId);
+        if (files && bookingId) {
+          await handleMultipleFilesUpload(files, bookingId);
         }
       }}
       onDragOver={(e) => e.preventDefault()}
@@ -258,8 +259,8 @@ export default function AdminLabBookingsPage() {
             multiple
             hidden
             onChange={async (e) => {
-              if (uploadingBookingId && e.target.files) {
-                await handleMultipleFilesUpload(e.target.files, uploadingBookingId);
+              if (bookingId && e.target.files) {
+                await handleMultipleFilesUpload(e.target.files, bookingId);
               }
             }}
           />
@@ -267,6 +268,17 @@ export default function AdminLabBookingsPage() {
       </div>
     </div>
   );
+
+  const removeReport = async (id: number, url: string) => {
+    try {
+      await axios.patch(`/api/admin/dashboard/lab-bookings`, { id, remove: url });
+      toast.success("Report removed");
+      await fetchData();
+    } catch (err) {
+      console.error("Remove failed", err);
+      toast.error("Failed to remove report");
+    }
+  };
 
   const deleteBooking = async (id: number) => {
     try {
@@ -341,41 +353,68 @@ export default function AdminLabBookingsPage() {
           </Button>
         </div>
       </div>
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setUploadingBookingId(null); }}>
         <DialogContent>
-          <DialogTitle>Edit Booking Status</DialogTitle>
-          <Select value={editStatus} onValueChange={setEditStatus}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent className="bg-white text-black">
-              {statusOptions.map((s) => (
-                <SelectItem key={s} value={s} className="capitalize">
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="flex justify-end space-x-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                if (selectedBooking) {
-                  await updateStatus(selectedBooking.id, editStatus);
-                  setDialogOpen(false);
-                  setSelectedBooking(null);
-                  await fetchData();
-                }
-              }}
-            >
-              Save
-            </Button>
+          <DialogTitle>Edit Booking</DialogTitle>
+          <div className="space-y-4">
+            <Select value={editStatus} onValueChange={setEditStatus}>
+              <SelectTrigger>
+                <SelectValue className="capitalize" placeholder="Select status">{editStatus}</SelectValue>
+              </SelectTrigger>
+              <SelectContent className="bg-white text-black">
+                {statusOptions.map((s) => (
+                  <SelectItem key={s} value={s} className="capitalize">
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {selectedBooking?.labResult && selectedBooking.labResult.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">Existing Reports</h4>
+                <div className="flex flex-wrap gap-2">
+                  {selectedBooking.labResult.map((url, idx) => (
+                    <div key={idx} className="flex items-center gap-1">
+                      <a href={url} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm" className="whitespace-nowrap">View {idx + 1}</Button>
+                      </a>
+                      <Button variant="destructive" size="icon" onClick={() => removeReport(selectedBooking.id, url)}>
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <h4 className="font-medium mb-2">Upload Reports</h4>
+              <UploadDropZone bookingId={uploadingBookingId} />
+              {uploading && <p>Uploading...</p>}
+              {uploadSuccess && (
+                <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (selectedBooking) {
+                    await updateStatus(selectedBooking.id, editStatus);
+                    setDialogOpen(false);
+                    setSelectedBooking(null);
+                    setUploadingBookingId(null);
+                    await fetchData();
+                  }
+                }}
+              >
+                Save
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

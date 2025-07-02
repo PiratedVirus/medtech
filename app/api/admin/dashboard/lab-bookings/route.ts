@@ -76,3 +76,41 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Failed to delete lab booking" }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const { id, links, remove } = await request.json();
+
+    if (!id) {
+      return NextResponse.json({ error: "Missing id" }, { status: 400 });
+    }
+
+    const existing = await prisma.labBooking.findUnique({
+      where: { id },
+      select: { labResult: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
+    let updatedResults = existing.labResult || [];
+
+    if (Array.isArray(links) && links.length > 0) {
+      updatedResults = [...updatedResults, ...links];
+    }
+
+    if (remove) {
+      updatedResults = updatedResults.filter((url) => url !== remove);
+    }
+
+    const updated = await prisma.labBooking.update({
+      where: { id },
+      data: { labResult: { set: updatedResults } },
+    });
+
+    return NextResponse.json({ data: updated });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to update lab results" }, { status: 500 });
+  }
+}
