@@ -19,7 +19,7 @@ export function LabBookingsTable() {
   useEffect(() => {
     const fetchLabBookings = async () => {
       try {
-        const response = await axios.get("/api/admin/dashboard/lab-bookings");
+        const response = await axios.get("/api/admin/dashboard/lab-bookings?pageSize=5");
         setLabBookings(response.data.data);
       } catch (error) {
         console.error("Failed to fetch lab bookings:", error);

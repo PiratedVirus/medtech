@@ -1,15 +1,15 @@
-import { PatientViewCard } from "@/components/admin/PatientViewCard";
+import { AllPatientsCard } from "@/components/admin/AllPatientsCard";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 
 export default function PatientCardsPage() {
   return (
     <Card>
     <CardHeader>
-      <CardTitle>Your Patients </CardTitle>
+      <CardTitle>All Patients</CardTitle>
       <CardDescription>Patients who registered till now</CardDescription>
     </CardHeader>
     <CardContent>
-      <PatientViewCard />
+      <AllPatientsCard />
     </CardContent>
   </Card>
   );
