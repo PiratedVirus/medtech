@@ -6,12 +6,12 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
-    const doctorId = parseInt(searchParams.get("doctorId") || "0");
+    const userId = parseInt(searchParams.get("userId") || "0");
 
     let where: any = {};
     
-    if (doctorId) {
-      where.doctorId = doctorId;
+    if (userId) {
+      where.userId = userId;
     }
 
     const [slots, total] = await prisma.$transaction([
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     
     const newSlot = await prisma.doctorAvailability.create({
       data: {
-        doctorId: Number(data.doctorId),
+        userId: Number(data.userId),
         date: new Date(data.date),
         startTime: data.startTime,
         endTime: data.endTime,
@@ -94,7 +94,7 @@ export async function PUT(request: Request) {
     const updatedSlot = await prisma.doctorAvailability.update({
       where: { id },
       data: {
-        doctorId: data.doctorId,
+        userId: data.userId,
         date: new Date(data.date),
         startTime: data.startTime,
         endTime: data.endTime,

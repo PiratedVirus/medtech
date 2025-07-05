@@ -10,12 +10,12 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const doctorId = session.user.doctorProfile.id;
+    const userId = session.user.id;
 
     // Get total appointments
     const totalAppointments = await prisma.appointment.count({
       where: {
-        doctorId,
+        userId,
         deletedAt: null,
       },
     });
@@ -23,7 +23,7 @@ export async function GET() {
     // Get upcoming appointments
     const upcomingAppointments = await prisma.appointment.count({
       where: {
-        doctorId,
+        userId,
         date: {
           gte: new Date(),
         },
@@ -38,7 +38,7 @@ export async function GET() {
     const totalPatients = await prisma.appointment.groupBy({
       by: ["patientId"],
       where: {
-        doctorId,
+        userId,
         deletedAt: null,
       },
       _count: true,
@@ -47,7 +47,7 @@ export async function GET() {
     // Get total earnings from completed appointments
     const completedAppointments = await prisma.appointment.findMany({
       where: {
-        doctorId,
+        userId,
         status: "COMPLETED",
         deletedAt: null,
       },

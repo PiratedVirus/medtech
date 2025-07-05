@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
           }
         },
         doctorAvailability: {
-          select: { id: true, doctorId: true, date: true, startTime: true, endTime: true },
+          select: { id: true, userId: true, date: true, startTime: true, endTime: true },
         },
       },
       orderBy: [{ appointmentDate: "asc" }, { doctorAvailability: { date: "asc" } }],
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
           }
         },
         doctorAvailability: {
-          select: { id: true, doctorId: true, date: true, startTime: true, endTime: true },
+          select: { id: true, userId: true, date: true, startTime: true, endTime: true },
         },
       },
       orderBy: [{ appointmentDate: "desc" }], // Most recent past appointment first
@@ -165,12 +165,12 @@ export async function GET(request: NextRequest) {
  *   "email": "a@a.com",
  *   "slot": {
  *     "id": 119,
- *     "doctorId": 1,
+ *     "userId": 1,
  *     "date": "2025-02-28T19:07:34.082Z",
  *     "startTime": "10:00 AM",
  *     "endTime": "10:30 AM"
  *   },
- *   "doctorId": 1,
+ *   "userId": 1,
  *   "patientId": 4,
  *   "paymentMethod": "online"
  * }
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
       mobile,
       email,
       slot,
-      doctorId,
+      userId,
       patientId,
       consultationMode,
       paymentMethod,
@@ -200,10 +200,10 @@ export async function POST(request: Request) {
 
     const consultationType = consultationMode === "video" ? "Video" : "Physical";
 
-    if (!patientId || !doctorId || !slot?.id) {
-      console.error("Missing required fields", { patientId, doctorId, slot });
+    if (!patientId || !userId || !slot?.id) {
+      console.error("Missing required fields", { patientId, userId, slot });
       return NextResponse.json(
-        { success: false, error: "Missing required fields: patientId, doctorId, slot.id" },
+        { success: false, error: "Missing required fields: patientId, userId, slot.id" },
         { status: 400 }
       );
     }
@@ -214,7 +214,7 @@ export async function POST(request: Request) {
       const appointment = await tx.appointment.create({
         data: {
           patientId,
-          doctorId,
+          userId,
           doctorAvailabilityId: slot.id,
           appointmentFor,
           fullName,

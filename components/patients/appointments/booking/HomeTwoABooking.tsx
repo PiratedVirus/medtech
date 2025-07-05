@@ -139,7 +139,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
     const appointmentData = {
       ...data,
       slot,
-      doctorId: doctor.id,
+      userId: doctor.id,
       patientId: profile?.id,
       paymentMethod,
       razorpayResponse,

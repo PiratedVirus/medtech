@@ -52,7 +52,7 @@ const dayRanges = Array.from({ length: DAYS_PER_PAGE }, (_, i) => {
     // 4) Fetch available slots for the doctor within the generated day ranges
     const availability = await prisma.doctorAvailability.findMany({
       where: {
-        doctorId: doctorProfile.id,
+        userId,
         status: "available",
         deletedAt: null,
         OR: dayRanges.map(({ start, end }) => ({
@@ -68,7 +68,7 @@ const dayRanges = Array.from({ length: DAYS_PER_PAGE }, (_, i) => {
         // console.log("Counting slots for day:", dateObj.toISOString(), "start:", start, "end:", end);
         const count = await prisma.doctorAvailability.count({
           where: {
-            doctorId: doctorProfile.id,
+            userId,
             status: "available",
             deletedAt: null,
             date: { gte: start, lte: end },

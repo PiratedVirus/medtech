@@ -141,14 +141,14 @@ model LabTechProfile {
 
 model DoctorAvailability {
   id           Int           @id @default(autoincrement())
-  doctorId     Int
+  userId       Int
   date         DateTime      @db.Date
   startTime    String
   endTime      String
   status       String
   deletedAt    DateTime?
   appointments Appointment[]
-  doctor       DoctorProfile @relation(fields: [doctorId], references: [id])
+  doctor       User          @relation(fields: [userId], references: [id])
 
   @@index([deletedAt])
 }
@@ -168,7 +168,7 @@ model DieticianAvailability {
 model Appointment {
   id                   Int                  @id @default(autoincrement())
   patientId            Int
-  doctorId             Int
+  userId               Int
   consultationType     String
   doctorAvailabilityId Int
   prescriptionLink     String?
@@ -185,7 +185,7 @@ model Appointment {
   updatedAt            DateTime?            @updatedAt
   deletedAt            DateTime?
   doctorAvailability   DoctorAvailability   @relation(fields: [doctorAvailabilityId], references: [id])
-  doctor               User                 @relation("Doctor", fields: [doctorId], references: [id])
+  doctor               User                 @relation("Doctor", fields: [userId], references: [id])
   patient              User                 @relation("Patient", fields: [patientId], references: [id])
   subscriptionTracker  SubscriptionTracker? @relation(fields: [subscriptionId], references: [subscriptionId])
   payment              Payment?             @relation("AppointmentPayment")

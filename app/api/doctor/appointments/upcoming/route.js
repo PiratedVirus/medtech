@@ -17,11 +17,11 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const doctorId = user.doctorProfile.id;
+    const userId = user.id;
 
     const appointments = await prisma.appointment.findMany({
       where: {
-        doctorId,
+        userId,
         appointmentDate: {
           gte: new Date(),
         },
