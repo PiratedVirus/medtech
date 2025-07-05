@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     const payments = await prisma.payment.findMany({
       where: {
         appointment: {
-          doctorId,
+          userId: doctorId,
           ...(search
             ? {
                 OR: [

@@ -12,9 +12,9 @@ export async function GET() {
     const doctorId = session.user.doctorProfile.id;
 
     const [totalSlots, bookedSlots] = await prisma.$transaction([
-      prisma.doctorAvailability.count({ where: { doctorId, deletedAt: null } }),
+      prisma.doctorAvailability.count({ where: { userId: doctorId, deletedAt: null } }),
       prisma.appointment.count({
-        where: { doctorId, deletedAt: null },
+        where: { userId: doctorId, deletedAt: null },
       }),
     ]);
 
