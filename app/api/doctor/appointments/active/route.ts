@@ -1,15 +1,38 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { cookies } from "next/headers";
+import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession();
-    // if (!session?.user?.doctorProfile?.id) {
-    //   return new NextResponse("Unauthorized", { status: 401 });
-    // }
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+    if (!token) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
 
-    const doctorId = session.user.doctorProfile?.id;
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET!);
+    } catch (err) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const phoneNumber = decoded.plusAddedPhoneNumber as string | undefined;
+    if (!phoneNumber) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { phoneNumber },
+      include: { doctorProfile: true },
+    });
+
+    if (!user?.doctorProfile?.id) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const doctorId = user.id;
     const { searchParams } = new URL(request.url);
     const dateStr = searchParams.get("date");
 

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { useDecryptedProfile } from "@/hooks/use-profile";
+import CdLoader from "@/components/ui/custom/cd-loader";
 
 // Define Payment type for state
 interface Payment {
@@ -16,18 +18,44 @@ interface Payment {
 }
 
 export default function DoctorEarningsPage() {
+  const { profile, isLoading: profileLoading } = useDecryptedProfile();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [earnings, setEarnings] = useState({ total: 0, appointment: 0 });
   const [search, setSearch] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function fetchPayments() {
-      const res = await axios.get(`/api/doctor/earnings?search=${search}`);
-      setPayments(res.data.payments);
-      setEarnings(res.data.earnings);
+      if (!profile?.id) return;
+      
+      try {
+        setIsLoading(true);
+        const res = await axios.get(`/api/doctor/earnings`);
+        setPayments(res.data.payments);
+        setEarnings(res.data.earnings);
+      } catch (error) {
+        console.error("Error fetching earnings:", error);
+      } finally {
+        setIsLoading(false);
+      }
     }
-    fetchPayments();
-  }, [search]);
+    
+    if (profile?.id) {
+      fetchPayments();
+    }
+  }, [profile?.id, search]);
+
+  if (profileLoading || isLoading) {
+    return <CdLoader />;
+  }
+
+  if (!profile) {
+    return (
+      <div className="container mx-auto p-4">
+        <p className="text-center text-gray-600">Please log in to view your earnings.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4 space-y-4">

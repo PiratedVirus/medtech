@@ -1,20 +1,54 @@
 'use client'
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChevronDown } from 'lucide-react';
+import axios from 'axios';
+import { useDecryptedProfile } from '@/hooks/use-profile';
 
-const data = [
-  { month: 'Jan', earnings: 12000 },
-  { month: 'Feb', earnings: 15000 },
-  { month: 'Mar', earnings: 18000 },
-  { month: 'Apr', earnings: 14000 },
-  { month: 'May', earnings: 20000 },
-  { month: 'Jun', earnings: 22000 },
+// Default data for chart
+const defaultData = [
+  { month: 'Jan', earnings: 0 },
+  { month: 'Feb', earnings: 0 },
+  { month: 'Mar', earnings: 0 },
+  { month: 'Apr', earnings: 0 },
+  { month: 'May', earnings: 0 },
+  { month: 'Jun', earnings: 0 },
 ];
 
 export default function DoctorEarningsWidget() {
-  const total = 15069;
-  const period = 'Monthly';
+  const { profile } = useDecryptedProfile();
+  const [earnings, setEarnings] = useState({ total: 0, appointment: 0 });
+  const [data, setData] = useState(defaultData);
+  const [period, setPeriod] = useState('Monthly');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchEarnings() {
+      if (!profile?.id) return;
+      
+      try {
+        setIsLoading(true);
+        const res = await axios.get(`/api/doctor/earnings`);
+        setEarnings(res.data.earnings);
+        
+        // For now, we'll use the total earnings to populate the chart
+        // In a real implementation, you'd want to fetch monthly data
+        const monthlyData = defaultData.map((item, index) => ({
+          ...item,
+          earnings: Math.floor(res.data.earnings.total / 6) + (index * 1000) // Simple distribution
+        }));
+        setData(monthlyData);
+      } catch (error) {
+        console.error("Error fetching earnings:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    if (profile?.id) {
+      fetchEarnings();
+    }
+  }, [profile?.id]);
 
   return (
     <div className="relative col-span-3 rounded-[2.5rem] min-h-[320px] flex flex-col justify-between px-8 py-7 bg-gradient-to-tr from-[#1e5636] to-[#2e8b57] overflow-hidden shadow-none">
@@ -24,7 +58,9 @@ export default function DoctorEarningsWidget() {
         <div className="flex items-start justify-between mb-2">
           <div>
             <div className="text-white text-3xl font-semibold leading-tight">Total Earnings</div>
-            <div className="text-[#e6ffe6] text-xl font-medium mt-2">Rs.{total.toLocaleString()}</div>
+            <div className="text-[#e6ffe6] text-xl font-medium mt-2">
+              {isLoading ? 'Loading...' : `Rs.${earnings.total.toLocaleString()}`}
+            </div>
           </div>
           <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[#6ee7b7] bg-transparent text-white text-lg font-medium hover:bg-[#134F30]/30 transition">
             {period}

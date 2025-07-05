@@ -32,35 +32,14 @@ export async function GET(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const doctorId = user.doctorProfile.id;
+    const doctorId = user.id;
 
-    const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search") || "";
+    console.log("doctorId as ",doctorId);
 
     const payments = await prisma.payment.findMany({
       where: {
         appointment: {
           userId: doctorId,
-          ...(search
-            ? {
-                OR: [
-                  {
-                    patient: {
-                      name: { contains: search, mode: "insensitive" },
-                    },
-                  },
-                  {
-                    appointmentFor: {
-                      contains: search,
-                      mode: "insensitive",
-                    },
-                  },
-                  {
-                    id: isNaN(Number(search)) ? undefined : Number(search),
-                  },
-                ],
-              }
-            : {}),
         },
       },
       include: {

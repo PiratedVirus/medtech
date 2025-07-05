@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useDecryptedProfile } from '@/hooks/use-profile';
 
 interface Appointment {
   patient: { name: string };
@@ -12,20 +13,30 @@ function getDateString(date: Date) {
 }
 
 export default function DoctorActivePatients() {
+  const { profile } = useDecryptedProfile();
   const [selectedDate, setSelectedDate] = useState(() => getDateString(new Date()));
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function fetchAppointments() {
+      if (!profile?.id) return;
+      
       try {
+        setIsLoading(true);
         const res = await axios.get(`/api/doctor/appointments/active?date=${selectedDate}`);
         setAppointments(res.data.appointments || []);
       } catch (err) {
         console.error('Failed to load appointments', err);
+      } finally {
+        setIsLoading(false);
       }
     }
-    fetchAppointments();
-  }, [selectedDate]);
+    
+    if (profile?.id) {
+      fetchAppointments();
+    }
+  }, [selectedDate, profile?.id]);
 
   const handlePrev = () => {
     const prev = new Date(selectedDate);
@@ -37,6 +48,16 @@ export default function DoctorActivePatients() {
     next.setDate(next.getDate() + 1);
     setSelectedDate(getDateString(next));
   };
+
+  if (!profile) {
+    return (
+      <div className="bg-gradient-to-br from-[#56A67C] to-[#134F30] rounded-3xl p-6 shadow-md w-full">
+        <div className="text-center text-white">
+          <p>Please log in to view your active patients.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gradient-to-br from-[#56A67C] to-[#134F30] rounded-3xl p-6 shadow-md w-full">
@@ -63,13 +84,23 @@ export default function DoctorActivePatients() {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {appointments.map((appt, idx) => (
-          <div key={idx} className="rounded-lg px-4 py-3 flex flex-col bg-white shadow-sm">
-            <span className="text-xs text-gray-500 font-medium">{appt.doctorAvailability.startTime}</span>
-            <span className="font-semibold text-gray-800">{appt.patient.name}</span>
-            <span className="text-xs text-gray-500">{`${appt.doctorAvailability.startTime}-${appt.doctorAvailability.endTime}`}</span>
+        {isLoading ? (
+          <div className="col-span-full text-center text-white">
+            <p>Loading appointments...</p>
           </div>
-        ))}
+        ) : appointments.length > 0 ? (
+          appointments.map((appt, idx) => (
+            <div key={idx} className="rounded-lg px-4 py-3 flex flex-col bg-white shadow-sm">
+              <span className="text-xs text-gray-500 font-medium">{appt.doctorAvailability.startTime}</span>
+              <span className="font-semibold text-gray-800">{appt.patient.name}</span>
+              <span className="text-xs text-gray-500">{`${appt.doctorAvailability.startTime}-${appt.doctorAvailability.endTime}`}</span>
+            </div>
+          ))
+        ) : (
+          <div className="col-span-full text-center text-white">
+            <p>No appointments for this date.</p>
+          </div>
+        )}
       </div>
     </div>
   );

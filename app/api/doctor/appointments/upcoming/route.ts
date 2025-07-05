@@ -1,23 +1,38 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { cookies } from "next/headers";
+import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const session = await getServerSession();
-
-    // Check if session or session.user is null
-    if (!session || !session.user) {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+    if (!token) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const user = session.user;
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET!);
+    } catch (err) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const phoneNumber = decoded.plusAddedPhoneNumber as string | undefined;
+    if (!phoneNumber) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { phoneNumber },
+      include: { doctorProfile: true },
+    });
 
     if (!user?.doctorProfile?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const doctorId = user.doctorProfile.id;
+    const doctorId = user.id;
 
     const appointments = await prisma.appointment.findMany({
       where: {
@@ -31,6 +46,7 @@ export async function GET() {
         deletedAt: null,
       },
       include: {
+        patient: { select: { name: true } },
         payment: {
           select: {
             amount: true,
@@ -62,11 +78,14 @@ export async function GET() {
     const transformedAppointments = appointments.map((appointment) => ({
       id: appointment.id,
       patientId: appointment.patientId,
+      patient: appointment.patient,
+      doctor: { name: user.name }, // Add doctor info
       date: appointment.doctorAvailability.date.toISOString(),
       startTime: appointment.doctorAvailability.startTime,
       endTime: appointment.doctorAvailability.endTime,
       status: appointment.status,
       consultationType: appointment.consultationType,
+      doctorAvailability: appointment.doctorAvailability,
       payment: appointment.payment
         ? {
             amount: appointment.payment.amount,
@@ -75,7 +94,7 @@ export async function GET() {
         : null,
     }));
 
-    return NextResponse.json(transformedAppointments);
+    return NextResponse.json({ appointments: transformedAppointments });
   } catch (error) {
     console.error("Error fetching upcoming appointments:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
