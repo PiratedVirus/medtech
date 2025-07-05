@@ -3,11 +3,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-// Dummy: Replace with real doctorId from auth context
-const doctorId = 4; // Dr. Setu Gupta
 
 // Define Payment type for state
 interface Payment {
@@ -26,7 +22,7 @@ export default function DoctorEarningsPage() {
 
   useEffect(() => {
     async function fetchPayments() {
-      const res = await axios.get(`/api/doctor/earnings?doctorId=${doctorId}&search=${search}`);
+      const res = await axios.get(`/api/doctor/earnings?search=${search}`);
       setPayments(res.data.payments);
       setEarnings(res.data.earnings);
     }
