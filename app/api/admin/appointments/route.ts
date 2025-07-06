@@ -79,7 +79,7 @@ export async function GET(request: Request) {
     // Extract unique doctor IDs for video consultations
     const videoDoctorIds = appointments
       .filter(app => app.consultationType === "Video")
-      .map(app => app.doctorId);
+      .map(app => app.userId);
     const uniqueDoctorIds = [...new Set(videoDoctorIds)];
     
     let doctorProfilesByUserId: { [key: number]: { meetingRoomLink: string; ownerToken1: string } } = {};
@@ -98,10 +98,10 @@ export async function GET(request: Request) {
     const transformedAppointments = appointments.map(appointment => {
       const { doctor, doctorAvailability, ...rest } = appointment;
       const additionalData =
-        appointment.consultationType === "Video" && doctorProfilesByUserId[appointment.doctorId]
+        appointment.consultationType === "Video" && doctorProfilesByUserId[appointment.userId]
           ? {
-              meetingRoomLink: doctorProfilesByUserId[appointment.doctorId].meetingRoomLink,
-              ownerToken1: doctorProfilesByUserId[appointment.doctorId].ownerToken1,
+              meetingRoomLink: doctorProfilesByUserId[appointment.userId].meetingRoomLink,
+              ownerToken1: doctorProfilesByUserId[appointment.userId].ownerToken1,
             }
           : {};
       return {
@@ -164,7 +164,7 @@ export async function POST(request: Request) {
   const appointment = await prisma.appointment.create({
     data: {
       status: "Scheduled",
-      doctorId: data.doctorId,
+      userId: data.doctorId,
       doctorAvailabilityId: data.doctorAvailabilityId,
       consultationType: data.consultationType, // Set consultationType from data
       patientId: data.patientId,
@@ -239,7 +239,7 @@ export async function PUT(request: Request) {
         where: { id },
         data: {
           status: data.status,
-          doctorId: data.doctorId,
+          userId: data.doctorId,
           doctorAvailabilityId: data.doctorAvailabilityId,
           consultationType: data.consultationType,
           patientId: data.patientId,

@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   if (doctorId) {
     where = {
       ...where,
-      doctorId,
+      userId: doctorId,
     }
   }
     try {

@@ -8,3 +8,5 @@ prisma/migrations
 prisma/seeds
 /*.sql
 /*.dump
+db-backups
+backup_db.sh

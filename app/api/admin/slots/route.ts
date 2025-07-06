@@ -10,9 +10,9 @@ export async function GET(request: Request) {
 
     let where: any = {};
     
-    if (doctorId) {
-      where.doctorId = doctorId;
-    }
+      if (doctorId) {
+    where.userId = doctorId;
+  }
 
     const [slots, total] = await prisma.$transaction([
       prisma.doctorAvailability.findMany({
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     
     const newSlot = await prisma.doctorAvailability.create({
       data: {
-        doctorId: Number(data.doctorId),
+        userId: Number(data.doctorId),
         date: new Date(data.date),
         startTime: data.startTime,
         endTime: data.endTime,
@@ -94,7 +94,7 @@ export async function PUT(request: Request) {
     const updatedSlot = await prisma.doctorAvailability.update({
       where: { id },
       data: {
-        doctorId: data.doctorId,
+        userId: data.doctorId,
         date: new Date(data.date),
         startTime: data.startTime,
         endTime: data.endTime,

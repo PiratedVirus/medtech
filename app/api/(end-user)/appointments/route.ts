@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
           }
         },
         doctorAvailability: {
-          select: { id: true, doctorId: true, date: true, startTime: true, endTime: true },
+          select: { id: true, userId: true, date: true, startTime: true, endTime: true },
         },
       },
       orderBy: [{ appointmentDate: "asc" }, { doctorAvailability: { date: "asc" } }],
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
           }
         },
         doctorAvailability: {
-          select: { id: true, doctorId: true, date: true, startTime: true, endTime: true },
+          select: { id: true, userId: true, date: true, startTime: true, endTime: true },
         },
       },
       orderBy: [{ appointmentDate: "desc" }], // Most recent past appointment first
@@ -214,7 +214,7 @@ export async function POST(request: Request) {
       const appointment = await tx.appointment.create({
         data: {
           patientId,
-          doctorId,
+          userId: doctorId,
           doctorAvailabilityId: slot.id,
           appointmentFor,
           fullName,
