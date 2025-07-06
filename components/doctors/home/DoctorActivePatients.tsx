@@ -1,91 +1,214 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useDecryptedProfile } from '@/hooks/use-profile';
+import { Calendar, Clock, User } from 'lucide-react';
 
-// Placeholder for appointments fetching
-const mockAppointments = [
-  { time: '08:00 am', patient: { name: 'Cooper Franci', time: '08:00-08:30 am', color: 'bg-[#F9E3E3]' } },
-  { time: '08:30 am', patient: { name: 'Alfonso Gouse', time: '08:30-09:00 am', color: 'bg-[#E3F9E7]' } },
-  { time: '09:00 am', patient: { name: 'Giana Bator', time: '09:00-09:30 am', color: 'bg-[#E3F9F7]' } },
-  { time: '09:30 am', break: true },
-  { time: '10:00 am', patient: { name: 'Emerson Dor', time: '10:00-10:30 am', color: 'bg-[#E3F0F9]' } },
-  { time: '10:30 am', patient: { name: 'Kaylynn Botosh', time: '10:30-11:00 am', color: 'bg-[#F9E3F3]' } },
-  { time: '11:00 am', patient: { name: 'Kaiya Workman', time: '11:00-11:30 am', color: 'bg-[#E3F9E7]' } },
-  { time: '11:30 am', patient: { name: 'Kaiya Bator', time: '11:30-12:00 pm', color: 'bg-[#E3F9F7]' } },
-  { time: '12:00 pm', break: true },
-  { time: '02:00 pm', patient: { name: 'Zaire Lubin', time: '02:00-02:30 pm', color: 'bg-[#E3F0F9]' } },
-  { time: '02:30 pm', patient: { name: 'Talan Mango', time: '02:30-03:00 pm', color: 'bg-[#F9E3E3]' } },
-  { time: '03:00 pm', patient: { name: 'Skylar Culhane', time: '03:00-03:30 pm', color: 'bg-[#E3F9E7]' } },
-  { time: '03:30 pm', patient: { name: 'Alfredo', time: '03:30-04:00 pm', color: 'bg-[#E3F9F7]' } },
-  { time: '04:00 pm', patient: { name: 'Carter George', time: '04:00-04:30 pm', color: 'bg-[#E3F0F9]' } },
-  { time: '04:30 pm', patient: { name: 'Jocelyn Work', time: '04:30-05:00 pm', color: 'bg-[#E3F9F7]' } },
+interface Appointment {
+  id: string;
+  patient: { name: string };
+  doctorAvailability: { 
+    date: string;
+    startTime: string; 
+    endTime: string; 
+  };
+  status: string;
+}
+
+// Soft accent colors for left border
+const CARD_ACCENTS = [
+  'border-l-4 border-emerald-400',
+  'border-l-4 border-teal-400',
+  'border-l-4 border-blue-300',
+  'border-l-4 border-lime-400',
+  'border-l-4 border-cyan-300',
+  'border-l-4 border-yellow-300',
+  'border-l-4 border-pink-300',
+  'border-l-4 border-purple-300',
+  'border-l-4 border-orange-300',
+  'border-l-4 border-fuchsia-300',
+  'border-l-4 border-rose-300',
+  'border-l-4 border-green-300',
 ];
 
-function getDateString(date: Date) {
-  return date.toISOString().split('T')[0];
+function formatDate(dateString: string) {
+  const date = new Date(dateString);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  if (date.toDateString() === today.toDateString()) {
+    return 'Today';
+  } else if (date.toDateString() === tomorrow.toDateString()) {
+    return 'Tomorrow';
+  } else {
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  }
+}
+
+function formatTime(timeString: string) {
+  const [hours, minutes] = timeString.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
+}
+
+function getStatusColor(status: string) {
+  switch (status.toLowerCase()) {
+    case 'cancelled':
+      return 'bg-red-100 text-red-700 border border-red-200';
+    case 'scheduled':
+      return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+    case 'completed':
+      return 'bg-green-100 text-green-700 border border-green-200';
+    case 'confirmed':
+      return 'bg-green-100 text-green-700 border border-green-200';
+    case 'pending':
+      return 'bg-orange-100 text-orange-700 border border-orange-200';
+    default:
+      return 'bg-gray-100 text-gray-700 border border-gray-200';
+  }
 }
 
 export default function DoctorActivePatients() {
-  const [selectedDate, setSelectedDate] = useState(() => getDateString(new Date()));
+  const { profile } = useDecryptedProfile();
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // TODO: Replace with real API fetch for appointments by date
-  const appointments = mockAppointments;
+  useEffect(() => {
+    async function fetchAppointments() {
+      if (!profile?.id) return;
+      try {
+        setIsLoading(true);
+        const res = await axios.get('/api/doctor/appointments/upcoming');
+        setAppointments(res.data.appointments || []);
+      } catch (err) {
+        console.error('Failed to load appointments', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    if (profile?.id) {
+      fetchAppointments();
+    }
+  }, [profile?.id]);
 
-  // Date navigation
-  const handlePrev = () => {
-    const prev = new Date(selectedDate);
-    prev.setDate(prev.getDate() - 1);
-    setSelectedDate(getDateString(prev));
-  };
-  const handleNext = () => {
-    const next = new Date(selectedDate);
-    next.setDate(next.getDate() + 1);
-    setSelectedDate(getDateString(next));
-  };
+  // Group appointments by date
+  const grouped: { [date: string]: Appointment[] } = {};
+  appointments.forEach((appt) => {
+    const date = appt.doctorAvailability.date.split('T')[0];
+    if (!grouped[date]) grouped[date] = [];
+    grouped[date].push(appt);
+  });
+  const sortedDates = Object.keys(grouped).sort();
 
-  // For now, use a single column for full width
-  return (
-    <div className="bg-gradient-to-br from-[#56A67C] to-[#134F30] rounded-3xl p-6 shadow-md w-full">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-semibold text-white">Active Patients</h2>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSelectedDate(getDateString(new Date()))}
-            className="bg-white text-green-700 px-2 py-1 rounded-lg font-medium text-sm"
-          >
-            Today
-          </button>
-          <button
-            onClick={() => {
-              const tom = new Date();
-              tom.setDate(tom.getDate() + 1);
-              setSelectedDate(getDateString(tom));
-            }}
-            className="bg-white text-green-700 px-2 py-1 rounded-lg font-medium text-sm"
-          >
-            Tomorrow
-          </button>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="bg-white text-green-700 border border-white px-2 py-1 rounded-lg font-medium text-sm"
-          />
+  // Flatten appointments with date info for column distribution
+  const flatAppointments: { appointment: Appointment; date: string }[] = [];
+  sortedDates.forEach(date => {
+    grouped[date].forEach(appt => {
+      flatAppointments.push({ appointment: appt, date });
+    });
+  });
 
+  // Only show up to 12 appointments
+  const limitedAppointments = flatAppointments.slice(0, 12);
+
+  // Distribute into 3 columns, max 4 per col
+  const columns: { appointment: Appointment; date: string }[][] = [[], [], []];
+  limitedAppointments.forEach((item, idx) => {
+    columns[idx % 3].push(item);
+  });
+
+  // Track which dates have been rendered in each column
+  function renderColumn(col: { appointment: Appointment; date: string }[], colIdx: number) {
+    let lastDate = '';
+    return col.map((item, idx) => {
+      const showDate = item.date !== lastDate;
+      lastDate = item.date;
+      // Pick a color for the left border (cycled for distinction)
+      const accentIdx = (colIdx * 4 + idx) % CARD_ACCENTS.length;
+      const accentClass = CARD_ACCENTS[accentIdx];
+      return (
+        <React.Fragment key={item.appointment.id}>
+          {showDate && (
+            <div className="flex items-center gap-2 mt-4 mb-1">
+              <Calendar className="h-4 w-4 text-white/80" />
+              <h3 className="text-white font-semibold text-lg">
+                {formatDate(item.date)}
+              </h3>
+            </div>
+          )}
+          <div className={`relative rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow mb-4 bg-muted ${accentClass}`}>
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-700">
+                  {formatTime(item.appointment.doctorAvailability.startTime)}
+                </span>
+              </div>
+              <span className={`absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.appointment.status)}`}>
+                {item.appointment.status.charAt(0).toUpperCase() + item.appointment.status.slice(1)}
+              </span>
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-semibold text-gray-800 text-base">
+                {item.appointment.patient.name}
+              </h4>
+              <p className="text-sm text-gray-600">
+                {formatTime(item.appointment.doctorAvailability.startTime)} - {formatTime(item.appointment.doctorAvailability.endTime)}
+              </p>
+            </div>
+          </div>
+        </React.Fragment>
+      );
+    });
+  }
+
+  if (!profile) {
+    return (
+      <div className="bg-gradient-to-br from-[#56A67C] to-[#134F30] rounded-3xl p-6 shadow-md w-full">
+        <div className="text-center text-white">
+          <p>Please log in to view your active patients.</p>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {appointments.map((slot, idx) => (
-          slot.break ? (
-            <div key={idx} className="bg-[#1B6B46] text-white text-center rounded-lg py-2 font-semibold">Break Time</div>
-          ) : slot.patient ? (
-            <div key={idx} className={`rounded-lg px-4 py-3 flex flex-col ${slot.patient.color} shadow-sm`}>
-              <span className="text-xs text-gray-500 font-medium">{slot.time}</span>
-              <span className="font-semibold text-gray-800">{slot.patient.name}</span>
-              <span className="text-xs text-gray-500">{slot.patient.time}</span>
-            </div>
-          ) : null
-        ))}
+    );
+  }
+
+  return (
+    <div className="bg-gradient-to-tr to-[#56A67C] from-[#134F30] rounded-3xl p-6 shadow-md w-full">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <User className="h-6 w-6 text-white" />
+          <h2 className="text-2xl font-semibold text-white">Active Patients</h2>
+        </div>
+        <div className="text-white text-sm">
+          Next {limitedAppointments.length} appointments
+        </div>
       </div>
+      {isLoading ? (
+        <div className="text-center text-white">
+          <p>Loading appointments...</p>
+        </div>
+      ) : limitedAppointments.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {columns.map((col, idx) => (
+            <div key={idx}>{renderColumn(col, idx)}</div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center text-white">
+          <div className="mb-4">
+            <Calendar className="h-12 w-12 mx-auto text-white/60" />
+          </div>
+          <p className="text-lg font-medium">No upcoming appointments</p>
+          <p className="text-sm text-white/80 mt-1">You're all caught up!</p>
+        </div>
+      )}
     </div>
   );
-} 
+}

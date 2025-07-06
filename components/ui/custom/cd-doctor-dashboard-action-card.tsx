@@ -3,14 +3,12 @@
 import React from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import { ArrowRight } from "lucide-react";
 
 export interface DoctorDashboardActionCardProps {
   href: string;
   headerLabel: string;
   cardTitle: string;
   cardDescription: string;
-  ctaText: string;
   PrimaryIcon: React.ElementType;
   OutlineIcon: React.ElementType;
   ctaIcon?: React.ElementType;
@@ -24,7 +22,6 @@ export default function DoctorDashboardActionCard({
   headerLabel,
   cardTitle,
   cardDescription,
-  ctaText,
   PrimaryIcon,
   OutlineIcon,
   ctaIcon: CtaIcon,
@@ -32,10 +29,9 @@ export default function DoctorDashboardActionCard({
   primaryIconColor = "#134F30",
   outlineIconColor = "#134F30",
 }: DoctorDashboardActionCardProps) {
-  const CTAIcon = CtaIcon ? CtaIcon : ArrowRight;
   return (
     <Link href={href} className="block">
-      <Card className="group relative w-full h-[130px] overflow-hidden border border-gray-100 bg-custom-mutedgreen shadow-sm transition-all duration-300 hover:shadow-md">
+      <Card className="group relative w-full h-[120px] overflow-hidden border border-gray-100 bg-custom-mutedgreen shadow-sm transition-all duration-300 hover:shadow-md">
         {/* Background outline icon rendered with reduced opacity */}
         <div className="absolute -right-8 -top-4 h-28 w-28 opacity-5">
           <OutlineIcon className="h-full w-full" style={{ color: outlineIconColor }} />
@@ -55,11 +51,7 @@ export default function DoctorDashboardActionCard({
             <h3 className="mb-0.5 text-lg font-semibold text-gray-800 leading-tight">{cardTitle}</h3>
             <p className="text-[11px] text-gray-600 leading-snug line-clamp-2">{cardDescription}</p>
           </div>
-          {/* Call-to-Action */}
-          <div className="flex items-center text-xs font-medium text-primary transition-all duration-300 group-hover:translate-x-1">
-            {ctaText}
-            <CTAIcon className="ml-1 h-3 w-3" />
-          </div>
+
         </div>
       </Card>
     </Link>

@@ -57,7 +57,7 @@ import Link from "next/link";
 type Appointment = {
   id: number;
   patient: string;
-  doctorId: number;
+  userId: number;
   doctorAvailabilityId: number;
   status: string;
   createdAt: string;
@@ -310,7 +310,7 @@ export default function AppointmentsPage() {
   useEffect(() => {
     if (selectedDoctorId) {
       // @ts-ignore
-      const sendThisDoctorId = JSON.parse(selectedDoctorId).id;
+      const sendThisDoctorId = JSON.parse(selectedDoctorId).doctorId;
 
       fetchAvailableSlots(Number(sendThisDoctorId)).then((slots) =>
         setAvailableSlots(slots)
@@ -352,7 +352,7 @@ export default function AppointmentsPage() {
 
       // 2. Prefill 'doctorId' (JSON string)
       const foundDoctor = doctors.find(
-        (doc) => doc.userId === selectedAppointment.doctorId
+        (doc) => doc.userId === selectedAppointment.userId
       );
       if (foundDoctor) {
         setValue(

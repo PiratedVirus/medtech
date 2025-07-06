@@ -64,6 +64,7 @@ interface DoctorAvailabilityResponse {
 interface DoctorAvailability {
   id: number;
   doctorId: number;
+  userId: number;
   doctorName: string;
   date: string;
   startTime: string;
@@ -108,7 +109,7 @@ const createDoctorAvailability = async (data: CreateDoctorAvailabilityData): Pro
   console.log("Data for booking is ", data);
   if (typeof data.doctorId === "string") {
     try {
-      data.doctorId = JSON.parse(data.doctorId)?.id || Number(data.doctorId);
+      data.doctorId = JSON.parse(data.doctorId)?.doctorId || Number(data.doctorId);
     } catch (error) {
       console.error("Error parsing doctorId:", error);
     }
@@ -138,7 +139,7 @@ const updateDoctorAvailability = async (id: number, data: UpdateDoctorAvailabili
   // doctorId may come through as a JSON‑stringified object from the <Select>
   if (typeof data.doctorId === "string") {
     try {
-      data.doctorId = JSON.parse(data.doctorId)?.id || Number(data.doctorId);
+      data.doctorId = JSON.parse(data.doctorId)?.doctorId || Number(data.doctorId);
     } catch (error) {
       console.error("Error parsing doctorId:", error);
     }
@@ -281,7 +282,7 @@ export default function DoctorAvailabilityPage() {
             className="bg-transparent text-primary border-0 shadow-none"
             onClick={() => {
               setSelectedAvailability(row.original);
-              setValue("doctorId", row.original.doctorId);
+              setValue("doctorId", row.original.userId);
               setValue("date", row.original.date);
               setValue("startTime", row.original.startTime);
               setValue("endTime", row.original.endTime);
@@ -348,7 +349,7 @@ export default function DoctorAvailabilityPage() {
 
   useEffect(() => {
     if (selectedAvailability) {
-      setValue("doctorId", selectedAvailability.doctorId); // Use doctorId instead of doctorName
+              setValue("doctorId", selectedAvailability.userId); // Use userId instead of doctorName
       setValue("date", selectedAvailability.date);
       setValue("startTime", selectedAvailability.startTime);
       setValue("endTime", selectedAvailability.endTime);
