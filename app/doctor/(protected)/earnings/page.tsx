@@ -222,7 +222,7 @@ export default function DoctorEarningsPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 space-y-4">
+    <div className="container mx-auto p-4 space-y-4 bg-white">
       {/* Earnings Cards */}
       <div className="grid grid-cols-4 md:grid-cols-4 gap-4 mb-6">
         <div className="col-span-1">

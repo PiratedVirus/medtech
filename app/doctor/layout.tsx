@@ -49,7 +49,7 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
   return (
     <ProfileProvider profile={profile || storedProfile}>
       <DoctorHomeHeader />
-      <main className="flex-grow pb-14 sm:pb-2">
+      <main className="flex-grow pb-14 sm:pb-2 bg-muted">
         {children}
       </main>
       <div className="hidden sm:block">

@@ -14,7 +14,7 @@ export default function DoctorManageSlotsWidget() {
       
       try {
         setIsLoading(true);
-        const res = await axios.get('/api/doctor/slots');
+        const res = await axios.get('/api/doctor/earnings/chart-data?slots=1');
         setSummary(res.data);
       } catch (err) {
         console.error('Failed to load slots summary', err);

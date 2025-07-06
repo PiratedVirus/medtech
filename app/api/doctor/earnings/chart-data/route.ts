@@ -36,6 +36,23 @@ export async function GET(request: Request) {
     const doctorId = user.id;
     const { searchParams } = new URL(request.url);
     const filter = searchParams.get("filter") || "paid"; // paid, pending, cash, online
+    const slotsParam = searchParams.get("slots");
+    const dateParam = searchParams.get("date");
+
+    // If slots param is present, return { totalSlots, bookedSlots }
+    if (slotsParam) {
+      let where: any = { userId: doctorId, deletedAt: null };
+      let appointmentWhere: any = { userId: doctorId, deletedAt: null };
+      if (dateParam) {
+        where.date = new Date(dateParam);
+        appointmentWhere.appointmentDate = new Date(dateParam);
+      }
+      const [totalSlots, bookedSlots] = await prisma.$transaction([
+        prisma.doctorAvailability.count({ where }),
+        prisma.appointment.count({ where: appointmentWhere }),
+      ]);
+      return NextResponse.json({ totalSlots, bookedSlots });
+    }
 
     // Generate last 6 months
     const months = [];
