@@ -5,13 +5,28 @@ import DoctorQuickActions from '@/components/doctors/home/DoctorQuickActions';
 import DoctorActivePatients from '@/components/doctors/home/DoctorActivePatients';
 import DoctorDashboardActionCard from "@/components/ui/custom/cd-doctor-dashboard-action-card";
 import { BicepsFlexed, FileText, LineChart, Users } from "lucide-react"
+import { useDecryptedProfile } from '@/hooks/use-profile';
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
 
 export default function DoctorDashboardPage() {
+  const { profile } = useDecryptedProfile();
+  const doctorName = profile?.name || 'Doctor';
+
   return (
     <div className="min-h-screen bg-[#F8FAF9] px-8 py-8">
       {/* Top Row: Upcoming Appointment, Earnings, Manage Slots */}
+      <div className="text-3xl font-bold text-[#134F30] mb-4">
+          {getGreeting()}, Dr. {doctorName}! 
+        </div>
       <div className="grid grid-cols-12 gap-6 mb-8 items-stretch">
         <div className="col-span-12 md:col-span-6 flex flex-col">
+
           <div className="col-span-6">
             <DoctorUpcomingAppointment />
           </div>
@@ -23,7 +38,6 @@ export default function DoctorDashboardPage() {
                 headerLabel="Patient Analytics"
                 cardTitle="View Patients Info"
                 cardDescription="Personalized analysis of your patients health"
-                ctaText="Explore patients"
                 PrimaryIcon={Users}
                 OutlineIcon={Users}
               />
@@ -35,7 +49,6 @@ export default function DoctorDashboardPage() {
                 headerLabel="Prescriptions Details"
                 cardTitle="View Prescriptions"
                 cardDescription="Create new prescriptions and Edit prescriptions"
-                ctaText="Manage Prescriptions"
                 PrimaryIcon={FileText}
                 OutlineIcon={FileText}
               />

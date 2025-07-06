@@ -41,10 +41,8 @@ export default function DoctorUpcomingAppointment() {
 
   return (
     <div className="flex flex-col justify-between">
-      <div className="mb-3">
-        <div className="text-3xl font-bold text-[#134F30] mb-4">
-          {getGreeting()}, Dr. {doctorName}! <span className="text-2xl">👋</span>
-        </div>
+      <div className="mb-2">
+
         {isLoading ? (
           <div className="text-gray-600">Loading upcoming appointments...</div>
         ) : upcomingAppointment ? (

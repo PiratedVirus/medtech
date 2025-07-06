@@ -11,6 +11,7 @@ import { useDecryptedProfile } from "@/hooks/use-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import DoctorHomeHeader from "@/components/doctors/home/DoctorHomeHeader";
 
 interface DoctorLayoutProps {
   children: React.ReactNode;
@@ -47,7 +48,7 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
 
   return (
     <ProfileProvider profile={profile || storedProfile}>
-      <Header />
+      <DoctorHomeHeader />
       <main className="flex-grow pb-14 sm:pb-2">
         {children}
       </main>
