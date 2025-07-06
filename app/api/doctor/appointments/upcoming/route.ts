@@ -40,9 +40,6 @@ export async function GET() {
         appointmentDate: {
           gte: new Date(),
         },
-        status: {
-          in: ["PENDING", "CONFIRMED"],
-        },
         deletedAt: null,
       },
       include: {

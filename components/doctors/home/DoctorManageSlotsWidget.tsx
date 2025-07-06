@@ -29,7 +29,7 @@ export default function DoctorManageSlotsWidget() {
   }, [profile?.id]);
 
   return (
-    <div className="relative col-span-3 rounded-[2.5rem] min-h-[320px] flex flex-col justify-center px-8 py-7 bg-gradient-to-tr from-[#1e5636] to-[#2e8b57] overflow-hidden shadow-none">
+    <div className="relative col-span-3 rounded-3xl flex flex-col justify-center px-8 py-7 bg-gradient-to-tr from-[#1e5636] to-[#2e8b57] overflow-hidden shadow-none">
       {/* Glow effect */}
       <div className="absolute left-0 right-0 bottom-0 top-0 z-0" style={{background: 'radial-gradient(ellipse at 60% 70%, #56A67C55 40%, transparent 80%)'}} />
       <div className="relative z-10 flex flex-col items-center justify-center h-full">

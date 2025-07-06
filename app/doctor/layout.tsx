@@ -9,6 +9,8 @@ import Footer from "@/components/common/Footer";
 import "@/app/globals.css";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 interface DoctorLayoutProps {
   children: React.ReactNode;
@@ -52,6 +54,7 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
       <div className="hidden sm:block">
         <Footer />
       </div>
+      <ToastContainer />
     </ProfileProvider>
   );
 };
