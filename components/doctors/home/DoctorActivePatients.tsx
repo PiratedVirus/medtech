@@ -195,11 +195,18 @@ export default function DoctorActivePatients() {
           <p>Loading appointments...</p>
         </div>
       ) : limitedAppointments.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {columns.map((col, idx) => (
-            <div key={idx}>{renderColumn(col, idx)}</div>
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {columns.map((col, idx) => (
+              <div key={idx}>{renderColumn(col, idx)}</div>
+            ))}
+          </div>
+          <div className="flex justify-end mt-6">
+            <a href="/doctor/appointments" className="bg-primary text-white px-6 py-2 rounded-lg font-semibold shadow hover:bg-primary/90 transition">
+              View All Appointments
+            </a>
+          </div>
+        </>
       ) : (
         <div className="text-center text-white">
           <div className="mb-4">
