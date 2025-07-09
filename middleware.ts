@@ -14,16 +14,6 @@ async function verifyJWT(token: string, secret: string): Promise<any> {
   }
 }
 
-// Function to verify admin token
-const verifyAdminToken = async (token: string) => {
-  try {
-    const decoded = await verifyJWT(token, process.env.JWT_SECRET!);
-    return decoded;
-  } catch (error) {
-    return null;
-  }
-};
-
 // Function to verify user token
 const verifyUserToken = async (token: string) => {
   try {
@@ -50,7 +40,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
 
-    const decodedAdmin = await verifyAdminToken(adminToken);
+    const decodedAdmin = await verifyUserToken(adminToken);
     if (!decodedAdmin || decodedAdmin.role !== "ADMIN") {
       console.log("Invalid admin token as role not matching");
       return NextResponse.redirect(new URL("/admin/login", request.url));
@@ -74,6 +64,10 @@ export async function middleware(request: NextRequest) {
     const decodedUser = await verifyUserToken(userToken);
     if (!decodedUser) {
       return NextResponse.redirect(new URL("/login", request.url));
+    }
+    if(decodedUser.userRole === "DOCTOR"){
+      console.log("Redirecting to doctor home");
+      return NextResponse.redirect(new URL("/doctor/home", request.url));
     }
 
     return NextResponse.next();

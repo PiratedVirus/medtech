@@ -50,9 +50,12 @@ export async function POST(request: Request) {
     const plusAddedPhoneNumber = "+" + phoneNumber
     // Adjust this check based on the response format from MSG91
     if (verificationCheck.type === "success" || verificationCheck.status === "success") {
-      const userExists = await checkUserExists(plusAddedPhoneNumber);
+      const user = await checkUserExists(plusAddedPhoneNumber);
+      const userExists = !!user;
+      const userRole = user?.role;
+
       const token = jwt.sign(
-        { plusAddedPhoneNumber, userExists },
+        { plusAddedPhoneNumber, userExists, userRole },
         process.env.JWT_SECRET!,
         { expiresIn: `${TOKEN_LIFETIME_DAYS}d` }   // e.g. "15d"
       );
