@@ -10,6 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label"
 import { useEffect } from "react"
+import LoadingButton from "../ui/custom/cd-loading-button"
 
 const registrationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -29,10 +30,10 @@ interface RegistrationFormProps {
   isDoctorCodeDisabled?: boolean;
 }
 
-export default function RegistrationForm({ 
-  onSubmit, 
+export default function RegistrationForm({
+  onSubmit,
   preFilledDoctorCode,
-  isDoctorCodeDisabled = false 
+  isDoctorCodeDisabled = false
 }: RegistrationFormProps) {
   const form = useForm({
     resolver: zodResolver(registrationSchema),
@@ -124,7 +125,14 @@ export default function RegistrationForm({
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full mt-5">Register</Button>
+        <LoadingButton
+          type="submit"
+          className="w-full"
+          onClick={form.handleSubmit(onSubmit)}
+          loadingText="Registering..."
+        >
+          Register
+        </LoadingButton>
       </form>
     </Form>
   )

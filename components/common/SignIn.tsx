@@ -12,7 +12,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { decryptData } from "@/lib/encryption";
 
 export default function SignInForm() {
-  const [step, setStep] = useState<"signIn" | "otp" | "register">("signIn");
+  const [step, setStep] = useState<"signIn" | "otp" | "register">("register");
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [phoneError, setPhoneError] = useState("");
@@ -134,6 +134,7 @@ export default function SignInForm() {
         phoneNumber: formatPhoneNumber(phoneNumber),
         doctorCode: doctorCode || data.doctorCode,
       });
+      console.log("handleRegistrationSubmit response is ", response)
       if (response.data.success) {
         window.location.href = "/dashboard";
       } else {

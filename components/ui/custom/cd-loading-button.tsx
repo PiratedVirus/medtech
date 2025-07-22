@@ -2,14 +2,14 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
-interface LoadingButtonProps {
+interface LoadingButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   onClick: () => Promise<void>;
   children: React.ReactNode;
   className?: string;
   loadingText?: string;
 }
 
-export default function LoadingButton({ onClick, children, className, loadingText }: LoadingButtonProps) {
+export default function LoadingButton({ onClick, children, className, loadingText, ...rest }: LoadingButtonProps) {
   const [loading, setLoading] = useState(false);
 
   const handleClick = async () => {
@@ -23,6 +23,7 @@ export default function LoadingButton({ onClick, children, className, loadingTex
 
   return (
     <Button
+      {...rest}
       className={`relative ${className} ${loading ? "cursor-not-allowed" : ""}`}
       onClick={handleClick}
       disabled={loading}
