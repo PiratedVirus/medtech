@@ -12,11 +12,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { decryptData } from "@/lib/encryption";
 
 export default function SignInForm() {
-  const [step, setStep] = useState<"signIn" | "otp" | "register">("register");
+  const [step, setStep] = useState<"signIn" | "otp" | "register">("signIn");
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [phoneError, setPhoneError] = useState("");
   const [otpError, setOtpError] = useState("");
+  const [registrationError, setRegistrationError] = useState("");
   const searchParams = useSearchParams();
   const encryptedCode = searchParams.get("code");
   const [doctorCode, setDoctorCode] = useState<string | null>(null);
@@ -138,10 +139,18 @@ export default function SignInForm() {
       if (response.data.success) {
         window.location.href = "/dashboard";
       } else {
-        alert("Registration Failed: " + response.data.error);
+        // Clear any existing error and set new error after 5 seconds
+        setRegistrationError("");
+        setTimeout(() => {
+          setRegistrationError("Error on registering user: " + response.data.error);
+        }, 5000);
       }
     } catch (error: any) {
-      alert("Registration Failed: " + error.message);
+      // Clear any existing error and set new error after 5 seconds
+      setRegistrationError("");
+      setTimeout(() => {
+        setRegistrationError("Registration Failed: " + error.message);
+      }, 5000);
     }
   };
 
@@ -175,6 +184,9 @@ export default function SignInForm() {
           <div className="max-h-[calc(100vh-4rem)] overflow-y-auto pb-20 px-2">
             <h1 className="text-custom-green text-center text-2xl font-normal">Register</h1>
             <div className="h-0.5 w-12 bg-custom-green text-center mt-2 mx-auto" />
+            {registrationError && (
+              <p className="text-red-500 text-sm mt-4 text-center">{registrationError}</p>
+            )}
             <RegistrationForm 
               onSubmit={handleRegistrationSubmit} 
               preFilledDoctorCode={doctorCode}
