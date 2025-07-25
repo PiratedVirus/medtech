@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label"
-import { useEffect } from "react"
+import { useEffect, forwardRef } from "react"
 import LoadingButton from "../ui/custom/cd-loading-button"
 
 const registrationSchema = z.object({
@@ -28,13 +28,17 @@ interface RegistrationFormProps {
   onSubmit: (data: any) => void;
   preFilledDoctorCode?: string | null;
   isDoctorCodeDisabled?: boolean;
+  isSubmitting?: boolean;
+  buttonRef?: React.RefObject<HTMLButtonElement>;
 }
 
-export default function RegistrationForm({
+const RegistrationForm = forwardRef<HTMLButtonElement, RegistrationFormProps>(({
   onSubmit,
   preFilledDoctorCode,
-  isDoctorCodeDisabled = false
-}: RegistrationFormProps) {
+  isDoctorCodeDisabled = false,
+  isSubmitting = false,
+  buttonRef
+}, ref) => {
   const form = useForm({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
@@ -118,6 +122,13 @@ export default function RegistrationForm({
                   maxLength={6}
                   disabled={isDoctorCodeDisabled}
                   onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && buttonRef?.current) {
+                      e.preventDefault();
+                      buttonRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      setTimeout(() => buttonRef.current?.focus(), 500);
+                    }
+                  }}
                   className={isDoctorCodeDisabled ? "bg-gray-100" : ""}
                 />
               </FormControl>
@@ -126,15 +137,21 @@ export default function RegistrationForm({
           )}
         />
         <LoadingButton
+          ref={buttonRef || ref}
           type="submit"
           className="w-full"
           onClick={form.handleSubmit(onSubmit)}
           loadingText="Registering..."
+          disabled={isSubmitting}
         >
           Register
         </LoadingButton>
       </form>
     </Form>
   )
-}
+});
+
+RegistrationForm.displayName = "RegistrationForm";
+
+export default RegistrationForm;
 
