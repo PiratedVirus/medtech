@@ -104,28 +104,36 @@ export default function DoctorAppointmentsPage() {
             {appt.consultationType.toUpperCase() === "CLINIC" ? (
               <>
                 <Building2 className="h-4 w-4 text-gray-600" />
-                <span className="font-bold text-gray-800">Physical Consultation</span>
+                <span className="font-bold text-gray-800">Physical consultation</span>
               </>
             ) : (
               <>
                 <Video className="h-4 w-4 text-gray-600" />
-                <span className="font-bold text-gray-800">Video Consultation</span>
+                <span className="font-bold text-gray-800">Video consultation</span>
               </>
             )}
           </div>
-          {/* Prescription Link for Past Appointments */}
-          {isPast && (
-            <div className="flex items-center justify-start mt-2">
+          {/* Prescription Actions */}
+          <div className="flex items-center justify-start mt-2">
+            {isPast ? (
               <a
                 href={appt.prescriptionLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-full  shadow hover:bg-primary/90 transition"
+                className="inline-flex items-center gap-2 text-primary text-sm pr-4 py-2 hover:cursor-pointer"
               >
-                 View Prescription
+                 View prescription
               </a>
-            </div>
-          )}
+            ) : (
+              <a
+                href={`/doctor/appointments/${appt.id}`}
+                className="inline-flex items-center gap-2 text-green-600 text-sm pr-4 py-2 hover:cursor-pointer hover:text-green-700"
+              >
+                <FileText className="h-4 w-4" />
+                Generate Prescription
+              </a>
+            )}
+          </div>
         </div>
         {/* Payment Type - Bottom Right (absolute) */}
         <div className="absolute bottom-3 right-3 z-10">
@@ -143,15 +151,15 @@ export default function DoctorAppointmentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted flex flex-col items-center">
-      <div className="container w-full bg-white rounded-2xl shadow-lg p-4 md:p-8 mt-8 mb-8 mx-auto">
+    <div className="bg-muted flex flex-col items-center">
+      <div className="container w-full bg-mutedbg p-4">
         <h2 className="text-2xl font-semibold mb-6">Appointments</h2>
         {loading ? (
           <div className="text-center text-gray-600 py-12">Loading appointments...</div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Upcoming Appointments - Left Column */}
-            <section className="lg:border-r lg:border-gray-200 lg:pr-6">
+            <section className="lg:border-r lg:border-gray-200 lg:pr-6 ">
               <h3 className="text-xl font-semibold mb-4">Upcoming Appointments</h3>
               <div className="h-[600px] overflow-y-auto pr-2">
                 {data.upcoming.length === 0 ? (

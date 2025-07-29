@@ -14,7 +14,6 @@ export default function UpcomingAppointment({ appointment, mode = 'patient' }: U
       <div className="p-6 rounded-3xl h-full bg-custom-mutedgreen">
         <h2 className="text-2xl font-semibold text-gray-800">Upcoming Appointment</h2>
         <p className="text-gray-600">No upcoming appointments scheduled.</p>
-        {/* <p>{JSON.stringify(appointment)}</p> */}
       </div>
     );
   }
@@ -36,7 +35,7 @@ export default function UpcomingAppointment({ appointment, mode = 'patient' }: U
     ? appointment.patient?.name || 'Patient'
     : appointment.doctor?.name || 'Doctor';
   const displayRole = mode === 'doctor' ? 'Patient' : 'Doctor';
-  const displayImage = mode === 'doctor' ? '/images/patient.png' : '/images/doc.png';
+  const displayImage = mode === 'doctor' ? '/icons/medicine-pills.svg' : '/images/doc.png';
 
   return (
     <div className="p-6 rounded-3xl relative overflow-hidden bg-custom-mutedgreen">
@@ -95,7 +94,7 @@ export default function UpcomingAppointment({ appointment, mode = 'patient' }: U
           <div className="flex items-center gap-4">
             {/* Image */}
             <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
-              <Image src={displayImage} alt={displayName} fill className="object-cover" />
+              <Image src={displayImage || '/icons/medicine-pills.svg'} alt={displayName} fill className="object-cover" />
             </div>
 
             {/* Appointment Details */}

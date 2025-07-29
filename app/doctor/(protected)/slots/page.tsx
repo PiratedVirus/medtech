@@ -128,13 +128,13 @@ export default function DoctorSlotsPage() {
   const grouped = groupSlots(ALL_SLOTS);
 
   return (
-    <div className="min-h-screen bg-muted flex flex-col items-center">
-      <div className="container max-w-4xl w-full bg-white rounded-2xl shadow-lg p-4 md:p-8 mt-8 mb-8 mx-auto">
+    <div className="bg-muted flex flex-col items-center">
+      <div className="container w-full p-4">
         <h2 className="text-2xl font-semibold mb-6">Manage Availability</h2>
-        <div className="flex flex-col md:flex-row gap-8">
+        <div className="flex flex-col md:flex-row gap-8 bg-white rounded-xl p-6">
           {/* Calendar & Date Navigation */}
           <div className="flex flex-col items-start gap-2 min-w-[220px]">
-            <label className="block mb-2 font-medium">Choose Date</label>
+            <label className="block mb-2 font-semibold">Choose Date</label>
             <div className="flex items-center gap-2">
               <button
                 aria-label="Previous day"
@@ -162,7 +162,7 @@ export default function DoctorSlotsPage() {
           </div>
           {/* Slots */}
           <div className="flex-1">
-            <label className="block mb-2 font-medium">Choose Time Slots</label>
+            <label className="block mb-2 font-semibold">Choose Time Slots</label>
             {loading ? (
               <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="animate-spin" /> Loading...</div>
             ) : (
