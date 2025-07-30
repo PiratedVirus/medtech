@@ -14,6 +14,9 @@ interface TypeAheadInputProps {
   placeholder: string;
   type: "complaints" | "medicines" | "frequency" | "medicineTime" | "duration" | "advice" | "tests";
   className?: string;
+  onAddItem?: (item: Suggestion) => void;
+  showAddButtons?: boolean;
+  onFrequencyInput?: (input: string) => string;
 }
 
 interface Suggestion {
@@ -35,6 +38,9 @@ export default function TypeAheadInput({
   placeholder,
   type,
   className,
+  onAddItem,
+  showAddButtons = false,
+  onFrequencyInput,
 }: TypeAheadInputProps) {
   const { toast } = useToast();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -54,11 +60,11 @@ export default function TypeAheadInput({
       { id: "5", text: "Persistent cough for the past week", category: "Respiratory", severity: "MODERATE" },
     ],
     medicines: [
-      { id: "1", name: "Metformin 500mg", category: "Diabetes", frequency: ["Once daily", "Twice daily"], medicineTime: ["Morning", "Evening"], duration: ["7 days", "15 days"] },
-      { id: "2", name: "Glimepiride 1mg", category: "Diabetes", frequency: ["Once daily"], medicineTime: ["Morning"], duration: ["30 days"] },
-      { id: "3", name: "Paracetamol 500mg", category: "Pain Relief", frequency: ["As needed"], medicineTime: ["Any time"], duration: ["3 days"] },
-      { id: "4", name: "Amoxicillin 500mg", category: "Antibiotic", frequency: ["Three times daily"], medicineTime: ["Morning", "Afternoon", "Evening"], duration: ["7 days", "10 days"] },
-      { id: "5", name: "Omeprazole 20mg", category: "Gastric", frequency: ["Once daily"], medicineTime: ["Morning"], duration: ["14 days", "30 days"] },
+      { id: "1", name: "Metformin 500mg", category: "Diabetes", frequency: ["1-0-0", "1-0-1", "1-1-1"], medicineTime: ["Pre-meal", "Post-meal"], duration: ["7d", "14d", "30d"] },
+      { id: "2", name: "Glimepiride 1mg", category: "Diabetes", frequency: ["1-0-0", "0-1-0"], medicineTime: ["Pre-meal"], duration: ["30d"] },
+      { id: "3", name: "Paracetamol 500mg", category: "Pain Relief", frequency: ["0-0-1", "1-1-1"], medicineTime: ["Post-meal", "Any time"], duration: ["3d", "5d"] },
+      { id: "4", name: "Amoxicillin 500mg", category: "Antibiotic", frequency: ["1-1-1", "1-0-1"], medicineTime: ["Post-meal"], duration: ["7d", "10d"] },
+      { id: "5", name: "Omeprazole 20mg", category: "Gastric", frequency: ["1-0-0"], medicineTime: ["Pre-meal"], duration: ["14d", "30d"] },
     ],
     frequency: [
       { id: "1", value: "Once daily", usageCount: 45 },
@@ -98,7 +104,7 @@ export default function TypeAheadInput({
   };
 
   const fetchSuggestions = async (query: string) => {
-    if (!query.trim()) {
+    if (!query.trim() || query.trim().length < 2) {
       setSuggestions([]);
       return;
     }
@@ -258,7 +264,7 @@ export default function TypeAheadInput({
         onChange(displayValue);
         setShowSuggestions(false);
         setSelectedIndex(-1);
-      } else if (value.trim()) {
+      } else if (value.trim() && value.trim().length >= 2) {
         createNewItem(value.trim());
         setShowSuggestions(false);
       }
@@ -270,20 +276,34 @@ export default function TypeAheadInput({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
-    onChange(newValue);
-    setShowSuggestions(true);
+    
+    // Handle frequency input for medicines
+    if (type === "frequency" && onFrequencyInput) {
+      const processedValue = onFrequencyInput(newValue);
+      onChange(processedValue);
+    } else {
+      onChange(newValue);
+    }
+    
+    setShowSuggestions(newValue.trim().length >= 2);
     setSelectedIndex(-1);
   };
 
   const handleSuggestionClick = (suggestion: Suggestion) => {
-    const displayValue = suggestion.text || suggestion.name || suggestion.value || "";
-    onChange(displayValue);
-    setShowSuggestions(false);
-    setSelectedIndex(-1);
+    if (showAddButtons && onAddItem) {
+      onAddItem(suggestion);
+      setShowSuggestions(false);
+      setSelectedIndex(-1);
+    } else {
+      const displayValue = suggestion.text || suggestion.name || suggestion.value || "";
+      onChange(displayValue);
+      setShowSuggestions(false);
+      setSelectedIndex(-1);
+    }
   };
 
   const handleAddNew = () => {
-    if (value.trim()) {
+    if (value.trim() && value.trim().length >= 2) {
       createNewItem(value.trim());
       setShowSuggestions(false);
     }
@@ -298,7 +318,7 @@ export default function TypeAheadInput({
           value={value}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => setShowSuggestions(true)}
+          onFocus={() => setShowSuggestions(value.trim().length >= 2)}
           placeholder={placeholder}
           className={cn("pl-10 min-w-[400px]", className)}
         />
@@ -335,27 +355,47 @@ export default function TypeAheadInput({
                               <div className="text-xs text-gray-500">{suggestion.category}</div>
                             )}
                           </div>
-                          {suggestion.usageCount && (
-                            <div className="text-xs text-gray-400">
-                              Used {suggestion.usageCount} times
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {suggestion.usageCount && (
+                              <div className="text-xs text-gray-400">
+                                Used {suggestion.usageCount} times
+                              </div>
+                            )}
+                            {showAddButtons && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onAddItem) {
+                                    onAddItem(suggestion);
+                                  }
+                                }}
+                              >
+                                <Plus className="h-3 w-3 text-primary" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
                   })
-                ) : value.trim() ? (
+                ) : value.trim() && value.trim().length >= 2 ? (
                   <div className="p-2 text-sm text-gray-500 text-center">
                     No suggestions found
                   </div>
                 ) : null}
                 
-                {value.trim() && (
+                {value.trim() && value.trim().length >= 2 && !suggestions.some(suggestion => {
+                  const suggestionText = suggestion.text || suggestion.name || suggestion.value || "";
+                  return suggestionText.toLowerCase() === value.trim().toLowerCase();
+                }) && (
                   <div
-                    className="p-3 rounded cursor-pointer hover:bg-blue-50 transition-colors border-t border-blue-200 bg-blue-50"
+                    className="p-3 rounded-lg cursor-pointer bg-primary"
                     onClick={handleAddNew}
                   >
-                    <div className="flex items-center justify-center text-blue-700 font-medium">
+                    <div className="flex items-center justify-center text-white font-bold">
                       <Plus className="h-4 w-4 mr-2" />
                       Add "{value}" to {type} catalogue
                     </div>

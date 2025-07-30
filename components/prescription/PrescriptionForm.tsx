@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,10 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { Plus, X, Edit2, Clock, Calendar } from "lucide-react";
+import { Plus, X, Edit2, Clock, Calendar, User, FileText, Save, Download } from "lucide-react";
 import TypeAheadInput from "./TypeAheadInput";
 import ComplaintCard from "./ComplaintCard";
-import MedicineRow from "./MedicineRow";
+import MedicineCard from "./MedicineCard";
 
 interface PrescriptionFormProps {
   prescriptionData: any;
@@ -29,6 +29,8 @@ export default function PrescriptionForm({
 }: PrescriptionFormProps) {
   const [newComplaint, setNewComplaint] = useState("");
   const [newMedicine, setNewMedicine] = useState("");
+  const [showStickyHeader, setShowStickyHeader] = useState(false);
+  const patientCardRef = useRef<HTMLDivElement>(null);
 
   const severityOptions = [
     { value: "PERFECT", label: "Perfect", color: "bg-green-100 text-green-800" },
@@ -49,6 +51,7 @@ export default function PrescriptionForm({
             text: newComplaint,
             severity: "MODERATE",
             daysSince: 1,
+            isFlagged: false,
           },
         ],
       });
@@ -81,10 +84,10 @@ export default function PrescriptionForm({
           {
             id: Date.now().toString(),
             name: newMedicine,
-            frequency: "",
-            medicineTime: "",
+            frequency: "1-0-0",
+            medicineTime: "Post-meal",
             duration: "",
-            quantity: "",
+            quantity: "0",
           },
         ],
       });
@@ -111,7 +114,7 @@ export default function PrescriptionForm({
   const calculateNextVisitDate = (type: string, value: number) => {
     const today = new Date();
     let nextDate = new Date(today);
-    
+
     switch (type) {
       case "days":
         nextDate.setDate(today.getDate() + value);
@@ -123,7 +126,7 @@ export default function PrescriptionForm({
         nextDate.setMonth(today.getMonth() + value);
         break;
     }
-    
+
     return nextDate;
   };
 
@@ -139,38 +142,198 @@ export default function PrescriptionForm({
     });
   };
 
-  return (
+  const processFrequencyInput = (input: string): string => {
+    // Remove all non-numeric characters except dashes
+    const cleanInput = input.replace(/[^0-9-]/g, '');
+
+    // If input is just numbers, format it as frequency
+    if (/^\d{1,3}$/.test(cleanInput)) {
+      const digits = cleanInput.split('');
+      if (digits.length === 1) {
+        return `${digits[0]}-0-0`;
+      } else if (digits.length === 2) {
+        return `${digits[0]}-${digits[1]}-0`;
+      } else if (digits.length === 3) {
+        return `${digits[0]}-${digits[1]}-${digits[2]}`;
+      }
+    }
+
+    // If already in correct format, return as is
+    if (/^\d-\d-\d$/.test(cleanInput)) {
+      return cleanInput;
+    }
+
+    return input;
+  };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (patientCardRef.current) {
+        const rect = patientCardRef.current.getBoundingClientRect();
+        // Show sticky header when patient card is scrolled out of view
+        setShowStickyHeader(rect.bottom < 0);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+    return (
     <div className="space-y-6 w-full">
+      {/* Sticky Header - Shows when patient card is out of view */}
+      <div className={`fixed top-0 left-0 right-0 z-50 bg-white shadow-md border-b transition-all duration-300 ${
+        showStickyHeader ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
+      }`}>
+        <div className="flex items-center justify-between px-6 py-3">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">#{patientInfo.appointmentId || 'APT001'}</span>
+              <span className="text-lg font-semibold text-gray-900">{patientInfo.name}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Load Template
+            </Button>
+            <Button variant="outline" size="sm">
+              <Save className="h-4 w-4 mr-2" />
+              Save Template
+            </Button>
+            <Button variant="default" size="sm">
+              <FileText className="h-4 w-4 mr-2" />
+              Generate Prescription
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Patient Information */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold mb-4">Patient Information</h3>
-        <div className="grid grid-cols-3 gap-6">
-          <div>
-            <Label htmlFor="patientName" className="text-sm font-medium text-gray-700">Patient Name</Label>
-            <Input
-              id="patientName"
-              value={patientInfo.name}
-              readOnly
-              className="bg-gray-50 mt-1"
-            />
+      <div 
+        ref={patientCardRef}
+        className="bg-custom-mutedgreen p-6 rounded-2xl border border-gray-200 flex justify-between items-start relative overflow-hidden"
+      >
+        {/* Embossed User Icon - Bottom Left */}
+        <div className="absolute bottom-0 left-0 opacity-10">
+          <User className="h-32 w-32 text-custom-darkgreen" />
+        </div>
+        
+        {/* Content */}
+        <div className="relative z-10 w-full flex justify-between items-start">
+          <h3 className="text-lg text-custom-darkgreen font-semibold mb-4">Patient Information</h3>
+          <div className="flex flex-col text-right">
+            <div>
+              <h4 className="text-xl text-custom-darkgreen font-medium mb-1">#{patientInfo.appointmentId || 'APT001'}</h4>
+            </div>
+            <div>
+              <h2 className="text-2xl text-custom-darkgreen font-semibold mb-1">{patientInfo.name}</h2>
+            </div>
+            <div>
+              <h4 className="text-sm text-custom-darkgreen font-light mb-4">{patientInfo.prescriptionId}</h4>
+            </div>
           </div>
-          <div>
-            <Label htmlFor="patientId" className="text-sm font-medium text-gray-700">Patient ID</Label>
-            <Input
-              id="patientId"
-              value={patientInfo.patientId}
-              readOnly
-              className="bg-gray-50 mt-1"
-            />
+        </div>
+      </div>
+
+      {/* Vitals Section */}
+      <div className="rounded-lg ">
+        {/* <h3 className="text-lg font-semibold mb-4">Vitals</h3> */}
+        <div className="grid grid-cols-4 gap-6">
+          {/* BP Vital */}
+          <div className="flex flex-col">
+            <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+              <div className="bg-custom-mutedgreen flex-1 flex items-center justify-center px-3 py-2">
+                <span className="text-custom-darkgreen font-semibold text-sm">BP</span>
+              </div>
+              <div className="flex-1">
+                <Input
+                  id="bp"
+                  value={prescriptionData.vitals.bloodPressure}
+                  onChange={(e) =>
+                    setPrescriptionData({
+                      ...prescriptionData,
+                      vitals: { ...prescriptionData.vitals, bloodPressure: e.target.value },
+                    })
+                  }
+                  placeholder="120/80"
+                  className="border-0 bg-white rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-full text-center"
+                />
+              </div>
+            </div>
+            <span className="text-sm text-gray-500 mt-1 text-right">mm/Hg</span>
           </div>
-          <div>
-            <Label htmlFor="prescriptionId" className="text-sm font-medium text-gray-700">Prescription ID</Label>
-            <Input
-              id="prescriptionId"
-              value={patientInfo.prescriptionId}
-              readOnly
-              className="bg-gray-50 mt-1"
-            />
+
+          {/* Pulse Vital */}
+          <div className="flex flex-col">
+            <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+              <div className="bg-custom-mutedgreen flex-1 flex items-center justify-center px-3 py-2">
+                <span className="text-custom-darkgreen font-semibold text-sm">Pulse</span>
+              </div>
+              <div className="flex-1">
+                <Input
+                  id="pulse"
+                  value={prescriptionData.vitals.pulse}
+                  onChange={(e) =>
+                    setPrescriptionData({
+                      ...prescriptionData,
+                      vitals: { ...prescriptionData.vitals, pulse: e.target.value },
+                    })
+                  }
+                  placeholder="72"
+                  className="border-0 bg-white rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-full text-center"
+                />
+              </div>
+            </div>
+            <span className="text-sm text-gray-500 mt-1 text-right">bpm</span>
+          </div>
+
+          {/* Height Vital */}
+          <div className="flex flex-col">
+            <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+              <div className="bg-custom-mutedgreen flex-1 flex items-center justify-center px-3 py-2">
+                <span className="text-custom-darkgreen font-semibold text-sm">Height</span>
+              </div>
+              <div className="flex-1">
+                <Input
+                  id="height"
+                  value={prescriptionData.vitals.height}
+                  onChange={(e) =>
+                    setPrescriptionData({
+                      ...prescriptionData,
+                      vitals: { ...prescriptionData.vitals, height: e.target.value },
+                    })
+                  }
+                  placeholder="182"
+                  className="border-0 bg-white rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-full text-center"
+                />
+              </div>
+            </div>
+            <span className="text-sm text-gray-500 mt-1 text-right">cm</span>
+          </div>
+
+          {/* Weight Vital */}
+          <div className="flex flex-col">
+            <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+              <div className="bg-custom-mutedgreen flex-1 flex items-center justify-center px-3 py-2">
+                <span className="text-custom-darkgreen font-semibold text-sm">Weight</span>
+              </div>
+              <div className="flex-1">
+                <Input
+                  id="weight"
+                  value={prescriptionData.vitals.weight}
+                  onChange={(e) =>
+                    setPrescriptionData({
+                      ...prescriptionData,
+                      vitals: { ...prescriptionData.vitals, weight: e.target.value },
+                    })
+                  }
+                  placeholder="95"
+                  className="border-0 bg-white-100 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 h-full text-center"
+                />
+              </div>
+            </div>
+            <span className="text-sm text-gray-500 mt-1 text-right">kg</span>
           </div>
         </div>
       </div>
@@ -179,18 +342,30 @@ export default function PrescriptionForm({
       <div className="bg-white p-6 rounded-lg border border-gray-200">
         <h3 className="text-lg font-semibold mb-4">Complaints</h3>
         <div className="space-y-4">
-          <div className="flex gap-2">
-            <TypeAheadInput
-              value={newComplaint}
-              onChange={setNewComplaint}
-              placeholder="Type complaint here..."
-              type="complaints"
-              className="flex-1 min-w-[500px]"
-            />
-            <Button onClick={addComplaint} disabled={!newComplaint.trim()}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
+          <TypeAheadInput
+            value={newComplaint}
+            onChange={setNewComplaint}
+            placeholder="Search complaints here..."
+            type="complaints"
+            className="w-full"
+            showAddButtons={true}
+            onAddItem={(item) => {
+              const complaintText = item.text || item.name || item.value || "";
+              setPrescriptionData({
+                ...prescriptionData,
+                complaints: [
+                  ...prescriptionData.complaints,
+                  {
+                    id: Date.now().toString(),
+                    text: complaintText,
+                    severity: "MODERATE",
+                    daysSince: 1,
+                    isFlagged: false,
+                  },
+                ],
+              });
+            }}
+          />
 
           {/* Existing Complaints */}
           <div className="space-y-3">
@@ -205,148 +380,11 @@ export default function PrescriptionForm({
             ))}
           </div>
 
-          {/* Active Complaint Card (like in the image) */}
-          {newComplaint && (
-            <div className="bg-green-100 p-4 rounded-lg border border-green-200">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-green-800 font-medium">{newComplaint}</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Select Number</span>
-                    <Select
-                      value={prescriptionData.complaints.find((c: any) => c.text === newComplaint)?.daysSince?.toString() || "1"}
-                      onValueChange={(value) => {
-                        const complaint = prescriptionData.complaints.find((c: any) => c.text === newComplaint);
-                        if (complaint) {
-                          updateComplaint(complaint.id, { daysSince: parseInt(value) });
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="w-20 h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[1, 2, 3, 4, 5, 6, 7].map((day) => (
-                          <SelectItem key={day} value={day.toString()}>
-                            {day}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <span className="text-sm text-gray-600">Days</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Severity:</span>
-                    <div className="flex items-center gap-1">
-                      {severityOptions.map((option) => (
-                        <button
-                          key={option.value}
-                          className={`px-2 py-1 text-xs rounded ${
-                            prescriptionData.complaints.find((c: any) => c.text === newComplaint)?.severity === option.value
-                              ? "bg-blue-500 text-white"
-                              : "bg-gray-200 text-gray-700"
-                          }`}
-                          onClick={() => {
-                            const complaint = prescriptionData.complaints.find((c: any) => c.text === newComplaint);
-                            if (complaint) {
-                              updateComplaint(complaint.id, { severity: option.value });
-                            }
-                          }}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setNewComplaint("")}
-                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
+
         </div>
       </div>
 
-      {/* Vitals Section */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold mb-4">Vitals</h3>
-        <div className="grid grid-cols-4 gap-6">
-          <div>
-            <Label htmlFor="bp" className="text-sm font-medium text-gray-700">BP</Label>
-            <Input
-              id="bp"
-              value={prescriptionData.vitals.bloodPressure}
-              onChange={(e) =>
-                setPrescriptionData({
-                  ...prescriptionData,
-                  vitals: { ...prescriptionData.vitals, bloodPressure: e.target.value },
-                })
-              }
-              placeholder="120/80"
-              className="mt-1"
-            />
-            <span className="text-sm text-gray-500">mm/Hg</span>
-          </div>
-          <div>
-            <Label htmlFor="pulse" className="text-sm font-medium text-gray-700">Pulse</Label>
-            <Input
-              id="pulse"
-              value={prescriptionData.vitals.pulse}
-              onChange={(e) =>
-                setPrescriptionData({
-                  ...prescriptionData,
-                  vitals: { ...prescriptionData.vitals, pulse: e.target.value },
-                })
-              }
-              placeholder="72"
-              className="mt-1"
-            />
-            <span className="text-sm text-gray-500">bpm</span>
-          </div>
-          <div>
-            <Label htmlFor="height" className="text-sm font-medium text-gray-700">Height</Label>
-            <Input
-              id="height"
-              value={prescriptionData.vitals.height}
-              onChange={(e) =>
-                setPrescriptionData({
-                  ...prescriptionData,
-                  vitals: { ...prescriptionData.vitals, height: e.target.value },
-                })
-              }
-              placeholder="182"
-              className="mt-1"
-            />
-            <span className="text-sm text-gray-500">cm</span>
-          </div>
-          <div>
-            <Label htmlFor="weight" className="text-sm font-medium text-gray-700">Weight</Label>
-            <Input
-              id="weight"
-              value={prescriptionData.vitals.weight}
-              onChange={(e) =>
-                setPrescriptionData({
-                  ...prescriptionData,
-                  vitals: { ...prescriptionData.vitals, weight: e.target.value },
-                })
-              }
-              placeholder="95"
-              className="mt-1"
-            />
-            <span className="text-sm text-gray-500">kg</span>
-          </div>
-        </div>
-      </div>
+
 
       {/* History Section */}
       <div className="bg-white p-6 rounded-lg border border-gray-200">
@@ -400,11 +438,12 @@ export default function PrescriptionForm({
               className="mt-1"
             />
           </div>
+
         </div>
       </div>
 
       {/* Systemic Examination Section */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200">
+      <div className="bg-custom-mutedgreen p-6 rounded-lg border border-gray-200">
         <h3 className="text-lg font-semibold mb-4">Systemic Examination</h3>
         <div className="grid grid-cols-4 gap-6">
           <div>
@@ -418,10 +457,10 @@ export default function PrescriptionForm({
                 })
               }
             >
-              <SelectTrigger>
+              <SelectTrigger className="bg-white">
                 <SelectValue placeholder="Select general here" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 <SelectItem value="NAD">NAD</SelectItem>
                 <SelectItem value="Conscious">Conscious</SelectItem>
                 <SelectItem value="Orientated">Orientated</SelectItem>
@@ -432,6 +471,7 @@ export default function PrescriptionForm({
             <Label htmlFor="cvs">CVS</Label>
             <Input
               id="cvs"
+              className="bg-white"
               value={prescriptionData.systemicExamination.cvs}
               onChange={(e) =>
                 setPrescriptionData({
@@ -446,6 +486,7 @@ export default function PrescriptionForm({
             <Label htmlFor="rs">RS</Label>
             <Input
               id="rs"
+              className="bg-white"
               value={prescriptionData.systemicExamination.rs}
               onChange={(e) =>
                 setPrescriptionData({
@@ -460,6 +501,7 @@ export default function PrescriptionForm({
             <Label htmlFor="cns">CNS</Label>
             <Input
               id="cns"
+              className="bg-white"
               value={prescriptionData.systemicExamination.cns}
               onChange={(e) =>
                 setPrescriptionData({
@@ -474,83 +516,100 @@ export default function PrescriptionForm({
       </div>
 
       {/* Medicine Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Medicine</CardTitle>
-            <Button variant="outline" size="sm" onClick={onLoadPrevious}>
-              <Clock className="h-4 w-4 mr-2" />
-              Load from Previous
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <TypeAheadInput
-              value={newMedicine}
-              onChange={setNewMedicine}
-              placeholder="Search Medicines here"
-              type="medicines"
-              className="flex-1"
-            />
-            <Button onClick={addMedicine} disabled={!newMedicine.trim()}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
+      <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Medicine</h3>
+          <Button variant="outline" size="sm" onClick={onLoadPrevious}>
+            <Clock className="h-4 w-4 mr-2" />
+            Load from Previous
+          </Button>
+        </div>
+        <div className="space-y-4">
+          <TypeAheadInput
+            value={newMedicine}
+            onChange={setNewMedicine}
+            placeholder="Search medicines here..."
+            type="medicines"
+            className="w-full"
+            showAddButtons={true}
+            onAddItem={(item) => {
+              const medicineName = item.text || item.name || item.value || "";
+              setPrescriptionData({
+                ...prescriptionData,
+                medicines: [
+                  ...prescriptionData.medicines,
+                  {
+                    id: Date.now().toString(),
+                    name: medicineName,
+                    frequency: "1-0-0",
+                    medicineTime: "Post-meal",
+                    duration: "",
+                    quantity: "0",
+                  },
+                ],
+              });
+            }}
+          />
 
-          {/* Medicine Rows */}
+          {/* Medicine Cards */}
           <div className="space-y-3">
             {prescriptionData.medicines.map((medicine: any) => (
-              <MedicineRow
+              <MedicineCard
                 key={medicine.id}
                 medicine={medicine}
-                onUpdate={(updates) => updateMedicine(medicine.id, updates)}
+                onUpdate={(updates: any) => updateMedicine(medicine.id, updates)}
                 onRemove={() => removeMedicine(medicine.id)}
               />
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Advice Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Advice</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={prescriptionData.advice}
-            onChange={(e) =>
-              setPrescriptionData({
-                ...prescriptionData,
-                advice: e.target.value,
-              })
-            }
-            placeholder="Write instructions or advice here..."
-            rows={4}
-          />
-        </CardContent>
-      </Card>
+      {/* Advice and Tests Requested Section - Side by Side */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Advice Section - Left Half */}
+        <Card className="bg-custom-mutedgreen">
+          <CardHeader>
+            <CardTitle className="text-lg">Advice</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              value={prescriptionData.advice}
+              onChange={(e) =>
+                setPrescriptionData({
+                  ...prescriptionData,
+                  advice: e.target.value,
+                })
+              }
+              placeholder="Write instructions or advice here..."
+              rows={4}
+              className="bg-white"
+            />
+          </CardContent>
+        </Card>
 
-      {/* Tests Requested Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Tests Requested</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={prescriptionData.testsRequested}
-            onChange={(e) =>
-              setPrescriptionData({
-                ...prescriptionData,
-                testsRequested: e.target.value,
-              })
-            }
-            placeholder="Enter the tests to be done by the patient here..."
-            rows={4}
-          />
-        </CardContent>
-      </Card>
+        {/* Tests Requested Section - Right Half */}
+        <Card className="bg-custom-mutedgreen">
+          <CardHeader>
+            <CardTitle className="text-lg">Tests Requested</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              value={prescriptionData.testsRequested}
+              onChange={(e) =>
+                setPrescriptionData({
+                  ...prescriptionData,
+                  testsRequested: e.target.value,
+                })
+              }
+              placeholder="Enter the tests to be done by the patient here..."
+              rows={4}
+              className="bg-white"
+            />
+          </CardContent>
+        </Card>
+      </div>
+
 
       {/* Next Visit Section */}
       <Card>
@@ -584,18 +643,18 @@ export default function PrescriptionForm({
               ))}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Calendar className="h-4 w-4" />
             <span>Or choose Date:</span>
             <span className="font-medium">
               {prescriptionData.nextVisit.date
                 ? prescriptionData.nextVisit.date.toLocaleDateString("en-GB", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "2-digit",
-                    day: "2-digit",
-                  })
+                  weekday: "long",
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                })
                 : "Select date"}
             </span>
           </div>
