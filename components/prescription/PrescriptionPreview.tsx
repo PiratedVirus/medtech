@@ -122,16 +122,16 @@ export default function PrescriptionPreview({
           </h3>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="font-semibold">BP:</span> {prescriptionData.vitals.bloodPressure} mm/Hg
+              <span className="font-semibold">BP:</span> {prescriptionData.vitals?.bloodPressure || "N/A"} mm/Hg
             </div>
             <div>
-              <span className="font-semibold">Pulse:</span> {prescriptionData.vitals.pulse} bpm
+              <span className="font-semibold">Pulse:</span> {prescriptionData.vitals?.pulse || "N/A"} bpm
             </div>
             <div>
-              <span className="font-semibold">Height:</span> {prescriptionData.vitals.height} cm
+              <span className="font-semibold">Height:</span> {prescriptionData.vitals?.height || "N/A"} cm
             </div>
             <div>
-              <span className="font-semibold">Weight:</span> {prescriptionData.vitals.weight} kg
+              <span className="font-semibold">Weight:</span> {prescriptionData.vitals?.weight || "N/A"} kg
             </div>
           </div>
         </div>
@@ -144,22 +144,22 @@ export default function PrescriptionPreview({
             History
           </h3>
           <div className="space-y-2 text-sm">
-            {prescriptionData.history.allergies && (
+            {prescriptionData.history?.allergies && (
               <div>
                 <span className="font-semibold">Allergies:</span> {prescriptionData.history.allergies}
               </div>
             )}
-            {prescriptionData.history.personalHistory && (
+            {prescriptionData.history?.personalHistory && (
               <div>
                 <span className="font-semibold">Personal History:</span> {prescriptionData.history.personalHistory}
               </div>
             )}
-            {prescriptionData.history.pastMedicalHistory && (
+            {prescriptionData.history?.pastMedicalHistory && (
               <div>
                 <span className="font-semibold">Past Medical History:</span> {prescriptionData.history.pastMedicalHistory}
               </div>
             )}
-            {prescriptionData.history.familyHistory && (
+            {prescriptionData.history?.familyHistory && (
               <div>
                 <span className="font-semibold">Family History:</span> {prescriptionData.history.familyHistory}
               </div>
@@ -176,23 +176,23 @@ export default function PrescriptionPreview({
           </h3>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="font-semibold">General:</span> {prescriptionData.systemicExamination.general || "NAD"}
+              <span className="font-semibold">General:</span> {prescriptionData.systemicExamination?.general || "NAD"}
             </div>
             <div>
-              <span className="font-semibold">CVS:</span> {prescriptionData.systemicExamination.cvs || "NAD"}
+              <span className="font-semibold">CVS:</span> {prescriptionData.systemicExamination?.cvs || "NAD"}
             </div>
             <div>
-              <span className="font-semibold">RS:</span> {prescriptionData.systemicExamination.rs || "NAD"}
+              <span className="font-semibold">RS:</span> {prescriptionData.systemicExamination?.rs || "NAD"}
             </div>
             <div>
-              <span className="font-semibold">CNS:</span> {prescriptionData.systemicExamination.cns || "NAD"}
+              <span className="font-semibold">CNS:</span> {prescriptionData.systemicExamination?.cns || "NAD"}
             </div>
           </div>
         </div>
       )}
 
       {/* Medicine Section */}
-      {visibleSections.medicines && prescriptionData.medicines.length > 0 && (
+      {visibleSections.medicines && prescriptionData.medicines?.length > 0 && (
         <div className="mb-6">
           <h3 className="font-semibold text-lg mb-3 text-gray-900 border-b border-gray-200 pb-1">
             Medicine

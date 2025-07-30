@@ -209,7 +209,7 @@ export default function TypeAheadInput({
       // Show success toast
       toast({
         title: "Success",
-        description: `"${text}" added to ${type} catalogue`,
+        description: `"${text}" added to ${type} catalogue successfully`,
       });
     } catch (error) {
       console.error("Error creating new item:", error);

@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import PrescriptionForm from "@/components/prescription/PrescriptionForm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 
 interface PrescriptionData {
@@ -14,6 +14,7 @@ interface PrescriptionData {
     text: string;
     severity: "PERFECT" | "GOOD" | "MODERATE" | "RISK" | "CRITICAL";
     daysSince?: number;
+    isFlagged?: boolean;
   }>;
   vitals: {
     bloodPressure: string;
@@ -57,33 +58,54 @@ export default function PrescriptionPage() {
   const { toast } = useToast();
   const appointmentId = params.appointmentId as string;
 
+  const [prescriptionData, setPrescriptionData] = useState<PrescriptionData>({
+    complaints: [],
+    vitals: {
+      bloodPressure: "120/80",
+      pulse: "72",
+      height: "182",
+      weight: "95",
+    },
+    history: {
+      allergies: "",
+      personalHistory: "",
+      pastMedicalHistory: "",
+      familyHistory: "",
+    },
+    systemicExamination: {
+      general: "",
+      cvs: "NAD",
+      rs: "NAD",
+      cns: "NAD",
+    },
+    medicines: [],
+    advice: "",
+    testsRequested: "",
+    nextVisit: {
+      type: "days",
+      value: 7,
+    },
+  });
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [existingPrescriptionId, setExistingPrescriptionId] = useState<string | null>(null);
+  
+  const [patientInfo, setPatientInfo] = useState({
+    name: "",
+    patientId: "",
+    appointmentId: appointmentId,
+    prescriptionId: `PRES-XX-${appointmentId}`,
+  });
+
   useEffect(() => {
-    const fetchAppointmentData = async () => {
-      try {
-        const response = await fetch(`/api/doctor/appointments/all`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch appointment data");
+    // Auto-scroll to vitals section after a short delay
+    const scrollToVitals = () => {
+      setTimeout(() => {
+        const vitalsSection = document.querySelector('[data-section="vitals"]');
+        if (vitalsSection) {
+          vitalsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-
-        const data = await response.json();
-        const appointment = data.upcoming.find((apt: any) => apt.id.toString() === appointmentId) ||
-          data.past.find((apt: any) => apt.id.toString() === appointmentId);
-
-        if (appointment) {
-          setPatientInfo({
-            name: appointment.patientName,
-            patientId: appointment.patientId.toString(),
-            prescriptionId: `PRES-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching appointment data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load appointment data",
-          variant: "destructive",
-        });
-      }
+      }, 500);
     };
 
     const fetchExistingPrescription = async () => {
@@ -94,6 +116,12 @@ export default function PrescriptionPage() {
           if (data.success && data.data) {
             // Set existing prescription ID
             setExistingPrescriptionId(data.data.id.toString());
+            
+            // Update patientInfo with the existing prescription ID
+            setPatientInfo(prev => ({
+              ...prev,
+              prescriptionId: data.data.prescriptionNumber || `PRES-${data.data.id}`,
+            }));
 
             // Prefill the form with existing prescription data
             const prescription = data.data;
@@ -103,6 +131,7 @@ export default function PrescriptionPage() {
                 text: c.complaintText,
                 severity: c.severity,
                 daysSince: c.daysSince,
+                isFlagged: c.isFlagged || false,
               })),
               vitals: prescription.vitals ? {
                 bloodPressure: prescription.vitals.bloodPressure || "",
@@ -154,11 +183,6 @@ export default function PrescriptionPage() {
                 date: prescription.nextVisitDate ? new Date(prescription.nextVisitDate) : undefined,
               },
             });
-
-            toast({
-              title: "Prescription Loaded",
-              description: "Existing prescription data has been loaded",
-            });
           }
         }
       } catch (error) {
@@ -166,48 +190,43 @@ export default function PrescriptionPage() {
       }
     };
 
+    const fetchAppointmentData = async () => {
+      try {
+        const response = await fetch(`/api/doctor/appointments/all`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch appointment data");
+        }
+
+        const data = await response.json();
+        const appointment = data.upcoming.find((apt: any) => apt.id.toString() === appointmentId) ||
+          data.past.find((apt: any) => apt.id.toString() === appointmentId);
+
+        if (appointment) {
+          const prescriptionId = `PRES-${appointment.patientName.split(' ').map((n: string) => n[0]).join('').toUpperCase()}-${appointmentId}`;
+          setPatientInfo(prev => ({
+            ...prev,
+            name: appointment.patientName,
+            patientId: appointment.patientId.toString(),
+            appointmentId: appointmentId,
+            prescriptionId: prescriptionId,
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching appointment data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load appointment data",
+          variant: "destructive",
+        });
+      }
+    };
+
     if (appointmentId) {
       fetchAppointmentData();
       fetchExistingPrescription();
+      scrollToVitals(); // Auto-scroll to vitals
     }
   }, [appointmentId, toast]);
-
-  const [prescriptionData, setPrescriptionData] = useState<PrescriptionData>({
-    complaints: [],
-    vitals: {
-      bloodPressure: "120/80",
-      pulse: "72",
-      height: "182",
-      weight: "95",
-    },
-    history: {
-      allergies: "",
-      personalHistory: "",
-      pastMedicalHistory: "",
-      familyHistory: "",
-    },
-    systemicExamination: {
-      general: "",
-      cvs: "NAD",
-      rs: "NAD",
-      cns: "NAD",
-    },
-    medicines: [],
-    advice: "",
-    testsRequested: "",
-    nextVisit: {
-      type: "days",
-      value: 7,
-    },
-  });
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [existingPrescriptionId, setExistingPrescriptionId] = useState<string | null>(null);
-  const [patientInfo, setPatientInfo] = useState({
-    name: "",
-    patientId: "",
-    prescriptionId: `PRES-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-  });
 
   const calculateNextVisitDate = (type: string, value: number) => {
     const today = new Date();
@@ -228,41 +247,46 @@ export default function PrescriptionPage() {
     return nextDate;
   };
 
+  const handleBack = () => {
+    router.push('/doctor/appointments');
+  };
+
   const handleGeneratePrescription = async () => {
     setIsLoading(true);
     try {
-      const method = existingPrescriptionId ? "PUT" : "POST";
+      // Only use PUT if existingPrescriptionId is a non-empty string
+      const isUpdate = existingPrescriptionId && existingPrescriptionId.trim() !== "";
+      const method = isUpdate ? "PUT" : "POST";
       const url = "/api/doctor/prescription";
-
-      const body = existingPrescriptionId
+      const body = isUpdate
         ? {
-          prescriptionId: existingPrescriptionId,
-          complaints: prescriptionData.complaints,
-          vitals: prescriptionData.vitals,
-          history: prescriptionData.history,
-          systemicExamination: prescriptionData.systemicExamination,
-          medicines: prescriptionData.medicines,
-          advice: prescriptionData.advice,
-          testsRequested: prescriptionData.testsRequested,
-          nextVisitDate: prescriptionData.nextVisit.date || calculateNextVisitDate(prescriptionData.nextVisit.type, prescriptionData.nextVisit.value),
-          nextVisitType: prescriptionData.nextVisit.type,
-          nextVisitValue: prescriptionData.nextVisit.value,
-        }
+            prescriptionId: existingPrescriptionId,
+            complaints: prescriptionData.complaints,
+            vitals: prescriptionData.vitals,
+            history: prescriptionData.history,
+            systemicExamination: prescriptionData.systemicExamination,
+            medicines: prescriptionData.medicines,
+            advice: prescriptionData.advice,
+            testsRequested: prescriptionData.testsRequested,
+            nextVisitDate: prescriptionData.nextVisit.date || calculateNextVisitDate(prescriptionData.nextVisit.type, prescriptionData.nextVisit.value),
+            nextVisitType: prescriptionData.nextVisit.type,
+            nextVisitValue: prescriptionData.nextVisit.value,
+          }
         : {
-          appointmentId: parseInt(appointmentId),
-          patientId: parseInt(patientInfo.patientId),
-          doctorId: 1, // TODO: Get from auth context
-          complaints: prescriptionData.complaints,
-          vitals: prescriptionData.vitals,
-          history: prescriptionData.history,
-          systemicExamination: prescriptionData.systemicExamination,
-          medicines: prescriptionData.medicines,
-          advice: prescriptionData.advice,
-          testsRequested: prescriptionData.testsRequested,
-          nextVisitDate: prescriptionData.nextVisit.date || calculateNextVisitDate(prescriptionData.nextVisit.type, prescriptionData.nextVisit.value),
-          nextVisitType: prescriptionData.nextVisit.type,
-          nextVisitValue: prescriptionData.nextVisit.value,
-        };
+            appointmentId: parseInt(appointmentId),
+            patientId: parseInt(patientInfo.patientId),
+            doctorId: 1, // TODO: Get from auth context
+            complaints: prescriptionData.complaints,
+            vitals: prescriptionData.vitals,
+            history: prescriptionData.history,
+            systemicExamination: prescriptionData.systemicExamination,
+            medicines: prescriptionData.medicines,
+            advice: prescriptionData.advice,
+            testsRequested: prescriptionData.testsRequested,
+            nextVisitDate: prescriptionData.nextVisit.date || calculateNextVisitDate(prescriptionData.nextVisit.type, prescriptionData.nextVisit.value),
+            nextVisitType: prescriptionData.nextVisit.type,
+            nextVisitValue: prescriptionData.nextVisit.value,
+          };
 
       const response = await fetch(url, {
         method,
@@ -273,8 +297,8 @@ export default function PrescriptionPage() {
       });
 
       if (!response.ok) {
-        console.log(response);
-        throw new Error("Failed to save prescription");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save prescription");
       }
 
       const result = await response.json();
@@ -287,12 +311,10 @@ export default function PrescriptionPage() {
 
       // Navigate to PDF view page
       router.push(`/doctor/prescription/${prescriptionId}/pdf`);
-
-    } catch (error) {
-      console.error("Error generating prescription:", error);
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to generate prescription. Please try again.",
+        description: error.message || "Failed to generate prescription. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -310,6 +332,10 @@ export default function PrescriptionPage() {
             prescriptionData={prescriptionData}
             setPrescriptionData={setPrescriptionData}
             patientInfo={patientInfo}
+            onGeneratePrescription={handleGeneratePrescription}
+            isGenerating={isLoading}
+            onBack={handleBack}
+            existingPrescriptionId={existingPrescriptionId}
             onLoadPrevious={async () => {
               try {
                 const response = await fetch(`/api/doctor/prescription/previous?patientId=${patientInfo.patientId}&latest=true`);
@@ -323,6 +349,7 @@ export default function PrescriptionPage() {
                         text: c.complaintText,
                         severity: c.severity,
                         daysSince: c.daysSince,
+                        isFlagged: c.isFlagged || false,
                       })),
                       vitals: prescription.vitals ? {
                         bloodPressure: prescription.vitals.bloodPressure || "",
@@ -376,23 +403,6 @@ export default function PrescriptionPage() {
               }
             }}
           />
-
-          {/* Generate Prescription Button */}
-          <div className="mt-8 flex justify-center">
-            <Button
-              onClick={handleGeneratePrescription}
-              disabled={isLoading}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-8 py-3 text-lg"
-              size="lg"
-            >
-              {isLoading
-                ? "Generating..."
-                : existingPrescriptionId
-                  ? "Update Prescription"
-                  : "Generate Prescription"
-              }
-            </Button>
-          </div>
         </div>
       </div>
     </div>

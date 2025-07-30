@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { X, FileText, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface ComplaintCardProps {
   complaint: {
@@ -31,6 +32,11 @@ export default function ComplaintCard({
   onRemove,
   severityOptions,
 }: ComplaintCardProps) {
+  const { toast } = useToast();
+
+  const handleFlagToggle = () => {
+    onUpdate({ isFlagged: !complaint.isFlagged });
+  };
 
 
   const getSeverityColor = (severity: string) => {
@@ -141,7 +147,7 @@ export default function ComplaintCard({
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => onUpdate({ isFlagged: !complaint.isFlagged })}
+                onClick={handleFlagToggle}
                 className={cn(
                   "h-8 w-8 p-0",
                   complaint.isFlagged ? "text-red-500" : "text-gray-400 hover:text-red-500"

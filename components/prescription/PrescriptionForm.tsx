@@ -9,7 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { Plus, X, Edit2, Clock, Calendar, User, FileText, Save, Download } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, X, Edit2, Clock, Calendar, User, FileText, Save, Download, Loader2, ArrowLeft } from "lucide-react";
 import TypeAheadInput from "./TypeAheadInput";
 import ComplaintCard from "./ComplaintCard";
 import MedicineCard from "./MedicineCard";
@@ -19,6 +21,10 @@ interface PrescriptionFormProps {
   setPrescriptionData: (data: any) => void;
   patientInfo: any;
   onLoadPrevious: () => void;
+  onGeneratePrescription?: () => void;
+  isGenerating?: boolean;
+  onBack?: () => void;
+  existingPrescriptionId?: string | null;
 }
 
 export default function PrescriptionForm({
@@ -26,11 +32,24 @@ export default function PrescriptionForm({
   setPrescriptionData,
   patientInfo,
   onLoadPrevious,
+  onGeneratePrescription,
+  isGenerating = false,
+  onBack,
+  existingPrescriptionId,
 }: PrescriptionFormProps) {
   const [newComplaint, setNewComplaint] = useState("");
   const [newMedicine, setNewMedicine] = useState("");
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const patientCardRef = useRef<HTMLDivElement>(null);
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [isLoadingPrevious, setIsLoadingPrevious] = useState(false);
+  const [isGeneratingPrescription, setIsGeneratingPrescription] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [savedTemplates, setSavedTemplates] = useState([]);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showLoadDialog, setShowLoadDialog] = useState(false);
+  const { toast } = useToast();
 
   const severityOptions = [
     { value: "PERFECT", label: "Perfect", color: "bg-green-100 text-green-800" },
@@ -56,6 +75,16 @@ export default function PrescriptionForm({
         ],
       });
       setNewComplaint("");
+      toast({
+        title: "Success",
+        description: `Complaint "${newComplaint}" added successfully`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Please enter a complaint text",
+        variant: "destructive",
+      });
     }
   };
 
@@ -69,9 +98,14 @@ export default function PrescriptionForm({
   };
 
   const removeComplaint = (id: string) => {
+    const complaint = prescriptionData.complaints.find((c: any) => c.id === id);
     setPrescriptionData({
       ...prescriptionData,
       complaints: prescriptionData.complaints.filter((complaint: any) => complaint.id !== id),
+    });
+    toast({
+      title: "Success",
+      description: `Complaint "${complaint?.text || 'Unknown'}" removed successfully`,
     });
   };
 
@@ -92,6 +126,16 @@ export default function PrescriptionForm({
         ],
       });
       setNewMedicine("");
+      toast({
+        title: "Success",
+        description: `Medicine "${newMedicine}" added successfully`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Please enter a medicine name",
+        variant: "destructive",
+      });
     }
   };
 
@@ -105,9 +149,14 @@ export default function PrescriptionForm({
   };
 
   const removeMedicine = (id: string) => {
+    const medicine = prescriptionData.medicines.find((m: any) => m.id === id);
     setPrescriptionData({
       ...prescriptionData,
       medicines: prescriptionData.medicines.filter((medicine: any) => medicine.id !== id),
+    });
+    toast({
+      title: "Success",
+      description: `Medicine "${medicine?.name || 'Unknown'}" removed successfully`,
     });
   };
 
@@ -170,8 +219,9 @@ export default function PrescriptionForm({
     const handleScroll = () => {
       if (patientCardRef.current) {
         const rect = patientCardRef.current.getBoundingClientRect();
-        // Show sticky header when patient card is scrolled out of view
-        setShowStickyHeader(rect.bottom < 0);
+        const cardHeight = patientCardRef.current.offsetHeight;
+        // Show sticky header when patient card is halfway out of view
+        setShowStickyHeader(rect.bottom < cardHeight / 2);
       }
     };
 
@@ -179,38 +229,266 @@ export default function PrescriptionForm({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-    return (
+  const handleSaveTemplate = async () => {
+    if (!templateName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a template name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingTemplate(true);
+    try {
+      const response = await fetch('/api/doctor/prescription/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: templateName,
+          ...prescriptionData,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save template');
+
+      toast({
+        title: "Success",
+        description: `Template "${templateName}" saved successfully`,
+      });
+
+      setShowSaveDialog(false);
+      setTemplateName("");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save template",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingTemplate(false);
+    }
+  };
+
+  const handleLoadTemplates = async () => {
+    setIsLoadingTemplate(true);
+    try {
+      const response = await fetch('/api/doctor/prescription/templates');
+      if (!response.ok) throw new Error('Failed to load templates');
+
+      const data = await response.json();
+
+      
+      if (data.success && data.templates) {
+        setSavedTemplates(data.templates || []);
+        setShowLoadDialog(true);
+        toast({
+          title: "Success",
+          description: `Loaded ${data.templates.length} templates`,
+        });
+      } else {
+        throw new Error(data.error || 'Failed to load templates');
+      }
+    } catch (error) {
+      console.error('Error loading templates:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load templates",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingTemplate(false);
+    }
+  };
+
+  const handleSelectTemplate = (template: any) => {
+    // Ensure template exists
+    if (!template) {
+      toast({
+        title: "Error",
+        description: "Invalid template data",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Reconstruct template data from separate relations
+    const templateData = {
+      complaints: template.complaints?.map((c: any) => ({
+        id: c.id.toString(),
+        text: c.complaintText,
+        severity: c.severity,
+        daysSince: 0,
+        isFlagged: false,
+      })) || [],
+      vitals: {
+        bloodPressure: "120/80",
+        pulse: "72",
+        height: "182",
+        weight: "95",
+      },
+      history: {
+        allergies: "",
+        personalHistory: "",
+        pastMedicalHistory: "",
+        familyHistory: "",
+      },
+      systemicExamination: {
+        general: "",
+        cvs: "NAD",
+        rs: "NAD",
+        cns: "NAD",
+      },
+      medicines: template.medicines?.map((m: any) => ({
+        id: m.id.toString(),
+        name: m.medicineName,
+        frequency: m.frequency || "",
+        medicineTime: m.medicineTime || "",
+        duration: m.duration || "",
+        quantity: m.quantity?.toString() || "",
+        instructions: m.instructions || "",
+      })) || [],
+      advice: template.advice || "",
+      testsRequested: template.testsRequested || "",
+      nextVisit: {
+        type: "days",
+        value: 7,
+        date: undefined,
+      },
+    };
+    setPrescriptionData({
+      complaints: templateData.complaints || [],
+      vitals: {
+        bloodPressure: templateData.vitals?.bloodPressure || "120/80",
+        pulse: templateData.vitals?.pulse || "72",
+        height: templateData.vitals?.height || "182",
+        weight: templateData.vitals?.weight || "95",
+      },
+      history: {
+        allergies: templateData.history?.allergies || "",
+        personalHistory: templateData.history?.personalHistory || "",
+        pastMedicalHistory: templateData.history?.pastMedicalHistory || "",
+        familyHistory: templateData.history?.familyHistory || "",
+      },
+      systemicExamination: {
+        general: templateData.systemicExamination?.general || "",
+        cvs: templateData.systemicExamination?.cvs || "NAD",
+        rs: templateData.systemicExamination?.rs || "NAD",
+        cns: templateData.systemicExamination?.cns || "NAD",
+      },
+      medicines: templateData.medicines || [],
+      advice: templateData.advice || "",
+      testsRequested: templateData.testsRequested || "",
+      nextVisit: {
+        type: templateData.nextVisit?.type || "days",
+        value: templateData.nextVisit?.value || 7,
+        date: templateData.nextVisit?.date ? new Date(templateData.nextVisit.date) : undefined,
+      },
+    });
+    setShowLoadDialog(false);
+    toast({
+      title: "Success",
+      description: `Template \"${template.templateName || template.name || 'Unnamed'}\" loaded successfully`,
+    });
+  };
+
+  const handleLoadPrevious = async () => {
+    setIsLoadingPrevious(true);
+    try {
+      await onLoadPrevious();
+      toast({
+        title: "Success",
+        description: "Previous medicines loaded successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load previous medicines",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingPrevious(false);
+    }
+  };
+
+  const handleGeneratePrescription = async () => {
+    setIsGeneratingPrescription(true);
+    try {
+      // Add prescription generation logic here
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+      toast({
+        title: "Success",
+        description: "Prescription generated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate prescription",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPrescription(false);
+    }
+  };
+
+  return (
     <div className="space-y-6 w-full">
       {/* Sticky Header - Shows when patient card is out of view */}
-      <div className={`fixed top-0 left-0 right-0 z-50 bg-white shadow-md border-b transition-all duration-300 ${
-        showStickyHeader ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
-      }`}>
+      <div className={`fixed top-0 left-0 right-0 z-50 bg-white shadow-md border-b transition-all duration-300 ${showStickyHeader ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
         <div className="flex items-center justify-between px-6 py-3">
           <div className="flex items-center gap-4">
+            {onBack && (
+              <Button variant="ghost" size="icon" onClick={onBack} className="mr-2 p-2">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            )}
             <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600">#{patientInfo.appointmentId || 'APT001'}</span>
+              <span className="text-sm text-gray-600">#APT0{patientInfo.appointmentId || '001'}</span>
               <span className="text-lg font-semibold text-gray-900">{patientInfo.name}</span>
+              <span className="text-sm text-gray-500">({patientInfo.prescriptionId || 'No ID'})</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLoadTemplates}
+              disabled={isLoadingTemplate}
+            >
+              {isLoadingTemplate ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
               Load Template
             </Button>
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSaveDialog(true)}
+            >
               <Save className="h-4 w-4 mr-2" />
               Save Template
             </Button>
-            <Button variant="default" size="sm">
-              <FileText className="h-4 w-4 mr-2" />
-              Generate Prescription
+            <Button
+              variant="default"
+              size="sm"
+              onClick={onGeneratePrescription}
+              disabled={isGenerating}
+            >
+              {isGenerating ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4 mr-2" />
+              )}
+              {existingPrescriptionId ? "Update Prescription" : "Generate Prescription"}
             </Button>
           </div>
         </div>
       </div>
 
       {/* Patient Information */}
-      <div 
+      <div
         ref={patientCardRef}
         className="bg-custom-mutedgreen p-6 rounded-2xl border border-gray-200 flex justify-between items-start relative overflow-hidden"
       >
@@ -218,26 +496,32 @@ export default function PrescriptionForm({
         <div className="absolute bottom-0 left-0 opacity-10">
           <User className="h-32 w-32 text-custom-darkgreen" />
         </div>
-        
         {/* Content */}
         <div className="relative z-10 w-full flex justify-between items-start">
-          <h3 className="text-lg text-custom-darkgreen font-semibold mb-4">Patient Information</h3>
+          <div className="flex items-center gap-3">
+            {onBack && (
+              <Button variant="ghost" size="icon" onClick={onBack} className="mr-2 p-2 text-custom-darkgreen">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            )}
+            <h3 className="text-lg text-custom-darkgreen font-semibold">Patient Information</h3>
+          </div>
           <div className="flex flex-col text-right">
             <div>
-              <h4 className="text-xl text-custom-darkgreen font-medium mb-1">#{patientInfo.appointmentId || 'APT001'}</h4>
+              <h4 className="text-xl text-custom-darkgreen font-medium mb-1">#APT0{patientInfo.appointmentId || '001'}</h4>
             </div>
             <div>
               <h2 className="text-2xl text-custom-darkgreen font-semibold mb-1">{patientInfo.name}</h2>
             </div>
             <div>
-              <h4 className="text-sm text-custom-darkgreen font-light mb-4">{patientInfo.prescriptionId}</h4>
+              <h4 className="text-sm text-custom-darkgreen font-light mb-4">{patientInfo.prescriptionId || 'No prescription ID'}</h4>
             </div>
           </div>
         </div>
       </div>
 
       {/* Vitals Section */}
-      <div className="rounded-lg ">
+      <div className="rounded-lg " data-section="vitals">
         {/* <h3 className="text-lg font-semibold mb-4">Vitals</h3> */}
         <div className="grid grid-cols-4 gap-6">
           {/* BP Vital */}
@@ -249,11 +533,11 @@ export default function PrescriptionForm({
               <div className="flex-1">
                 <Input
                   id="bp"
-                  value={prescriptionData.vitals.bloodPressure}
+                  value={prescriptionData.vitals?.bloodPressure || ""}
                   onChange={(e) =>
                     setPrescriptionData({
                       ...prescriptionData,
-                      vitals: { ...prescriptionData.vitals, bloodPressure: e.target.value },
+                                              vitals: { ...prescriptionData.vitals || {}, bloodPressure: e.target.value },
                     })
                   }
                   placeholder="120/80"
@@ -273,11 +557,11 @@ export default function PrescriptionForm({
               <div className="flex-1">
                 <Input
                   id="pulse"
-                  value={prescriptionData.vitals.pulse}
+                  value={prescriptionData.vitals?.pulse || ""}
                   onChange={(e) =>
                     setPrescriptionData({
                       ...prescriptionData,
-                      vitals: { ...prescriptionData.vitals, pulse: e.target.value },
+                                              vitals: { ...prescriptionData.vitals || {}, pulse: e.target.value },
                     })
                   }
                   placeholder="72"
@@ -297,11 +581,11 @@ export default function PrescriptionForm({
               <div className="flex-1">
                 <Input
                   id="height"
-                  value={prescriptionData.vitals.height}
+                  value={prescriptionData.vitals?.height || ""}
                   onChange={(e) =>
                     setPrescriptionData({
                       ...prescriptionData,
-                      vitals: { ...prescriptionData.vitals, height: e.target.value },
+                                              vitals: { ...prescriptionData.vitals || {}, height: e.target.value },
                     })
                   }
                   placeholder="182"
@@ -321,11 +605,11 @@ export default function PrescriptionForm({
               <div className="flex-1">
                 <Input
                   id="weight"
-                  value={prescriptionData.vitals.weight}
+                  value={prescriptionData.vitals?.weight || ""}
                   onChange={(e) =>
                     setPrescriptionData({
                       ...prescriptionData,
-                      vitals: { ...prescriptionData.vitals, weight: e.target.value },
+                                              vitals: { ...prescriptionData.vitals || {}, weight: e.target.value },
                     })
                   }
                   placeholder="95"
@@ -389,16 +673,16 @@ export default function PrescriptionForm({
       {/* History Section */}
       <div className="bg-white p-6 rounded-lg border border-gray-200">
         <h3 className="text-lg font-semibold mb-4">History</h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <Label htmlFor="allergies" className="text-sm font-medium text-gray-700">Allergies</Label>
             <Textarea
               id="allergies"
-              value={prescriptionData.history.allergies}
+              value={prescriptionData.history?.allergies || ""}
               onChange={(e) =>
                 setPrescriptionData({
                   ...prescriptionData,
-                  history: { ...prescriptionData.history, allergies: e.target.value },
+                  history: { ...prescriptionData.history || {}, allergies: e.target.value },
                 })
               }
               placeholder="Enter here..."
@@ -410,11 +694,11 @@ export default function PrescriptionForm({
             <Label htmlFor="personalHistory" className="text-sm font-medium text-gray-700">Personal History</Label>
             <Textarea
               id="personalHistory"
-              value={prescriptionData.history.personalHistory}
+              value={prescriptionData.history?.personalHistory || ""}
               onChange={(e) =>
                 setPrescriptionData({
                   ...prescriptionData,
-                  history: { ...prescriptionData.history, personalHistory: e.target.value },
+                  history: { ...prescriptionData.history || {}, personalHistory: e.target.value },
                 })
               }
               placeholder="Enter here..."
@@ -426,11 +710,11 @@ export default function PrescriptionForm({
             <Label htmlFor="pastMedicalHistory" className="text-sm font-medium text-gray-700">Past Medical History</Label>
             <Textarea
               id="pastMedicalHistory"
-              value={prescriptionData.history.pastMedicalHistory}
+              value={prescriptionData.history?.pastMedicalHistory || ""}
               onChange={(e) =>
                 setPrescriptionData({
                   ...prescriptionData,
-                  history: { ...prescriptionData.history, pastMedicalHistory: e.target.value },
+                  history: { ...prescriptionData.history || {}, pastMedicalHistory: e.target.value },
                 })
               }
               placeholder="Enter here..."
@@ -438,7 +722,22 @@ export default function PrescriptionForm({
               className="mt-1"
             />
           </div>
-
+          <div>
+            <Label htmlFor="familyHistory" className="text-sm font-medium text-gray-700">Family History</Label>
+            <Textarea
+              id="familyHistory"
+              value={prescriptionData.history?.familyHistory || ""}
+              onChange={(e) =>
+                setPrescriptionData({
+                  ...prescriptionData,
+                  history: { ...prescriptionData.history || {}, familyHistory: e.target.value },
+                })
+              }
+              placeholder="Enter family medical history..."
+              rows={2}
+              className="mt-1"
+            />
+          </div>
         </div>
       </div>
 
@@ -449,11 +748,11 @@ export default function PrescriptionForm({
           <div>
             <Label htmlFor="general">General</Label>
             <Select
-              value={prescriptionData.systemicExamination.general}
+              value={prescriptionData.systemicExamination?.general || ""}
               onValueChange={(value) =>
                 setPrescriptionData({
                   ...prescriptionData,
-                  systemicExamination: { ...prescriptionData.systemicExamination, general: value },
+                  systemicExamination: { ...prescriptionData.systemicExamination || {}, general: value },
                 })
               }
             >
@@ -472,11 +771,11 @@ export default function PrescriptionForm({
             <Input
               id="cvs"
               className="bg-white"
-              value={prescriptionData.systemicExamination.cvs}
+              value={prescriptionData.systemicExamination?.cvs || ""}
               onChange={(e) =>
                 setPrescriptionData({
                   ...prescriptionData,
-                  systemicExamination: { ...prescriptionData.systemicExamination, cvs: e.target.value },
+                  systemicExamination: { ...prescriptionData.systemicExamination || {}, cvs: e.target.value },
                 })
               }
               placeholder="NAD"
@@ -487,11 +786,11 @@ export default function PrescriptionForm({
             <Input
               id="rs"
               className="bg-white"
-              value={prescriptionData.systemicExamination.rs}
+              value={prescriptionData.systemicExamination?.rs || ""}
               onChange={(e) =>
                 setPrescriptionData({
                   ...prescriptionData,
-                  systemicExamination: { ...prescriptionData.systemicExamination, rs: e.target.value },
+                  systemicExamination: { ...prescriptionData.systemicExamination || {}, rs: e.target.value },
                 })
               }
               placeholder="NAD"
@@ -502,11 +801,11 @@ export default function PrescriptionForm({
             <Input
               id="cns"
               className="bg-white"
-              value={prescriptionData.systemicExamination.cns}
+              value={prescriptionData.systemicExamination?.cns || ""}
               onChange={(e) =>
                 setPrescriptionData({
                   ...prescriptionData,
-                  systemicExamination: { ...prescriptionData.systemicExamination, cns: e.target.value },
+                  systemicExamination: { ...prescriptionData.systemicExamination || {}, cns: e.target.value },
                 })
               }
               placeholder="NAD"
@@ -519,8 +818,17 @@ export default function PrescriptionForm({
       <div className="bg-white p-6 rounded-lg border border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Medicine</h3>
-          <Button variant="outline" size="sm" onClick={onLoadPrevious}>
-            <Clock className="h-4 w-4 mr-2" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLoadPrevious}
+            disabled={isLoadingPrevious}
+          >
+            {isLoadingPrevious ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Clock className="h-4 w-4 mr-2" />
+            )}
             Load from Previous
           </Button>
         </div>
@@ -611,55 +919,177 @@ export default function PrescriptionForm({
       </div>
 
 
-      {/* Next Visit Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Next Visit</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <Label htmlFor="nextVisitValue">Enter the No. of</Label>
-              <Input
-                id="nextVisitValue"
-                type="number"
-                value={prescriptionData.nextVisit.value}
-                onChange={(e) =>
-                  handleNextVisitChange(prescriptionData.nextVisit.type, parseInt(e.target.value) || 0)
-                }
-                className="w-20"
-              />
-            </div>
-            <div className="flex gap-2">
-              {["days", "weeks", "months"].map((type) => (
+      {/* it Section */}
+      {/* Next Visit card – keep existing wrapper */}
+      <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <h3 className="text-lg font-semibold mb-2">Next Visit</h3>
+
+        {/* ▸ Row 1: secondary labels */}
+        <div className="grid grid-cols-12 gap-4 mb-2 text-sm text-gray-600 font-medium">
+          <span className="col-span-4">Enter a number</span>
+          <span className="col-span-4 ml-10">Choose Date</span>
+          <span className="col-span-4">Next visit Date</span>
+        </div>
+
+        {/* ▸ Row 2: primary controls */}
+        <div className="grid grid-cols-12 gap-6 items-center">
+          {/* Number + unit buttons (first 4 cols) */}
+          <div className="col-span-4 flex gap-2 items-center">
+            <Input
+              type="number"
+              value={prescriptionData.nextVisit.value}
+              onChange={(e) =>
+                handleNextVisitChange(
+                  prescriptionData.nextVisit.type,
+                  parseInt(e.target.value) || 0
+                )
+              }
+              placeholder="#"
+              className="w-1/2 text-right"
+            />
+
+            <div className="flex-1 flex gap-1">
+              {['Days', 'Weeks', 'Months'].map((type) => (
                 <Button
                   key={type}
-                  variant={prescriptionData.nextVisit.type === type ? "default" : "outline"}
+                  variant={
+                    prescriptionData.nextVisit.type === type.toLowerCase()
+                      ? 'default'
+                      : 'outline'
+                  }
                   size="sm"
-                  onClick={() => handleNextVisitChange(type, prescriptionData.nextVisit.value)}
+                  onClick={() =>
+                    handleNextVisitChange(type.toLowerCase(), prescriptionData.nextVisit.value)
+                  }
+                  className="flex-1"
                 >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                  {type}
                 </Button>
               ))}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Calendar className="h-4 w-4" />
-            <span>Or choose Date:</span>
-            <span className="font-medium">
+          {/* Date picker (middle 4 cols) */}
+          <div className="col-span-4">
+            <div className="ml-10">
+            <Input
+              id="nextVisitDate"
+              type="date"
+              value={
+                prescriptionData.nextVisit.date
+                  ? new Date(prescriptionData.nextVisit.date).toISOString().substring(0, 10)
+                  : ''
+              }
+              onChange={(e) => {
+                const picked = e.target.value ? new Date(e.target.value) : null;
+                setPrescriptionData({
+                  ...prescriptionData,
+                  nextVisit: { ...prescriptionData.nextVisit, date: picked },
+                });
+              }}
+              className="bg-white w-fit"
+            />
+            </div>
+
+          </div>
+
+          {/* Display selected date (last 4 cols) */}
+          <div className="col-span-4 flex items-center gap-2 text-sm text-gray-600">
+            <span className="font-bold text-xl text-primary">
               {prescriptionData.nextVisit.date
-                ? prescriptionData.nextVisit.date.toLocaleDateString("en-GB", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "2-digit",
-                  day: "2-digit",
+                ? new Date(prescriptionData.nextVisit.date).toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  weekday: 'long',
                 })
-                : "Select date"}
+                : 'dd-mm-yyyy (---)'}
             </span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {/* Save Template Dialog */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Save Template</DialogTitle>
+            <DialogDescription>
+              Enter a name for your prescription template.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="templateName" className="text-right">
+                Name
+              </Label>
+              <Input
+                id="templateName"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                className="col-span-3"
+                placeholder="Enter template name..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveTemplate} disabled={isSavingTemplate}>
+              {isSavingTemplate ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              Save Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Load Template Dialog */}
+      <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Load Template</DialogTitle>
+            <DialogDescription>
+              Select a template to load into the prescription form.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4 max-h-[400px] overflow-y-auto">
+            {savedTemplates.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">
+                No saved templates found
+              </div>
+            ) : (
+              savedTemplates.map((template: any) => (
+                <div
+                  key={template.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                  onClick={() => handleSelectTemplate(template)}
+                >
+                  <div>
+                    <h4 className="font-medium">{template.templateName || template.name || 'Unnamed Template'}</h4>
+                    <p className="text-sm text-gray-500">
+                      Created: {new Date(template.createdAt).toLocaleDateString()}
+                    </p>
+                    {template.templateDescription && (
+                      <p className="text-xs text-gray-400 mt-1">{template.templateDescription}</p>
+                    )}
+                  </div>
+                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleSelectTemplate(template); }}>
+                    Load
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLoadDialog(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

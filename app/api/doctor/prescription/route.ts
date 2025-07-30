@@ -121,6 +121,7 @@ export async function POST(request: Request) {
             complaintText: complaint.text,
             severity: complaint.severity || "MODERATE",
             daysSince: complaint.daysSince,
+            isFlagged: complaint.isFlagged || false,
           })),
         });
       }
@@ -216,7 +217,7 @@ export async function PUT(request: Request) {
       nextVisitValue,
     } = body;
 
-    if (!prescriptionId) {
+    if (!prescriptionId || prescriptionId === "" || prescriptionId === null || prescriptionId === undefined) {
       return NextResponse.json(
         { success: false, error: "prescriptionId is required" },
         { status: 400 }
@@ -224,7 +225,7 @@ export async function PUT(request: Request) {
     }
 
     const prescriptionIdNum = parseInt(prescriptionId);
-    if (isNaN(prescriptionIdNum)) {
+    if (isNaN(prescriptionIdNum) || prescriptionIdNum <= 0) {
       return NextResponse.json(
         { success: false, error: "Invalid prescriptionId format" },
         { status: 400 }
@@ -285,6 +286,7 @@ export async function PUT(request: Request) {
               complaintText: complaint.text || "",
               severity: complaint.severity || "MODERATE",
               daysSince: safeParseInt(complaint.daysSince),
+              isFlagged: complaint.isFlagged || false,
             })),
           });
         }

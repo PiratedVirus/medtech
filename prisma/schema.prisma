@@ -417,6 +417,7 @@ model PrescriptionComplaint {
   complaintText  String
   severity       ComplaintSeverity @default(MODERATE)
   daysSince      Int?
+  isFlagged      Boolean       @default(false)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   
