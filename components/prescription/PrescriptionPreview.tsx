@@ -55,7 +55,7 @@ export default function PrescriptionPreview({
   };
 
   return (
-    <div className="bg-white border rounded-lg p-6 max-h-96 overflow-y-auto">
+    <div className="bg-white border rounded-lg p-6">
       {/* Header */}
       <div className="text-center border-b border-gray-200 pb-4 mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">PRESCRIPTION</h1>
@@ -86,7 +86,7 @@ export default function PrescriptionPreview({
       </div>
 
       {/* Complaints Section */}
-      {visibleSections.complaints && prescriptionData.complaints.length > 0 && (
+      {visibleSections.complaints && prescriptionData.complaints?.length > 0 && (
         <div className="mb-6">
           <h3 className="font-semibold text-lg mb-3 text-gray-900 border-b border-gray-200 pb-1">
             Complaints

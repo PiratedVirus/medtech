@@ -310,7 +310,7 @@ export default function PrescriptionPage() {
       });
 
       // Navigate to PDF view page
-      router.push(`/doctor/prescription/${prescriptionId}/pdf`);
+      router.push(`/doctor/appointments/${appointmentId}/prescription`);
     } catch (error: any) {
       toast({
         title: "Error",

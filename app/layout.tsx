@@ -5,6 +5,8 @@ import "./globals.css";
 import { Provider } from "react-redux";
 import store from "@/store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastContainer } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { useState, useEffect } from "react";
@@ -79,6 +81,7 @@ export default function RootLayout({
       </head>
       <body className={`${lato.variable} antialiased min-h-screen flex flex-col`}>
         <Provider store={store}>
+          <ToastContainer position="bottom-right" autoClose={5000} hideProgressBar={false} newestOnTop pauseOnFocusLoss={false} draggable pauseOnHover theme="colored" />
           <ClientSideWrapper>
             {children}
           </ClientSideWrapper>

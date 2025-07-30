@@ -282,10 +282,10 @@ export default function PrescriptionForm({
       if (data.success && data.templates) {
         setSavedTemplates(data.templates || []);
         setShowLoadDialog(true);
-        toast({
-          title: "Success",
-          description: `Loaded ${data.templates.length} templates`,
-        });
+        // toast({
+        //   title: "Success",
+        //   description: `Loaded ${data.templates.length} templates`,
+        // });
       } else {
         throw new Error(data.error || 'Failed to load templates');
       }
@@ -396,10 +396,6 @@ export default function PrescriptionForm({
     setIsLoadingPrevious(true);
     try {
       await onLoadPrevious();
-      toast({
-        title: "Success",
-        description: "Previous medicines loaded successfully",
-      });
     } catch (error) {
       toast({
         title: "Error",
