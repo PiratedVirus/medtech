@@ -68,7 +68,7 @@ export default function AppointmentPrescriptionPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [showStickyHeader, setShowStickyHeader] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
 
   // Default visible sections
@@ -83,14 +83,10 @@ export default function AppointmentPrescriptionPage() {
     nextVisit: true,
   });
 
-  // Handle scroll to show/hide sticky header
+  // Handle scroll to pin/unpin sticky header
   useEffect(() => {
     const handleScroll = () => {
-      if (pdfRef.current) {
-        const rect = pdfRef.current.getBoundingClientRect();
-        // Show sticky header when PDF content is scrolled up (above 80px from top)
-        setShowStickyHeader(rect.top < 80);
-      }
+      setIsPinned(window.scrollY > 64); // Pin after global header scrolls away
     };
 
     window.addEventListener("scroll", handleScroll);
@@ -213,9 +209,28 @@ export default function AppointmentPrescriptionPage() {
     }
   };
 
-  const handleDownload = () => {
-    toast({ title: "Success", description: "Downloaded PDF", variant: "success" });
-    // TODO: implement real download
+  const handleDownload = async () => {
+    try {
+      if (!pdfRef.current) return;
+            // @ts-ignore
+      const [jsPDFModule, html2canvas] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas"),
+      ]);
+      // @ts-ignore
+      const canvas = await (html2canvas as any).default(pdfRef.current, { scale: 2 });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new (jsPDFModule as any).jsPDF("p", "mm", "a4");
+      const imgProps = (pdf as any).getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`prescription-${appointmentId}.pdf`);
+      toast({ title: "Success", description: "PDF downloaded successfully", variant: "success" });
+    } catch (error) {
+      console.error("PDF download error", error);
+      toast({ title: "Error", description: "Failed to download PDF", variant: "destructive" });
+    }
   };
 
   if (isLoading) {
@@ -240,9 +255,7 @@ export default function AppointmentPrescriptionPage() {
         <div className="mt-2">
           {/* Sticky Header - Shows when scrolled */}
           <div
-            className={`fixed ${showStickyHeader ? "top-0" : "top-16"} left-0 right-0 z-50 bg-white shadow-md border-b transition-all duration-300 ${
-              showStickyHeader ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"
-            }`}
+            className={`fixed ${isPinned ? "top-0" : "top-16"} left-0 right-0 z-50 bg-white shadow-md border-b transition-[top] ease-in-out duration-200`}
           >
             <div className="flex items-center justify-between px-6 py-3">
               <div className="flex items-center gap-4">
