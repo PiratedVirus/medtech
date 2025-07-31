@@ -65,6 +65,18 @@ export default function AppointmentPrescriptionPage() {
     name: "",
     patientId: "",
     prescriptionId: "",
+    appointmentId: "",
+  });
+  const [doctorInfo, setDoctorInfo] = useState({
+    name: "",
+    id: "",
+  });
+  const [clinicInfo, setClinicInfo] = useState({
+    name: "",
+    logo: "",
+    address: "",
+    timings: "",
+    subtitle: "",
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -102,7 +114,7 @@ export default function AppointmentPrescriptionPage() {
     if (!isLoading && pdfRef.current) {
       pdfRef.current.scrollIntoView({ behavior: "auto", block: "start" });
     }
-  }, [isLoading]);
+  }, [isLoading, visibleSections]); // Added visibleSections dependency
 
   const fetchPrescription = async () => {
     try {
@@ -124,7 +136,46 @@ export default function AppointmentPrescriptionPage() {
         prescriptionId:
           appointment.prescriptionNumber ||
           `PRES-${appointment.patientName.split(" ").map((n: string) => n[0]).join("" ).toUpperCase()}-${appointmentId}`,
+        appointmentId: appointmentId,
       });
+
+      // Set doctor info from appointment data - use the actual doctor conducting the appointment
+      setDoctorInfo({
+        name: appointment.doctorName || "Unknown Doctor",
+        id: appointment.doctorId?.toString() || "",
+      });
+
+      // Fetch clinic information from the database
+      try {
+        const clinicRes = await fetch(`/api/admin/clinics/clinics-list`);
+        if (clinicRes.ok) {
+          const clinicData = await clinicRes.json();
+          if (clinicData.success && clinicData.clinics.length > 0) {
+            // Find the clinic associated with the doctor or use the first clinic
+            const doctorClinic = clinicData.clinics.find((clinic: any) => 
+              clinic.id === appointment.doctorClinicId
+            ) || clinicData.clinics[0];
+            
+            setClinicInfo({
+              name: doctorClinic.name || "Care Diabetics Hospital",
+              logo: doctorClinic.logo || "",
+              address: doctorClinic.address || "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
+              timings: doctorClinic.timings || "Mon - Sat ( 9:00 AM to 5:00 PM )",
+              subtitle: doctorClinic.subtitle || "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching clinic info:", error);
+        // Use default clinic info
+        setClinicInfo({
+          name: "Care Diabetics Hospital",
+          logo: "",
+          address: "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
+          timings: "Mon - Sat ( 9:00 AM to 5:00 PM )",
+          subtitle: "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
+        });
+      }
 
       // Then fetch prescription data
       const prescriptionRes = await fetch(`/api/doctor/prescription?appointmentId=${appointmentId}`);
@@ -212,21 +263,41 @@ export default function AppointmentPrescriptionPage() {
   const handleDownload = async () => {
     try {
       if (!pdfRef.current) return;
-            // @ts-ignore
-      const [jsPDFModule, html2canvas] = await Promise.all([
-        import("jspdf"),
-        import("html2canvas"),
-      ]);
-      // @ts-ignore
-      const canvas = await (html2canvas as any).default(pdfRef.current, { scale: 2 });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new (jsPDFModule as any).jsPDF("p", "mm", "a4");
-      const imgProps = (pdf as any).getImageProperties(imgData);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`prescription-${appointmentId}.pdf`);
-      toast({ title: "Success", description: "PDF downloaded successfully", variant: "success" });
+      
+      // Generate PDF using the new API
+      const response = await fetch('/api/doctor/prescription/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          appointmentId,
+          prescriptionData,
+          patientInfo,
+          doctorInfo,
+          clinicInfo,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Download the PDF
+        const link = document.createElement('a');
+        link.href = result.data.pdfUrl;
+        link.download = `prescription-${appointmentId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({ title: "Success", description: "PDF downloaded successfully", variant: "success" });
+      } else {
+        throw new Error(result.error || 'Failed to generate PDF');
+      }
     } catch (error) {
       console.error("PDF download error", error);
       toast({ title: "Error", description: "Failed to download PDF", variant: "destructive" });
@@ -291,6 +362,8 @@ export default function AppointmentPrescriptionPage() {
                 <PrescriptionPreview
                   prescriptionData={prescriptionData}
                   patientInfo={patientInfo}
+                  doctorInfo={doctorInfo}
+                  clinicInfo={clinicInfo}
                   visibleSections={visibleSections}
                 />
               </Card>
@@ -359,12 +432,18 @@ export default function AppointmentPrescriptionPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() =>
+                              onClick={() => {
                                 setVisibleSections((prev) => ({
                                   ...prev,
                                   [section]: !prev[section as keyof typeof prev],
-                                }))
-                              }
+                                }));
+                                // Force re-render of PDF preview
+                                setTimeout(() => {
+                                  if (pdfRef.current) {
+                                    pdfRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+                                  }
+                                }, 100);
+                              }}
                               className="h-8 w-8 p-0"
                             >
                               {visible ? (

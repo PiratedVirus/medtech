@@ -95,6 +95,8 @@ export async function GET(request: Request) {
             id: appt.id,
             patientName: appt.patient.name,
             patientId: appt.patient.id,
+            doctorName: user.name, // Add doctor name from the logged-in user
+            doctorId: user.id, // Add doctor ID
             date: appt.doctorAvailability?.date,
             startTime: appt.doctorAvailability?.startTime,
             endTime: appt.doctorAvailability?.endTime,

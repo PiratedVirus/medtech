@@ -97,6 +97,19 @@ export default function PrescriptionPage() {
     prescriptionId: `PRES-XX-${appointmentId}`,
   });
 
+  const [doctorInfo, setDoctorInfo] = useState({
+    name: "",
+    id: "",
+  });
+
+  const [clinicInfo, setClinicInfo] = useState({
+    name: "",
+    logo: "",
+    address: "",
+    timings: "",
+    subtitle: "",
+  });
+
   useEffect(() => {
     // Auto-scroll to vitals section after a short delay
     const scrollToVitals = () => {
@@ -210,6 +223,44 @@ export default function PrescriptionPage() {
             appointmentId: appointmentId,
             prescriptionId: prescriptionId,
           }));
+
+          // Set doctor info from appointment data
+          setDoctorInfo({
+            name: appointment.doctorName || "Unknown Doctor",
+            id: appointment.doctorId?.toString() || "",
+          });
+
+          // Fetch clinic information from the database
+          try {
+            const clinicRes = await fetch(`/api/admin/clinics/clinics-list`);
+            if (clinicRes.ok) {
+              const clinicData = await clinicRes.json();
+              if (clinicData.success && clinicData.clinics.length > 0) {
+                // Find the clinic associated with the doctor or use the first clinic
+                const doctorClinic = clinicData.clinics.find((clinic: any) => 
+                  clinic.id === appointment.doctorClinicId
+                ) || clinicData.clinics[0];
+                
+                setClinicInfo({
+                  name: doctorClinic.name || "Care Diabetics Hospital",
+                  logo: doctorClinic.logo || "",
+                  address: doctorClinic.address || "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
+                  timings: doctorClinic.timings || "Mon - Sat ( 9:00 AM to 5:00 PM )",
+                  subtitle: doctorClinic.subtitle || "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
+                });
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching clinic info:", error);
+            // Use default clinic info
+            setClinicInfo({
+              name: "Care Diabetics Hospital",
+              logo: "",
+              address: "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
+              timings: "Mon - Sat ( 9:00 AM to 5:00 PM )",
+              subtitle: "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
+            });
+          }
         }
       } catch (error) {
         console.error("Error fetching appointment data:", error);
@@ -275,7 +326,7 @@ export default function PrescriptionPage() {
         : {
             appointmentId: parseInt(appointmentId),
             patientId: parseInt(patientInfo.patientId),
-            doctorId: 1, // TODO: Get from auth context
+            doctorId: parseInt(doctorInfo.id) || 1, // Use actual doctor ID from appointment
             complaints: prescriptionData.complaints,
             vitals: prescriptionData.vitals,
             history: prescriptionData.history,
@@ -303,6 +354,33 @@ export default function PrescriptionPage() {
 
       const result = await response.json();
       const prescriptionId = existingPrescriptionId || result.data.id;
+
+      // Generate and upload PDF
+      try {
+        const pdfResponse = await fetch('/api/doctor/prescription/generate-pdf', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            appointmentId,
+            prescriptionData,
+            patientInfo,
+            doctorInfo,
+            clinicInfo,
+          }),
+        });
+
+        if (pdfResponse.ok) {
+          const pdfResult = await pdfResponse.json();
+          if (pdfResult.success) {
+            console.log('PDF generated and uploaded successfully:', pdfResult.data.pdfUrl);
+          }
+        }
+      } catch (pdfError) {
+        console.error('PDF generation error:', pdfError);
+        // Don't fail the entire operation if PDF generation fails
+      }
 
       toast({
         title: "Success",
@@ -402,6 +480,8 @@ export default function PrescriptionPage() {
                 });
               }
             }}
+            doctorInfo={doctorInfo}
+            clinicInfo={clinicInfo}
           />
         </div>
       </div>

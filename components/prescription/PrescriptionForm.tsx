@@ -20,6 +20,8 @@ interface PrescriptionFormProps {
   prescriptionData: any;
   setPrescriptionData: (data: any) => void;
   patientInfo: any;
+  doctorInfo?: any;
+  clinicInfo?: any;
   onLoadPrevious: () => void;
   onGeneratePrescription?: () => void;
   isGenerating?: boolean;
@@ -31,6 +33,8 @@ export default function PrescriptionForm({
   prescriptionData,
   setPrescriptionData,
   patientInfo,
+  doctorInfo,
+  clinicInfo,
   onLoadPrevious,
   onGeneratePrescription,
   isGenerating = false,
