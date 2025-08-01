@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Download, Edit, Eye, EyeOff, Share2, Mail, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import PrescriptionPreview from "@/components/prescription/PrescriptionPreview";
+import { generateAndDownloadPDF } from "@/components/prescription/PrescriptionPDF";
 
 interface PrescriptionData {
   id: string;
@@ -262,38 +263,21 @@ export default function AppointmentPrescriptionPage() {
 
   const handleDownload = async () => {
     try {
-      if (!pdfRef.current) return;
-      
-      // Generate PDF using the new API
-      const response = await fetch('/api/doctor/prescription/generate-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          appointmentId,
-          prescriptionData,
-          patientInfo,
-          doctorInfo,
-          clinicInfo,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate PDF');
+      if (!prescriptionData || !patientInfo || !doctorInfo || !clinicInfo) {
+        toast({ title: "Error", description: "Missing prescription data", variant: "destructive" });
+        return;
       }
 
-      const result = await response.json();
-      
+      // Generate PDF using frontend
+      const result = await generateAndDownloadPDF(
+        prescriptionData,
+        patientInfo,
+        doctorInfo,
+        clinicInfo,
+        appointmentId
+      );
+
       if (result.success) {
-        // Download the PDF
-        const link = document.createElement('a');
-        link.href = result.data.pdfUrl;
-        link.download = `prescription-${appointmentId}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
         toast({ title: "Success", description: "PDF downloaded successfully", variant: "success" });
       } else {
         throw new Error(result.error || 'Failed to generate PDF');

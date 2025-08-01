@@ -8,6 +8,7 @@ import { ArrowLeft, Edit, Download, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import PrescriptionPreview from "@/components/prescription/PrescriptionPreview";
+import { generateAndDownloadPDF } from "@/components/prescription/PrescriptionPDF";
 
 interface PrescriptionData {
   id: string;
@@ -105,11 +106,38 @@ export default function PrescriptionPDFPage() {
 
   const handleDownloadPDF = async () => {
     try {
-      // TODO: Implement actual PDF generation and download
-      toast({
-        title: "Success",
-        description: "PDF downloaded successfully!",
-      });
+      if (!prescriptionData || !patientInfo) {
+        toast({ title: "Error", description: "Missing prescription data", variant: "destructive" });
+        return;
+      }
+
+      // Mock doctor and clinic info for this page
+      const doctorInfo = {
+        name: "Dr. Smith",
+        id: "DOC001"
+      };
+
+      const clinicInfo = {
+        name: "Care Diabetics Hospital",
+        subtitle: "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
+        address: "123 Medical Center, City",
+        timings: "Mon - Sat (9:00 AM to 5:00 PM)"
+      };
+
+      // Generate PDF using frontend
+      const result = await generateAndDownloadPDF(
+        prescriptionData,
+        patientInfo,
+        doctorInfo,
+        clinicInfo,
+        prescriptionId
+      );
+
+      if (result.success) {
+        toast({ title: "Success", description: "PDF downloaded successfully", variant: "success" });
+      } else {
+        throw new Error((result as any).error || 'Failed to generate PDF');
+      }
     } catch (error) {
       console.error("Error downloading PDF:", error);
       toast({

@@ -7,6 +7,7 @@ import PrescriptionForm from "@/components/prescription/PrescriptionForm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { generateAndDownloadPDF } from "@/components/prescription/PrescriptionPDF";
 
 interface PrescriptionData {
   complaints: Array<{
@@ -355,27 +356,18 @@ export default function PrescriptionPage() {
       const result = await response.json();
       const prescriptionId = existingPrescriptionId || result.data.id;
 
-      // Generate and upload PDF
+      // Generate PDF using frontend (optional - can be removed if not needed)
       try {
-        const pdfResponse = await fetch('/api/doctor/prescription/generate-pdf', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            appointmentId,
-            prescriptionData,
-            patientInfo,
-            doctorInfo,
-            clinicInfo,
-          }),
-        });
-
-        if (pdfResponse.ok) {
-          const pdfResult = await pdfResponse.json();
-          if (pdfResult.success) {
-            console.log('PDF generated and uploaded successfully:', pdfResult.data.pdfUrl);
-          }
+        const pdfResult = await generateAndDownloadPDF(
+          prescriptionData,
+          patientInfo,
+          doctorInfo,
+          clinicInfo,
+          appointmentId
+        );
+        
+        if (pdfResult.success) {
+          console.log('PDF generated successfully');
         }
       } catch (pdfError) {
         console.error('PDF generation error:', pdfError);
