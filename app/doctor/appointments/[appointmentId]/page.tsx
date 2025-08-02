@@ -7,7 +7,7 @@ import PrescriptionForm from "@/components/prescription/PrescriptionForm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { generateAndDownloadPDF } from "@/components/prescription/PrescriptionPDF";
+import { generatePDFBase64 } from "@/components/prescription/PrescriptionPDF";
 
 interface PrescriptionData {
   complaints: Array<{
@@ -356,9 +356,9 @@ export default function PrescriptionPage() {
       const result = await response.json();
       const prescriptionId = existingPrescriptionId || result.data.id;
 
-      // Generate PDF using frontend (optional - can be removed if not needed)
+      // Generate PDF and upload to blob storage
       try {
-        const pdfResult = await generateAndDownloadPDF(
+        const pdfResult = await generatePDFBase64(
           prescriptionData,
           patientInfo,
           doctorInfo,
@@ -368,10 +368,36 @@ export default function PrescriptionPage() {
         
         if (pdfResult.success) {
           console.log('PDF generated successfully');
+          
+          // Upload PDF to blob storage and update prescription link
+          const uploadResponse = await fetch('/api/doctor/prescription/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              appointmentId: appointmentId,
+              pdf: pdfResult.pdfBase64
+            }),
+          });
+
+          if (uploadResponse.ok) {
+            console.log('PDF uploaded successfully');
+          }
         }
       } catch (pdfError) {
         console.error('PDF generation error:', pdfError);
         // Don't fail the entire operation if PDF generation fails
+      }
+
+      // Update appointment status to COMPLETED
+      try {
+        await fetch(`/api/doctor/appointments/${appointmentId}/mark-completed`, {
+          method: 'PUT',
+        });
+        console.log('Appointment marked as completed');
+      } catch (statusError) {
+        console.error('Failed to update appointment status:', statusError);
       }
 
       toast({

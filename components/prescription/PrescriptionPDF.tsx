@@ -431,10 +431,10 @@ export const generatePDFWithJsPDF = async (
     doc.text(clinicInfo?.address || "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704", 20, footerY);
     doc.text(clinicInfo?.timings || "Mon - Sat (9:00 AM to 5:00 PM)", 20, footerY + 5);
     
-    // Save the PDF
-    doc.save(`prescription-${appointmentId}-${Date.now()}.pdf`);
+    // Get PDF as base64
+    const pdfBase64 = doc.output('datauristring').split(',')[1];
     
-    return { success: true };
+    return { success: true, pdfBase64 };
   } catch (error) {
     console.error('jsPDF generation error:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -451,6 +451,75 @@ const PDFDocument = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo, qr
     qrCodeDataURL={qrCodeDataURL}
   />
 );
+
+// Utility function to generate PDF and return base64 (for upload)
+export const generatePDFBase64 = async (
+  prescriptionData: any,
+  patientInfo: any,
+  doctorInfo: any,
+  clinicInfo: any,
+  appointmentId: string
+) => {
+  try {
+    // Debug logging to help identify data structure issues
+    console.log('Generating PDF with data:', {
+      prescriptionData: prescriptionData ? 'Present' : 'Missing',
+      patientInfo: patientInfo ? 'Present' : 'Missing',
+      doctorInfo: doctorInfo ? 'Present' : 'Missing',
+      clinicInfo: clinicInfo ? 'Present' : 'Missing',
+      appointmentId
+    });
+
+    // Validate required data
+    if (!prescriptionData) {
+      throw new Error('Prescription data is required');
+    }
+    if (!patientInfo) {
+      throw new Error('Patient info is required');
+    }
+    if (!doctorInfo) {
+      throw new Error('Doctor info is required');
+    }
+    if (!clinicInfo) {
+      throw new Error('Clinic info is required');
+    }
+
+    // Generate QR code
+    const qrRedirectUrl = `${window.location.origin}/api/prescription/qr/${appointmentId}`;
+    const qrCodeDataURL = await QRCode.toDataURL(qrRedirectUrl);
+
+    // Generate PDF blob using react-pdf with wrapper component
+    const pdfBlob = await pdf(
+      <PDFDocument
+        prescriptionData={prescriptionData}
+        patientInfo={patientInfo}
+        doctorInfo={doctorInfo}
+        clinicInfo={clinicInfo}
+        qrCodeDataURL={qrCodeDataURL}
+      />
+    ).toBlob();
+    
+    // Convert blob to base64 for upload
+    const arrayBuffer = await pdfBlob.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    // Convert to base64 using browser-compatible method
+    let binary = '';
+    for (let i = 0; i < uint8Array.byteLength; i++) {
+      binary += String.fromCharCode(uint8Array[i]);
+    }
+    const base64 = btoa(binary);
+    
+    console.log('PDF generated successfully, base64 length:', base64.length);
+    return { success: true, pdfBase64: base64 };
+  } catch (error) {
+    console.error('React-PDF generation error:', error);
+    
+    // Fallback to jsPDF
+    console.log('Falling back to jsPDF...');
+    return await generatePDFWithJsPDF(prescriptionData, patientInfo, doctorInfo, clinicInfo, appointmentId);
+  }
+};
 
 // Utility function to generate and download PDF on frontend
 export const generateAndDownloadPDF = async (
