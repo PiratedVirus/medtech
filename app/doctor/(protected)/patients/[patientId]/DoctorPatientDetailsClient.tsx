@@ -345,11 +345,10 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
         <div className="relative">
           <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
             {/* Latest Completed Appointment Card */}
-            <Card className="w-[85%] flex-shrink-0 bg-white border-2 border-gray-200 rounded-lg shadow-lg">
-              <CardHeader className="pb-3 border-b bg-gray-50">
+            <Card className="w-[85%] flex-shrink-0 bg-white border-1 shadow-sm border-gray-200 rounded-lg ">
+              <CardHeader className="pb-3 border-b bg-custom-mutedgreen">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Stethoscope className="h-5 w-5 text-secondary" />
                     <h4 className="font-semibold text-lg text-gray-800">Latest Completed Appointment</h4>
                   </div>
                   {latestCompletedAppointment && (
@@ -359,22 +358,27 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
                   )}
                 </div>
               </CardHeader>
-              <CardContent className="p-6">
+              <CardContent className="p-6 bg-stone-10">
                 <div className="grid grid-cols-2 gap-6">
                   {/* Left Column */}
                   <div className="space-y-6">
                     {/* Checkups */}
+                    <div className="flex justify-between">
+                      <h5 className="font-semibold text-gray-800 mb-1 flex items-center gap-2"> Checkups </h5>
+                      <button className="w-8 h-8 bg-secondary text-white rounded-full flex mr-10 items-center justify-center hover:bg-secondary/90 transition-colors">
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                        </button>
+                    </div>
                     <div>
-                      <h5 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                        <Activity className="h-4 w-4 text-secondary" />
-                        Checkups
-                      </h5>
+    
                       <div className="space-y-3">
                         {mockCheckups.map((checkup, index) => (
                           <div key={index} className="flex items-center gap-2">
                             <span className="text-sm font-medium text-gray-700 min-w-[60px]">{checkup.name}:</span>
                             <span className="bg-secondary/10 text-secondary px-2 py-1 rounded text-sm font-medium">{checkup.value}</span>
-                            <span className="bg-secondary/10 text-secondary px-2 py-1 rounded text-sm font-medium">{checkup.unit}</span>
+                            <span className="rounded text-sm font-medium">{checkup.unit}</span>
                             <button className="text-secondary hover:text-secondary/80">
                               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -382,26 +386,20 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
                             </button>
                           </div>
                         ))}
-                        <button className="w-8 h-8 bg-secondary text-white rounded-full flex items-center justify-center hover:bg-secondary/90 transition-colors">
-                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                        </button>
+
                       </div>
                     </div>
 
                     {/* All Complaints */}
                     <div>
                       <h5 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                        <Stethoscope className="h-4 w-4 text-secondary" />
                         All Complaints
                       </h5>
                       <div className="space-y-2">
                         {latestCompletedAppointment?.complaints ? (
                           latestCompletedAppointment.complaints.split(',').map((complaint, index) => (
                             <div key={index} className="text-sm text-gray-700 flex items-start gap-2">
-                              <span className="text-gray-400 mt-1">•</span>
-                              <span className="flex items-center gap-2">
+                              <span className="flex items-center gap-2 bg-custom-mutedgreen p-2 rounded-lg">
                                 {complaint.trim()}
                                 {/* Show flag icon for flagged complaints (mock logic) */}
                                 {complaint.toLowerCase().includes('blood pressure') && (
@@ -424,9 +422,6 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
                     {/* Notes */}
                     <div>
                       <h5 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                        <svg className="h-4 w-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
                         Notes
                       </h5>
                       <Textarea
@@ -439,12 +434,12 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
 
                     {/* Medicines */}
                     <div>
-                      <h5 className="font-semibold text-gray-800 mb-3">Medicines</h5>
+                      <h5 className="font-bold text-gray-800 mb-3">Medicines</h5>
                       <div className="space-y-2">
                         {latestCompletedAppointment?.medicines ? (
                           latestCompletedAppointment.medicines.split(',').map((medicine, index) => (
-                            <div key={index} className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">
-                              <div className="font-medium">{medicine.trim()}</div>
+                            <div key={index} className="text-sm text-gray-700 bg-custom-mutedgreen p-3 rounded">
+                              <div className="font-semibold">{medicine.trim()}</div>
                             </div>
                           ))
                         ) : (
@@ -458,11 +453,10 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
             </Card>
 
             {/* Previous Appointments Card */}
-            <Card className="w-[85%] flex-shrink-0 bg-white border-2 border-gray-200 rounded-lg shadow-lg">
-              <CardHeader className="pb-3 border-b bg-gray-50">
+            <Card className="w-[85%] flex-shrink-0  border-1 border-gray-200 rounded-lg shadow-sm">
+              <CardHeader className="pb-3 border-b bg-custom-mutedgreen">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-blue-600" />
                     <h4 className="font-semibold text-lg text-gray-800">Previous Appointments</h4>
                   </div>
                   <div className="flex items-center gap-2">
@@ -478,82 +472,113 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
                         </option>
                       ))}
                     </select>
-                    <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
+                    <Badge variant="outline" className="bg-secondary/10 text-secondary border-secondary/20">
                       {selectedAppointmentId ? "1" : previousCompletedAppointments.length} appointment{selectedAppointmentId ? "" : "s"}
                     </Badge>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="p-6">
-                {selectedAppointment ? (
-                  // Show specific appointment details
-                  <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-6">
+                  {/* Left Column */}
+                  <div className="space-y-6">
+                    {/* Checkups */}
                     <div>
-                      <h5 className="font-medium text-blue-700 mb-2 flex items-center gap-2">
-                        <Stethoscope className="h-4 w-4" />
-                        Complaints
-                      </h5>
-                      <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">
-                        {selectedAppointment.complaints || "No complaints recorded"}
-                      </p>
+                    <div className="flex justify-between">
+                      <h5 className="font-semibold text-gray-800 mb-1 flex items-center gap-2"> Checkups </h5>
+                      <button className="w-8 h-8 bg-secondary text-white rounded-full flex mr-10 items-center justify-center hover:bg-secondary/90 transition-colors">
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                        </button>
                     </div>
-                    
-                    <div>
-                      <h5 className="font-medium text-blue-700 mb-2 flex items-center gap-2">
-                        <Pill className="h-4 w-4" />
-                        Medicines
-                      </h5>
-                      <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">
-                        {selectedAppointment.medicines || "No medicines prescribed"}
-                      </p>
+                      <div className="space-y-3">
+                        {mockCheckups.map((checkup, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-700 min-w-[60px]">{checkup.name}:</span>
+                            <span className="bg-secondary/10 text-secondary px-2 py-1 rounded text-sm font-medium">{checkup.value}</span>
+                            <span className="bg-secondary/10 text-secondary px-2 py-1 rounded text-sm font-medium">{checkup.unit}</span>
+                            <button className="text-secondary hover:text-secondary/80">
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+
+                      </div>
                     </div>
-                    
+
+                    {/* All Complaints */}
                     <div>
-                      <h5 className="font-medium text-blue-700 mb-2 flex items-center gap-2">
-                        <Microscope className="h-4 w-4" />
-                        Tests
-                      </h5>
-                      <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">
-                        {selectedAppointment.tests || "No tests ordered"}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  // Show aggregated summary
-                  <div className="space-y-4">
-                    <div>
-                      <h5 className="font-medium text-blue-700 mb-2 flex items-center gap-2">
-                        <Stethoscope className="h-4 w-4" />
+                      <h5 className="font-semibold text-gray-800 mb-3">
                         All Complaints
                       </h5>
-                      <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">
-                        {aggregatedComplaints || "No complaints recorded"}
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <h5 className="font-medium text-blue-700 mb-2 flex items-center gap-2">
-                        <Pill className="h-4 w-4" />
-                        All Medicines
-                      </h5>
-                      <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">
-                        {aggregatedMedicines || "No medicines prescribed"}
-                      </p>
-                    </div>
-                    
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <h5 className="font-medium text-blue-700 mb-2 flex items-center gap-2">
-                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                        </svg>
-                        AI Summary (Coming Soon)
-                      </h5>
-                      <p className="text-sm text-blue-600">
-                        AI-powered analysis of patient history will be available here to provide insights and trends.
-                      </p>
+                      <div className="space-y-2">
+                        {selectedAppointment ? (
+                          selectedAppointment.complaints ? (
+                            selectedAppointment.complaints.split(',').map((complaint, index) => (
+                              <div key={index} className="text-sm text-gray-700 flex items-start gap-2">
+                                <span className="flex items-center gap-2 bg-custom-mutedgreen p-2 rounded-lg">
+                                  {complaint.trim()}
+                                  {/* Show flag icon for flagged complaints (mock logic) */}
+                                  {complaint.toLowerCase().includes('blood pressure') && (
+                                    <svg className="h-3 w-3 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                    </svg>
+                                  )}
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-sm text-gray-500">No complaints recorded</p>
+                          )
+                        ) : (
+                          <p className="text-sm text-gray-700 bg-custom-mutedgreen p-3 rounded-lg">
+                            {aggregatedComplaints || "No complaints recorded"}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                )}
+
+                  {/* Right Column */}
+                  <div className="space-y-6">
+                    {/* AI Summary */}
+                    <div>
+                      <h5 className="font-semibold text-gray-800 mb-3">
+                        AI Summary (Coming Soon)
+                      </h5>
+                      <div className="bg-secondary/10 p-4 rounded-lg border border-secondary/20">
+                        <p className="text-sm text-secondary">
+                          AI-powered analysis of patient history will be available here to provide insights and trends.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Medicines */}
+                    <div>
+                      <h5 className="font-bold text-gray-800 mb-3">Medicines</h5>
+                      <div className="space-y-2">
+                        {selectedAppointment ? (
+                          selectedAppointment.medicines ? (
+                            selectedAppointment.medicines.split(',').map((medicine, index) => (
+                              <div key={index} className="text-sm text-gray-700 bg-custom-mutedgreen p-3 rounded">
+                                <div className="font-semibold">{medicine.trim()}</div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-sm text-gray-500">No medicines prescribed</p>
+                          )
+                        ) : (
+                          <div className="text-sm text-gray-700 bg-custom-mutedgreen p-3 rounded">
+                            <div className="font-semibold">{aggregatedMedicines || "No medicines prescribed"}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
