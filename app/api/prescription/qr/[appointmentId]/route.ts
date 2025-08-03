@@ -3,10 +3,10 @@ import prisma from "@/lib/prisma";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { appointmentId: string } }
+  { params }: { params: Promise<{ appointmentId: string }> }
 ) {
   try {
-    const { appointmentId } = params;
+    const { appointmentId } = await params;
 
     if (!appointmentId) {
       return NextResponse.json(
@@ -23,7 +23,7 @@ export async function GET(
         patient: {
           select: {
             name: true,
-            phone: true
+            phoneNumber: true
           }
         },
         doctor: {
