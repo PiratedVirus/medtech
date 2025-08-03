@@ -44,6 +44,7 @@ export default function PrescriptionForm({
   const [newComplaint, setNewComplaint] = useState("");
   const [newMedicine, setNewMedicine] = useState("");
   const [showStickyHeader, setShowStickyHeader] = useState(false);
+  const [isSplitScreen, setIsSplitScreen] = useState(false);
   const patientCardRef = useRef<HTMLDivElement>(null);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
@@ -220,8 +221,22 @@ export default function PrescriptionForm({
   };
 
   useEffect(() => {
+    const detectSplitScreen = () => {
+      // Check if we're in split screen mode by looking for the split screen container
+      const splitContainer = document.querySelector('.lg\\:w-1\\/2') as HTMLElement;
+      const isSplit = !!splitContainer;
+      setIsSplitScreen(isSplit);
+      
+      // In split screen mode, always show header
+      if (isSplit) {
+        setShowStickyHeader(true);
+        return;
+      }
+    };
+
     const handleScroll = () => {
-      if (patientCardRef.current) {
+      // Only handle scroll-based header visibility in non-split screen mode
+      if (!isSplitScreen && patientCardRef.current) {
         const rect = patientCardRef.current.getBoundingClientRect();
         const cardHeight = patientCardRef.current.offsetHeight;
         // Show sticky header when patient card is halfway out of view
@@ -229,9 +244,25 @@ export default function PrescriptionForm({
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    // Initial detection
+    detectSplitScreen();
+
+    // Detect if we're in split screen mode (check if we're inside a container with overflow-y-auto)
+    const scrollContainer = document.querySelector('.lg\\:h-full.overflow-y-auto') as HTMLElement;
+
+    if (scrollContainer) {
+      // Split screen mode - attach to container but always show header
+      setIsSplitScreen(true);
+      setShowStickyHeader(true);
+      scrollContainer.addEventListener('scroll', handleScroll);
+      return () => scrollContainer.removeEventListener('scroll', handleScroll);
+    } else {
+      // Full screen mode - attach to window with scroll-based behavior
+      setIsSplitScreen(false);
+      window.addEventListener('scroll', handleScroll);
+      return () => window.removeEventListener('scroll', handleScroll);
+    }
+  }, [isSplitScreen]);
 
   const handleSaveTemplate = async () => {
     if (!templateName.trim()) {
@@ -432,60 +463,119 @@ export default function PrescriptionForm({
   };
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Sticky Header - Shows when patient card is out of view */}
-      <div className={`fixed top-0 left-0 right-0 z-50 bg-white shadow-md border-b transition-all duration-300 ${showStickyHeader ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
-        <div className="flex items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-4">
-            {onBack && (
-              <Button variant="ghost" size="icon" onClick={onBack} className="mr-2 p-2">
-                <ArrowLeft className="h-5 w-5" />
+    <>
+      {/* Sticky Header - Positioned outside padded container for split screen */}
+      {isSplitScreen && showStickyHeader && (
+        <div className="sticky top-0 left-0 right-0 z-50 bg-white shadow-md border-b -mx-2 lg:-mx-4">
+          <div className="flex items-center justify-between px-4 lg:px-6 py-3">
+            <div className="flex items-center gap-4">
+              {onBack && (
+                <Button variant="ghost" size="icon" onClick={onBack} className="mr-2 p-2">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              )}
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600">#APT0{patientInfo.appointmentId || '001'}</span>
+                <span className="text-lg font-semibold text-gray-900">{patientInfo.name}</span>
+                <span className="text-sm text-gray-500">({patientInfo.prescriptionId || 'No ID'})</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLoadTemplates}
+                disabled={isLoadingTemplate}
+              >
+                {isLoadingTemplate ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Load Template
               </Button>
-            )}
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600">#APT0{patientInfo.appointmentId || '001'}</span>
-              <span className="text-lg font-semibold text-gray-900">{patientInfo.name}</span>
-              <span className="text-sm text-gray-500">({patientInfo.prescriptionId || 'No ID'})</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSaveDialog(true)}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save Template
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={onGeneratePrescription}
+                disabled={isGenerating}
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <FileText className="h-4 w-4 mr-2" />
+                )}
+                {existingPrescriptionId ? "Update Prescription" : "Generate Prescription"}
+              </Button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLoadTemplates}
-              disabled={isLoadingTemplate}
-            >
-              {isLoadingTemplate ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4 mr-2" />
-              )}
-              Load Template
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowSaveDialog(true)}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save Template
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={onGeneratePrescription}
-              disabled={isGenerating}
-            >
-              {isGenerating ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <FileText className="h-4 w-4 mr-2" />
-              )}
-              {existingPrescriptionId ? "Update Prescription" : "Generate Prescription"}
-            </Button>
-          </div>
         </div>
-      </div>
+      )}
+
+      <div className="space-y-6 w-full">
+        {/* Sticky Header for non-split screen - Shows when patient card is out of view */}
+        {!isSplitScreen && (
+          <div className={`sticky top-0 z-50 bg-white shadow-md border-b transition-all duration-300 ${showStickyHeader ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
+            <div className="flex items-center justify-between px-6 py-3">
+              <div className="flex items-center gap-4">
+                {onBack && (
+                  <Button variant="ghost" size="icon" onClick={onBack} className="mr-2 p-2">
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                )}
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-600">#APT0{patientInfo.appointmentId || '001'}</span>
+                  <span className="text-lg font-semibold text-gray-900">{patientInfo.name}</span>
+                  <span className="text-sm text-gray-500">({patientInfo.prescriptionId || 'No ID'})</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLoadTemplates}
+                  disabled={isLoadingTemplate}
+                >
+                  {isLoadingTemplate ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Load Template
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowSaveDialog(true)}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Template
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={onGeneratePrescription}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <FileText className="h-4 w-4 mr-2" />
+                  )}
+                  {existingPrescriptionId ? "Update Prescription" : "Generate Prescription"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* Patient Information */}
       <div
@@ -1090,6 +1180,7 @@ export default function PrescriptionForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 } 

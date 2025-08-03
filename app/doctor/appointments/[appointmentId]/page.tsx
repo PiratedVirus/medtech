@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generatePDFBase64 } from "@/components/prescription/PrescriptionPDF";
+import DailyIframe, { DailyCall } from '@daily-co/daily-js';
 
 interface PrescriptionData {
   complaints: Array<{
@@ -90,6 +91,10 @@ export default function PrescriptionPage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [existingPrescriptionId, setExistingPrescriptionId] = useState<string | null>(null);
+  const [activeCallFrame, setActiveCallFrame] = useState<DailyCall | null>(null);
+  const [meetingRoomLink, setMeetingRoomLink] = useState<string | null>(null);
+  const [ownerToken, setOwnerToken] = useState<string | null>(null);
+  const [appointmentData, setAppointmentData] = useState<any>(null);
   
   const [patientInfo, setPatientInfo] = useState({
     name: "",
@@ -231,6 +236,11 @@ export default function PrescriptionPage() {
             id: appointment.doctorId?.toString() || "",
           });
 
+          // Set meeting room link, owner token, and appointment data for video consultation
+          setMeetingRoomLink(appointment.meetingRoomLink);
+          setOwnerToken(appointment.ownerToken1);
+          setAppointmentData(appointment);
+
           // Fetch clinic information from the database
           try {
             const clinicRes = await fetch(`/api/admin/clinics/clinics-list`);
@@ -279,6 +289,99 @@ export default function PrescriptionPage() {
       scrollToVitals(); // Auto-scroll to vitals
     }
   }, [appointmentId, toast]);
+
+  const joinVideoCall = async () => {
+    if (!meetingRoomLink) {
+      toast({
+        title: "Error",
+        description: "No meeting room link available",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Destroy existing call frame if present
+      if (activeCallFrame) {
+        await activeCallFrame.destroy();
+        setActiveCallFrame(null);
+      }
+
+      // Create new call frame for split screen
+      const callContainer = document.getElementById('daily-call-container');
+      if (!callContainer) {
+        throw new Error('Call container not found');
+      }
+
+      const newCallFrame = DailyIframe.createFrame(callContainer, {
+        iframeStyle: {
+          width: '100%',
+          height: '100%',
+          border: 'none',
+          borderRadius: '8px',
+        },
+        showLeaveButton: true,
+        showFullscreenButton: false, // Disable fullscreen for split screen
+      });
+
+      // Add event listeners
+      newCallFrame.on('left-meeting', () => {
+        console.log('Left meeting, destroying frame');
+        newCallFrame.destroy();
+        setActiveCallFrame(null);
+      });
+
+      newCallFrame.on('error', (error) => {
+        console.error('Daily call error:', error);
+        toast({
+          title: "Video Call Error",
+          description: error?.errorMsg || 'Unknown error occurred',
+          variant: "destructive",
+        });
+        newCallFrame.destroy();
+        setActiveCallFrame(null);
+      });
+
+      // Store the new frame
+      setActiveCallFrame(newCallFrame);
+
+      // Join the call with owner token for privileged access
+      const joinOptions: any = { url: meetingRoomLink };
+      if (ownerToken) {
+        joinOptions.token = ownerToken;
+      }
+      await newCallFrame.join(joinOptions);
+      
+      toast({
+        title: "Success",
+        description: "Joined video call successfully",
+      });
+    } catch (error) {
+      console.error("Failed to join video call:", error);
+      toast({
+        title: "Error",
+        description: "Failed to join video call",
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    // Auto-join video call if it's a video consultation
+    if (appointmentData?.consultationType?.toUpperCase() === "VIDEO" && meetingRoomLink && !activeCallFrame) {
+      joinVideoCall();
+    }
+  }, [appointmentData, meetingRoomLink, ownerToken]);
+
+  // Cleanup call frame on component unmount
+  useEffect(() => {
+    return () => {
+      if (activeCallFrame) {
+        console.log('Component unmounting, destroying call frame');
+        activeCallFrame.destroy();
+      }
+    };
+  }, [activeCallFrame]);
 
   const calculateNextVisitDate = (type: string, value: number) => {
     const today = new Date();
@@ -419,11 +522,117 @@ export default function PrescriptionPage() {
   };
 
   return (
-    <div className="bg-muted flex flex-col items-center">
+    <div className="bg-muted">
+      {appointmentData?.consultationType?.toLowerCase() === "video" ? (
+        // Split Screen Layout for Video Consultations
+        <div className="h-screen flex flex-col lg:flex-row">
+          {/* Left Side - Video Player */}
+          <div className="lg:w-1/2 w-full h-64 lg:h-full bg-black flex items-center justify-center relative order-1 lg:order-1">
+            <div className="w-full h-full" id="daily-call-container">
+              {!activeCallFrame && (
+                <div className="flex flex-col items-center justify-center text-white p-4 lg:p-8 h-full">
+                  <div className="text-base lg:text-lg mb-4 text-center">Video Consultation</div>
+                  <Button 
+                    onClick={joinVideoCall}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 lg:px-6 lg:py-2 text-sm lg:text-base"
+                  >
+                    Join Video Call
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Side - Prescription Form */}
+          <div className="lg:w-1/2 w-full flex-1 lg:h-full overflow-y-auto order-2 lg:order-2">
+            <div className="bg-mutedbg h-full min-h-screen lg:min-h-full">
+              <div className="p-2 lg:p-4">
+                <PrescriptionForm
+                  prescriptionData={prescriptionData}
+                  setPrescriptionData={setPrescriptionData}
+                  patientInfo={patientInfo}
+                  onGeneratePrescription={handleGeneratePrescription}
+                  isGenerating={isLoading}
+                  onBack={handleBack}
+                  existingPrescriptionId={existingPrescriptionId}
+                  onLoadPrevious={async () => {
+                    try {
+                      const response = await fetch(`/api/doctor/prescription/previous?patientId=${patientInfo.patientId}&latest=true`);
+                      if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.data) {
+                          const prescription = data.data;
+                          setPrescriptionData({
+                            complaints: prescription.complaints.map((c: any) => ({
+                              id: c.id.toString(),
+                              text: c.complaintText,
+                              severity: c.severity,
+                              daysSince: c.daysSince,
+                              isFlagged: c.isFlagged || false,
+                            })),
+                            vitals: prescription.vitals ? {
+                              bloodPressure: prescription.vitals.bloodPressure || "",
+                              pulse: prescription.vitals.pulse?.toString() || "",
+                              height: prescription.vitals.height?.toString() || "",
+                              weight: prescription.vitals.weight?.toString() || "",
+                            } : prescriptionData.vitals,
+                            history: prescription.history ? {
+                              allergies: prescription.history.allergies || "",
+                              personalHistory: prescription.history.personalHistory || "",
+                              pastMedicalHistory: prescription.history.pastMedicalHistory || "",
+                              familyHistory: prescription.history.familyHistory || "",
+                            } : prescriptionData.history,
+                            systemicExamination: prescription.systemicExamination ? {
+                              general: prescription.systemicExamination.general || "",
+                              cvs: prescription.systemicExamination.cvs || "NAD",
+                              rs: prescription.systemicExamination.rs || "NAD",
+                              cns: prescription.systemicExamination.cns || "NAD",
+                            } : prescriptionData.systemicExamination,
+                            medicines: prescription.medicines.map((m: any) => ({
+                              id: m.id.toString(),
+                              name: m.medicineName,
+                              frequency: m.frequency,
+                              medicineTime: m.medicineTime,
+                              duration: m.duration,
+                              quantity: m.quantity?.toString() || "",
+                              instructions: m.instructions || "",
+                            })),
+                            advice: prescription.advice || "",
+                            testsRequested: prescription.testsRequested || "",
+                            nextVisit: {
+                              type: prescription.nextVisitType || "days",
+                              value: prescription.nextVisitValue || 7,
+                              date: prescription.nextVisitDate ? new Date(prescription.nextVisitDate) : undefined,
+                            },
+                          });
+
+                          toast({
+                            title: "Previous Prescription Loaded",
+                            description: "Data from the last prescription has been loaded",
+                          });
+                        }
+                      }
+                    } catch (error) {
+                      console.error("Error loading previous prescription:", error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to load previous prescription",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  doctorInfo={doctorInfo}
+                  clinicInfo={clinicInfo}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        // Full Screen Layout for Physical Consultations
+        <div className="flex flex-col items-center">
       <div className="container w-full bg-mutedbg">
         <div className="mt-2">
-
-
           <PrescriptionForm
             prescriptionData={prescriptionData}
             setPrescriptionData={setPrescriptionData}
@@ -503,6 +712,8 @@ export default function PrescriptionPage() {
           />
         </div>
       </div>
+        </div>
+      )}
     </div>
   );
 } 

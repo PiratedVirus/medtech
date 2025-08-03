@@ -105,6 +105,8 @@ export async function GET(request: Request) {
             consultationType: appt.consultationType,
             isFirst: first,
             prescriptionLink: isPast ? appt.prescriptionLink : undefined,
+            meetingRoomLink: user.doctorProfile?.meetingRoomLink || null, // Add meetingRoomLink
+            ownerToken1: user.doctorProfile?.ownerToken1 || null, // Add ownerToken1
           };
         })
       );
