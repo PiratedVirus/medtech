@@ -64,6 +64,9 @@ model User {
   labTechProfile      LabTechProfile?
   patientProfile      PatientProfile?
   clinic              Clinic?           @relation(fields: [clinicId], references: [id])
+  phlebotomistProfile Phlebotomist?
+  labAssignments      LabAssignment[]   @relation("PatientLabAssignment")
+  testResultsReported TestResult[]      @relation("TestResultReporter")
 
   @@unique([phoneNumber, deletedAt])
   @@index([deletedAt])
@@ -197,6 +200,7 @@ model Appointment {
   subscriptionTracker  SubscriptionTracker? @relation(fields: [subscriptionId], references: [subscriptionId])
   payment              Payment?             @relation("AppointmentPayment")
   prescription         Prescription?
+  labAssignments       LabAssignment[]
 
   @@index([deletedAt])
   @@index([patientId, isDietician])
@@ -371,6 +375,7 @@ enum UserRole {
   DOCTOR
   DIETICIAN
   LAB_TECH
+  PATHOLOGY
   ADMIN
   SUPER_ADMIN
   NOT_SET
@@ -560,4 +565,115 @@ enum ComplaintSeverity {
   MODERATE
   RISK
   CRITICAL
+}
+
+// Pathology related models
+model Phlebotomist {
+  id                Int                    @id @default(autoincrement())
+  userId            Int                    @unique
+  employeeId        String                 @unique
+  specialization    String?
+  isAvailable       Boolean                @default(true)
+  currentLocation   String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  deletedAt         DateTime?
+  user              User                   @relation(fields: [userId], references: [id])
+  labAssignments    LabAssignment[]
+
+  @@index([deletedAt])
+}
+
+model PathologyLab {
+  id                Int                    @id @default(autoincrement())
+  name              String
+  address           String
+  contactNumber     String
+  email             String?
+  licenseNumber     String                 @unique
+  isActive          Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  deletedAt         DateTime?
+  labAssignments    LabAssignment[]
+
+  @@index([deletedAt])
+}
+
+model LabAssignment {
+  id                Int                    @id @default(autoincrement())
+  patientId         Int
+  phlebotomistId    Int
+  labId             Int
+  appointmentId     Int?
+  assignedDate      DateTime               @db.Date
+  assignedTime      String
+  status            LabAssignmentStatus    @default(PENDING)
+  sampleCollected   Boolean                @default(false)
+  sampleCollectedAt DateTime?
+  notes             String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  deletedAt         DateTime?
+  patient           User                   @relation("PatientLabAssignment", fields: [patientId], references: [id])
+  phlebotomist      Phlebotomist           @relation(fields: [phlebotomistId], references: [id])
+  lab               PathologyLab           @relation(fields: [labId], references: [id])
+  appointment       Appointment?           @relation(fields: [appointmentId], references: [id])
+  testResults       TestResult[]
+
+  @@index([deletedAt])
+  @@index([patientId])
+  @@index([phlebotomistId])
+  @@index([status])
+}
+
+model LabTest {
+  id                Int                    @id @default(autoincrement())
+  name              String
+  code              String                 @unique
+  description       String?
+  parameters        Json?                  // Array of test parameters
+  normalRange       Json?                  // Normal range values
+  unit              String?
+  isActive          Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  deletedAt         DateTime?
+  testResults       TestResult[]
+
+  @@index([deletedAt])
+}
+
+model TestResult {
+  id                Int                    @id @default(autoincrement())
+  labAssignmentId   Int
+  labTestId         Int
+  result            String?
+  unit              String?
+  normalRange       String?
+  isAbnormal        Boolean                @default(false)
+  remarks           String?
+  reportedAt        DateTime?
+  reportedBy        Int?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  deletedAt         DateTime?
+  labAssignment     LabAssignment          @relation(fields: [labAssignmentId], references: [id])
+  labTest           LabTest                @relation(fields: [labTestId], references: [id])
+  reportedByUser    User?                  @relation("TestResultReporter", fields: [reportedBy], references: [id])
+
+  @@index([deletedAt])
+  @@index([labAssignmentId])
+  @@index([labTestId])
+}
+
+enum LabAssignmentStatus {
+  PENDING
+  ASSIGNED
+  PHLEBOTOMIST_LEFT
+  SAMPLE_COLLECTED
+  IN_LAB
+  ANALYZING
+  COMPLETED
+  CANCELLED
 }
