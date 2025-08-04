@@ -1,76 +1,132 @@
 const { PrismaClient } = require('@prisma/client');
-
 const prisma = new PrismaClient();
 
 async function seedPathologyData() {
   try {
-    console.log('🌱 Seeding comprehensive pathology data...');
+    console.log('🌱 Starting pathology data seeding...');
 
-    // Clear existing pathology data for fresh seeding
-    console.log('🧹 Clearing existing pathology data...');
-    await prisma.testResult.deleteMany({});
-    await prisma.labAssignment.deleteMany({});
-    await prisma.appointment.deleteMany({ where: { consultationType: "Lab Test" } });
-    await prisma.phlebotomist.deleteMany({});
-    await prisma.labTest.deleteMany({});
-    await prisma.pathologyLab.deleteMany({});
-    // Clear patient profiles first, then users
-    await prisma.patientProfile.deleteMany({ where: { user: { phoneNumber: { startsWith: "+91987654322" } } } });
-    await prisma.user.deleteMany({ where: { role: "PATHOLOGY" } });
-    await prisma.user.deleteMany({ where: { role: "PATIENT", phoneNumber: { startsWith: "+91987654322" } } });
-    console.log('✅ Cleared existing data');
+    // Create Pathology Lab
+    console.log('Creating pathology lab...');
+    const pathologyLab = await prisma.pathologyLab.create({
+      data: {
+        name: "CareDiabetics Pathology Lab",
+        address: "123 Healthcare Street, Medical District, Mumbai, Maharashtra 400001",
+        contactNumber: "+91-9876543210",
+        email: "lab@carediabetics.com",
+        licenseNumber: "PATH-2024-001",
+        isActive: true,
+      },
+    });
+    console.log('✅ Pathology lab created:', pathologyLab.name);
 
-    // Create pathology labs
-    const labs = await Promise.all([
-      prisma.pathologyLab.create({
+    // Create Pathology Admin User
+    console.log('Creating pathology admin user...');
+    const pathologyAdmin = await prisma.user.create({
+      data: {
+        phoneNumber: "+91-9999999999",
+        email: "pathology@carediabetics.com",
+        name: "Pathology Admin",
+        role: "PATHOLOGY",
+        status: "ACTIVE",
+      },
+    });
+    console.log('✅ Pathology admin created:', pathologyAdmin.name);
+
+    // Create Phlebotomist Users
+    console.log('Creating phlebotomist users...');
+    const phlebotomistUsers = await Promise.all([
+      prisma.user.create({
         data: {
-          name: "Care Diabetics Central Lab",
-          address: "121 Ambedkar St, Kanpur VIC-110085, India",
-          contactNumber: "+91-888-123-4587",
-          email: "lab@carediabetics.com",
-          licenseNumber: "LAB001",
-          isActive: true,
+          phoneNumber: "+91-8888888888",
+          email: "phlebo1@carediabetics.com",
+          name: "Rajesh Kumar",
+          role: "PHLEBOTOMIST",
+          status: "ACTIVE",
         },
       }),
-      prisma.pathologyLab.create({
+      prisma.user.create({
         data: {
-          name: "AIIMS Pathology Center",
-          address: "AIIMS Campus, New Delhi",
-          contactNumber: "+91-11-2658-8500",
-          email: "pathology@aiims.edu",
-          licenseNumber: "LAB002",
-          isActive: true,
+          phoneNumber: "+91-7777777777",
+          email: "phlebo2@carediabetics.com",
+          name: "Priya Sharma",
+          role: "PHLEBOTOMIST",
+          status: "ACTIVE",
         },
       }),
-      prisma.pathologyLab.create({
+      prisma.user.create({
         data: {
-          name: "Metro Diagnostics Lab",
-          address: "45 MG Road, Bangalore",
-          contactNumber: "+91-80-2222-3333",
-          email: "info@metrodiagnostics.com",
-          licenseNumber: "LAB003",
-          isActive: true,
+          phoneNumber: "+91-6666666666",
+          email: "phlebo3@carediabetics.com",
+          name: "Amit Patel",
+          role: "PHLEBOTOMIST",
+          status: "ACTIVE",
         },
       }),
     ]);
 
-    console.log('✅ Created pathology labs:', labs.length);
+    // Create Phlebotomist Profiles
+    console.log('Creating phlebotomist profiles...');
+    const phlebotomists = await Promise.all([
+      prisma.phlebotomist.create({
+        data: {
+          userId: phlebotomistUsers[0].id,
+          employeeId: "PHLEB001",
+          specialization: "Blood Collection",
+          isAvailable: true,
+          currentLocation: "Mumbai Central",
+        },
+      }),
+      prisma.phlebotomist.create({
+        data: {
+          userId: phlebotomistUsers[1].id,
+          employeeId: "PHLEB002",
+          specialization: "Sample Collection",
+          isAvailable: true,
+          currentLocation: "Andheri West",
+        },
+      }),
+      prisma.phlebotomist.create({
+        data: {
+          userId: phlebotomistUsers[2].id,
+          employeeId: "PHLEB003",
+          specialization: "Home Collection",
+          isAvailable: false,
+          currentLocation: "Bandra East",
+        },
+      }),
+    ]);
+    console.log('✅ Phlebotomists created:', phlebotomists.length);
 
-    // Create lab tests
+    // Create Lab Tests
+    console.log('Creating lab tests...');
     const labTests = await Promise.all([
       prisma.labTest.create({
         data: {
-          name: "Fasting Blood Sugar (FBS)",
-          code: "FBS001",
-          description: "Measurement of blood glucose levels after fasting",
-          parameters: [
-            { name: "Glucose", unit: "mg/dL", normalRange: "70-99" },
-            { name: "HbA1c", unit: "%", normalRange: "4.0-5.6" },
-          ],
+          name: "Complete Blood Count (CBC)",
+          code: "CBC001",
+          description: "Complete blood count with differential",
+          parameters: ["WBC", "RBC", "Hemoglobin", "Platelets", "MCV", "MCH", "MCHC"],
           normalRange: {
-            normal: "70-99 mg/dL",
-            preDiabetes: "100-125 mg/dL",
-            diabetes: ">126 mg/dL",
+            "WBC": "4,000-11,000 /μL",
+            "RBC": "4.5-5.5 M/μL",
+            "Hemoglobin": "12-16 g/dL",
+            "Platelets": "150,000-450,000 /μL",
+            "MCV": "80-100 fL",
+            "MCH": "27-32 pg",
+            "MCHC": "32-36 g/dL"
+          },
+          unit: "Various",
+          isActive: true,
+        },
+      }),
+      prisma.labTest.create({
+        data: {
+          name: "Blood Glucose (Fasting)",
+          code: "GLU001",
+          description: "Fasting blood glucose test",
+          parameters: ["Glucose"],
+          normalRange: {
+            "Glucose": "70-100 mg/dL"
           },
           unit: "mg/dL",
           isActive: true,
@@ -78,22 +134,14 @@ async function seedPathologyData() {
       }),
       prisma.labTest.create({
         data: {
-          name: "Complete Blood Count (CBC)",
-          code: "CBC001",
-          description: "Complete blood count with differential",
-          parameters: [
-            { name: "Hemoglobin", unit: "g/dL", normalRange: "12-16" },
-            { name: "White Blood Cells", unit: "cells/μL", normalRange: "4000-11000" },
-            { name: "Platelets", unit: "cells/μL", normalRange: "150000-450000" },
-            { name: "Red Blood Cells", unit: "million/μL", normalRange: "4.5-5.9" },
-          ],
+          name: "HbA1c (Glycated Hemoglobin)",
+          code: "HBA1C001",
+          description: "Average blood glucose over 2-3 months",
+          parameters: ["HbA1c"],
           normalRange: {
-            hemoglobin: "12-16 g/dL",
-            wbc: "4000-11000 cells/μL",
-            platelets: "150000-450000 cells/μL",
-            rbc: "4.5-5.9 million/μL",
+            "HbA1c": "< 5.7%"
           },
-          unit: "various",
+          unit: "%",
           isActive: true,
         },
       }),
@@ -101,18 +149,13 @@ async function seedPathologyData() {
         data: {
           name: "Lipid Profile",
           code: "LIPID001",
-          description: "Complete lipid profile including cholesterol and triglycerides",
-          parameters: [
-            { name: "Total Cholesterol", unit: "mg/dL", normalRange: "<200" },
-            { name: "HDL Cholesterol", unit: "mg/dL", normalRange: ">40" },
-            { name: "LDL Cholesterol", unit: "mg/dL", normalRange: "<100" },
-            { name: "Triglycerides", unit: "mg/dL", normalRange: "<150" },
-          ],
+          description: "Complete lipid profile",
+          parameters: ["Total Cholesterol", "HDL", "LDL", "Triglycerides"],
           normalRange: {
-            totalCholesterol: "<200 mg/dL",
-            hdl: ">40 mg/dL",
-            ldl: "<100 mg/dL",
-            triglycerides: "<150 mg/dL",
+            "Total Cholesterol": "< 200 mg/dL",
+            "HDL": "> 40 mg/dL",
+            "LDL": "< 100 mg/dL",
+            "Triglycerides": "< 150 mg/dL"
           },
           unit: "mg/dL",
           isActive: true,
@@ -120,424 +163,167 @@ async function seedPathologyData() {
       }),
       prisma.labTest.create({
         data: {
-          name: "Kidney Function Test (KFT)",
+          name: "Kidney Function Test",
           code: "KFT001",
-          description: "Kidney function assessment",
-          parameters: [
-            { name: "Creatinine", unit: "mg/dL", normalRange: "0.7-1.3" },
-            { name: "Urea", unit: "mg/dL", normalRange: "7-20" },
-            { name: "Uric Acid", unit: "mg/dL", normalRange: "3.4-7.0" },
-          ],
+          description: "Kidney function panel",
+          parameters: ["Creatinine", "BUN", "eGFR"],
           normalRange: {
-            creatinine: "0.7-1.3 mg/dL",
-            urea: "7-20 mg/dL",
-            uricAcid: "3.4-7.0 mg/dL",
+            "Creatinine": "0.6-1.2 mg/dL",
+            "BUN": "7-20 mg/dL",
+            "eGFR": "> 90 mL/min/1.73m²"
           },
-          unit: "mg/dL",
-          isActive: true,
-        },
-      }),
-      prisma.labTest.create({
-        data: {
-          name: "Liver Function Test (LFT)",
-          code: "LFT001",
-          description: "Liver function assessment",
-          parameters: [
-            { name: "Bilirubin Total", unit: "mg/dL", normalRange: "0.3-1.2" },
-            { name: "ALT", unit: "U/L", normalRange: "7-55" },
-            { name: "AST", unit: "U/L", normalRange: "8-48" },
-            { name: "Alkaline Phosphatase", unit: "U/L", normalRange: "44-147" },
-          ],
-          normalRange: {
-            bilirubin: "0.3-1.2 mg/dL",
-            alt: "7-55 U/L",
-            ast: "8-48 U/L",
-            alp: "44-147 U/L",
-          },
-          unit: "various",
+          unit: "Various",
           isActive: true,
         },
       }),
     ]);
+    console.log('✅ Lab tests created:', labTests.length);
 
-    console.log('✅ Created lab tests:', labTests.length);
-
-    // Create phlebotomist users and profiles
-    const phlebotomistUsers = await Promise.all([
-      prisma.user.create({
-        data: {
-          phoneNumber: "+919876543210",
-          email: "pathology@carediabetics.com",
-          name: "Pathology Admin",
-          role: "PATHOLOGY",
-          status: "ACTIVE",
-        },
-      }),
-      prisma.user.create({
-        data: {
-          phoneNumber: "+919876543211",
-          email: "phlebotomist1@carediabetics.com",
-          name: "Rajesh Kumar",
-          role: "PATHOLOGY",
-          status: "ACTIVE",
-        },
-      }),
-      prisma.user.create({
-        data: {
-          phoneNumber: "+919876543212",
-          email: "phlebotomist2@carediabetics.com",
-          name: "Priya Sharma",
-          role: "PATHOLOGY",
-          status: "ACTIVE",
-        },
-      }),
-      prisma.user.create({
-        data: {
-          phoneNumber: "+919876543213",
-          email: "phlebotomist3@carediabetics.com",
-          name: "Amit Patel",
-          role: "PATHOLOGY",
-          status: "ACTIVE",
-        },
-      }),
-      prisma.user.create({
-        data: {
-          phoneNumber: "+919876543214",
-          email: "phlebotomist4@carediabetics.com",
-          name: "Sneha Reddy",
-          role: "PATHOLOGY",
-          status: "ACTIVE",
-        },
-      }),
-    ]);
-
-    console.log('✅ Created phlebotomist users:', phlebotomistUsers.length);
-
-    // Create phlebotomist profiles
-    const phlebotomists = await Promise.all([
-      prisma.phlebotomist.create({
-        data: {
-          userId: phlebotomistUsers[0].id,
-          employeeId: "PH001",
-          specialization: "Senior Phlebotomist",
-          isAvailable: true,
-          currentLocation: "Kanpur Central",
-        },
-      }),
-      prisma.phlebotomist.create({
-        data: {
-          userId: phlebotomistUsers[1].id,
-          employeeId: "PH002",
-          specialization: "Pediatric Phlebotomy",
-          isAvailable: true,
-          currentLocation: "Delhi North",
-        },
-      }),
-      prisma.phlebotomist.create({
-        data: {
-          userId: phlebotomistUsers[2].id,
-          employeeId: "PH003",
-          specialization: "Emergency Phlebotomy",
-          isAvailable: true,
-          currentLocation: "Mumbai West",
-        },
-      }),
-      prisma.phlebotomist.create({
-        data: {
-          userId: phlebotomistUsers[3].id,
-          employeeId: "PH004",
-          specialization: "Home Collection",
-          isAvailable: false,
-          currentLocation: "Bangalore South",
-        },
-      }),
-      prisma.phlebotomist.create({
-        data: {
-          userId: phlebotomistUsers[4].id,
-          employeeId: "PH005",
-          specialization: "Mobile Phlebotomy",
-          isAvailable: true,
-          currentLocation: "Chennai Central",
-        },
-      }),
-    ]);
-
-    console.log('✅ Created phlebotomist profiles:', phlebotomists.length);
-
-    // Create sample patients
+    // Create Sample Patients
+    console.log('Creating sample patients...');
     const patients = await Promise.all([
       prisma.user.create({
         data: {
-          phoneNumber: "+919876543220",
+          phoneNumber: "+91-1111111111",
           email: "patient1@example.com",
-          name: "Mr. Sameer Reddy",
+          name: "Ramesh Singh",
           role: "PATIENT",
           status: "ACTIVE",
           patientProfile: {
             create: {
               age: 45,
+              weight: 75.5,
+              height: 170,
               gender: "Male",
-              address: "123 Main Street, Kanpur",
               bloodGroup: "B+",
+              allergies: "None",
+              medicalHistory: "Type 2 Diabetes",
+              emergencyContact: "+91-2222222222",
+              dateOfBirth: new Date("1979-05-15"),
+              address: "Flat 101, Building A, Andheri West, Mumbai",
             },
           },
         },
       }),
       prisma.user.create({
         data: {
-          phoneNumber: "+919876543221",
+          phoneNumber: "+91-2222222222",
           email: "patient2@example.com",
-          name: "Mrs. Karishma Singh",
+          name: "Sunita Verma",
           role: "PATIENT",
           status: "ACTIVE",
           patientProfile: {
             create: {
-              age: 32,
+              age: 52,
+              weight: 68.2,
+              height: 165,
               gender: "Female",
-              address: "456 Park Avenue, Delhi",
               bloodGroup: "O+",
+              allergies: "Penicillin",
+              medicalHistory: "Hypertension",
+              emergencyContact: "+91-3333333333",
+              dateOfBirth: new Date("1972-08-22"),
+              address: "Flat 205, Building B, Bandra East, Mumbai",
             },
           },
         },
       }),
       prisma.user.create({
         data: {
-          phoneNumber: "+919876543222",
+          phoneNumber: "+91-3333333333",
           email: "patient3@example.com",
-          name: "Mr. Ramesh Kumar",
+          name: "Vikram Mehta",
           role: "PATIENT",
           status: "ACTIVE",
           patientProfile: {
             create: {
-              age: 58,
+              age: 38,
+              weight: 82.1,
+              height: 175,
               gender: "Male",
-              address: "789 Lake Road, Mumbai",
               bloodGroup: "A+",
-            },
-          },
-        },
-      }),
-      prisma.user.create({
-        data: {
-          phoneNumber: "+919876543223",
-          email: "patient4@example.com",
-          name: "Mrs. Sunita Patel",
-          role: "PATIENT",
-          status: "ACTIVE",
-          patientProfile: {
-            create: {
-              age: 41,
-              gender: "Female",
-              address: "321 Garden Street, Bangalore",
-              bloodGroup: "AB+",
-            },
-          },
-        },
-      }),
-      prisma.user.create({
-        data: {
-          phoneNumber: "+919876543224",
-          email: "patient5@example.com",
-          name: "Mr. Vijay Malhotra",
-          role: "PATIENT",
-          status: "ACTIVE",
-          patientProfile: {
-            create: {
-              age: 29,
-              gender: "Male",
-              address: "654 Hill Road, Chennai",
-              bloodGroup: "B-",
+              allergies: "None",
+              medicalHistory: "Pre-diabetes",
+              emergencyContact: "+91-4444444444",
+              dateOfBirth: new Date("1986-03-10"),
+              address: "Flat 301, Building C, Mumbai Central, Mumbai",
             },
           },
         },
       }),
     ]);
+    console.log('✅ Patients created:', patients.length);
 
-    console.log('✅ Created patients:', patients.length);
-
-    // Create sample appointments (15 total - more than requested 10)
+    // Create Sample Appointments
+    console.log('Creating sample appointments...');
     const appointments = await Promise.all([
-      // Original 5 appointments
       prisma.appointment.create({
         data: {
           patientId: patients[0].id,
-          userId: 1, // Assuming doctor ID 1 exists
-          consultationType: "Lab Test",
-          doctorAvailabilityId: 1, // Assuming availability ID 1 exists
-          appointmentDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+          doctorId: 1, // Assuming there's a doctor with ID 1
+          appointmentFor: "Blood Test - CBC and Glucose",
+          appointmentDate: new Date("2024-12-20"),
+          consultationType: "LAB_TEST",
           status: "CONFIRMED",
-          appointmentFor: "Diabetes Package",
+          doctorAvailability: {
+            create: {
+              date: new Date("2024-12-20"),
+              startTime: "09:00",
+              endTime: "10:00",
+              isAvailable: true,
+            },
+          },
         },
       }),
       prisma.appointment.create({
         data: {
           patientId: patients[1].id,
-          userId: 1,
-          consultationType: "Lab Test",
-          doctorAvailabilityId: 1,
-          appointmentDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // 1 day from now
+          doctorId: 1,
+          appointmentFor: "Lipid Profile and HbA1c",
+          appointmentDate: new Date("2024-12-21"),
+          consultationType: "LAB_TEST",
           status: "CONFIRMED",
-          appointmentFor: "Complete Health Checkup",
+          doctorAvailability: {
+            create: {
+              date: new Date("2024-12-21"),
+              startTime: "10:00",
+              endTime: "11:00",
+              isAvailable: true,
+            },
+          },
         },
       }),
       prisma.appointment.create({
         data: {
           patientId: patients[2].id,
-          userId: 1,
-          consultationType: "Lab Test",
-          doctorAvailabilityId: 1,
-          appointmentDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
-          status: "CONFIRMED",
+          doctorId: 1,
           appointmentFor: "Kidney Function Test",
-        },
-      }),
-      prisma.appointment.create({
-        data: {
-          patientId: patients[3].id,
-          userId: 1,
-          consultationType: "Lab Test",
-          doctorAvailabilityId: 1,
-          appointmentDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
+          appointmentDate: new Date("2024-12-22"),
+          consultationType: "LAB_TEST",
           status: "CONFIRMED",
-          appointmentFor: "Liver Function Test",
-        },
-      }),
-      prisma.appointment.create({
-        data: {
-          patientId: patients[4].id,
-          userId: 1,
-          consultationType: "Lab Test",
-          doctorAvailabilityId: 1,
-          appointmentDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), // 4 days from now
-          status: "CONFIRMED",
-          appointmentFor: "Lipid Profile",
-        },
-      }),
-      // Additional 10 appointments
-      prisma.appointment.create({
-        data: {
-          patientId: patients[0].id,
-          userId: 1,
-          consultationType: "Lab Test",
-          doctorAvailabilityId: 1,
-          appointmentDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
-          status: "CONFIRMED",
-          appointmentFor: "Thyroid Function Test",
-        },
-      }),
-      prisma.appointment.create({
-        data: {
-          patientId: patients[1].id,
-          userId: 1,
-          consultationType: "Lab Test",
-          doctorAvailabilityId: 1,
-          appointmentDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          status: "CONFIRMED",
-          appointmentFor: "Complete Blood Count",
-        },
-      }),
-      prisma.appointment.create({
-        data: {
-          patientId: patients[2].id,
-          userId: 1,
-          consultationType: "Lab Test",
-          doctorAvailabilityId: 1,
-          appointmentDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
-          status: "CONFIRMED",
-          appointmentFor: "Cardiac Panel",
-        },
-      }),
-      prisma.appointment.create({
-        data: {
-          patientId: patients[3].id,
-          userId: 1,
-          consultationType: "Lab Test",
-          doctorAvailabilityId: 1,
-          appointmentDate: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000),
-          status: "CONFIRMED",
-          appointmentFor: "Vitamin D Test",
-        },
-      }),
-      prisma.appointment.create({
-        data: {
-          patientId: patients[4].id,
-          userId: 1,
-          consultationType: "Lab Test",
-          doctorAvailabilityId: 1,
-          appointmentDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
-          status: "CONFIRMED",
-          appointmentFor: "Iron Studies",
-        },
-      }),
-      prisma.appointment.create({
-        data: {
-          patientId: patients[0].id,
-          userId: 1,
-          consultationType: "Lab Test",
-          doctorAvailabilityId: 1,
-          appointmentDate: new Date(Date.now() + 11 * 24 * 60 * 60 * 1000),
-          status: "CONFIRMED",
-          appointmentFor: "Urine Analysis",
-        },
-      }),
-      prisma.appointment.create({
-        data: {
-          patientId: patients[1].id,
-          userId: 1,
-          consultationType: "Lab Test",
-          doctorAvailabilityId: 1,
-          appointmentDate: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000),
-          status: "CONFIRMED",
-          appointmentFor: "HbA1c Test",
-        },
-      }),
-      prisma.appointment.create({
-        data: {
-          patientId: patients[2].id,
-          userId: 1,
-          consultationType: "Lab Test",
-          doctorAvailabilityId: 1,
-          appointmentDate: new Date(Date.now() + 13 * 24 * 60 * 60 * 1000),
-          status: "CONFIRMED",
-          appointmentFor: "Pregnancy Test",
-        },
-      }),
-      prisma.appointment.create({
-        data: {
-          patientId: patients[3].id,
-          userId: 1,
-          consultationType: "Lab Test",
-          doctorAvailabilityId: 1,
-          appointmentDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-          status: "CONFIRMED",
-          appointmentFor: "Allergy Panel",
-        },
-      }),
-      prisma.appointment.create({
-        data: {
-          patientId: patients[4].id,
-          userId: 1,
-          consultationType: "Lab Test",
-          doctorAvailabilityId: 1,
-          appointmentDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
-          status: "CONFIRMED",
-          appointmentFor: "Hepatitis Panel",
+          doctorAvailability: {
+            create: {
+              date: new Date("2024-12-22"),
+              startTime: "11:00",
+              endTime: "12:00",
+              isAvailable: true,
+            },
+          },
         },
       }),
     ]);
+    console.log('✅ Appointments created:', appointments.length);
 
-    console.log('✅ Created appointments:', appointments.length);
-
-    // Create lab assignments (8 total - some assigned, some not)
+    // Create Lab Assignments
+    console.log('Creating lab assignments...');
     const labAssignments = await Promise.all([
-      // Assigned appointments (first 7 appointments get assignments)
       prisma.labAssignment.create({
         data: {
           patientId: patients[0].id,
           phlebotomistId: phlebotomists[0].id,
-          labId: labs[0].id,
+          labId: pathologyLab.id,
           appointmentId: appointments[0].id,
-          assignedDate: new Date(),
+          assignedDate: new Date("2024-12-20"),
           assignedTime: "09:00",
           status: "ASSIGNED",
           sampleCollected: false,
@@ -547,137 +333,120 @@ async function seedPathologyData() {
         data: {
           patientId: patients[1].id,
           phlebotomistId: phlebotomists[1].id,
-          labId: labs[0].id,
+          labId: pathologyLab.id,
           appointmentId: appointments[1].id,
-          assignedDate: new Date(),
-          assignedTime: "10:30",
+          assignedDate: new Date("2024-12-21"),
+          assignedTime: "10:00",
           status: "SAMPLE_COLLECTED",
           sampleCollected: true,
-          sampleCollectedAt: new Date(),
+          sampleCollectedAt: new Date("2024-12-21T10:30:00Z"),
         },
       }),
       prisma.labAssignment.create({
         data: {
           patientId: patients[2].id,
           phlebotomistId: phlebotomists[2].id,
-          labId: labs[1].id,
+          labId: pathologyLab.id,
           appointmentId: appointments[2].id,
-          assignedDate: new Date(),
+          assignedDate: new Date("2024-12-22"),
           assignedTime: "11:00",
           status: "IN_LAB",
           sampleCollected: true,
-          sampleCollectedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+          sampleCollectedAt: new Date("2024-12-22T11:15:00Z"),
         },
       }),
-      prisma.labAssignment.create({
-        data: {
-          patientId: patients[0].id,
-          phlebotomistId: phlebotomists[3].id,
-          labId: labs[2].id,
-          appointmentId: appointments[5].id,
-          assignedDate: new Date(),
-          assignedTime: "14:00",
-          status: "PHLEBOTOMIST_LEFT",
-          sampleCollected: false,
-        },
-      }),
-      prisma.labAssignment.create({
-        data: {
-          patientId: patients[1].id,
-          phlebotomistId: phlebotomists[4].id,
-          labId: labs[0].id,
-          appointmentId: appointments[6].id,
-          assignedDate: new Date(),
-          assignedTime: "15:30",
-          status: "SAMPLE_COLLECTED",
-          sampleCollected: true,
-          sampleCollectedAt: new Date(Date.now() - 1 * 60 * 60 * 1000), // 1 hour ago
-        },
-      }),
-      prisma.labAssignment.create({
-        data: {
-          patientId: patients[2].id,
-          phlebotomistId: phlebotomists[0].id,
-          labId: labs[1].id,
-          appointmentId: appointments[7].id,
-          assignedDate: new Date(),
-          assignedTime: "16:00",
-          status: "ANALYZING",
-          sampleCollected: true,
-          sampleCollectedAt: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
-        },
-      }),
-      prisma.labAssignment.create({
-        data: {
-          patientId: patients[3].id,
-          phlebotomistId: phlebotomists[1].id,
-          labId: labs[2].id,
-          appointmentId: appointments[8].id,
-          assignedDate: new Date(),
-          assignedTime: "17:00",
-          status: "COMPLETED",
-          sampleCollected: true,
-          sampleCollectedAt: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
-        },
-      }),
-      prisma.labAssignment.create({
-        data: {
-          patientId: patients[4].id,
-          phlebotomistId: phlebotomists[2].id,
-          labId: labs[0].id,
-          appointmentId: appointments[9].id,
-          assignedDate: new Date(),
-          assignedTime: "18:00",
-          status: "ASSIGNED",
-          sampleCollected: false,
-        },
-      }),
-      // Remaining appointments (appointments[3], [4], [10]-[14] remain unassigned)
     ]);
+    console.log('✅ Lab assignments created:', labAssignments.length);
 
-    console.log('✅ Created lab assignments:', labAssignments.length);
-
-    // Create some test results for completed assignments
+    // Create Test Results
+    console.log('Creating test results...');
     const testResults = await Promise.all([
+      // Results for patient 1 (CBC)
       prisma.testResult.create({
         data: {
-          labAssignmentId: labAssignments[1].id,
-          labTestId: labTests[0].id, // FBS test
-          result: "85",
-          unit: "mg/dL",
-          normalRange: "70-99 mg/dL",
+          labAssignmentId: labAssignments[0].id,
+          labTestId: labTests[0].id,
+          result: "Normal",
+          unit: "Various",
+          normalRange: "See individual parameters",
           isAbnormal: false,
-          remarks: "Normal fasting glucose level",
+          remarks: "All parameters within normal range",
           reportedAt: new Date(),
-          reportedBy: phlebotomistUsers[0].id,
+          reportedBy: pathologyAdmin.id,
         },
       }),
+      // Results for patient 2 (Lipid Profile)
       prisma.testResult.create({
         data: {
           labAssignmentId: labAssignments[1].id,
-          labTestId: labTests[1].id, // CBC test
-          result: "14.2",
-          unit: "g/dL",
-          normalRange: "12-16 g/dL",
-          isAbnormal: false,
-          remarks: "Normal hemoglobin level",
+          labTestId: labTests[3].id,
+          result: "Elevated LDL",
+          unit: "mg/dL",
+          normalRange: "< 100 mg/dL",
+          isAbnormal: true,
+          remarks: "LDL cholesterol elevated, recommend lifestyle changes",
           reportedAt: new Date(),
-          reportedBy: phlebotomistUsers[0].id,
+          reportedBy: pathologyAdmin.id,
+        },
+      }),
+      // Results for patient 3 (Kidney Function)
+      prisma.testResult.create({
+        data: {
+          labAssignmentId: labAssignments[2].id,
+          labTestId: labTests[4].id,
+          result: "Normal",
+          unit: "Various",
+          normalRange: "See individual parameters",
+          isAbnormal: false,
+          remarks: "Kidney function normal",
+          reportedAt: new Date(),
+          reportedBy: pathologyAdmin.id,
         },
       }),
     ]);
+    console.log('✅ Test results created:', testResults.length);
 
-    console.log('✅ Created test results:', testResults.length);
+    // Create Sample Appointment Reports
+    console.log('Creating sample appointment reports...');
+    const appointmentReports = await Promise.all([
+      prisma.appointmentReport.create({
+        data: {
+          appointmentId: appointments[0].id,
+          fileName: "CBC_Report_Ramesh_Singh.pdf",
+          fileUrl: "https://example.com/reports/cbc_report_1.pdf",
+          fileSize: 1024000,
+          mimeType: "application/pdf",
+        },
+      }),
+      prisma.appointmentReport.create({
+        data: {
+          appointmentId: appointments[1].id,
+          fileName: "Lipid_Profile_Sunita_Verma.pdf",
+          fileUrl: "https://example.com/reports/lipid_report_1.pdf",
+          fileSize: 1536000,
+          mimeType: "application/pdf",
+        },
+      }),
+    ]);
+    console.log('✅ Appointment reports created:', appointmentReports.length);
 
-    console.log('🎉 Comprehensive pathology data seeding completed successfully!');
+    console.log('🎉 Pathology data seeding completed successfully!');
     console.log('\n📊 Summary:');
-    console.log(`- Pathology Labs: ${labs.length}`);
-    console.log(`- Lab Tests: ${labTests.length}`);
+    console.log(`- Pathology Lab: 1`);
+    console.log(`- Pathology Admin: 1`);
     console.log(`- Phlebotomists: ${phlebotomists.length}`);
+    console.log(`- Lab Tests: ${labTests.length}`);
     console.log(`- Patients: ${patients.length}`);
     console.log(`- Appointments: ${appointments.length}`);
     console.log(`- Lab Assignments: ${labAssignments.length}`);
     console.log(`- Test Results: ${testResults.length}`);
+    console.log(`- Appointment Reports: ${appointmentReports.length}`);
+
+    console.log('\n🔑 Login Credentials:');
+    console.log('Pathology Admin: +91-9999999999');
+    console.log('Phlebotomist 1: +91-8888888888');
+    console.log('Phlebotomist 2: +91-7777777777');
+    console.log('Phlebotomist 3: +91-6666666666');
 
   } catch (error) {
     console.error('❌ Error seeding pathology data:', error);
@@ -690,10 +459,10 @@ async function seedPathologyData() {
 // Run the seeding function
 seedPathologyData()
   .then(() => {
-    console.log('✅ Pathology seeding completed');
+    console.log('✅ Seeding completed successfully');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('❌ Pathology seeding failed:', error);
+    console.error('❌ Seeding failed:', error);
     process.exit(1);
   }); 

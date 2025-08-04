@@ -201,6 +201,7 @@ model Appointment {
   payment              Payment?             @relation("AppointmentPayment")
   prescription         Prescription?
   labAssignments       LabAssignment[]
+  appointmentReports   AppointmentReport[]
 
   @@index([deletedAt])
   @@index([patientId, isDietician])
@@ -376,6 +377,7 @@ enum UserRole {
   DIETICIAN
   LAB_TECH
   PATHOLOGY
+  PHLEBOTOMIST
   ADMIN
   SUPER_ADMIN
   NOT_SET
@@ -665,6 +667,23 @@ model TestResult {
   @@index([deletedAt])
   @@index([labAssignmentId])
   @@index([labTestId])
+}
+
+model AppointmentReport {
+  id            Int         @id @default(autoincrement())
+  appointmentId Int
+  fileName      String
+  fileUrl       String
+  fileSize      Int?
+  mimeType      String?
+  uploadedAt    DateTime    @default(now())
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+
+  @@index([appointmentId])
+  @@index([deletedAt])
 }
 
 enum LabAssignmentStatus {
