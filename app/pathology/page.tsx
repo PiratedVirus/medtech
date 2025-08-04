@@ -31,6 +31,9 @@ interface LabAssignment {
       name: string;
     };
   };
+  appointment?: {
+    appointmentFor: string;
+  };
   assignedDate: string;
   assignedTime: string;
   status: string;
