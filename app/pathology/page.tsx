@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Users, TestTube, User, MapPin, Filter, Play, Upload, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, Clock, Users, TestTube, User, MapPin, Filter, Play, Upload, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import AssignmentModal from "@/components/pathology/AssignmentModal";
 import StatusUpdateModal from "@/components/pathology/StatusUpdateModal";
 import LabReportUpload from "@/components/pathology/LabReportUpload";
@@ -66,6 +66,7 @@ export default function PathologyDashboard() {
   const [phlebotomists, setPhlebotomists] = useState<Phlebotomist[]>([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
   const [ongoingAssignments, setOngoingAssignments] = useState<LabAssignment[]>([]);
+  const [completedBookings, setCompletedBookings] = useState<LabAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<'all' | 'assigned' | 'unassigned'>('all');
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
@@ -76,6 +77,7 @@ export default function PathologyDashboard() {
   const [showLabBookingUploadModal, setShowLabBookingUploadModal] = useState(false);
   const [upcomingScrollPosition, setUpcomingScrollPosition] = useState(0);
   const [ongoingScrollPosition, setOngoingScrollPosition] = useState(0);
+  const [completedScrollPosition, setCompletedScrollPosition] = useState(0);
 
   useEffect(() => {
     fetchDashboardData();
@@ -97,6 +99,11 @@ export default function PathologyDashboard() {
       const assignmentsResponse = await fetch("/api/pathology/ongoing-assignments");
       const assignmentsData = await assignmentsResponse.json();
       setOngoingAssignments(assignmentsData.assignments || []);
+
+      // Fetch completed bookings
+      const completedResponse = await fetch("/api/pathology/completed-bookings");
+      const completedData = await completedResponse.json();
+      setCompletedBookings(completedData.completedBookings || []);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -168,30 +175,58 @@ export default function PathologyDashboard() {
     setShowLabBookingUploadModal(true);
   };
 
-  const scrollUpcoming = (direction: 'left' | 'right') => {
-    const container = document.getElementById('upcoming-scroll');
-    if (container) {
-      const scrollAmount = 300;
-      const newPosition = direction === 'left' 
-        ? Math.max(0, upcomingScrollPosition - scrollAmount)
-        : upcomingScrollPosition + scrollAmount;
-      
-      container.scrollTo({ left: newPosition, behavior: 'smooth' });
-      setUpcomingScrollPosition(newPosition);
+  const handleViewReports = (assignment: any) => {
+    if (assignment.labBooking?.labResult && assignment.labBooking.labResult.length > 0) {
+      // Open reports in new tab
+      assignment.labBooking.labResult.forEach((url: string) => {
+        window.open(url, '_blank');
+      });
     }
   };
 
-  const scrollOngoing = (direction: 'left' | 'right') => {
-    const container = document.getElementById('ongoing-scroll');
+  const scrollUpcoming = (direction: 'left' | 'right') => {
+    const containers = document.querySelectorAll('[id^="upcoming-scroll"]');
+    containers.forEach(container => {
     if (container) {
       const scrollAmount = 300;
+        const currentPosition = container.scrollLeft;
       const newPosition = direction === 'left' 
-        ? Math.max(0, ongoingScrollPosition - scrollAmount)
-        : ongoingScrollPosition + scrollAmount;
+          ? Math.max(0, currentPosition - scrollAmount)
+          : currentPosition + scrollAmount;
       
       container.scrollTo({ left: newPosition, behavior: 'smooth' });
-      setOngoingScrollPosition(newPosition);
     }
+    });
+  };
+
+  const scrollOngoing = (direction: 'left' | 'right') => {
+    const containers = document.querySelectorAll('[id^="ongoing-scroll"]');
+    containers.forEach(container => {
+    if (container) {
+      const scrollAmount = 300;
+        const currentPosition = container.scrollLeft;
+      const newPosition = direction === 'left' 
+          ? Math.max(0, currentPosition - scrollAmount)
+          : currentPosition + scrollAmount;
+      
+      container.scrollTo({ left: newPosition, behavior: 'smooth' });
+      }
+    });
+  };
+
+  const scrollCompleted = (direction: 'left' | 'right') => {
+    const containers = document.querySelectorAll('[id^="completed-scroll"]');
+    containers.forEach(container => {
+      if (container) {
+        const scrollAmount = 300;
+        const currentPosition = container.scrollLeft;
+        const newPosition = direction === 'left' 
+          ? Math.max(0, currentPosition - scrollAmount)
+          : currentPosition + scrollAmount;
+        
+        container.scrollTo({ left: newPosition, behavior: 'smooth' });
+      }
+    });
   };
 
   // Filter appointments based on assignment status
@@ -215,7 +250,7 @@ export default function PathologyDashboard() {
   return (
     <>
       <ToastContainer />
-      <div className="mx-20 px-4 py-6 space-y-6">
+    <div className="mx-20 px-4 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-800">
@@ -381,7 +416,7 @@ export default function PathologyDashboard() {
                   {/* First Row */}
                   <div className="relative">
                     <div
-                      id="upcoming-scroll"
+                      id="upcoming-scroll-1"
                       className="flex space-x-4 overflow-x-auto scrollbar-hide pb-2"
                       style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     >
@@ -462,7 +497,11 @@ export default function PathologyDashboard() {
                   {/* Second Row */}
                   {filteredAppointments.length > Math.ceil(filteredAppointments.length / 2) && (
                     <div className="relative">
-                      <div className="flex space-x-4 overflow-x-auto scrollbar-hide pb-2">
+                      <div
+                        id="upcoming-scroll-2"
+                        className="flex space-x-4 overflow-x-auto scrollbar-hide pb-2"
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                      >
                         {filteredAppointments.slice(Math.ceil(filteredAppointments.length / 2)).map((appointment, index) => (
                           <Card key={index + Math.ceil(filteredAppointments.length / 2)} className="bg-custom-mutedgreen flex-shrink-0 w-80 hover:shadow-md transition-shadow duration-200">
                             <CardContent className="p-5">
@@ -588,7 +627,7 @@ export default function PathologyDashboard() {
                   {/* First Row */}
                   <div className="relative">
                     <div
-                      id="ongoing-scroll"
+                      id="ongoing-scroll-1"
                       className="flex space-x-4 overflow-x-auto scrollbar-hide pb-2"
                       style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     >
@@ -658,23 +697,34 @@ export default function PathologyDashboard() {
 
                               {/* Action Buttons */}
                               <div className="flex space-x-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
                                   className="flex-1 text-primary font-semibold"
                                   onClick={() => handleUpdateStatus(assignment)}
                                 >
                                   Update Status
                                 </Button>
                                 <Button
-                                  variant="outline"
+                                  variant="ghost"
                                   size="sm"
-                                  className="flex-1 text-purple-600 border-purple-200 hover:bg-purple-50 flex items-center space-x-2"
-                                  onClick={() => handleUploadReports(assignment)}
-                                >
-                                  <Upload className="h-4 w-4" />
-                                  <span>Upload Reports</span>
-                                </Button>
+                                  className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50 flex items-center space-x-2"
+                                    onClick={() => handleUploadReports(assignment)}
+                                  >
+                                    <Upload className="h-4 w-4" />
+                                    <span>Upload Reports</span>
+                                  </Button>
+                                {assignment.labBooking?.labResult && assignment.labBooking.labResult.length > 0 && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="flex-1 text-primary hover:text-primary/80 hover:bg-primary/10 flex items-center space-x-2"
+                                    onClick={() => handleViewReports(assignment)}
+                                  >
+                                    <FileText className="h-4 w-4" />
+                                    <span>View Reports ({assignment.labBooking.labResult.length})</span>
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           </CardContent>
@@ -686,7 +736,11 @@ export default function PathologyDashboard() {
                   {/* Second Row */}
                   {ongoingAssignments.length > Math.ceil(ongoingAssignments.length / 2) && (
                     <div className="relative">
-                      <div className="flex space-x-4 overflow-x-auto scrollbar-hide pb-2">
+                      <div
+                        id="ongoing-scroll-2"
+                        className="flex space-x-4 overflow-x-auto scrollbar-hide pb-2"
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                      >
                         {ongoingAssignments.slice(Math.ceil(ongoingAssignments.length / 2)).map((assignment) => (
                           <Card key={assignment.id} className="bg-custom-mutedgreen flex-shrink-0 w-80 hover:shadow-md transition-shadow duration-200">
                             <CardContent className="p-5">
@@ -748,23 +802,280 @@ export default function PathologyDashboard() {
 
                                 {/* Action Buttons */}
                                 <div className="flex space-x-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
                                     className="flex-1 text-primary font-semibold"
                                     onClick={() => handleUpdateStatus(assignment)}
                                   >
                                     Update Status
                                   </Button>
                                   <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50 flex items-center space-x-2"
+                                      onClick={() => handleUploadReports(assignment)}
+                                    >
+                                      <Upload className="h-4 w-4" />
+                                      <span>Upload Reports</span>
+                                    </Button>
+                                  {assignment.labBooking?.labResult && assignment.labBooking.labResult.length > 0 && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="flex-1 text-primary hover:text-primary/80 hover:bg-primary/10 flex items-center space-x-2"
+                                      onClick={() => handleViewReports(assignment)}
+                                    >
+                                      <FileText className="h-4 w-4" />
+                                      <span>View Reports ({assignment.labBooking.labResult.length})</span>
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Completed Bookings Section */}
+        <Card className="bg-white">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl font-semibold text-gray-800">Completed Bookings</CardTitle>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2 bg-green-100 px-3 py-1 rounded-lg">
+                  <Calendar className="h-4 w-4 text-green-600" />
+                  <span className="text-sm text-green-800">{format(new Date(), "dd-MM-yyyy")}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => scrollCompleted('left')}
+                    className="p-2"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => scrollCompleted('right')}
+                    className="p-2"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {completedBookings.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <TestTube className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500">No completed bookings found.</p>
+                </div>
+              ) : (
+                <>
+                  {/* First Row */}
+                  <div className="relative">
+                    <div
+                      id="completed-scroll-1"
+                      className="flex space-x-4 overflow-x-auto scrollbar-hide pb-2"
+                      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    >
+                      {completedBookings.slice(0, Math.ceil(completedBookings.length / 2)).map((booking) => (
+                        <Card key={booking.id} className="bg-custom-mutedgreen flex-shrink-0 w-80 hover:shadow-md transition-shadow duration-200">
+                          <CardContent className="p-5">
+                            <div className="space-y-4">
+                              {/* Patient Info - Main Focus */}
+                              <div className="text-center">
+                                <h3 className="text-lg font-bold text-gray-900 mb-1">
+                                  {booking.patient?.name || 'Unknown Patient'}
+                                </h3>
+                                <p className="text-sm text-primary font-semibold">
+                                  {booking.labBooking?.labPackage?.name || booking.appointment?.appointmentFor || 'Lab Test'}
+                                </p>
+                                {booking.labBooking && (
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Payment: {booking.labBooking.paymentOption}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Lab Booking Info */}
+                              {booking.labBooking && (
+                                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                                  <p className="text-xs text-gray-600 mb-1">Lab Booking Details</p>
+                                  <p className="font-semibold text-blue-700 text-sm">
+                                    {booking.labBooking.fullName || booking.patient?.name}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    {booking.labBooking.mobile} • {booking.labBooking.address}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Phlebotomist Info */}
+                              <div className="bg-green-50 rounded-lg p-3 text-center">
+                                <p className="text-xs text-gray-600 mb-1">Assigned Phlebotomist</p>
+                                <p className="font-semibold text-green-700">
+                                  {booking.phlebotomist?.user?.name || 'Phlebotomist'}
+                                </p>
+                              </div>
+
+                              {/* Date & Status */}
+                              <div className="flex items-center justify-between text-sm">
+                                <div className="text-gray-600">
+                                  <p className="font-semibold">
+                                    {booking.assignedDate 
+                                      ? format(new Date(booking.assignedDate), "dd-MMM-yyyy")
+                                      : 'Date TBD'
+                                    }
+                                  </p>
+                                  <p>{booking.assignedTime}</p>
+                                </div>
+                                <Badge className="bg-emerald-100 text-emerald-800 text-xs">
+                                  COMPLETED
+                                </Badge>
+                              </div>
+
+                              {/* Action Buttons */}
+                              <div className="flex space-x-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="flex-1 text-primary font-semibold"
+                                  onClick={() => handleUpdateStatus(booking)}
+                                    >
+                                      Update Status
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50 flex items-center space-x-2"
+                                  onClick={() => handleUploadReports(booking)}
+                                >
+                                  <Upload className="h-4 w-4" />
+                                  <span>Upload Reports</span>
+                                </Button>
+                                {booking.labBooking?.labResult && booking.labBooking.labResult.length > 0 && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="flex-1 text-primary hover:text-primary/80 hover:bg-primary/10 flex items-center space-x-2"
+                                    onClick={() => handleViewReports(booking)}
+                                  >
+                                    <FileText className="h-4 w-4" />
+                                    <span>View Reports ({booking.labBooking.labResult.length})</span>
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Second Row */}
+                  {completedBookings.length > Math.ceil(completedBookings.length / 2) && (
+                    <div className="relative">
+                      <div
+                        id="completed-scroll-2"
+                        className="flex space-x-4 overflow-x-auto scrollbar-hide pb-2"
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                      >
+                        {completedBookings.slice(Math.ceil(completedBookings.length / 2)).map((booking) => (
+                          <Card key={booking.id} className="bg-custom-mutedgreen flex-shrink-0 w-80 hover:shadow-md transition-shadow duration-200">
+                            <CardContent className="p-5">
+                              <div className="space-y-4">
+                                {/* Patient Info - Main Focus */}
+                                <div className="text-center">
+                                  <h3 className="text-lg font-bold text-gray-900 mb-1">
+                                    {booking.patient?.name || 'Unknown Patient'}
+                                  </h3>
+                                  <p className="text-sm text-primary font-semibold">
+                                    {booking.labBooking?.labPackage?.name || booking.appointment?.appointmentFor || 'Lab Test'}
+                                  </p>
+                                </div>
+
+                                {/* Lab Booking Info */}
+                                {booking.labBooking && (
+                                  <div className="bg-blue-50 rounded-lg p-3 text-center">
+                                    <p className="text-xs text-gray-600 mb-1">Lab Booking Details</p>
+                                    <p className="font-semibold text-blue-700 text-sm">
+                                      {booking.labBooking.fullName || booking.patient?.name}
+                                    </p>
+                                    <p className="text-xs text-gray-600">
+                                      {booking.labBooking.mobile} • {booking.labBooking.address}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {/* Phlebotomist Info */}
+                                <div className="bg-green-50 rounded-lg p-3 text-center">
+                                  <p className="text-xs text-gray-600 mb-1">Assigned Phlebotomist</p>
+                                  <p className="font-semibold text-green-700">
+                                    {booking.phlebotomist?.user?.name || 'Phlebotomist'}
+                                  </p>
+                                </div>
+
+                                {/* Date & Status */}
+                                <div className="flex items-center justify-between text-sm">
+                                  <div className="text-gray-600">
+                                    <p className="font-semibold">
+                                      {booking.assignedDate 
+                                        ? format(new Date(booking.assignedDate), "dd-MMM-yyyy")
+                                        : 'Date TBD'
+                                      }
+                                    </p>
+                                    <p>{booking.assignedTime}</p>
+                                  </div>
+                                  <Badge className="bg-emerald-100 text-emerald-800 text-xs">
+                                    COMPLETED
+                                  </Badge>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex space-x-2">
+                                  <Button
                                     variant="outline"
                                     size="sm"
-                                    className="flex-1 text-purple-600 border-purple-200 hover:bg-purple-50 flex items-center space-x-2"
-                                    onClick={() => handleUploadReports(assignment)}
+                                    className="flex-1 text-primary font-semibold"
+                                    onClick={() => handleUpdateStatus(booking)}
+                                  >
+                                    Update Status
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50 flex items-center space-x-2"
+                                    onClick={() => handleUploadReports(booking)}
                                   >
                                     <Upload className="h-4 w-4" />
                                     <span>Upload Reports</span>
                                   </Button>
+                                  {booking.labBooking?.labResult && booking.labBooking.labResult.length > 0 && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="flex-1 text-primary hover:text-primary/80 hover:bg-primary/10 flex items-center space-x-2"
+                                      onClick={() => handleViewReports(booking)}
+                                    >
+                                      <FileText className="h-4 w-4" />
+                                      <span>View Reports ({booking.labBooking.labResult.length})</span>
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                             </CardContent>

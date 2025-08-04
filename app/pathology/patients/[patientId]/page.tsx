@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import UploadResultsModal from "@/components/patients/labs/UploadResultsModal";
+import EnhancedUploadModal from "@/components/pathology/EnhancedUploadModal";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
@@ -109,7 +109,7 @@ export default function PatientDetailsPage() {
           status: booking.status,
           pathologyStatus: booking.pathologyStatus,
           reportLink: booking.reports?.map((r: any) => r.pdfUrl) || null,
-          labResult: booking.reports?.map((r: any) => r.pdfUrl) || null,
+          labResult: null, // Don't duplicate the reports
           phlebotomist: booking.phlebotomist,
           labAssignmentId: booking.labAssignmentId,
         }));
@@ -121,7 +121,7 @@ export default function PatientDetailsPage() {
           status: booking.status,
           pathologyStatus: booking.pathologyStatus,
           reportLink: booking.reports?.map((r: any) => r.pdfUrl) || null,
-          labResult: booking.reports?.map((r: any) => r.pdfUrl) || null,
+          labResult: null, // Don't duplicate the reports
           phlebotomist: booking.phlebotomist,
           labAssignmentId: booking.labAssignmentId,
         }));
@@ -192,7 +192,7 @@ export default function PatientDetailsPage() {
     // Close the modal
     setUploadModalOpen(false);
     setActiveBooking(null);
-    toast.success("Reports uploaded successfully!");
+    console.log("Modal closed and data refreshed");
   };
 
   const openReportsModal = (reports: string[]) => {
@@ -298,11 +298,11 @@ export default function PatientDetailsPage() {
             <div className="space-y-3 bg-gray-50/30 min-h-screen">
               {labBookings.map((booking) => {
                 const timelineSteps = getTimelineSteps(booking);
-                const reports = [
-                  ...(Array.isArray(booking.reportLink) ? booking.reportLink : []),
-                  ...(Array.isArray(booking.labResult) ? booking.labResult : [])
-                ];
+                // Use only reportLink to avoid duplicates
+                const reports = Array.isArray(booking.reportLink) ? booking.reportLink : [];
                 console.log(`Booking ${booking.id} reports:`, reports);
+                console.log(`Booking ${booking.id} reportLink:`, booking.reportLink);
+                console.log(`Booking ${booking.id} labResult:`, booking.labResult);
 
                 return (
                   <Card
@@ -489,7 +489,7 @@ export default function PatientDetailsPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="text-gray-500 hover:text-gray-700 hover:bg-gray-50 text-xs px-3 py-1.5 h-auto whitespace-nowrap"
+                                  className="text-primary hover:text-primary/80 hover:bg-primary/10 text-xs px-3 py-1.5 h-auto whitespace-nowrap"
                                   onClick={() => openReportsModal(reports)}
                                 >
                                   <FileText className="h-3 w-3 mr-1.5" />
@@ -509,13 +509,13 @@ export default function PatientDetailsPage() {
         </div>
       </div>
 
-      {/* Upload Modal */}
-      <UploadResultsModal
-        open={uploadModalOpen}
+      {/* Enhanced Upload Modal */}
+      <EnhancedUploadModal
+        isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
-        bookingId={activeBooking?.id || 0}
+        booking={activeBooking}
         patientName={patient?.name || 'Patient'}
-        onUploaded={handleUploadComplete}
+        onUploadComplete={handleUploadComplete}
       />
 
       {/* Reports Modal */}
@@ -547,7 +547,7 @@ export default function PatientDetailsPage() {
                       className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
                     >
                       <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5 text-blue-500" />
+                        <FileText className="h-5 w-5 text-primary" />
                         <div>
                           <p className="font-medium text-gray-900">
                             Report {index + 1}
@@ -561,7 +561,7 @@ export default function PatientDetailsPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => window.open(report, '_blank')}
-                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        className="text-primary border-primary/20 hover:bg-primary/10"
                       >
                         View
                       </Button>
