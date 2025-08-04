@@ -8,8 +8,10 @@ import { Calendar, Clock, Users, TestTube, User, MapPin, Filter, Play, Upload, C
 import AssignmentModal from "@/components/pathology/AssignmentModal";
 import StatusUpdateModal from "@/components/pathology/StatusUpdateModal";
 import LabReportUpload from "@/components/pathology/LabReportUpload";
+import LabBookingUploadModal from "@/components/pathology/LabBookingUploadModal";
 import { useProfile } from "@/hooks/context/ProfileContext";
 import { format } from "date-fns";
+import { toast, ToastContainer } from "react-toastify";
 
 interface Phlebotomist {
   id: number;
@@ -71,6 +73,7 @@ export default function PathologyDashboard() {
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showLabBookingUploadModal, setShowLabBookingUploadModal] = useState(false);
   const [upcomingScrollPosition, setUpcomingScrollPosition] = useState(0);
   const [ongoingScrollPosition, setOngoingScrollPosition] = useState(0);
 
@@ -121,6 +124,14 @@ export default function PathologyDashboard() {
 
   const handleStartAppointment = async (appointment: any) => {
     try {
+      // Find first available phlebotomist
+      const availablePhlebotomist = phlebotomists.find(p => p.isAvailable);
+      
+      if (!availablePhlebotomist) {
+        alert('No available phlebotomists at the moment. Please assign one manually.');
+        return;
+      }
+
       // Auto-assign to first available phlebotomist and move to ongoing
       const response = await fetch('/api/pathology/assign-phlebotomist', {
         method: 'POST',
@@ -128,8 +139,9 @@ export default function PathologyDashboard() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          patientId: appointment.patientId,
           appointmentId: appointment.id,
-          phlebotomistId: phlebotomists[0]?.id, // Auto-assign to first available
+          phlebotomistId: availablePhlebotomist.id,
           assignedDate: new Date().toISOString().split('T')[0],
           assignedTime: new Date().toLocaleTimeString('en-US', { 
             hour12: false, 
@@ -141,15 +153,19 @@ export default function PathologyDashboard() {
 
       if (response.ok) {
         fetchDashboardData(); // Refresh data
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to start appointment');
       }
     } catch (error) {
       console.error('Error starting appointment:', error);
+      alert('Error starting appointment');
     }
   };
 
   const handleUploadReports = (assignment: any) => {
     setSelectedAssignment(assignment);
-    setShowUploadModal(true);
+    setShowLabBookingUploadModal(true);
   };
 
   const scrollUpcoming = (direction: 'left' | 'right') => {
@@ -197,10 +213,20 @@ export default function PathologyDashboard() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 space-y-6">
+    <>
+      <ToastContainer />
+      <div className="mx-20 px-4 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-800">Pathology Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-800">
+          {(() => {
+            const hour = new Date().getHours();
+            const name = profile?.name || "there";
+            if (hour < 12) return `Good Morning, ${name}!`;
+            if (hour < 18) return `Good Afternoon, ${name}!`;
+            return `Good Evening, ${name}!`;
+          })()}
+        </h1>
         <div className="text-sm text-gray-600">
           {format(new Date(), "dd-MM-yyyy | h:mm a")} <Calendar className="inline ml-1 h-4 w-4" />
         </div>
@@ -632,26 +658,23 @@ export default function PathologyDashboard() {
 
                               {/* Action Buttons */}
                               <div className="flex space-x-2">
-                                {assignment.status === 'COMPLETED' ? (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex-1 text-purple-600 border-purple-200 hover:bg-purple-50 flex items-center space-x-2"
-                                    onClick={() => handleUploadReports(assignment)}
-                                  >
-                                    <Upload className="h-4 w-4" />
-                                    <span>Upload Reports</span>
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex-1 text-primary font-semibold"
-                                    onClick={() => handleUpdateStatus(assignment)}
-                                  >
-                                    Update Status
-                                  </Button>
-                                )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1 text-primary font-semibold"
+                                  onClick={() => handleUpdateStatus(assignment)}
+                                >
+                                  Update Status
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1 text-purple-600 border-purple-200 hover:bg-purple-50 flex items-center space-x-2"
+                                  onClick={() => handleUploadReports(assignment)}
+                                >
+                                  <Upload className="h-4 w-4" />
+                                  <span>Upload Reports</span>
+                                </Button>
                               </div>
                             </div>
                           </CardContent>
@@ -725,26 +748,23 @@ export default function PathologyDashboard() {
 
                                 {/* Action Buttons */}
                                 <div className="flex space-x-2">
-                                  {assignment.status === 'COMPLETED' ? (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="flex-1 text-purple-600 border-purple-200 hover:bg-purple-50 flex items-center space-x-2"
-                                      onClick={() => handleUploadReports(assignment)}
-                                    >
-                                      <Upload className="h-4 w-4" />
-                                      <span>Upload Reports</span>
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="flex-1 text-primary font-semibold"
-                                      onClick={() => handleUpdateStatus(assignment)}
-                                    >
-                                      Update Status
-                                    </Button>
-                                  )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1 text-primary font-semibold"
+                                    onClick={() => handleUpdateStatus(assignment)}
+                                  >
+                                    Update Status
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1 text-purple-600 border-purple-200 hover:bg-purple-50 flex items-center space-x-2"
+                                    onClick={() => handleUploadReports(assignment)}
+                                  >
+                                    <Upload className="h-4 w-4" />
+                                    <span>Upload Reports</span>
+                                  </Button>
                                 </div>
                               </div>
                             </CardContent>
@@ -785,6 +805,18 @@ export default function PathologyDashboard() {
           fetchDashboardData();
         }}
       />
+
+      {/* Lab Booking Upload Modal */}
+      <LabBookingUploadModal
+        isOpen={showLabBookingUploadModal}
+        onClose={() => setShowLabBookingUploadModal(false)}
+        assignment={selectedAssignment}
+        onUploadComplete={() => {
+          setShowLabBookingUploadModal(false);
+          fetchDashboardData();
+        }}
+      />
     </div>
+    </>
   );
 } 

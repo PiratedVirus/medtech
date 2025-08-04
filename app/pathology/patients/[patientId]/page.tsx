@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import UploadResultsModal from "@/components/patients/labs/UploadResultsModal";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
@@ -68,9 +69,11 @@ export default function PatientDetailsPage() {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [labBookings, setLabBookings] = useState<LabBooking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploadingReport, setUploadingReport] = useState<number | null>(null);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [activeBooking, setActiveBooking] = useState<LabBooking | null>(null);
   const [selectedReports, setSelectedReports] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [buttonClicked, setButtonClicked] = useState<number | null>(null);
 
   useEffect(() => {
     fetchPatientDetails();
@@ -92,8 +95,11 @@ export default function PatientDetailsPage() {
 
   const fetchLabBookings = async () => {
     try {
+      console.log("Fetching lab bookings for patient:", patientId);
       const response = await fetch(`/api/labs?patientId=${patientId}`);
       const data = await response.json();
+      console.log("Lab bookings data:", data);
+      
       if (data.scheduled || data.completed) {
         // Transform the data to match our interface
         const transformedScheduled = (data.scheduled || []).map((booking: any) => ({
@@ -120,7 +126,9 @@ export default function PatientDetailsPage() {
           labAssignmentId: booking.labAssignmentId,
         }));
         
-        setLabBookings([...transformedScheduled, ...transformedCompleted]);
+        const allBookings = [...transformedScheduled, ...transformedCompleted];
+        console.log("Transformed bookings:", allBookings);
+        setLabBookings(allBookings);
       }
     } catch (error) {
       console.error("Error fetching lab bookings:", error);
@@ -177,35 +185,14 @@ export default function PatientDetailsPage() {
     }
   };
 
-  const handleFileUpload = async (bookingId: number, files: FileList) => {
-    if (!files || files.length === 0) return;
-
-    setUploadingReport(bookingId);
-    try {
-      const formData = new FormData();
-      Array.from(files).forEach((file) => {
-        formData.append('files', file);
-      });
-      formData.append('bookingId', bookingId.toString());
-      formData.append('patientName', patient?.name || 'Patient');
-
-      const response = await fetch(`/api/pathology/upload-lab-report`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        toast.success("Reports uploaded successfully");
-        fetchLabBookings(); // Refresh data
-      } else {
-        toast.error("Failed to upload reports");
-      }
-    } catch (error) {
-      console.error("Error uploading reports:", error);
-      toast.error("Failed to upload reports");
-    } finally {
-      setUploadingReport(null);
-    }
+  const handleUploadComplete = async () => {
+    console.log("Upload completed, refreshing data...");
+    // Refresh lab bookings to get updated reports
+    await fetchLabBookings();
+    // Close the modal
+    setUploadModalOpen(false);
+    setActiveBooking(null);
+    toast.success("Reports uploaded successfully!");
   };
 
   const openReportsModal = (reports: string[]) => {
@@ -216,6 +203,11 @@ export default function PatientDetailsPage() {
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedReports([]);
+  };
+
+  const openUploadModal = (booking: LabBooking) => {
+    setActiveBooking(booking);
+    setUploadModalOpen(true);
   };
 
   if (loading) {
@@ -242,7 +234,7 @@ export default function PatientDetailsPage() {
   return (
     <>
       <ToastContainer />
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="mx-20 px-4 py-6 space-y-6">
         {/* Patient Information Card */}
         <Card className="col-span-full relative overflow-hidden rounded-lg bg-custom-mutedgreen text-gray-700 p-6">
           {/* Background icon */}
@@ -306,7 +298,11 @@ export default function PatientDetailsPage() {
             <div className="space-y-3 bg-gray-50/30 min-h-screen">
               {labBookings.map((booking) => {
                 const timelineSteps = getTimelineSteps(booking);
-                const reports = [...(booking.reportLink || []), ...(booking.labResult || [])];
+                const reports = [
+                  ...(Array.isArray(booking.reportLink) ? booking.reportLink : []),
+                  ...(Array.isArray(booking.labResult) ? booking.labResult : [])
+                ];
+                console.log(`Booking ${booking.id} reports:`, reports);
 
                 return (
                   <Card
@@ -447,52 +443,48 @@ export default function PatientDetailsPage() {
                           {/* Always show upload button - centered when no reports */}
                           {reports.length === 0 ? (
                             <div className="flex justify-center w-full">
-                              <div className="relative">
-                                <input
-                                  type="file"
-                                  multiple
-                                  accept=".pdf,.jpg,.jpeg,.png"
-                                  onChange={(e) => e.target.files && handleFileUpload(booking.id, e.target.files)}
-                                  className="hidden"
-                                  id={`upload-${booking.id}`}
-                                />
-                                <label htmlFor={`upload-${booking.id}`}>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-gray-500 hover:text-gray-700 hover:bg-gray-50 cursor-pointer text-xs px-3 py-1.5 h-auto whitespace-nowrap"
-                                    disabled={uploadingReport === booking.id}
-                                  >
-                                    <Upload className="h-3 w-3 mr-1" />
-                                    {uploadingReport === booking.id ? "Uploading..." : "Upload"}
-                                  </Button>
-                                </label>
-                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`text-xs px-3 py-1.5 h-auto whitespace-nowrap ${
+                                  buttonClicked === booking.id 
+                                    ? "bg-blue-100 text-blue-700" 
+                                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                                } cursor-pointer`}
+                                onClick={() => {
+                                  console.log("Upload button clicked for booking:", booking.id);
+                                  setButtonClicked(booking.id);
+                                  setTimeout(() => setButtonClicked(null), 1000);
+                                  setActiveBooking(booking);
+                                  setUploadModalOpen(true);
+                                }}
+                              >
+                                <Upload className="h-3 w-3 mr-1" />
+                                Upload
+                              </Button>
                             </div>
                           ) : (
                             <>
                               <div className="flex flex-col justify-center items-center gap-2">
-                                <div className="relative">
-                                  <input
-                                    type="file"
-                                    multiple
-                                    accept=".pdf,.jpg,.jpeg,.png"
-                                    onChange={(e) => e.target.files && handleFileUpload(booking.id, e.target.files)}
-                                    className="hidden"
-                                    id={`upload-${booking.id}`}
-                                  />
-                                  <label htmlFor={`upload-${booking.id}`}>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="text-gray-500 hover:text-gray-700 hover:bg-gray-50 cursor-pointer text-xs px-3 py-1.5 h-auto whitespace-nowrap"
-                                      disabled={uploadingReport === booking.id}
-                                    >
-                                      <Upload className="h-3 w-3 mr-1" />
-                                      {uploadingReport === booking.id ? "Uploading..." : "Upload More"}
-                                    </Button>
-                                  </label>
-                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={`text-xs px-3 py-1.5 h-auto whitespace-nowrap ${
+                                    buttonClicked === booking.id 
+                                      ? "bg-blue-100 text-blue-700" 
+                                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                                  } cursor-pointer`}
+                                  onClick={() => {
+                                    console.log("Upload more button clicked for booking:", booking.id);
+                                    setButtonClicked(booking.id);
+                                    setTimeout(() => setButtonClicked(null), 1000);
+                                    setActiveBooking(booking);
+                                    setUploadModalOpen(true);
+                                  }}
+                                >
+                                  <Upload className="h-3 w-3 mr-1" />
+                                  Upload More
+                                </Button>
 
                                 <Button
                                   variant="ghost"
@@ -516,6 +508,15 @@ export default function PatientDetailsPage() {
           )}
         </div>
       </div>
+
+      {/* Upload Modal */}
+      <UploadResultsModal
+        open={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        bookingId={activeBooking?.id || 0}
+        patientName={patient?.name || 'Patient'}
+        onUploaded={handleUploadComplete}
+      />
 
       {/* Reports Modal */}
       {isModalOpen && (

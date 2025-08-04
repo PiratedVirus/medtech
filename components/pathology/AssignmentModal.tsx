@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, User, MapPin, CheckCircle } from "lucide-react";
+import { format, addDays } from "date-fns";
 
 interface Phlebotomist {
   id: number;
@@ -35,6 +36,7 @@ export default function AssignmentModal({
 }: AssignmentModalProps) {
   const [phlebotomists, setPhlebotomists] = useState<Phlebotomist[]>([]);
   const [selectedPhlebotomist, setSelectedPhlebotomist] = useState<string>("");
+  const [assignedDate, setAssignedDate] = useState("");
   const [assignedTime, setAssignedTime] = useState("");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
@@ -56,8 +58,8 @@ export default function AssignmentModal({
   };
 
   const handleAssign = async () => {
-    if (!selectedPhlebotomist || !assignedTime) {
-      alert("Please select a phlebotomist and assign time");
+    if (!selectedPhlebotomist || !assignedDate || !assignedTime) {
+      alert("Please select a phlebotomist, date, and time");
       return;
     }
 
@@ -72,6 +74,7 @@ export default function AssignmentModal({
           patientId: appointment.patientId,
           phlebotomistId: parseInt(selectedPhlebotomist),
           appointmentId: appointment.id,
+          assignedDate,
           assignedTime,
         }),
       });
@@ -93,6 +96,7 @@ export default function AssignmentModal({
   const handleClose = () => {
     setStep(1);
     setSelectedPhlebotomist("");
+    setAssignedDate("");
     setAssignedTime("");
     onClose();
   };
@@ -178,16 +182,38 @@ export default function AssignmentModal({
               )}
             </div>
 
-            {/* Assignment Time */}
-            <div className="space-y-4">
-              <Label className="text-base font-medium">Assign Time</Label>
-              <Input
-                type="time"
-                value={assignedTime}
-                onChange={(e) => setAssignedTime(e.target.value)}
-                className="max-w-xs"
-              />
-            </div>
+            {/* Assignment Date & Time - Only show after phlebotomist is selected */}
+            {selectedPhlebotomist && (
+              <div className="space-y-4">
+                <Label className="text-base font-medium">Assign Date & Time</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm text-gray-600">Date</Label>
+                    <Input
+                      type="date"
+                      value={assignedDate}
+                      onChange={(e) => setAssignedDate(e.target.value)}
+                      min={format(new Date(), "yyyy-MM-dd")}
+                      max={format(addDays(new Date(), 30), "yyyy-MM-dd")}
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm text-gray-600">Time</Label>
+                    <Input
+                      type="time"
+                      value={assignedTime}
+                      onChange={(e) => setAssignedTime(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500">
+                  <p>• Date must be today or in the future</p>
+                  <p>• Time should be between 8:00 AM and 8:00 PM</p>
+                </div>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex justify-end space-x-3 pt-4">
@@ -196,7 +222,7 @@ export default function AssignmentModal({
               </Button>
               <Button
                 onClick={handleAssign}
-                disabled={!selectedPhlebotomist || !assignedTime || loading}
+                disabled={!selectedPhlebotomist || !assignedDate || !assignedTime || loading}
                 className="bg-orange-500 hover:bg-orange-600"
               >
                 {loading ? "Assigning..." : "Assign Phlebotomist"}
@@ -230,6 +256,10 @@ export default function AssignmentModal({
                   <span className="ml-2 font-medium">
                     {availablePhlebotomists.find(p => p.id.toString() === selectedPhlebotomist)?.user.name}
                   </span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Date:</span>
+                  <span className="ml-2 font-medium">{assignedDate}</span>
                 </div>
                 <div>
                   <span className="text-gray-600">Time:</span>
