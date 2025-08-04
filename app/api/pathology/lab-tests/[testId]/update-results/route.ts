@@ -3,9 +3,9 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
 
-export async function POST(
+export async function PUT(
   request: Request,
-  { params }: { params: { testId: string } }
+  { params }: { params: Promise<{ testId: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -30,8 +30,8 @@ export async function POST(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const testId = parseInt(params.testId);
-
+    const resolvedParams = await params;
+    const testId = parseInt(resolvedParams.testId);
     if (isNaN(testId)) {
       return NextResponse.json(
         { error: "Invalid test ID" },
@@ -40,91 +40,64 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { parameters, labAssignmentId } = body;
+    const { result, unit, normalRange, isAbnormal, remarks, reportUrl } = body;
 
-    // Validate required fields
-    if (!parameters || !Array.isArray(parameters)) {
-      return NextResponse.json(
-        { error: "Parameters array is required" },
-        { status: 400 }
-      );
-    }
-
-    // Check if lab test exists
-    const labTest = await prisma.labTest.findUnique({
+    // Check if test result exists
+    const existingTestResult = await prisma.testResult.findUnique({
       where: { id: testId },
+      include: {
+        labAssignment: {
+          include: {
+            labBooking: true
+          }
+        }
+      }
     });
 
-    if (!labTest) {
+    if (!existingTestResult) {
       return NextResponse.json(
-        { error: "Lab test not found" },
+        { error: "Test result not found" },
         { status: 404 }
       );
     }
 
-    // Update or create test results for each parameter
-    const updatedResults = [];
-    for (const parameter of parameters) {
-      const { name, result, unit, normalRange, isAbnormal, remarks } = parameter;
+    // Update test result
+    const updatedTestResult = await prisma.testResult.update({
+      where: { id: testId },
+      data: {
+        result,
+        unit,
+        normalRange,
+        isAbnormal,
+        remarks,
+        reportedAt: new Date(),
+        reportedBy: user.id,
+      },
+    });
 
-      // Find existing test result or create new one
-      let testResult = await prisma.testResult.findFirst({
-        where: {
-          labAssignmentId: labAssignmentId || 1, // Default assignment ID
-          labTestId: testId,
-          deletedAt: null,
-        },
-      });
-
-      if (testResult) {
-        // Update existing result
-        testResult = await prisma.testResult.update({
-          where: { id: testResult.id },
+    // Sync with LabBooking if it exists and reportUrl is provided
+    if (existingTestResult.labAssignment?.labBooking && reportUrl) {
+      const labBooking = existingTestResult.labAssignment.labBooking;
+      const currentResults = labBooking.labResult || [];
+      
+      // Add new report URL if not already present
+      if (!currentResults.includes(reportUrl)) {
+        await prisma.labBooking.update({
+          where: { id: labBooking.id },
           data: {
-            result,
-            unit,
-            normalRange,
-            isAbnormal,
-            remarks,
-            reportedAt: new Date(),
-            reportedBy: user.id,
-          },
-        });
-      } else {
-        // Create new result
-        testResult = await prisma.testResult.create({
-          data: {
-            labAssignmentId: labAssignmentId || 1, // Default assignment ID
-            labTestId: testId,
-            result,
-            unit,
-            normalRange,
-            isAbnormal,
-            remarks,
-            reportedAt: new Date(),
-            reportedBy: user.id,
+            labResult: [...currentResults, reportUrl]
           },
         });
       }
-
-      updatedResults.push(testResult);
-    }
-
-    // Update lab assignment status to completed if all tests are done
-    if (labAssignmentId) {
-      await prisma.labAssignment.update({
-        where: { id: labAssignmentId },
-        data: { status: "COMPLETED" },
-      });
     }
 
     return NextResponse.json({
       success: true,
-      message: "Test results updated successfully",
-      results: updatedResults,
+      message: "Test result updated successfully",
+      testResult: updatedTestResult,
     });
   } catch (error) {
-    console.error("Error updating test results:", error);
+    console.error("Error updating test result:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

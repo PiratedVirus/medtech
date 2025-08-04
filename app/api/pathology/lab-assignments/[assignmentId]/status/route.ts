@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma";
 
 export async function PUT(
   request: Request,
-  { params }: { params: { assignmentId: string } }
+  { params }: { params: Promise<{ assignmentId: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -30,7 +30,8 @@ export async function PUT(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const assignmentId = parseInt(params.assignmentId);
+    const resolvedParams = await params;
+    const assignmentId = parseInt(resolvedParams.assignmentId);
     if (isNaN(assignmentId)) {
       return NextResponse.json(
         { error: "Invalid assignment ID" },
@@ -91,9 +92,24 @@ export async function PUT(
           select: {
             user: { select: { name: true } }
           }
+        },
+        labBooking: {
+          select: { id: true }
         }
       }
     });
+
+    // Sync status with LabBooking if it exists
+    if (updatedAssignment.labBooking) {
+      await prisma.labBooking.update({
+        where: { id: updatedAssignment.labBooking.id },
+        data: { 
+          pathologyStatus: status,
+          // Update main status to COMPLETED when pathology is completed
+          ...(status === "COMPLETED" && { status: "COMPLETED" })
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,

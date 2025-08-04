@@ -66,6 +66,29 @@ export async function GET(request: Request) {
             appointmentDate: true,
           },
         },
+        labBooking: {
+          select: {
+            id: true,
+            labPackageId: true,
+            appointmentFor: true,
+            fullName: true,
+            mobile: true,
+            email: true,
+            address: true,
+            paymentOption: true,
+            status: true,
+            pathologyStatus: true,
+            labDate: true,
+            labResult: true,
+            labPackage: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+              }
+            }
+          }
+        },
         testResults: {
           include: {
             labTest: {

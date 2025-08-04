@@ -27,16 +27,14 @@ export async function GET(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Fetch upcoming appointments
+    // Fetch upcoming lab assignments (no phlebotomist assigned yet)
     const today = new Date();
-    const upcomingAppointments = await prisma.appointment.findMany({
+    const upcomingAssignments = await prisma.labAssignment.findMany({
       where: {
-        appointmentDate: {
+        assignedDate: {
           gte: today,
         },
-        status: {
-          in: ["CONFIRMED", "SCHEDULED"],
-        },
+        status: "PENDING", // Only PENDING - no phlebotomist assigned yet
         deletedAt: null,
       },
       include: {
@@ -46,55 +44,112 @@ export async function GET(request: Request) {
             name: true,
           },
         },
-        doctor: {
+        phlebotomist: {
+          include: {
+            user: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+        lab: {
           select: {
             id: true,
             name: true,
           },
         },
-        doctorAvailability: {
+        appointment: {
           select: {
-            startTime: true,
-            endTime: true,
-            date: true,
+            id: true,
+            appointmentFor: true,
+            appointmentDate: true,
           },
         },
-        labAssignments: {
-          include: {
-            phlebotomist: {
-              include: {
-                user: {
-                  select: {
-                    name: true,
-                  },
-                },
+        labBooking: {
+          select: {
+            id: true,
+            appointmentFor: true,
+            labPackage: {
+              select: {
+                name: true,
               },
             },
           },
         },
       },
       orderBy: {
-        appointmentDate: "asc",
+        assignedDate: "asc",
       },
-      // No limit - show all upcoming appointments
     });
 
-    // Transform the data to match frontend expectations
-    const transformedAppointments = upcomingAppointments.map((appointment, index) => ({
-      id: appointment.id,
-      patientId: appointment.patientId,
-      patientName: appointment.patient.name,
-      doctorName: appointment.doctor.name,
-      appointmentFor: appointment.appointmentFor || "Lab Test",
-      appointmentDate: appointment.appointmentDate.toLocaleDateString(),
-      startTime: appointment.doctorAvailability?.startTime || "02:30pm",
-      endTime: appointment.doctorAvailability?.endTime,
-      consultationType: appointment.consultationType,
-      status: appointment.status,
-      assignedPhlebotomist: appointment.labAssignments?.[0]?.phlebotomist?.user?.name || null,
-      assignmentStatus: appointment.labAssignments?.[0]?.status || null,
+    // Also fetch lab bookings that don't have lab assignments yet
+    const unassignedBookings = await prisma.labBooking.findMany({
+      where: {
+        labDate: {
+          gte: today,
+        },
+        labAssignmentId: null, // No lab assignment created yet
+        status: "Scheduled",
+        deletedAt: null,
+      },
+      include: {
+        patient: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        labPackage: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        labDate: "asc",
+      },
+    });
+    console.log("upcoming assignments ", upcomingAssignments);
+    console.log("unassigned bookings ", unassignedBookings);
+
+    // Transform lab assignments to match frontend expectations
+    const transformedAssignments = upcomingAssignments.map((assignment, index) => ({
+      id: assignment.id,
+      patientId: assignment.patientId,
+      patientName: assignment.patient.name,
+      doctorName: "Lab Assignment", // Lab assignments don't have doctors
+      appointmentFor: assignment.labBooking?.labPackage?.name || assignment.appointment?.appointmentFor || "Lab Test",
+      appointmentDate: assignment.assignedDate.toLocaleDateString(),
+      startTime: assignment.assignedTime,
+      endTime: null,
+      consultationType: "lab",
+      status: assignment.status,
+      assignedPhlebotomist: assignment.phlebotomist?.user?.name || null,
+      assignmentStatus: assignment.status,
       sessionStartIn: 10 + (index * 20), // Mock data for session start time
     }));
+
+    // Transform unassigned bookings to match frontend expectations
+    const transformedUnassignedBookings = unassignedBookings.map((booking, index) => ({
+      id: `booking-${booking.id}`, // Prefix to distinguish from assignments
+      patientId: booking.patientId,
+      patientName: booking.patient.name,
+      doctorName: "Lab Booking", // Lab bookings don't have doctors
+      appointmentFor: booking.labPackage.name,
+      appointmentDate: booking.labDate.toLocaleDateString(),
+      startTime: "09:00", // Default time
+      endTime: null,
+      consultationType: "lab",
+      status: "UNASSIGNED",
+      assignedPhlebotomist: null, // No phlebotomist assigned - this will show "Assign Phlebotomist" button
+      assignmentStatus: "UNASSIGNED",
+      sessionStartIn: 10 + ((index + upcomingAssignments.length) * 20), // Mock data for session start time
+    }));
+
+    // Combine both arrays
+    const transformedAppointments = [...transformedAssignments, ...transformedUnassignedBookings];
 
     return NextResponse.json({
       success: true,

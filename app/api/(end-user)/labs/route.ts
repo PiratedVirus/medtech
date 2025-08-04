@@ -22,6 +22,19 @@ export async function GET(request: Request) {
             name: true,
           },
         },
+        labAssignments: {
+          include: {
+            phlebotomist: {
+              include: {
+                user: {
+                  select: {
+                    name: true,
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       orderBy: {
         labDate: "desc",
@@ -37,6 +50,9 @@ export async function GET(request: Request) {
         resultName: `${b.patient.name} - ${b.labPackage.name} - ${new Date(b.labDate).toLocaleDateString("en-GB")}`,
         reports: [],
         status: b.status,
+        pathologyStatus: b.pathologyStatus || "PENDING",
+        phlebotomist: b.labAssignments[0]?.phlebotomist?.user?.name || "Not assigned",
+        labAssignmentId: b.labAssignments[0]?.id,
       }));
 
     const completed = bookings
@@ -62,11 +78,15 @@ export async function GET(request: Request) {
             })
           : [],
         status: b.status,
+        pathologyStatus: b.pathologyStatus || "COMPLETED",
+        phlebotomist: b.labAssignments[0]?.phlebotomist?.user?.name || "Not assigned",
+        labAssignmentId: b.labAssignments[0]?.id,
       }));
 
     return NextResponse.json({ scheduled, completed });
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to fetch lab results" }, { status: 500 });
+    console.error("Error fetching lab bookings:", error);
+    return NextResponse.json({ success: false, error: "Failed to fetch lab bookings" }, { status: 500 });
   }
 }
 
@@ -115,10 +135,50 @@ export async function POST(request: Request) {
           paymentOption,
           labDate: new Date(date),
           status: "Scheduled",
+          pathologyStatus: "PENDING", // Initialize pathology status
         },
       });
 
       console.log("LabBooking created:", booking);
+
+      // Get default lab and phlebotomist for assignment
+      const defaultLab = await tx.pathologyLab.findFirst({
+        where: { isActive: true, deletedAt: null }
+      });
+
+      const availablePhlebotomist = await tx.phlebotomist.findFirst({
+        where: { isAvailable: true, deletedAt: null }
+      });
+
+      // Create lab assignment automatically
+      if (defaultLab && availablePhlebotomist) {
+        const labAssignment = await tx.labAssignment.create({
+          data: {
+            patientId,
+            phlebotomistId: availablePhlebotomist.id,
+            labId: defaultLab.id,
+            labBookingId: booking.id,
+            assignedDate: new Date(date),
+            assignedTime: "09:00", // Default time
+            status: "PENDING",
+            sampleCollected: false,
+          },
+        });
+
+        console.log("LabAssignment created:", labAssignment);
+
+        // Update phlebotomist availability
+        await tx.phlebotomist.update({
+          where: { id: availablePhlebotomist.id },
+          data: { isAvailable: false },
+        });
+
+        // Update lab booking with assignment ID
+        await tx.labBooking.update({
+          where: { id: booking.id },
+          data: { labAssignmentId: labAssignment.id },
+        });
+      }
 
       // Update subscription tracker if using plan
       if (paymentOption === "plan") {

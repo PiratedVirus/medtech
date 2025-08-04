@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { User, Calendar, TestTube, Droplets, FileText, Clock, MapPin } from "lucide-react";
+import { 
+  User, Calendar, TestTube, Droplets, FileText, Clock, MapPin, 
+  Phone, Heart, Activity, Ruler, Scale, Home, Upload, CheckCircle,
+  AlertCircle, PlayCircle, ArrowRight, X
+} from "lucide-react";
 import { useParams } from "next/navigation";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 interface Patient {
   id: number;
@@ -17,38 +23,58 @@ interface Patient {
   address: string;
   lastVisit: string;
   plan: string;
+  email: string;
+  joinedOn: string;
+  profile: {
+    age: number;
+    weight: number;
+    height: number;
+    allergies?: string;
+    medicalHistory?: string;
+    emergencyContact: string;
+    dateOfBirth?: string;
+  };
+  subscriptions: Array<{
+    id: number;
+    planName: string;
+    startDate: string;
+    endDate: string;
+    isActive: boolean;
+  }>;
 }
 
-interface LabAssignment {
+interface LabBooking {
   id: number;
+  labPackageName: string;
+  date: string;
   status: string;
-  assignedDate: string;
-  assignedTime: string;
-  estimatedDelivery: string;
-  phlebotomist: {
-    user: {
-      name: string;
-    };
-  };
+  pathologyStatus: string;
+  reportLink?: string[] | null;
+  labResult?: string[] | null;
+  phlebotomist?: string;
+  labAssignmentId?: number;
 }
 
 interface TimelineStep {
   id: number;
   title: string;
-  status: "completed" | "in-progress" | "pending";
-  icon: React.ReactNode;
-  description: string;
+  status: "completed" | "active" | "pending";
+  time: string;
 }
 
 export default function PatientDetailsPage() {
   const params = useParams();
   const patientId = params.patientId as string;
   const [patient, setPatient] = useState<Patient | null>(null);
-  const [labAssignment, setLabAssignment] = useState<LabAssignment | null>(null);
+  const [labBookings, setLabBookings] = useState<LabBooking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploadingReport, setUploadingReport] = useState<number | null>(null);
+  const [selectedReports, setSelectedReports] = useState<string[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchPatientDetails();
+    fetchLabBookings();
   }, [patientId]);
 
   const fetchPatientDetails = async () => {
@@ -56,44 +82,141 @@ export default function PatientDetailsPage() {
       const response = await fetch(`/api/pathology/patients/${patientId}`);
       const data = await response.json();
       setPatient(data.patient);
-      setLabAssignment(data.labAssignment);
     } catch (error) {
       console.error("Error fetching patient details:", error);
+      toast.error("Failed to fetch patient details");
     } finally {
       setLoading(false);
     }
   };
 
-  const timelineSteps: TimelineStep[] = [
+  const fetchLabBookings = async () => {
+    try {
+      const response = await fetch(`/api/labs?patientId=${patientId}`);
+      const data = await response.json();
+      if (data.scheduled || data.completed) {
+        // Transform the data to match our interface
+        const transformedScheduled = (data.scheduled || []).map((booking: any) => ({
+          id: booking.id,
+          labPackageName: booking.resultName.split(' - ')[1] || 'Lab Package',
+          date: booking.resultDate,
+          status: booking.status,
+          pathologyStatus: booking.pathologyStatus,
+          reportLink: booking.reports?.map((r: any) => r.pdfUrl) || null,
+          labResult: booking.reports?.map((r: any) => r.pdfUrl) || null,
+          phlebotomist: booking.phlebotomist,
+          labAssignmentId: booking.labAssignmentId,
+        }));
+        
+        const transformedCompleted = (data.completed || []).map((booking: any) => ({
+          id: booking.id,
+          labPackageName: booking.resultName.split(' - ')[1] || 'Lab Package',
+          date: booking.resultDate,
+          status: booking.status,
+          pathologyStatus: booking.pathologyStatus,
+          reportLink: booking.reports?.map((r: any) => r.pdfUrl) || null,
+          labResult: booking.reports?.map((r: any) => r.pdfUrl) || null,
+          phlebotomist: booking.phlebotomist,
+          labAssignmentId: booking.labAssignmentId,
+        }));
+        
+        setLabBookings([...transformedScheduled, ...transformedCompleted]);
+      }
+    } catch (error) {
+      console.error("Error fetching lab bookings:", error);
+    }
+  };
+
+  const getTimelineSteps = (booking: LabBooking): TimelineStep[] => [
     {
       id: 1,
-      title: "Phlebotomist Status",
+      title: "Scheduled",
       status: "completed",
-      icon: <Droplets className="h-5 w-5 text-green-600" />,
-      description: "Phlebotomist Left"
+      time: "09:00 AM",
     },
     {
       id: 2,
-      title: "Sample Status",
-      status: "completed",
-      icon: <TestTube className="h-5 w-5 text-green-600" />,
-      description: "Sample Collected"
+      title: "Sample Collected",
+      status: booking.pathologyStatus === "IN_PROGRESS" || booking.status === "COMPLETED" ? "completed" : "pending",
+      time: "09:15 AM",
     },
     {
       id: 3,
-      title: "Analyze by Lab",
-      status: "in-progress",
-      icon: <FileText className="h-5 w-5 text-orange-600" />,
-      description: "In Progress.."
+      title: "Lab Processing",
+      status:
+        booking.pathologyStatus === "IN_PROGRESS" ? "active" : booking.status === "COMPLETED" ? "completed" : "pending",
+      time: "10:30 AM",
     },
     {
       id: 4,
-      title: "Reported",
-      status: "pending",
-      icon: <FileText className="h-5 w-5 text-red-600" />,
-      description: "Pending"
-    }
+      title: "Results Ready",
+      status: booking.status === "COMPLETED" ? "completed" : "pending",
+      time: "2:00 PM",
+    },
   ];
+
+  const handleStatusUpdate = async (bookingId: number, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/pathology/lab-assignments/${bookingId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (response.ok) {
+        toast.success("Status updated successfully");
+        fetchLabBookings(); // Refresh data
+      } else {
+        toast.error("Failed to update status");
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error("Failed to update status");
+    }
+  };
+
+  const handleFileUpload = async (bookingId: number, files: FileList) => {
+    if (!files || files.length === 0) return;
+
+    setUploadingReport(bookingId);
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach((file) => {
+        formData.append('files', file);
+      });
+      formData.append('bookingId', bookingId.toString());
+      formData.append('patientName', patient?.name || 'Patient');
+
+      const response = await fetch(`/api/pathology/upload-lab-report`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        toast.success("Reports uploaded successfully");
+        fetchLabBookings(); // Refresh data
+      } else {
+        toast.error("Failed to upload reports");
+      }
+    } catch (error) {
+      console.error("Error uploading reports:", error);
+      toast.error("Failed to upload reports");
+    } finally {
+      setUploadingReport(null);
+    }
+  };
+
+  const openReportsModal = (reports: string[]) => {
+    setSelectedReports(reports);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedReports([]);
+  };
 
   if (loading) {
     return (
@@ -114,137 +237,350 @@ export default function PatientDetailsPage() {
     );
   }
 
+  const activeSubscription = patient.subscriptions?.find(sub => sub.isActive);
+
   return (
-    <div className="container mx-auto px-4 py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-800">Patient Info</h1>
-        <div className="text-sm text-gray-600">
-          {new Date().toLocaleDateString("en-GB")} | {new Date().toLocaleTimeString("en-US", { hour12: true })} <Calendar className="inline ml-1 h-4 w-4" />
-        </div>
-      </div>
-
-      {/* Patient Information Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Patient Details */}
-        <Card className="bg-white border-gray-200">
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                <User className="h-8 w-8 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-800">{patient.name}</h3>
-                <p className="text-sm text-green-600">Patient ID: {patient.patientId}</p>
-                <p className="text-sm text-green-600">Gender: {patient.gender}</p>
-                <p className="text-sm text-green-600">Mobile: {patient.mobile}</p>
-                <p className="text-sm text-green-600">Address: {patient.address}</p>
-                <p className="text-sm text-green-600">Last Visit: {patient.lastVisit}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Patient Plan */}
-        <Card className="bg-white border-gray-200">
-          <CardContent className="p-6">
-            <h3 className="font-semibold text-gray-800 mb-4">
-              Patient Plan: <span className="text-orange-600">{patient.plan}</span> Package
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <TestTube className="h-5 w-5 text-blue-600" />
-                </div>
-                <span className="text-sm text-gray-700">HBA1C</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                  <Droplets className="h-5 w-5 text-red-600" />
-                </div>
-                <span className="text-sm text-gray-700">FBS</span>
-              </div>
-            </div>
-            <Button className="w-full mt-4 bg-orange-500 hover:bg-orange-600 text-white">
-              Lab Report
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Assigned Phlebotomist */}
-        <Card className="bg-white border-gray-200">
-          <CardContent className="p-6">
-            <h3 className="font-semibold text-gray-800 mb-4">Assigned Phlebotomist</h3>
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-teal-100 rounded-lg flex items-center justify-center">
-                <User className="h-8 w-8 text-teal-600" />
-              </div>
+    <>
+      <ToastContainer />
+      <div className="container mx-auto px-4 py-6 space-y-6">
+        {/* Patient Information Card */}
+        <Card className="col-span-full relative overflow-hidden rounded-lg bg-custom-mutedgreen text-gray-700 p-6">
+          {/* Background icon */}
+          <div className="absolute -right-10 -top-6 opacity-10">
+            <User size={200} />
+          </div>
+          
+          {/* Content */}
+          <div className="relative space-y-4">
+            <div className="flex justify-between items-center my-4">
               <div>
-                <p className="font-semibold text-gray-800">{labAssignment?.phlebotomist.user.name || "Phlebotomist Name"}</p>
-                <p className="text-sm text-gray-600">Medical Director Senior Consultant & Head (Respiratory Medicine)</p>
+                <h2 className="text-3xl text-secondary font-bold">{patient.name}</h2>
+                <p className="text-gray-600">
+                  Member since <b>{new Date(patient.joinedOn || '').toLocaleDateString()}</b>
+                </p>
               </div>
+              {activeSubscription && (
+                <div className="text-lg px-3 py-1 mr-14">
+                  Subscribed to <span className="text-secondary"><strong>{activeSubscription.planName}</strong></span> till{" "}
+                  {new Date(activeSubscription.endDate).toLocaleDateString()}
+                </div>
+              )}
             </div>
-          </CardContent>
+            
+            <div className="flex flex-wrap gap-2 mt-4">
+              {[
+                { icon: <Calendar className="h-4 w-4 flex-shrink-0" />, label: "Age", value: `${patient.profile?.age || 'N/A'} yrs` },
+                { icon: <Scale className="h-4 w-4 flex-shrink-0" />, label: "Weight", value: `${patient.profile?.weight || 'N/A'} kg` },
+                { icon: <Ruler className="h-4 w-4 flex-shrink-0" />, label: "Height", value: `${patient.profile?.height || 'N/A'} cm` },
+                { icon: <Activity className="h-4 w-4 flex-shrink-0" />, label: "Gender", value: patient.gender },
+                { icon: <Home className="h-4 w-4 flex-shrink-0" />, label: "Address", value: patient.address },
+                { icon: <Calendar className="h-4 w-4 flex-shrink-0" />, label: "Date of Birth", value: patient.profile?.dateOfBirth ? new Date(patient.profile.dateOfBirth).toLocaleDateString() : 'N/A' },
+                { icon: <Phone className="h-4 w-4 flex-shrink-0" />, label: "Mobile", value: patient.mobile },
+                { icon: <Droplets className="h-4 w-4 flex-shrink-0" />, label: "Allergies", value: patient.profile?.allergies || 'None' },
+                { icon: <Heart className="h-4 w-4 flex-shrink-0" />, label: "Medical History", value: patient.profile?.medicalHistory || 'N/A' },
+                { icon: <Phone className="h-4 w-4 flex-shrink-0" />, label: "Emergency Contact", value: patient.profile?.emergencyContact || 'N/A' },
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-2 text-sm">
+                  {item.icon}
+                  <span className="text-xs">{item.label}:</span>
+                  <span className="font-semibold">{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </Card>
-      </div>
 
-      {/* Timeline Section */}
-      <div>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-semibold text-gray-800">Timeline</h2>
-          <div className="text-sm text-gray-600">
-            Estimated Delivery: {labAssignment?.estimatedDelivery || "25-12-2024"}
-          </div>
-        </div>
-
-        {/* Timeline Progress */}
-        <div className="relative mb-8">
-          <div className="flex items-center justify-between">
-            {timelineSteps.map((step, index) => (
-              <div key={step.id} className="flex flex-col items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  step.status === "completed" ? "bg-green-500" :
-                  step.status === "in-progress" ? "bg-orange-500" : "bg-gray-300"
-                }`}>
-                  {step.icon}
-                </div>
-                {index < timelineSteps.length - 1 && (
-                  <div className={`w-16 h-1 mt-2 ${
-                    step.status === "completed" ? "bg-green-500" : "bg-gray-300"
-                  }`}></div>
-                )}
+        {/* Bookings/Appointments Section */}
+        <div>
+          <h2 className="text-2xl font-semibold text-gray-800 mb-6">Booked Tests</h2>
+          
+          {labBookings.length === 0 ? (
+            <Card className="bg-custom-mutedgreen p-6">
+              <div className="text-center">
+                <TestTube className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-600">No lab bookings found</h3>
+                <p className="text-gray-500">This patient hasn't made any lab bookings yet.</p>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Timeline Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {timelineSteps.map((step) => (
-            <Card key={step.id} className="bg-white border-gray-200">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3 mb-3">
-                  {step.icon}
-                  <h3 className="font-semibold text-gray-800">{step.title}</h3>
-                </div>
-                <Badge 
-                  variant={
-                    step.status === "completed" ? "default" :
-                    step.status === "in-progress" ? "secondary" : "destructive"
-                  }
-                  className={
-                    step.status === "completed" ? "bg-green-100 text-green-800" :
-                    step.status === "in-progress" ? "bg-orange-100 text-orange-800" :
-                    "bg-red-100 text-red-800"
-                  }
-                >
-                  {step.description}
-                </Badge>
-              </CardContent>
             </Card>
-          ))}
+          ) : (
+            <div className="space-y-3 bg-gray-50/30 min-h-screen">
+              {labBookings.map((booking) => {
+                const timelineSteps = getTimelineSteps(booking);
+                const reports = [...(booking.reportLink || []), ...(booking.labResult || [])];
+
+                return (
+                  <Card
+                    key={booking.id}
+                    className="w-full bg-custom-mutedgreen border-1 shadow-sm hover:shadow-md transition-all duration-300 rounded-lg overflow-hidden"
+                  >
+                    <div className="p-6">
+                      <div className="flex flex-col lg:flex-row items-center justify-between gap-2">
+                        {/* Left Section - Test Information */}
+                        <div className="flex-1 min-w-0 max-w-xs">
+                          <div className="space-y-2">
+                            <div>
+                              <h3 className="text-lg font-bold text-primary leading-tight truncate">{booking.labPackageName}</h3>
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  {new Date(booking.date).toLocaleDateString("en-GB")}
+                                </div>
+                                {booking.phlebotomist && (
+                                  <div className="flex items-center gap-1.5">
+                                    <User className="h-3.5 w-3.5" />
+                                    <span className="truncate">{booking.phlebotomist}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Status Badge - Centered between left section and timeline */}
+                        <div className="flex justify-center px-2">
+                          <Badge
+                            variant="secondary"
+                            className={`${
+                              booking.status === "COMPLETED"
+                                ? "bg-green-100 text-green-700 border-green-200"
+                                : booking.pathologyStatus === "IN_PROGRESS"
+                                  ? "bg-orange-100 text-orange-700 border-orange-200"
+                                  : "bg-gray-100 text-gray-600 border-gray-100"
+                            } font-normal text-xs px-2.5 py-1`}
+                          >
+                            {booking.status === "COMPLETED"
+                              ? "Completed"
+                              : booking.pathologyStatus === "IN_PROGRESS"
+                                ? "In Progress"
+                                : "Scheduled"}
+                          </Badge>
+                        </div>
+
+                        {/* Center Section - Timeline */}
+                        <div className="flex-1 max-w-sm w-full">
+                          <div className="relative">
+                            {/* Timeline Container */}
+                            <div className="flex items-center justify-between relative px-2">
+                              {/* Background Progress Line - Only between dots, not extending from last */}
+                              <div className="absolute top-3 h-px bg-gray-200" style={{ left: '24px', right: '24px' }}></div>
+
+                              {/* Active Progress Line - Only between completed dots, stops at last completed */}
+                              {(() => {
+                                const completedCount = timelineSteps.filter((step) => step.status === "completed").length;
+                                const progressWidth = completedCount > 1 ? (completedCount - 1) / (timelineSteps.length - 1) : 0;
+                                return (
+                                  <div
+                                    className="absolute top-3 h-px bg-custom-orange transition-all duration-500"
+                                    style={{
+                                      left: '24px',
+                                      width: `calc((100% - 48px) * ${Math.max(0, Math.min(1, progressWidth))})`,
+                                    }}
+                                  ></div>
+                                );
+                              })()}
+
+                              {timelineSteps.map((step, index) => {
+                                const isCompleted = step.status === "completed"
+                                const isActive = step.status === "active"
+
+                                return (
+                                  <div key={step.id} className="relative flex flex-col items-center group">
+                                    {/* Timeline Dot */}
+                                    <div
+                                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 relative z-10 ${
+                                        isCompleted
+                                          ? "bg-custom-green border-custom-green"
+                                          : isActive
+                                            ? "bg-white border-custom-orange shadow-sm"
+                                            : "bg-white border-gray-300"
+                                      }`}
+                                    >
+                                      {isCompleted ? (
+                                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                                      ) : isActive ? (
+                                        <div className="w-2 h-2 bg-custom-orange rounded-full animate-pulse"></div>
+                                      ) : (
+                                        <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
+                                      )}
+                                    </div>
+
+                                    {/* Step Info - Shows on Hover */}
+                                    <div className="absolute top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                      <div className="bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                                        <div className="font-medium">{step.title}</div>
+                                        <div className="text-gray-300 flex items-center gap-1 mt-0.5">
+                                          <Clock className="h-2.5 w-2.5" />
+                                          {step.time}
+                                        </div>
+                                      </div>
+                                      <div className="w-2 h-2 bg-gray-900 transform rotate-45 absolute -top-1 left-1/2 -translate-x-1/2"></div>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+
+                            {/* Timeline Labels */}
+                            <div className="flex items-center justify-between mt-3 px-2">
+                              {timelineSteps.map((step) => (
+                                <div key={step.id} className="text-center">
+                                  <p className="text-xs text-gray-500 font-medium">{step.title}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right Section - Action Buttons */}
+                        <div className="flex flex-col sm:flex-row items-center gap-2 w-[180px] min-w-[180px] flex-wrap px-4 justify-end">
+                          {booking.pathologyStatus === "IN_PROGRESS" && (
+                            <Button
+                              onClick={() => handleStatusUpdate(booking.labAssignmentId || booking.id, "COMPLETED")}
+                              size="sm"
+                              className="bg-custom-green hover:bg-custom-darkgreen text-white text-xs px-3 py-1.5 h-auto rounded-md whitespace-nowrap"
+                            >
+                              <CheckCircle className="h-3 w-3 mr-1.5" />
+                              Complete
+                            </Button>
+                          )}
+
+                          {/* Always show upload button - centered when no reports */}
+                          {reports.length === 0 ? (
+                            <div className="flex justify-center w-full">
+                              <div className="relative">
+                                <input
+                                  type="file"
+                                  multiple
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  onChange={(e) => e.target.files && handleFileUpload(booking.id, e.target.files)}
+                                  className="hidden"
+                                  id={`upload-${booking.id}`}
+                                />
+                                <label htmlFor={`upload-${booking.id}`}>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-gray-500 hover:text-gray-700 hover:bg-gray-50 cursor-pointer text-xs px-3 py-1.5 h-auto whitespace-nowrap"
+                                    disabled={uploadingReport === booking.id}
+                                  >
+                                    <Upload className="h-3 w-3 mr-1" />
+                                    {uploadingReport === booking.id ? "Uploading..." : "Upload"}
+                                  </Button>
+                                </label>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex flex-col justify-center items-center gap-2">
+                                <div className="relative">
+                                  <input
+                                    type="file"
+                                    multiple
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    onChange={(e) => e.target.files && handleFileUpload(booking.id, e.target.files)}
+                                    className="hidden"
+                                    id={`upload-${booking.id}`}
+                                  />
+                                  <label htmlFor={`upload-${booking.id}`}>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-gray-500 hover:text-gray-700 hover:bg-gray-50 cursor-pointer text-xs px-3 py-1.5 h-auto whitespace-nowrap"
+                                      disabled={uploadingReport === booking.id}
+                                    >
+                                      <Upload className="h-3 w-3 mr-1" />
+                                      {uploadingReport === booking.id ? "Uploading..." : "Upload More"}
+                                    </Button>
+                                  </label>
+                                </div>
+
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-gray-500 hover:text-gray-700 hover:bg-gray-50 text-xs px-3 py-1.5 h-auto whitespace-nowrap"
+                                  onClick={() => openReportsModal(reports)}
+                                >
+                                  <FileText className="h-3 w-3 mr-1.5" />
+                                  View Reports ({reports.length})
+                                </Button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
-    </div>
+
+      {/* Reports Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Lab Reports</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={closeModal}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              {selectedReports.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No reports available</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedReports.map((report, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-blue-500" />
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            Report {index + 1}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {report.split('/').pop() || 'Lab Report'}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(report, '_blank')}
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                      >
+                        View
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end p-6 border-t">
+              <Button
+                variant="outline"
+                onClick={closeModal}
+                className="mr-2"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 } 

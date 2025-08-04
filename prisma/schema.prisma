@@ -275,28 +275,32 @@ model LabPackage {
 }
 
 model LabBooking {
-  id             Int        @id @default(autoincrement())
-  patientId      Int
-  labTechId      Int?
-  labPackageId   Int
-  appointmentFor String?
-  fullName       String?
-  mobile         String?
-  email          String?
-  address        String?
-  paymentOption  String?
-  status         String
-  labDate        DateTime   @db.Date
-  labResult      String[]   @default([])
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  deletedAt      DateTime?
-  labPackage     LabPackage @relation(fields: [labPackageId], references: [id])
-  labTech        User?      @relation("LabTech", fields: [labTechId], references: [id])
-  patient        User       @relation("LabPatient", fields: [patientId], references: [id])
-  payment        Payment?   @relation("LabBookingPayment")
+  id                Int        @id @default(autoincrement())
+  patientId         Int
+  labTechId         Int?
+  labPackageId      Int
+  labAssignmentId   Int?       // Link to pathology assignment
+  appointmentFor    String?
+  fullName          String?
+  mobile            String?
+  email             String?
+  address           String?
+  paymentOption     String?
+  status            String
+  pathologyStatus   LabAssignmentStatus? @default(PENDING) // Sync with pathology workflow
+  labDate           DateTime   @db.Date
+  labResult         String[]   @default([])
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  deletedAt         DateTime?
+  labPackage        LabPackage @relation(fields: [labPackageId], references: [id])
+  labTech           User?      @relation("LabTech", fields: [labTechId], references: [id])
+  patient           User       @relation("LabPatient", fields: [patientId], references: [id])
+  payment           Payment?   @relation("LabBookingPayment")
+  labAssignments    LabAssignment[]
 
   @@index([deletedAt])
+  @@index([labAssignmentId])
 }
 
 model Plan {
@@ -607,6 +611,7 @@ model LabAssignment {
   patientId         Int
   phlebotomistId    Int
   labId             Int
+  labBookingId      Int?                   // Link to patient lab booking
   appointmentId     Int?
   assignedDate      DateTime               @db.Date
   assignedTime      String
@@ -621,12 +626,14 @@ model LabAssignment {
   phlebotomist      Phlebotomist           @relation(fields: [phlebotomistId], references: [id])
   lab               PathologyLab           @relation(fields: [labId], references: [id])
   appointment       Appointment?           @relation(fields: [appointmentId], references: [id])
+  labBooking        LabBooking?            @relation(fields: [labBookingId], references: [id])
   testResults       TestResult[]
 
   @@index([deletedAt])
   @@index([patientId])
   @@index([phlebotomistId])
   @@index([status])
+  @@index([labBookingId])
 }
 
 model LabTest {

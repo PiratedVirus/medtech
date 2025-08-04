@@ -34,6 +34,25 @@ interface LabAssignment {
   appointment?: {
     appointmentFor: string;
   };
+  labBooking?: {
+    id: number;
+    labPackageId: number;
+    appointmentFor: string;
+    fullName: string;
+    mobile: string;
+    email: string;
+    address: string;
+    paymentOption: string;
+    status: string;
+    pathologyStatus: string;
+    labDate: string;
+    labResult: string[];
+    labPackage: {
+      id: number;
+      name: string;
+      price: number;
+    };
+  };
   assignedDate: string;
   assignedTime: string;
   status: string;
@@ -557,9 +576,27 @@ export default function PathologyDashboard() {
                                   {assignment.patient?.name || 'Unknown Patient'}
                                 </h3>
                                 <p className="text-sm text-primary font-semibold">
-                                  {assignment.appointment?.appointmentFor || 'Lab Test'}
+                                  {assignment.labBooking?.labPackage?.name || assignment.appointment?.appointmentFor || 'Lab Test'}
                                 </p>
+                                {assignment.labBooking && (
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Payment: {assignment.labBooking.paymentOption}
+                                  </p>
+                                )}
                               </div>
+
+                              {/* Lab Booking Info */}
+                              {assignment.labBooking && (
+                                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                                  <p className="text-xs text-gray-600 mb-1">Lab Booking Details</p>
+                                  <p className="font-semibold text-blue-700 text-sm">
+                                    {assignment.labBooking.fullName || assignment.patient?.name}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    {assignment.labBooking.mobile} • {assignment.labBooking.address}
+                                  </p>
+                                </div>
+                              )}
 
                               {/* Phlebotomist Info */}
                               <div className="bg-green-50 rounded-lg p-3 text-center">
@@ -637,9 +674,22 @@ export default function PathologyDashboard() {
                                     {assignment.patient?.name || 'Unknown Patient'}
                                   </h3>
                                   <p className="text-sm text-primary font-semibold">
-                                    {assignment.appointment?.appointmentFor || 'Lab Test'}
+                                    {assignment.labBooking?.labPackage?.name || assignment.appointment?.appointmentFor || 'Lab Test'}
                                   </p>
                                 </div>
+
+                                {/* Lab Booking Info */}
+                                {assignment.labBooking && (
+                                  <div className="bg-blue-50 rounded-lg p-3 text-center">
+                                    <p className="text-xs text-gray-600 mb-1">Lab Booking Details</p>
+                                    <p className="font-semibold text-blue-700 text-sm">
+                                      {assignment.labBooking.fullName || assignment.patient?.name}
+                                    </p>
+                                    <p className="text-xs text-gray-600">
+                                      {assignment.labBooking.mobile} • {assignment.labBooking.address}
+                                    </p>
+                                  </div>
+                                )}
 
                                 {/* Phlebotomist Info */}
                                 <div className="bg-green-50 rounded-lg p-3 text-center">
