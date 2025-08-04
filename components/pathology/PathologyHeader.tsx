@@ -26,13 +26,13 @@ import {
 const fullNavigation = [
   { name: "Dashboard", href: "/pathology", current: true, icon: Home },
   { name: "Patients", href: "/pathology/patients", current: false, icon: Users },
-  { name: "Lab Tests", href: "/pathology/lab-tests", current: false, icon: TestTube },
+  { name: "Lab Bookings", href: "/pathology/lab-tests", current: false, icon: TestTube },
 ];
 
 const mobileNavigation = [
   { name: "Dashboard", href: "/pathology", icon: Home },
   { name: "Patients", href: "/pathology/patients", icon: Users },
-  { name: "Lab Tests", href: "/pathology/lab-tests", icon: TestTube },
+  { name: "Lab Bookings", href: "/pathology/lab-tests", icon: TestTube },
   { name: "Profile", href: "/pathology/profile", icon: User },
 ];
 
