@@ -56,6 +56,13 @@ interface LabAssignment {
       name: string;
       price: number;
     };
+    payment?: {
+      id: number;
+      amount: number;
+      paymentStatus: string;
+      paymentMethod?: string;
+      currency: string;
+    } | null;
   };
   assignedDate: string;
   assignedTime: string;
@@ -152,7 +159,22 @@ export default function PathologyDashboard() {
     try {
       // Start the appointment by updating status to PHLEBOTOMIST_LEFT
       // This moves it from upcoming to ongoing
-      const response = await fetch(`/api/pathology/lab-assignments/${appointment.id}/status`, {
+      // Use labAssignmentId instead of appointment.id
+      const assignmentId = appointment.labAssignmentId;
+
+      console.log('Starting appointment:', {
+        appointmentId: appointment.id,
+        labAssignmentId: appointment.labAssignmentId,
+        patientName: appointment.patientName,
+        status: appointment.status
+      });
+
+      if (!assignmentId) {
+        alert('No assignment found for this appointment');
+        return;
+      }
+
+      const response = await fetch(`/api/pathology/lab-assignments/${assignmentId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -192,29 +214,29 @@ export default function PathologyDashboard() {
   const scrollUpcoming = (direction: 'left' | 'right') => {
     const containers = document.querySelectorAll('[id^="upcoming-scroll"]');
     containers.forEach(container => {
-    if (container) {
-      const scrollAmount = 300;
+      if (container) {
+        const scrollAmount = 300;
         const currentPosition = container.scrollLeft;
-      const newPosition = direction === 'left' 
+        const newPosition = direction === 'left'
           ? Math.max(0, currentPosition - scrollAmount)
           : currentPosition + scrollAmount;
-      
-      container.scrollTo({ left: newPosition, behavior: 'smooth' });
-    }
+
+        container.scrollTo({ left: newPosition, behavior: 'smooth' });
+      }
     });
   };
 
   const scrollOngoing = (direction: 'left' | 'right') => {
     const containers = document.querySelectorAll('[id^="ongoing-scroll"]');
     containers.forEach(container => {
-    if (container) {
-      const scrollAmount = 300;
+      if (container) {
+        const scrollAmount = 300;
         const currentPosition = container.scrollLeft;
-      const newPosition = direction === 'left' 
+        const newPosition = direction === 'left'
           ? Math.max(0, currentPosition - scrollAmount)
           : currentPosition + scrollAmount;
-      
-      container.scrollTo({ left: newPosition, behavior: 'smooth' });
+
+        container.scrollTo({ left: newPosition, behavior: 'smooth' });
       }
     });
   };
@@ -225,10 +247,10 @@ export default function PathologyDashboard() {
       if (container) {
         const scrollAmount = 300;
         const currentPosition = container.scrollLeft;
-        const newPosition = direction === 'left' 
+        const newPosition = direction === 'left'
           ? Math.max(0, currentPosition - scrollAmount)
           : currentPosition + scrollAmount;
-        
+
         container.scrollTo({ left: newPosition, behavior: 'smooth' });
       }
     });
@@ -238,9 +260,9 @@ export default function PathologyDashboard() {
   const filteredAppointments = upcomingAppointments.filter(appointment => {
     const matchesStatus = filterStatus === 'all' ? true :
       filterStatus === 'assigned' ? appointment.assignedPhlebotomist :
-      !appointment.assignedPhlebotomist;
-    
-    const matchesSearch = searchQuery === "" || 
+        !appointment.assignedPhlebotomist;
+
+    const matchesSearch = searchQuery === "" ||
       appointment.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       appointment.appointmentFor?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       appointment.assignedPhlebotomist?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -256,126 +278,126 @@ export default function PathologyDashboard() {
   return (
     <>
       <ToastContainer />
-    <div className="mx-20 px-4 py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-800">
-          {(() => {
-            const hour = new Date().getHours();
-            const name = profile?.name || "there";
-            if (hour < 12) return `Good Morning, ${name}!`;
-            if (hour < 18) return `Good Afternoon, ${name}!`;
-            return `Good Evening, ${name}!`;
-          })()}
-        </h1>
-        <div className="text-sm text-gray-600">
-          {format(new Date(), "dd-MM-yyyy | h:mm a")} <Calendar className="inline ml-1 h-4 w-4" />
+      <div className="mx-20 px-4 py-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-gray-800">
+            {(() => {
+              const hour = new Date().getHours();
+              const name = profile?.name || "there";
+              if (hour < 12) return `Good Morning, ${name}!`;
+              if (hour < 18) return `Good Afternoon, ${name}!`;
+              return `Good Evening, ${name}!`;
+            })()}
+          </h1>
+          <div className="text-sm text-gray-600">
+            {format(new Date(), "dd-MM-yyyy | h:mm a")} <Calendar className="inline ml-1 h-4 w-4" />
+          </div>
         </div>
-      </div>
 
-      {/* Search Bar */}
-      <div className="flex items-center space-x-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search by patient name, test type, phlebotomist, or booking ID..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+        {/* Search Bar */}
+        <div className="flex items-center space-x-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search by patient name, test type, phlebotomist, or booking ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Filter className="h-4 w-4 text-gray-500" />
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as 'all' | 'assigned' | 'unassigned')}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              <option value="all">All Appointments</option>
+              <option value="assigned">Assigned</option>
+              <option value="unassigned">Unassigned</option>
+            </select>
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Filter className="h-4 w-4 text-gray-500" />
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as 'all' | 'assigned' | 'unassigned')}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            <option value="all">All Appointments</option>
-            <option value="assigned">Assigned</option>
-            <option value="unassigned">Unassigned</option>
-          </select>
+
+        {/* Dashboard Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Total Appointments */}
+          <Card className="relative overflow-hidden bg-gradient-to-tr from-[#1e5636] to-[#2e8b57] border-none shadow-lg">
+            <div className="absolute left-0 right-0 bottom-0 top-0 z-0" style={{ background: 'radial-gradient(ellipse at 60% 70%, #56A67C55 40%, transparent 80%)' }} />
+            <CardContent className="relative z-10 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-white/20 rounded-full">
+                    <Calendar className="h-8 w-8 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-white/90">Total Appointments</h2>
+                    <p className="text-3xl font-bold text-white">{upcomingAppointments.length}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Assigned Appointments */}
+          <Card className="relative overflow-hidden bg-gradient-to-tr from-[#1e5636] to-[#2e8b57] border-none shadow-lg">
+            <div className="absolute left-0 right-0 bottom-0 top-0 z-0" style={{ background: 'radial-gradient(ellipse at 60% 70%, #56A67C55 40%, transparent 80%)' }} />
+            <CardContent className="relative z-10 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-white/20 rounded-full">
+                    <User className="h-8 w-8 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-white/90">Assigned</h2>
+                    <p className="text-3xl font-bold text-white">{upcomingAppointments.filter(a => a.assignedPhlebotomist).length}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Unassigned Appointments */}
+          <Card className="relative overflow-hidden bg-gradient-to-tr from-[#1e5636] to-[#2e8b57] border-none shadow-lg">
+            <div className="absolute left-0 right-0 bottom-0 top-0 z-0" style={{ background: 'radial-gradient(ellipse at 60% 70%, #56A67C55 40%, transparent 80%)' }} />
+            <CardContent className="relative z-10 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-white/20 rounded-full">
+                    <Clock className="h-8 w-8 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-white/90">Unassigned</h2>
+                    <p className="text-3xl font-bold text-white">{upcomingAppointments.filter(a => !a.assignedPhlebotomist).length}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Total Phlebotomists */}
+          <Card className="relative overflow-hidden bg-gradient-to-tr from-[#1e5636] to-[#2e8b57] border-none shadow-lg">
+            <div className="absolute left-0 right-0 bottom-0 top-0 z-0" style={{ background: 'radial-gradient(ellipse at 60% 70%, #56A67C55 40%, transparent 80%)' }} />
+            <CardContent className="relative z-10 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-white/20 rounded-full">
+                    <Users className="h-8 w-8 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-white/90">Phlebotomists</h2>
+                    <p className="text-3xl font-bold text-white">{phlebotomists.length}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
-
-      {/* Dashboard Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Total Appointments */}
-        <Card className="relative overflow-hidden bg-gradient-to-tr from-[#1e5636] to-[#2e8b57] border-none shadow-lg">
-          <div className="absolute left-0 right-0 bottom-0 top-0 z-0" style={{background: 'radial-gradient(ellipse at 60% 70%, #56A67C55 40%, transparent 80%)'}} />
-          <CardContent className="relative z-10 p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-white/20 rounded-full">
-                  <Calendar className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-white/90">Total Appointments</h2>
-                  <p className="text-3xl font-bold text-white">{upcomingAppointments.length}</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Assigned Appointments */}
-        <Card className="relative overflow-hidden bg-gradient-to-tr from-[#1e5636] to-[#2e8b57] border-none shadow-lg">
-          <div className="absolute left-0 right-0 bottom-0 top-0 z-0" style={{background: 'radial-gradient(ellipse at 60% 70%, #56A67C55 40%, transparent 80%)'}} />
-          <CardContent className="relative z-10 p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-white/20 rounded-full">
-                  <User className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-white/90">Assigned</h2>
-                  <p className="text-3xl font-bold text-white">{upcomingAppointments.filter(a => a.assignedPhlebotomist).length}</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Unassigned Appointments */}
-        <Card className="relative overflow-hidden bg-gradient-to-tr from-[#1e5636] to-[#2e8b57] border-none shadow-lg">
-          <div className="absolute left-0 right-0 bottom-0 top-0 z-0" style={{background: 'radial-gradient(ellipse at 60% 70%, #56A67C55 40%, transparent 80%)'}} />
-          <CardContent className="relative z-10 p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-white/20 rounded-full">
-                  <Clock className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-white/90">Unassigned</h2>
-                  <p className="text-3xl font-bold text-white">{upcomingAppointments.filter(a => !a.assignedPhlebotomist).length}</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Total Phlebotomists */}
-        <Card className="relative overflow-hidden bg-gradient-to-tr from-[#1e5636] to-[#2e8b57] border-none shadow-lg">
-          <div className="absolute left-0 right-0 bottom-0 top-0 z-0" style={{background: 'radial-gradient(ellipse at 60% 70%, #56A67C55 40%, transparent 80%)'}} />
-          <CardContent className="relative z-10 p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-white/20 rounded-full">
-                  <Users className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-white/90">Phlebotomists</h2>
-                  <p className="text-3xl font-bold text-white">{phlebotomists.length}</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
 
 
-              {/* Upcoming Appointments with Horizontal Scroll */}
+        {/* Upcoming Appointments with Horizontal Scroll */}
         <Card className="bg-white">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -460,8 +482,8 @@ export default function PathologyDashboard() {
                                 <Badge className="bg-blue-100 text-blue-800 text-xs font-medium">
                                   #{appointment.id || appointment.labBookingId || 'N/A'}
                                 </Badge>
-                                <Badge className={getStatusColor(appointment.status)}>
-                                  {getStatusDisplay(appointment.status, 'pathology')}
+                                <Badge className={getStatusColor(appointment.assignmentStatus || appointment.status)}>
+                                  {getStatusDisplay(appointment.assignmentStatus || appointment.status, 'pathology')}
                                 </Badge>
                               </div>
 
@@ -473,6 +495,16 @@ export default function PathologyDashboard() {
                                 <p className="text-sm text-primary font-semibold">
                                   {appointment.appointmentFor || 'Lab Test'}
                                 </p>
+                                {appointment.labBooking && (
+                                  <>
+                                    <p className="text-xs font-semibold text-gray-600">
+                                      {appointment.labBooking.address}
+                                    </p>
+                                    <p className="text-xs text-gray-600">
+                                      {appointment.labBooking.mobile}
+                                    </p>
+                                  </>
+                                )}
                               </div>
 
                               {/* Assignment Info */}
@@ -492,13 +524,25 @@ export default function PathologyDashboard() {
                                 </div>
                               )}
 
-                              {/* Date & Time - Only show if assigned */}
-                              {appointment.assignedPhlebotomist && (
-                                <div className="text-sm text-gray-600 text-center">
-                                  <p className="font-semibold">{appointment.appointmentDate}</p>
-                                  <p>{appointment.startTime || 'TBD'}</p>
+                              {/* Date & Time with Payment Status */}
+                              <div className="flex items-center justify-between text-sm">
+                                <div className="text-gray-600">
+                                  {appointment.assignedPhlebotomist ? (
+                                    <>
+                                      <p className="font-semibold">{appointment.appointmentDate}</p>
+                                      <p>{appointment.startTime || 'TBD'}</p>
+                                    </>
+                                  ) : (
+                                    <>
+                                    <p className="text-gray-500"><b>Date </b>TBD  </p>
+                                    <p className="text-gray-500"><b>Time </b> TBD  </p>
+                                    </>
+                                  )}
                                 </div>
-                              )}
+                                <Badge className={`${getStatusColor(appointment.status as any)} text-xs`}>
+                                  {appointment.labBooking?.payment?.paymentStatus === "PAID" ? "Paid" : `Collect ₹${appointment.labBooking?.payment?.amount}`}
+                                </Badge>
+                              </div>
 
                               {/* Action Button */}
                               {appointment.assignedPhlebotomist ? (
@@ -545,8 +589,8 @@ export default function PathologyDashboard() {
                                   <Badge className="bg-blue-100 text-blue-800 text-xs font-medium">
                                     #{appointment.id || appointment.labBookingId || 'N/A'}
                                   </Badge>
-                                  <Badge className={getStatusColor(appointment.status as any)}>
-                                    {getStatusDisplay(appointment.status as any, 'pathology')}
+                                  <Badge className={getStatusColor(appointment.assignmentStatus || appointment.status as any)}>
+                                    {getStatusDisplay(appointment.assignmentStatus || appointment.status as any, 'pathology')}
                                   </Badge>
                                 </div>
 
@@ -558,6 +602,16 @@ export default function PathologyDashboard() {
                                   <p className="text-sm text-primary font-semibold">
                                     {appointment.appointmentFor || 'Lab Test'}
                                   </p>
+                                  {appointment.labBooking && (
+                                    <>
+                                      <p className="text-xs font-semibold text-gray-600">
+                                        {appointment.labBooking.address}
+                                      </p>
+                                      <p className="text-xs text-gray-600">
+                                        {appointment.labBooking.mobile}
+                                      </p>
+                                    </>
+                                  )}
                                 </div>
 
                                 {/* Assignment Info */}
@@ -578,17 +632,27 @@ export default function PathologyDashboard() {
                                 )}
 
                                 {/* Date & Time - Show for assigned, placeholder for unassigned to maintain spacing */}
-                                {appointment.assignedPhlebotomist ? (
-                                  <div className="text-sm text-gray-600 text-center">
-                                    <p className="font-semibold">{appointment.appointmentDate}</p>
-                                    <p>{appointment.startTime || 'TBD'}</p>
-                                  </div>
-                                ) : (
-                                  <div className="text-sm text-gray-400 text-center">
-                                    <p className="font-semibold">Date TBD</p>
-                                    <p>Time TBD</p>
-                                  </div>
-                                )}
+                                
+                              <div className="flex items-center justify-between text-sm">
+                                <div className="text-gray-600">
+                                  {appointment.assignedDate && appointment.assignedTime ? (
+                                    <>
+                                      <p className="font-semibold">
+                                        {format(new Date(appointment.assignedDate), "dd-MMM-yyyy")}
+                                      </p>
+                                      <p>{appointment.assignedTime}</p>
+                                    </>
+                                  ) : (
+                                    <>
+                                    <p className="text-gray-500"><b>Date </b>TBD  </p>
+                                    <p className="text-gray-500"><b>Time </b> TBD  </p>
+                                    </>
+                                  )}
+                                </div>
+                                <Badge className={`${getStatusColor(appointment.status as any)} text-xs`}>
+                                    {appointment.labBooking?.payment?.paymentStatus === "PAID" ? "Paid" : `Collect ₹${appointment.labBooking?.payment?.amount}`}
+                                </Badge>
+                              </div>
 
                                 {/* Action Button */}
                                 {appointment.assignedPhlebotomist ? (
@@ -624,7 +688,7 @@ export default function PathologyDashboard() {
           </CardContent>
         </Card>
 
-              {/* Currently Ongoing Assignments with Horizontal Scroll */}
+        {/* Currently Ongoing Assignments with Horizontal Scroll */}
         <Card className="bg-white">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -696,24 +760,20 @@ export default function PathologyDashboard() {
                                   {assignment.labBooking?.labPackage?.name || assignment.appointment?.appointmentFor || 'Lab Test'}
                                 </p>
                                 {assignment.labBooking && (
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    Payment: {assignment.labBooking.paymentOption}
-                                  </p>
+                                  <>
+
+                                    <p className="text-xs font-semibold text-gray-600">
+                                      {assignment.labBooking.address}
+                                    </p>
+                                    <p className="text-xs text-gray-600">
+                                      {assignment.labBooking.mobile}
+                                    </p>
+                                  </>
                                 )}
                               </div>
 
                               {/* Lab Booking Info */}
-                              {assignment.labBooking && (
-                                <div className="bg-blue-50 rounded-lg p-3 text-center">
-                                  <p className="text-xs text-gray-600 mb-1">Lab Booking Details</p>
-                                  <p className="font-semibold text-blue-700 text-sm">
-                                    {assignment.labBooking.fullName || assignment.patient?.name}
-                                  </p>
-                                  <p className="text-xs text-gray-600">
-                                    {assignment.labBooking.mobile} • {assignment.labBooking.address}
-                                  </p>
-                                </div>
-                              )}
+
 
                               {/* Phlebotomist Info */}
                               <div className="bg-green-50 rounded-lg p-3 text-center">
@@ -722,6 +782,21 @@ export default function PathologyDashboard() {
                                   {assignment.phlebotomist?.user?.name || 'Phlebotomist'}
                                 </p>
                               </div>
+
+                              {/* Payment Info
+                              {assignment.labBooking?.payment && (
+                                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                                  <p className="text-xs text-gray-600 mb-1">Payment Status</p>
+                                  <p className="font-semibold text-blue-700">
+                                    ₹{assignment.labBooking.payment.amount} - {assignment.labBooking.payment.paymentStatus}
+                                  </p>
+                                  {assignment.labBooking.payment.paymentMethod && (
+                                    <p className="text-xs text-gray-600">
+                                      {assignment.labBooking.payment.paymentMethod}
+                                    </p>
+                                  )}
+                                </div>
+                              )} */}
 
                               {/* Date & Status */}
                               <div className="flex items-center justify-between text-sm">
@@ -734,19 +809,22 @@ export default function PathologyDashboard() {
                                       <p>{assignment.assignedTime}</p>
                                     </>
                                   ) : (
-                                    <p className="text-gray-500">Date & Time TBD</p>
+                                    <>
+                                    <p className="text-gray-500"><b>Date </b>TBD  </p>
+                                    <p className="text-gray-500"><b>Time </b> TBD  </p>
+                                    </>
                                   )}
                                 </div>
                                 <Badge className={`${getStatusColor(assignment.status as any)} text-xs`}>
-                                  {getStatusDisplay(assignment.status as any, 'pathology')}
+                                    {assignment.labBooking?.payment?.paymentStatus === "PAID" ? "Paid" : `Collect ₹${assignment.labBooking?.payment?.amount}`}
                                 </Badge>
                               </div>
 
                               {/* Action Buttons */}
                               <div className="flex space-x-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   className="flex-1 text-primary font-semibold"
                                   onClick={() => handleUpdateStatus(assignment)}
                                 >
@@ -756,11 +834,11 @@ export default function PathologyDashboard() {
                                   variant="ghost"
                                   size="sm"
                                   className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50 flex items-center space-x-2"
-                                    onClick={() => handleUploadReports(assignment)}
-                                  >
-                                    <Upload className="h-4 w-4" />
-                                    <span>Upload Reports</span>
-                                  </Button>
+                                  onClick={() => handleUploadReports(assignment)}
+                                >
+                                  <Upload className="h-4 w-4" />
+                                  <span>Upload Reports</span>
+                                </Button>
                                 {assignment.labBooking?.labResult && assignment.labBooking.labResult.length > 0 && (
                                   <Button
                                     variant="ghost"
@@ -854,9 +932,9 @@ export default function PathologyDashboard() {
 
                                 {/* Action Buttons */}
                                 <div className="flex space-x-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
                                     className="flex-1 text-primary font-semibold"
                                     onClick={() => handleUpdateStatus(assignment)}
                                   >
@@ -866,11 +944,11 @@ export default function PathologyDashboard() {
                                     variant="ghost"
                                     size="sm"
                                     className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50 flex items-center space-x-2"
-                                      onClick={() => handleUploadReports(assignment)}
-                                    >
-                                      <Upload className="h-4 w-4" />
-                                      <span>Upload Reports</span>
-                                    </Button>
+                                    onClick={() => handleUploadReports(assignment)}
+                                  >
+                                    <Upload className="h-4 w-4" />
+                                    <span>Upload Reports</span>
+                                  </Button>
                                   {assignment.labBooking?.labResult && assignment.labBooking.labResult.length > 0 && (
                                     <Button
                                       variant="ghost"
@@ -989,7 +1067,7 @@ export default function PathologyDashboard() {
                               <div className="flex items-center justify-between text-sm">
                                 <div className="text-gray-600">
                                   <p className="font-semibold">
-                                    {booking.assignedDate 
+                                    {booking.assignedDate
                                       ? format(new Date(booking.assignedDate), "dd-MMM-yyyy")
                                       : 'Date TBD'
                                     }
@@ -1003,13 +1081,13 @@ export default function PathologyDashboard() {
 
                               {/* Action Buttons */}
                               <div className="flex space-x-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="flex-1 text-primary font-semibold"
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1 text-primary font-semibold"
                                   onClick={() => handleUpdateStatus(booking)}
-                                    >
-                                      Update Status
+                                >
+                                  Update Status
                                 </Button>
                                 <Button
                                   variant="ghost"
@@ -1086,7 +1164,7 @@ export default function PathologyDashboard() {
                                 <div className="flex items-center justify-between text-sm">
                                   <div className="text-gray-600">
                                     <p className="font-semibold">
-                                      {booking.assignedDate 
+                                      {booking.assignedDate
                                         ? format(new Date(booking.assignedDate), "dd-MMM-yyyy")
                                         : 'Date TBD'
                                       }
@@ -1142,44 +1220,44 @@ export default function PathologyDashboard() {
           </CardContent>
         </Card>
 
-      {/* Assignment Modal */}
-      <AssignmentModal
-        isOpen={showAssignmentModal}
-        onClose={() => setShowAssignmentModal(false)}
-        appointment={selectedAppointment}
-        onAssignmentComplete={handleAssignmentComplete}
-      />
+        {/* Assignment Modal */}
+        <AssignmentModal
+          isOpen={showAssignmentModal}
+          onClose={() => setShowAssignmentModal(false)}
+          appointment={selectedAppointment}
+          onAssignmentComplete={handleAssignmentComplete}
+        />
 
-      {/* Status Update Modal */}
-      <StatusUpdateModal
-        isOpen={showStatusModal}
-        onClose={() => setShowStatusModal(false)}
-        assignment={selectedAssignment}
-        onStatusUpdate={handleStatusUpdate}
-      />
+        {/* Status Update Modal */}
+        <StatusUpdateModal
+          isOpen={showStatusModal}
+          onClose={() => setShowStatusModal(false)}
+          assignment={selectedAssignment}
+          onStatusUpdate={handleStatusUpdate}
+        />
 
-      {/* Upload Reports Modal */}
-      <LabReportUpload
-        isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
-        assignment={selectedAssignment}
-        onUploadComplete={() => {
-          setShowUploadModal(false);
-          fetchDashboardData();
-        }}
-      />
+        {/* Upload Reports Modal */}
+        <LabReportUpload
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          assignment={selectedAssignment}
+          onUploadComplete={() => {
+            setShowUploadModal(false);
+            fetchDashboardData();
+          }}
+        />
 
-      {/* Lab Booking Upload Modal */}
-      <LabBookingUploadModal
-        isOpen={showLabBookingUploadModal}
-        onClose={() => setShowLabBookingUploadModal(false)}
-        assignment={selectedAssignment}
-        onUploadComplete={() => {
-          setShowLabBookingUploadModal(false);
-          fetchDashboardData();
-        }}
-      />
-    </div>
+        {/* Lab Booking Upload Modal */}
+        <LabBookingUploadModal
+          isOpen={showLabBookingUploadModal}
+          onClose={() => setShowLabBookingUploadModal(false)}
+          assignment={selectedAssignment}
+          onUploadComplete={() => {
+            setShowLabBookingUploadModal(false);
+            fetchDashboardData();
+          }}
+        />
+      </div>
     </>
   );
 } 

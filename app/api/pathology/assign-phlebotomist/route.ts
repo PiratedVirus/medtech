@@ -163,7 +163,7 @@ export async function POST(request: Request) {
         labBookingId: actualLabBookingId,
         assignedDate: assignedDate ? new Date(assignedDate) : new Date(),
         assignedTime: assignedTime || "09:00",
-        status: "PENDING", // Start with PENDING, will be ASSIGNED when ready to start
+        status: "ASSIGNED", // Set to ASSIGNED when phlebotomist is assigned
         sampleCollected: false,
       },
       include: {
@@ -193,7 +193,7 @@ export async function POST(request: Request) {
         data: {
           labAssignmentId: labAssignment.id,
           labTechId: phlebotomistId,
-          status: "PENDING" // Single status sync - will be ASSIGNED when ready to start
+          status: "ASSIGNED" // Single status sync - set to ASSIGNED when phlebotomist is assigned
         }
       });
 
@@ -348,7 +348,7 @@ export async function PUT(request: Request) {
         labId: labId || existingAssignment.labId,
         assignedDate: assignedDate ? new Date(assignedDate) : existingAssignment.assignedDate,
         assignedTime: assignedTime || existingAssignment.assignedTime,
-        status: "ASSIGNED", // When updating assignment, mark as ready to start
+        status: "ASSIGNED", // When updating assignment, keep as ASSIGNED
         labBookingId: actualLabBookingId || existingAssignment.labBookingId,
       },
       include: {
@@ -378,7 +378,7 @@ export async function PUT(request: Request) {
         data: {
           labAssignmentId: updatedAssignment.id,
           labTechId: phlebotomistId,
-          status: "ASSIGNED" // Single status sync
+          status: "ASSIGNED" // Single status sync - keep as ASSIGNED
         }
       });
 

@@ -47,6 +47,7 @@ export async function GET(request: Request) {
           select: {
             id: true,
             name: true,
+            phoneNumber: true,
           },
         },
         phlebotomist: {
@@ -75,9 +76,26 @@ export async function GET(request: Request) {
           select: {
             id: true,
             appointmentFor: true,
+            fullName: true,
+            mobile: true,
+            email: true,
+            address: true,
+            paymentOption: true,
+            status: true,
             labPackage: {
               select: {
+                id: true,
                 name: true,
+                price: true,
+              },
+            },
+            payment: {
+              select: {
+                id: true,
+                amount: true,
+                paymentStatus: true,
+                paymentMethod: true,
+                currency: true,
               },
             },
           },
@@ -103,12 +121,23 @@ export async function GET(request: Request) {
           select: {
             id: true,
             name: true,
+            phoneNumber: true,
           },
         },
         labPackage: {
           select: {
             id: true,
             name: true,
+            price: true,
+          },
+        },
+        payment: {
+          select: {
+            id: true,
+            amount: true,
+            paymentStatus: true,
+            paymentMethod: true,
+            currency: true,
           },
         },
       },
@@ -122,7 +151,9 @@ export async function GET(request: Request) {
 
     // Transform lab assignments to match frontend expectations
     const transformedAssignments = upcomingAssignments.map((assignment, index) => ({
-      id: assignment.id,
+      id: assignment.labBookingId || assignment.id, // Always show labBookingId in ID badge
+      labBookingId: assignment.labBookingId, // Keep labBookingId for reference
+      labAssignmentId: assignment.id, // Store the actual assignment ID
       patientId: assignment.patientId,
       patientName: assignment.patient.name,
       doctorName: "Lab Assignment", // Lab assignments don't have doctors
@@ -131,12 +162,28 @@ export async function GET(request: Request) {
       startTime: assignment.assignedTime,
       endTime: null,
       consultationType: "lab",
-      status: assignment.status,
+      status: assignment.labBooking?.status || assignment.status, // Use LabBooking.status as single source of truth
       assignedPhlebotomist: assignment.phlebotomist?.user?.name || null,
-      assignmentStatus: assignment.status,
+      assignmentStatus: assignment.labBooking?.status || assignment.status, // Use LabBooking.status as single source of truth
       sessionStartIn: 10 + (index * 20), // Mock data for session start time
       // Add flag to identify if this is ready to start (ASSIGNED status)
-      isReadyToStart: assignment.status === "ASSIGNED",
+      isReadyToStart: (assignment.labBooking?.status || assignment.status) === "ASSIGNED",
+      // Include payment and contact information
+      labBooking: assignment.labBooking ? {
+        id: assignment.labBooking.id,
+        fullName: assignment.labBooking.fullName || assignment.patient.name,
+        mobile: assignment.labBooking.mobile || assignment.patient.phoneNumber || "",
+        email: assignment.labBooking.email || "",
+        address: assignment.labBooking.address || "",
+        paymentOption: assignment.labBooking.paymentOption || "",
+        payment: assignment.labBooking.payment ? {
+          id: assignment.labBooking.payment.id,
+          amount: assignment.labBooking.payment.amount,
+          paymentStatus: assignment.labBooking.payment.paymentStatus,
+          paymentMethod: assignment.labBooking.payment.paymentMethod,
+          currency: assignment.labBooking.payment.currency,
+        } : null,
+      } : null,
     }));
 
     // Transform unassigned bookings to match frontend expectations
@@ -157,6 +204,22 @@ export async function GET(request: Request) {
       assignmentStatus: "PENDING",
       sessionStartIn: 10 + ((index + upcomingAssignments.length) * 20), // Mock data for session start time
       isReadyToStart: false, // Not ready to start since no phlebotomist assigned
+      // Include payment and contact information
+      labBooking: {
+        id: booking.id,
+        fullName: booking.fullName || booking.patient.name,
+        mobile: booking.mobile || booking.patient.phoneNumber || "",
+        email: booking.email || "",
+        address: booking.address || "",
+        paymentOption: booking.paymentOption || "",
+        payment: booking.payment ? {
+          id: booking.payment.id,
+          amount: booking.payment.amount,
+          paymentStatus: booking.payment.paymentStatus,
+          paymentMethod: booking.payment.paymentMethod,
+          currency: booking.payment.currency,
+        } : null,
+      },
     }));
 
     // Combine both arrays
