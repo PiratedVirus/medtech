@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, User, MapPin } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { X } from "lucide-react";
+import CdLoader from "@/components/ui/custom/cd-loader";
 
 interface Phlebotomist {
   id: number;
@@ -106,11 +107,7 @@ export default function AssignPatientsPage() {
   );
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-500"></div>
-      </div>
-    );
+    return <CdLoader />;
   }
 
   return (

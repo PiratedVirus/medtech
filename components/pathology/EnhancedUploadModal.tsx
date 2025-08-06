@@ -131,36 +131,58 @@ export default function EnhancedUploadModal({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold text-gray-800">
-            {uploadSuccess ? "Upload Complete" : "Upload Lab Reports"}
+          <DialogTitle className="text-xl font-semibold text-gray-800 flex items-center justify-between">
+            <span>Upload Lab Reports</span>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-blue-100 text-blue-800 text-xs">
+                #{booking?.id || 'N/A'}
+              </Badge>
+              {booking?.labAssignmentId && (
+                <Badge className="bg-purple-100 text-purple-800 text-xs">
+                  Assignment #{booking.labAssignmentId}
+                </Badge>
+              )}
+            </div>
           </DialogTitle>
         </DialogHeader>
 
+        {/* Booking Information */}
+        <div className="bg-gray-50 p-4 rounded-lg mb-6">
+          <h3 className="font-semibold text-gray-800 mb-3">Booking Information</h3>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600">Patient:</span>
+              <span className="ml-2 font-medium">{patientName}</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Test:</span>
+              <span className="ml-2 font-medium">{booking?.labPackageName || 'Lab Test'}</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Date:</span>
+              <span className="ml-2 font-medium">{booking?.date ? new Date(booking.date).toLocaleDateString() : 'N/A'}</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Status:</span>
+              <Badge className={`ml-2 ${
+                booking?.status === "COMPLETED" 
+                  ? "bg-green-100 text-green-800" 
+                  : booking?.pathologyStatus === "IN_PROGRESS"
+                    ? "bg-orange-100 text-orange-800"
+                    : "bg-gray-100 text-gray-800"
+              }`}>
+                {booking?.status === "COMPLETED" 
+                  ? "Completed" 
+                  : booking?.pathologyStatus === "IN_PROGRESS"
+                    ? "In Progress"
+                    : "Scheduled"}
+              </Badge>
+            </div>
+          </div>
+        </div>
+
         {!uploadSuccess ? (
           <div className="space-y-6">
-            {/* Booking Information */}
-            <div className="bg-custom-mutedgreen p-4 rounded-lg">
-              <h3 className="font-semibold text-gray-800 mb-3">Booking Details</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-600">Patient:</span>
-                  <span className="ml-2 font-medium">{patientName}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Test:</span>
-                  <span className="ml-2 font-medium">{booking?.labPackageName || "Lab Test"}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Date:</span>
-                  <span className="ml-2 font-medium">{booking?.date ? format(new Date(booking.date), "dd-MMM-yyyy") : "N/A"}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Status:</span>
-                  <Badge className="ml-2 bg-blue-100 text-blue-800">{booking?.status || "Pending"}</Badge>
-                </div>
-              </div>
-            </div>
-
             {/* File Upload Area */}
             <div className="space-y-4">
               <div 

@@ -286,8 +286,7 @@ model LabBooking {
   email             String?
   address           String?
   paymentOption     String?
-  status            String
-  pathologyStatus   LabAssignmentStatus? @default(PENDING) // Sync with pathology workflow
+  status            LabAssignmentStatus @default(PENDING) // Single status for entire workflow
   labDate           DateTime   @db.Date
   labResult         String[]   @default([])
   createdAt         DateTime   @default(now())

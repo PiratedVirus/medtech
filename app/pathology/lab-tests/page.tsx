@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import StatusUpdateModal from "@/components/pathology/StatusUpdateModal";
 import LabBookingUploadModal from "@/components/pathology/LabBookingUploadModal";
+import CdLoader from "@/components/ui/custom/cd-loader";
 
 interface Booking {
   id: number;
@@ -139,11 +140,7 @@ export default function BookingsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-500"></div>
-      </div>
-    );
+    return <CdLoader />;
   }
 
   return (

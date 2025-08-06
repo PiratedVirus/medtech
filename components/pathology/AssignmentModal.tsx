@@ -65,8 +65,13 @@ export default function AssignmentModal({
 
     setLoading(true);
     try {
+      // Determine if this is a new assignment or updating existing assignment
+      // If appointment has labAssignmentId, it's already assigned, so use PUT
+      // If no labAssignmentId, it's unassigned, so use POST
+      const isAlreadyAssigned = appointment.labAssignmentId !== null && appointment.labAssignmentId !== undefined;
+      
       const response = await fetch("/api/pathology/assign-phlebotomist", {
-        method: "POST",
+        method: isAlreadyAssigned ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
         },
@@ -74,16 +79,18 @@ export default function AssignmentModal({
           patientId: appointment.patientId,
           phlebotomistId: parseInt(selectedPhlebotomist),
           appointmentId: appointment.id,
+          labBookingId: appointment.labBookingId || appointment.id,
           assignedDate,
           assignedTime,
         }),
       });
 
       if (response.ok) {
-        setStep(2); // Show confirmation
-        onAssignmentComplete();
+        setStep(2); // Show confirmation - don't close modal yet
+        onAssignmentComplete(); // This will refresh data but not close modal
       } else {
-        alert("Failed to assign phlebotomist");
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to assign phlebotomist");
       }
     } catch (error) {
       console.error("Error assigning phlebotomist:", error);
@@ -98,7 +105,7 @@ export default function AssignmentModal({
     setSelectedPhlebotomist("");
     setAssignedDate("");
     setAssignedTime("");
-    onClose();
+    onClose(); // Only close when user clicks Done or Cancel
   };
 
   const availablePhlebotomists = phlebotomists.filter(p => p.isAvailable);
@@ -119,7 +126,11 @@ export default function AssignmentModal({
               <h3 className="font-semibold text-gray-800 mb-3">Patient Information</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-gray-600">Name:</span>
+                  <span className="text-gray-600">Booking ID:</span>
+                  <Badge className="ml-2 bg-blue-100 text-blue-800">#{appointment?.id || appointment?.labBookingId || 'N/A'}</Badge>
+                </div>
+                <div>
+                  <span className="text-gray-600">Patient:</span>
                   <span className="ml-2 font-medium">{appointment?.patientName}</span>
                 </div>
                 <div>
@@ -129,6 +140,10 @@ export default function AssignmentModal({
                 <div>
                   <span className="text-gray-600">Date:</span>
                   <span className="ml-2 font-medium">{appointment?.appointmentDate}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Time:</span>
+                  <span className="ml-2 font-medium">{appointment?.startTime || 'TBD'}</span>
                 </div>
                 <div>
                   <span className="text-gray-600">Status:</span>
@@ -248,6 +263,10 @@ export default function AssignmentModal({
             <div className="bg-green-50 p-4 rounded-lg">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
+                  <span className="text-gray-600">Booking ID:</span>
+                  <Badge className="ml-2 bg-blue-100 text-blue-800">#{appointment?.id || appointment?.labBookingId || 'N/A'}</Badge>
+                </div>
+                <div>
                   <span className="text-gray-600">Patient:</span>
                   <span className="ml-2 font-medium">{appointment?.patientName}</span>
                 </div>
@@ -256,6 +275,10 @@ export default function AssignmentModal({
                   <span className="ml-2 font-medium">
                     {availablePhlebotomists.find(p => p.id.toString() === selectedPhlebotomist)?.user.name}
                   </span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Test:</span>
+                  <span className="ml-2 font-medium">{appointment?.appointmentFor}</span>
                 </div>
                 <div>
                   <span className="text-gray-600">Date:</span>

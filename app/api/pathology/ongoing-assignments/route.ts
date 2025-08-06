@@ -27,11 +27,14 @@ export async function GET(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Fetch ongoing lab assignments
+    const currentTime = new Date();
+
+    // Fetch ongoing lab assignments (started workflow)
+    // These are assignments that have moved beyond the "ready to start" phase
     const ongoingAssignments = await prisma.labAssignment.findMany({
       where: {
         status: {
-          in: ["ASSIGNED", "PHLEBOTOMIST_LEFT", "SAMPLE_COLLECTED", "IN_LAB", "ANALYZING"],
+          in: ["PHLEBOTOMIST_LEFT", "SAMPLE_COLLECTED", "IN_LAB", "ANALYZING"],
         },
         deletedAt: null,
       },
@@ -57,6 +60,17 @@ export async function GET(request: Request) {
             appointmentFor: true,
           },
         },
+        labBooking: {
+          select: {
+            id: true,
+            appointmentFor: true,
+            labPackage: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -76,8 +90,26 @@ export async function GET(request: Request) {
         },
       },
       appointment: {
-        appointmentFor: assignment.appointment?.appointmentFor || 'Lab Test',
+        appointmentFor: assignment.labBooking?.labPackage?.name || assignment.appointment?.appointmentFor || 'Lab Test',
       },
+      labBooking: assignment.labBooking ? {
+        id: assignment.labBooking.id,
+        labPackageId: assignment.labBooking.id,
+        appointmentFor: assignment.labBooking.appointmentFor,
+        fullName: assignment.patient.name,
+        mobile: "",
+        email: "",
+        address: "",
+        paymentOption: "",
+        status: assignment.status,
+        labDate: assignment.assignedDate.toISOString(),
+        labResult: [],
+        labPackage: {
+          id: assignment.labBooking.labPackage?.id || 0,
+          name: assignment.labBooking.labPackage?.name || "Lab Test",
+          price: 0,
+        },
+      } : undefined,
       assignedDate: assignment.assignedDate,
       assignedTime: assignment.assignedTime,
       status: assignment.status,

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { User, Search, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import CdLoader from "@/components/ui/custom/cd-loader";
 
 interface Patient {
   id: string;
@@ -73,11 +74,7 @@ export function AllPatientsCard() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-      </div>
-    );
+    return <CdLoader />;
   }
 
   return (

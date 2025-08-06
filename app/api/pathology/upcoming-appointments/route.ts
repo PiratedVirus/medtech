@@ -27,14 +27,19 @@ export async function GET(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Fetch upcoming lab assignments (no phlebotomist assigned yet)
     const today = new Date();
+    const currentTime = new Date();
+
+    // Fetch upcoming lab assignments (PENDING and ASSIGNED statuses)
+    // These are bookings that have phlebotomists assigned but haven't started yet
     const upcomingAssignments = await prisma.labAssignment.findMany({
       where: {
         assignedDate: {
           gte: today,
         },
-        status: "PENDING", // Only PENDING - no phlebotomist assigned yet
+        status: {
+          in: ["PENDING", "ASSIGNED"], // PENDING = assigned but not started, ASSIGNED = ready to start
+        },
         deletedAt: null,
       },
       include: {
@@ -83,14 +88,14 @@ export async function GET(request: Request) {
       },
     });
 
-    // Also fetch lab bookings that don't have lab assignments yet
+    // Fetch lab bookings that don't have lab assignments yet (truly unassigned)
     const unassignedBookings = await prisma.labBooking.findMany({
       where: {
         labDate: {
           gte: today,
         },
-        labAssignmentId: null, // No lab assignment created yet
-        status: "Scheduled",
+        labAssignmentId: null, // No lab assignment created yet = no phlebotomist assigned
+        status: "PENDING", // Using single status
         deletedAt: null,
       },
       include: {
@@ -111,6 +116,7 @@ export async function GET(request: Request) {
         labDate: "asc",
       },
     });
+
     console.log("upcoming assignments ", upcomingAssignments);
     console.log("unassigned bookings ", unassignedBookings);
 
@@ -129,11 +135,14 @@ export async function GET(request: Request) {
       assignedPhlebotomist: assignment.phlebotomist?.user?.name || null,
       assignmentStatus: assignment.status,
       sessionStartIn: 10 + (index * 20), // Mock data for session start time
+      // Add flag to identify if this is ready to start (ASSIGNED status)
+      isReadyToStart: assignment.status === "ASSIGNED",
     }));
 
     // Transform unassigned bookings to match frontend expectations
     const transformedUnassignedBookings = unassignedBookings.map((booking, index) => ({
-      id: `booking-${booking.id}`, // Prefix to distinguish from assignments
+      id: booking.id, // Use numeric ID directly
+      labBookingId: booking.id, // Set labBookingId to the numeric ID
       patientId: booking.patientId,
       patientName: booking.patient.name,
       doctorName: "Lab Booking", // Lab bookings don't have doctors
@@ -142,10 +151,12 @@ export async function GET(request: Request) {
       startTime: "09:00", // Default time
       endTime: null,
       consultationType: "lab",
-      status: "UNASSIGNED",
+      status: "PENDING", // These are truly unassigned
       assignedPhlebotomist: null, // No phlebotomist assigned - this will show "Assign Phlebotomist" button
-      assignmentStatus: "UNASSIGNED",
+      labAssignmentId: null, // Explicitly set to null for unassigned bookings
+      assignmentStatus: "PENDING",
       sessionStartIn: 10 + ((index + upcomingAssignments.length) * 20), // Mock data for session start time
+      isReadyToStart: false, // Not ready to start since no phlebotomist assigned
     }));
 
     // Combine both arrays

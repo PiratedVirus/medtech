@@ -14,6 +14,8 @@ import {
 import { useParams } from "next/navigation";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import CdLoader from "@/components/ui/custom/cd-loader";
+import { getStatusDisplay, getStatusColor } from "@/lib/utils/statusMapping";
 
 interface Patient {
   id: number;
@@ -48,8 +50,7 @@ interface LabBooking {
   id: number;
   labPackageName: string;
   date: string;
-  status: string;
-  pathologyStatus: string;
+  status: string; // Single status
   reportLink?: string[] | null;
   labResult?: string[] | null;
   phlebotomist?: string;
@@ -106,8 +107,7 @@ export default function PatientDetailsPage() {
           id: booking.id,
           labPackageName: booking.resultName.split(' - ')[1] || 'Lab Package',
           date: booking.resultDate,
-          status: booking.status,
-          pathologyStatus: booking.pathologyStatus,
+          status: booking.status, // Single status
           reportLink: booking.reports?.map((r: any) => r.pdfUrl) || null,
           labResult: null, // Don't duplicate the reports
           phlebotomist: booking.phlebotomist,
@@ -118,8 +118,7 @@ export default function PatientDetailsPage() {
           id: booking.id,
           labPackageName: booking.resultName.split(' - ')[1] || 'Lab Package',
           date: booking.resultDate,
-          status: booking.status,
-          pathologyStatus: booking.pathologyStatus,
+          status: booking.status, // Single status
           reportLink: booking.reports?.map((r: any) => r.pdfUrl) || null,
           labResult: null, // Don't duplicate the reports
           phlebotomist: booking.phlebotomist,
@@ -145,14 +144,13 @@ export default function PatientDetailsPage() {
     {
       id: 2,
       title: "Sample Collected",
-      status: booking.pathologyStatus === "IN_PROGRESS" || booking.status === "COMPLETED" ? "completed" : "pending",
+      status: ["SAMPLE_COLLECTED", "IN_LAB", "ANALYZING", "COMPLETED"].includes(booking.status) ? "completed" : "pending",
       time: "09:15 AM",
     },
     {
       id: 3,
       title: "Lab Processing",
-      status:
-        booking.pathologyStatus === "IN_PROGRESS" ? "active" : booking.status === "COMPLETED" ? "completed" : "pending",
+      status: ["IN_LAB", "ANALYZING", "COMPLETED"].includes(booking.status) ? "active" : booking.status === "COMPLETED" ? "completed" : "pending",
       time: "10:30 AM",
     },
     {
@@ -211,11 +209,7 @@ export default function PatientDetailsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-500"></div>
-      </div>
-    );
+    return <CdLoader />;
   }
 
   if (!patient) {
@@ -315,6 +309,17 @@ export default function PatientDetailsPage() {
                         <div className="flex-1 min-w-0 max-w-xs">
                           <div className="space-y-2">
                             <div>
+                              {/* Booking ID Badge */}
+                              <div className="flex items-center justify-between mb-2">
+                                <Badge className="bg-blue-100 text-blue-800 text-xs font-medium">
+                                  #{booking.id}
+                                </Badge>
+                                {booking.labAssignmentId && (
+                                  <Badge className="bg-purple-100 text-purple-800 text-xs font-medium">
+                                    Assignment #{booking.labAssignmentId}
+                                  </Badge>
+                                )}
+                              </div>
                               <h3 className="text-lg font-bold text-primary leading-tight truncate">{booking.labPackageName}</h3>
                               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
                                 <div className="flex items-center gap-1.5">
@@ -336,19 +341,9 @@ export default function PatientDetailsPage() {
                         <div className="flex justify-center px-2">
                           <Badge
                             variant="secondary"
-                            className={`${
-                              booking.status === "COMPLETED"
-                                ? "bg-green-100 text-green-700 border-green-200"
-                                : booking.pathologyStatus === "IN_PROGRESS"
-                                  ? "bg-orange-100 text-orange-700 border-orange-200"
-                                  : "bg-gray-100 text-gray-600 border-gray-100"
-                            } font-normal text-xs px-2.5 py-1`}
+                            className={`${getStatusColor(booking.status as any)} font-normal text-xs px-2.5 py-1`}
                           >
-                            {booking.status === "COMPLETED"
-                              ? "Completed"
-                              : booking.pathologyStatus === "IN_PROGRESS"
-                                ? "In Progress"
-                                : "Scheduled"}
+                            {getStatusDisplay(booking.status as any, 'patient')}
                           </Badge>
                         </div>
 
@@ -429,7 +424,7 @@ export default function PatientDetailsPage() {
 
                         {/* Right Section - Action Buttons */}
                         <div className="flex flex-col sm:flex-row items-center gap-2 w-[180px] min-w-[180px] flex-wrap px-4 justify-end">
-                          {booking.pathologyStatus === "IN_PROGRESS" && (
+                          {["SAMPLE_COLLECTED", "IN_LAB", "ANALYZING"].includes(booking.status) && (
                             <Button
                               onClick={() => handleStatusUpdate(booking.labAssignmentId || booking.id, "COMPLETED")}
                               size="sm"

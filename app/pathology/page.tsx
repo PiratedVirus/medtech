@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Users, TestTube, User, MapPin, Filter, Play, Upload, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { Calendar, Clock, Users, TestTube, User, MapPin, Filter, Play, Upload, ChevronLeft, ChevronRight, FileText, Search } from "lucide-react";
 import AssignmentModal from "@/components/pathology/AssignmentModal";
 import StatusUpdateModal from "@/components/pathology/StatusUpdateModal";
 import LabReportUpload from "@/components/pathology/LabReportUpload";
@@ -12,6 +12,9 @@ import LabBookingUploadModal from "@/components/pathology/LabBookingUploadModal"
 import { useProfile } from "@/hooks/context/ProfileContext";
 import { format } from "date-fns";
 import { toast, ToastContainer } from "react-toastify";
+import CdLoader from "@/components/ui/custom/cd-loader";
+import { Input } from "@/components/ui/input";
+import { getStatusDisplay, getStatusColor } from "@/lib/utils/statusMapping";
 
 interface Phlebotomist {
   id: number;
@@ -45,8 +48,7 @@ interface LabAssignment {
     email: string;
     address: string;
     paymentOption: string;
-    status: string;
-    pathologyStatus: string;
+    status: string; // Single status
     labDate: string;
     labResult: string[];
     labPackage: {
@@ -78,6 +80,7 @@ export default function PathologyDashboard() {
   const [upcomingScrollPosition, setUpcomingScrollPosition] = useState(0);
   const [ongoingScrollPosition, setOngoingScrollPosition] = useState(0);
   const [completedScrollPosition, setCompletedScrollPosition] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetchDashboardData();
@@ -85,6 +88,15 @@ export default function PathologyDashboard() {
 
   const fetchDashboardData = async () => {
     try {
+      // First, check for time-based movement from upcoming to ongoing
+      try {
+        await fetch("/api/pathology/check-time-based-movement", {
+          method: "POST",
+        });
+      } catch (error) {
+        console.error("Error checking time-based movement:", error);
+      }
+
       // Fetch phlebotomists
       const phlebotomistsResponse = await fetch("/api/pathology/phlebotomists");
       const phlebotomistsData = await phlebotomistsResponse.json();
@@ -103,9 +115,10 @@ export default function PathologyDashboard() {
       // Fetch completed bookings
       const completedResponse = await fetch("/api/pathology/completed-bookings");
       const completedData = await completedResponse.json();
-      setCompletedBookings(completedData.completedBookings || []);
+      setCompletedBookings(completedData.bookings || []);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
+      toast.error("Failed to fetch dashboard data");
     } finally {
       setLoading(false);
     }
@@ -122,44 +135,36 @@ export default function PathologyDashboard() {
   };
 
   const handleAssignmentComplete = () => {
+    // Refresh data in the background after assignment is complete
     fetchDashboardData();
+    // Don't close modal here - let the modal handle its own closing
+    toast.success("Phlebotomist assigned successfully!");
   };
 
   const handleStatusUpdate = () => {
+    // Refresh data in the background after status update
     fetchDashboardData();
+    setShowStatusModal(false);
+    toast.success("Status updated successfully!");
   };
 
   const handleStartAppointment = async (appointment: any) => {
     try {
-      // Find first available phlebotomist
-      const availablePhlebotomist = phlebotomists.find(p => p.isAvailable);
-      
-      if (!availablePhlebotomist) {
-        alert('No available phlebotomists at the moment. Please assign one manually.');
-        return;
-      }
-
-      // Auto-assign to first available phlebotomist and move to ongoing
-      const response = await fetch('/api/pathology/assign-phlebotomist', {
-        method: 'POST',
+      // Start the appointment by updating status to PHLEBOTOMIST_LEFT
+      // This moves it from upcoming to ongoing
+      const response = await fetch(`/api/pathology/lab-assignments/${appointment.id}/status`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          patientId: appointment.patientId,
-          appointmentId: appointment.id,
-          phlebotomistId: availablePhlebotomist.id,
-          assignedDate: new Date().toISOString().split('T')[0],
-          assignedTime: new Date().toLocaleTimeString('en-US', { 
-            hour12: false, 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          }),
+          status: 'PHLEBOTOMIST_LEFT',
         }),
       });
 
       if (response.ok) {
         fetchDashboardData(); // Refresh data
+        toast.success('Appointment started successfully!');
       } else {
         const errorData = await response.json();
         alert(errorData.error || 'Failed to start appointment');
@@ -229,22 +234,23 @@ export default function PathologyDashboard() {
     });
   };
 
-  // Filter appointments based on assignment status
+  // Filter appointments based on assignment status and search query
   const filteredAppointments = upcomingAppointments.filter(appointment => {
-    if (filterStatus === 'assigned') {
-      return appointment.assignedPhlebotomist;
-    } else if (filterStatus === 'unassigned') {
-      return !appointment.assignedPhlebotomist;
-    }
-    return true; // 'all'
+    const matchesStatus = filterStatus === 'all' ? true :
+      filterStatus === 'assigned' ? appointment.assignedPhlebotomist :
+      !appointment.assignedPhlebotomist;
+    
+    const matchesSearch = searchQuery === "" || 
+      appointment.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      appointment.appointmentFor?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      appointment.assignedPhlebotomist?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      appointment.id?.toString().includes(searchQuery);
+
+    return matchesStatus && matchesSearch;
   });
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-500"></div>
-      </div>
-    );
+    return <CdLoader />;
   }
 
   return (
@@ -264,6 +270,31 @@ export default function PathologyDashboard() {
         </h1>
         <div className="text-sm text-gray-600">
           {format(new Date(), "dd-MM-yyyy | h:mm a")} <Calendar className="inline ml-1 h-4 w-4" />
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="flex items-center space-x-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search by patient name, test type, phlebotomist, or booking ID..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex items-center space-x-2">
+          <Filter className="h-4 w-4 text-gray-500" />
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as 'all' | 'assigned' | 'unassigned')}
+            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            <option value="all">All Appointments</option>
+            <option value="assigned">Assigned</option>
+            <option value="unassigned">Unassigned</option>
+          </select>
         </div>
       </div>
 
@@ -424,6 +455,16 @@ export default function PathologyDashboard() {
                         <Card key={index} className="bg-custom-mutedgreen flex-shrink-0 w-80 hover:shadow-md transition-shadow duration-200">
                           <CardContent className="p-5">
                             <div className="space-y-4">
+                              {/* Booking ID Badge */}
+                              <div className="flex justify-between items-start">
+                                <Badge className="bg-blue-100 text-blue-800 text-xs font-medium">
+                                  #{appointment.id || appointment.labBookingId || 'N/A'}
+                                </Badge>
+                                <Badge className={getStatusColor(appointment.status)}>
+                                  {getStatusDisplay(appointment.status, 'pathology')}
+                                </Badge>
+                              </div>
+
                               {/* Patient Info - Main Focus */}
                               <div className="text-center">
                                 <h3 className="text-lg font-bold text-gray-900 mb-1">
@@ -446,25 +487,18 @@ export default function PathologyDashboard() {
                                 <div className="bg-orange-50 rounded-lg p-3 text-center">
                                   <p className="text-xs text-gray-600 mb-1">Status</p>
                                   <p className="font-semibold text-orange-700">
-                                    Awaiting Assignment
+                                    {getStatusDisplay(appointment.status, 'pathology')}
                                   </p>
                                 </div>
                               )}
 
-                              {/* Date & Status */}
-                              <div className="flex items-center justify-between text-sm">
-                                <div className="text-gray-600">
+                              {/* Date & Time - Only show if assigned */}
+                              {appointment.assignedPhlebotomist && (
+                                <div className="text-sm text-gray-600 text-center">
                                   <p className="font-semibold">{appointment.appointmentDate}</p>
                                   <p>{appointment.startTime || 'TBD'}</p>
                                 </div>
-                                <Badge className={
-                                  appointment.assignedPhlebotomist
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-orange-100 text-orange-800"
-                                }>
-                                  {appointment.assignedPhlebotomist ? "Ready" : "Pending"}
-                                </Badge>
-                              </div>
+                              )}
 
                               {/* Action Button */}
                               {appointment.assignedPhlebotomist ? (
@@ -474,7 +508,7 @@ export default function PathologyDashboard() {
                                   className="w-full text-orange-600 border-orange-200 hover:bg-orange-50"
                                   onClick={() => handleStartAppointment(appointment)}
                                 >
-                                  {/* <Play className="h-4 w-4" /> */}
+                                  <Play className="h-4 w-4 mr-2" />
                                   <span>Start Appointment</span>
                                 </Button>
                               ) : (
@@ -506,6 +540,16 @@ export default function PathologyDashboard() {
                           <Card key={index + Math.ceil(filteredAppointments.length / 2)} className="bg-custom-mutedgreen flex-shrink-0 w-80 hover:shadow-md transition-shadow duration-200">
                             <CardContent className="p-5">
                               <div className="space-y-4">
+                                {/* Booking ID Badge */}
+                                <div className="flex justify-between items-start">
+                                  <Badge className="bg-blue-100 text-blue-800 text-xs font-medium">
+                                    #{appointment.id || appointment.labBookingId || 'N/A'}
+                                  </Badge>
+                                  <Badge className={getStatusColor(appointment.status as any)}>
+                                    {getStatusDisplay(appointment.status as any, 'pathology')}
+                                  </Badge>
+                                </div>
+
                                 {/* Patient Info - Main Focus */}
                                 <div className="text-center">
                                   <h3 className="text-lg font-bold text-gray-900 mb-1">
@@ -528,25 +572,23 @@ export default function PathologyDashboard() {
                                   <div className="bg-orange-50 rounded-lg p-3 text-center">
                                     <p className="text-xs text-gray-600 mb-1">Status</p>
                                     <p className="font-semibold text-orange-700">
-                                      Awaiting Assignment
+                                      {getStatusDisplay(appointment.status as any, 'pathology')}
                                     </p>
                                   </div>
                                 )}
 
-                                {/* Date & Status */}
-                                <div className="flex items-center justify-between text-sm">
-                                  <div className="text-gray-600">
+                                {/* Date & Time - Show for assigned, placeholder for unassigned to maintain spacing */}
+                                {appointment.assignedPhlebotomist ? (
+                                  <div className="text-sm text-gray-600 text-center">
                                     <p className="font-semibold">{appointment.appointmentDate}</p>
                                     <p>{appointment.startTime || 'TBD'}</p>
                                   </div>
-                                  <Badge className={
-                                    appointment.assignedPhlebotomist
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-orange-100 text-orange-800"
-                                  }>
-                                    {appointment.assignedPhlebotomist ? "Ready" : "Pending"}
-                                  </Badge>
-                                </div>
+                                ) : (
+                                  <div className="text-sm text-gray-400 text-center">
+                                    <p className="font-semibold">Date TBD</p>
+                                    <p>Time TBD</p>
+                                  </div>
+                                )}
 
                                 {/* Action Button */}
                                 {appointment.assignedPhlebotomist ? (
@@ -556,7 +598,7 @@ export default function PathologyDashboard() {
                                     className="w-full text-orange-600 border-orange-200 hover:bg-orange-50"
                                     onClick={() => handleStartAppointment(appointment)}
                                   >
-                                    {/* <Play className="h-4 w-4" /> */}
+                                    <Play className="h-4 w-4 mr-2" />
                                     <span>Start Appointment</span>
                                   </Button>
                                 ) : (
@@ -635,6 +677,16 @@ export default function PathologyDashboard() {
                         <Card key={assignment.id} className="bg-custom-mutedgreen flex-shrink-0 w-80 hover:shadow-md transition-shadow duration-200">
                           <CardContent className="p-5">
                             <div className="space-y-4">
+                              {/* Booking ID Badge */}
+                              <div className="flex justify-between items-start">
+                                <Badge className="bg-blue-100 text-blue-800 text-xs font-medium">
+                                  #{assignment.labBooking?.id || assignment.id || 'N/A'}
+                                </Badge>
+                                <Badge className={`${getStatusColor(assignment.status as any)} text-xs`}>
+                                  {getStatusDisplay(assignment.status as any, 'pathology')}
+                                </Badge>
+                              </div>
+
                               {/* Patient Info - Main Focus */}
                               <div className="text-center">
                                 <h3 className="text-lg font-bold text-gray-900 mb-1">
@@ -674,24 +726,19 @@ export default function PathologyDashboard() {
                               {/* Date & Status */}
                               <div className="flex items-center justify-between text-sm">
                                 <div className="text-gray-600">
-                                  <p className="font-semibold">
-                                    {assignment.assignedDate 
-                                      ? format(new Date(assignment.assignedDate), "dd-MMM-yyyy")
-                                      : 'Date TBD'
-                                    }
-                                  </p>
-                                  <p>{assignment.assignedTime}</p>
+                                  {assignment.assignedDate && assignment.assignedTime ? (
+                                    <>
+                                      <p className="font-semibold">
+                                        {format(new Date(assignment.assignedDate), "dd-MMM-yyyy")}
+                                      </p>
+                                      <p>{assignment.assignedTime}</p>
+                                    </>
+                                  ) : (
+                                    <p className="text-gray-500">Date & Time TBD</p>
+                                  )}
                                 </div>
-                                <Badge className={`${
-                                  assignment.status === 'ASSIGNED' ? 'bg-blue-100 text-blue-800' :
-                                  assignment.status === 'PHLEBOTOMIST_LEFT' ? 'bg-yellow-100 text-yellow-800' :
-                                  assignment.status === 'SAMPLE_COLLECTED' ? 'bg-green-100 text-green-800' :
-                                  assignment.status === 'IN_LAB' ? 'bg-indigo-100 text-indigo-800' :
-                                  assignment.status === 'ANALYZING' ? 'bg-orange-100 text-orange-800' :
-                                  assignment.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' :
-                                  'bg-gray-100 text-gray-800'
-                                } text-xs`}>
-                                  {assignment.status.replace('_', ' ')}
+                                <Badge className={`${getStatusColor(assignment.status as any)} text-xs`}>
+                                  {getStatusDisplay(assignment.status as any, 'pathology')}
                                 </Badge>
                               </div>
 
@@ -745,6 +792,16 @@ export default function PathologyDashboard() {
                           <Card key={assignment.id} className="bg-custom-mutedgreen flex-shrink-0 w-80 hover:shadow-md transition-shadow duration-200">
                             <CardContent className="p-5">
                               <div className="space-y-4">
+                                {/* Booking ID Badge */}
+                                <div className="flex justify-between items-start">
+                                  <Badge className="bg-blue-100 text-blue-800 text-xs font-medium">
+                                    #{assignment.labBooking?.id || assignment.id || 'N/A'}
+                                  </Badge>
+                                  <Badge className={`${getStatusColor(assignment.status as any)} text-xs`}>
+                                    {getStatusDisplay(assignment.status as any, 'pathology')}
+                                  </Badge>
+                                </div>
+
                                 {/* Patient Info - Main Focus */}
                                 <div className="text-center">
                                   <h3 className="text-lg font-bold text-gray-900 mb-1">
@@ -779,24 +836,19 @@ export default function PathologyDashboard() {
                                 {/* Date & Status */}
                                 <div className="flex items-center justify-between text-sm">
                                   <div className="text-gray-600">
-                                    <p className="font-semibold">
-                                      {assignment.assignedDate 
-                                        ? format(new Date(assignment.assignedDate), "dd-MMM-yyyy")
-                                        : 'Date TBD'
-                                      }
-                                    </p>
-                                    <p>{assignment.assignedTime}</p>
+                                    {assignment.assignedDate && assignment.assignedTime ? (
+                                      <>
+                                        <p className="font-semibold">
+                                          {format(new Date(assignment.assignedDate), "dd-MMM-yyyy")}
+                                        </p>
+                                        <p>{assignment.assignedTime}</p>
+                                      </>
+                                    ) : (
+                                      <p className="text-gray-500">Date & Time TBD</p>
+                                    )}
                                   </div>
-                                  <Badge className={`${
-                                    assignment.status === 'ASSIGNED' ? 'bg-blue-100 text-blue-800' :
-                                    assignment.status === 'PHLEBOTOMIST_LEFT' ? 'bg-yellow-100 text-yellow-800' :
-                                    assignment.status === 'SAMPLE_COLLECTED' ? 'bg-green-100 text-green-800' :
-                                    assignment.status === 'IN_LAB' ? 'bg-indigo-100 text-indigo-800' :
-                                    assignment.status === 'ANALYZING' ? 'bg-orange-100 text-orange-800' :
-                                    assignment.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' :
-                                    'bg-gray-100 text-gray-800'
-                                  } text-xs`}>
-                                    {assignment.status.replace('_', ' ')}
+                                  <Badge className={`${getStatusColor(assignment.status as any)} text-xs`}>
+                                    {getStatusDisplay(assignment.status as any, 'pathology')}
                                   </Badge>
                                 </div>
 
@@ -944,8 +996,8 @@ export default function PathologyDashboard() {
                                   </p>
                                   <p>{booking.assignedTime}</p>
                                 </div>
-                                <Badge className="bg-emerald-100 text-emerald-800 text-xs">
-                                  COMPLETED
+                                <Badge className={`${getStatusColor(booking.status as any)} text-xs`}>
+                                  {getStatusDisplay(booking.status as any, 'pathology')}
                                 </Badge>
                               </div>
 

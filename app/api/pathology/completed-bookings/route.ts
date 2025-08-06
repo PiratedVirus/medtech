@@ -5,7 +5,7 @@ export async function GET(request: Request) {
   try {
     const completedBookings = await prisma.labBooking.findMany({
       where: {
-        status: "COMPLETED",
+        status: "COMPLETED", // Using single status
         deletedAt: null,
       },
       include: {
@@ -55,8 +55,7 @@ export async function GET(request: Request) {
         email: booking.email,
         address: booking.address,
         paymentOption: booking.paymentOption,
-        status: booking.status,
-        pathologyStatus: booking.pathologyStatus,
+        status: booking.status, // Single status
         labDate: booking.labDate,
         labResult: booking.labResult || [],
         labPackage: {
@@ -67,7 +66,7 @@ export async function GET(request: Request) {
       },
       assignedDate: booking.labAssignments[0]?.assignedDate || booking.labDate,
       assignedTime: booking.labAssignments[0]?.assignedTime || "09:00",
-      status: booking.pathologyStatus || "COMPLETED",
+      status: booking.status, // Single status
       sampleCollected: booking.labAssignments[0]?.sampleCollected || false,
       phlebotomist: booking.labAssignments[0]?.phlebotomist || null,
     }));

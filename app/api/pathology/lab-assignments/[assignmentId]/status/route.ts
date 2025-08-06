@@ -104,9 +104,7 @@ export async function PUT(
       await prisma.labBooking.update({
         where: { id: updatedAssignment.labBooking.id },
         data: { 
-          pathologyStatus: status,
-          // Update main status to COMPLETED when pathology is completed
-          ...(status === "COMPLETED" && { status: "COMPLETED" })
+          status: status // Single status sync
         },
       });
     }
