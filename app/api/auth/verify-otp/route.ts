@@ -2,9 +2,12 @@ import { NextResponse } from "next/server";
 import axios from "axios";
 import jwt from "jsonwebtoken";
 import { checkUserExists } from "@/lib/check-user";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // JWT + cookie lifetime (in days)
-const TOKEN_LIFETIME_DAYS = 15;   // ⬅️ change this to whatever “more than a week” means to you
+const TOKEN_LIFETIME_DAYS = 15;   // ⬅️ change this to whatever "more than a week" means to you
 const TOKEN_LIFETIME_SECONDS = TOKEN_LIFETIME_DAYS * 24 * 60 * 60;
 
 // Get your tokenAuth and widgetId from environment variables
@@ -51,13 +54,28 @@ export async function POST(request: Request) {
     // Adjust this check based on the response format from MSG91
     if (verificationCheck.type === "success" || verificationCheck.status === "success") {
       const userExists = await checkUserExists(plusAddedPhoneNumber);
+      
+      // Get user role if user exists
+      let userRole = null;
+      if (userExists) {
+        const user = await prisma.user.findFirst({
+          where: { phoneNumber: plusAddedPhoneNumber },
+          select: { role: true }
+        });
+        userRole = user?.role;
+      }
+
       const token = jwt.sign(
-        { plusAddedPhoneNumber, userExists },
+        { 
+          plusAddedPhoneNumber, 
+          userExists,
+          role: userRole 
+        },
         process.env.JWT_SECRET!,
-        { expiresIn: `${TOKEN_LIFETIME_DAYS}d` }   // e.g. "15d"
+        { expiresIn: `${TOKEN_LIFETIME_DAYS}d` }
       );
       
-      const response = NextResponse.json({ success: true, userExists });
+      const response = NextResponse.json({ success: true, userExists, role: userRole });
       response.cookies.set("token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",

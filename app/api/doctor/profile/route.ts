@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { encryptData } from "@/lib/encryption";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 
@@ -35,7 +34,7 @@ async function verifyDoctorToken(token: string) {
   }
 }
 
-export async function POST(req: Request) {
+export async function GET() {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token");
@@ -49,27 +48,19 @@ export async function POST(req: Request) {
       return new NextResponse("Doctor profile not found", { status: 404 });
     }
 
-    const { doctorCode } = await req.json();
-
-    if (!doctorCode) {
-      return new NextResponse("Doctor code is required", { status: 400 });
-    }
-
-    // Verify that the doctor code belongs to the logged-in doctor
-    if (doctorCode !== doctor.doctorProfile.doctorCode) {
-      return new NextResponse("Invalid doctor code", { status: 400 });
-    }
-
-    // Encrypt the doctor code
-    const encryptedCode = encryptData({ doctorCode });
-
-    // Generate referral link with encrypted code
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const referralLink = `${baseUrl}/signup?code=${encodeURIComponent(encryptedCode)}`;
-
-    return NextResponse.json({ referralLink });
+    return NextResponse.json({
+      id: doctor.id,
+      name: doctor.name,
+      email: doctor.email,
+      phoneNumber: doctor.phoneNumber,
+      doctorCode: doctor.doctorProfile.doctorCode,
+      specialty: doctor.doctorProfile.specialty,
+      yearsOfExperience: doctor.doctorProfile.yearsOfExperience,
+      consultationFee: doctor.doctorProfile.consultationFee,
+      isDietician: doctor.doctorProfile.isDietician,
+    });
   } catch (error) {
-    console.error("Error generating referral link:", error);
+    console.error("Error fetching doctor profile:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 } 

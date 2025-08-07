@@ -59,6 +59,32 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Doctor routes protection
+  if (pathname.startsWith("/doctor")) {
+    // Allow access to login page
+    if (pathname === "/login") {
+      return NextResponse.next();
+    }
+
+    const userToken = request.cookies.get("token")?.value;
+    if (!userToken) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    const decodedUser = await verifyUserToken(userToken);
+    console.log("decodedUser ->", decodedUser);
+    if (!decodedUser || !decodedUser.role) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    // Check if user is a doctor
+    if (decodedUser.role !== "DOCTOR") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+
+    return NextResponse.next();
+  }
+
   // Dashboard routes protection
   if (pathname.startsWith("/dashboard")) {
     // Allow access to login page
@@ -72,8 +98,18 @@ export async function middleware(request: NextRequest) {
     }
 
     const decodedUser = await verifyUserToken(userToken);
-    if (!decodedUser) {
+    if (!decodedUser || !decodedUser.role) {
       return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    // Redirect doctors to doctor dashboard
+    if (decodedUser.role === "DOCTOR" && pathname !== "/dashboard") {
+      return NextResponse.redirect(new URL("/doctor", request.url));
+    }
+
+    // Prevent doctors from accessing patient dashboard
+    if (decodedUser.role === "DOCTOR" && pathname.startsWith("/dashboard")) {
+      return NextResponse.redirect(new URL("/doctor", request.url));
     }
 
     return NextResponse.next();
@@ -82,7 +118,7 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Specify the paths to protect
+// Update the matcher to include doctor routes
 export const config = {
-  matcher: ["/admin/:path*", "/dashboard/:path*"],
+  matcher: ["/admin/:path*", "/dashboard/:path*", "/doctor/:path*"],
 };
