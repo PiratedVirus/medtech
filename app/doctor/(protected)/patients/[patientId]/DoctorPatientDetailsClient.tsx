@@ -16,10 +16,18 @@ import CdLoader from "@/components/ui/custom/cd-loader";
 import { PlanUsageMinimal } from "@/components/patients/plans/PlanUsage";
 import { HealthInsightsPanel } from "@/components/admin/HealthInsightsPanel";
 
+// Custom Components
+import PatientInfoCard from "@/components/doctors/patients/PatientInfoCard";
+import UpcomingAppointmentCard from "@/components/doctors/patients/UpcomingAppointmentCard";
+import DietPlanRequestCard from "@/components/doctors/patients/DietPlanRequestCard";
+import PrescriptionsSection from "@/components/doctors/patients/PrescriptionsSection";
+import LabReportsSection from "@/components/doctors/patients/LabReportsSection";
+
 // Icons
 import {
   User, Calendar, Phone, Heart, Droplet, Activity,
-  Ruler, Scale, FileText, Home, Stethoscope, Pill, Microscope
+  Ruler, Scale, FileText, Home, Stethoscope, Pill, Microscope,
+  Clock, Utensils, AlertCircle
 } from "lucide-react";
 
 // Type Definitions
@@ -147,163 +155,6 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
       setSavingNotes(false);
     }
   };
-
-  // UI Components
-  const ProfileInfoCard = () => (
-    <Card className="col-span-full relative overflow-hidden rounded-lg bg-slate-50 text-gray-700 p-6">
-      {/* Background icon */}
-      <div className="absolute -right-10 -top-6 opacity-10">
-        <User size={200} />
-      </div>
-      {/* Content */}
-      <div className="relative space-y-4">
-        <div className="flex justify-between items-center my-4">
-          <div>
-            <h2 className="text-3xl text-secondary font-bold">{patientDetails?.name}</h2>
-            <p className="text-gray-600">
-              Member since <b>{new Date(patientDetails?.joinedOn || '').toLocaleDateString()}</b>
-            </p>
-          </div>
-          {(patientDetails?.subscriptions ?? []).length > 0 && (
-            <div className="text-lg px-3 py-1 mr-14">
-              Subscribed to <span className="text-secondary"><strong>{patientDetails?.subscriptions[0].planName}</strong></span> till{" "}
-              {patientDetails?.subscriptions?.[0]?.endDate ? new Date(patientDetails.subscriptions[0].endDate).toLocaleDateString() : 'N/A'}
-            </div>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2 mt-4">
-          {patientDetails && [
-            { icon: <Calendar className="h-4 w-4 flex-shrink-0" />, label: "Age", value: `${patientDetails.profile.age} yrs` },
-            { icon: <Scale className="h-4 w-4 flex-shrink-0" />, label: "Weight", value: `${patientDetails.profile.weight} kg` },
-            { icon: <Ruler className="h-4 w-4 flex-shrink-0" />, label: "Height", value: `${patientDetails.profile.height} cm` },
-            { icon: <Activity className="h-4 w-4 flex-shrink-0" />, label: "Gender", value: patientDetails.profile.gender },
-            { icon: <Home className="h-4 w-4 flex-shrink-0" />, label: "Address", value: patientDetails.profile.address || "N/A" },
-            {
-              icon: <Calendar className="h-4 w-4 flex-shrink-0" />,
-              label: "Date of Birth",
-              value: patientDetails.profile.dateOfBirth ? new Date(patientDetails.profile.dateOfBirth).toLocaleDateString() : 'N/A'
-            },
-            { icon: <Phone className="h-4 w-4 flex-shrink-0" />, label: "Mobile", value: patientDetails.phoneNumber || "N/A" },
-            { icon: <Droplet className="h-4 w-4 flex-shrink-0" />, label: "Allergies", value: patientDetails.profile.allergies || 'None' },
-            { icon: <Heart className="h-4 w-4 flex-shrink-0" />, label: "Medical History", value: patientDetails.profile.medicalHistory || 'N/A' },
-            { icon: <Phone className="h-4 w-4 flex-shrink-0" />, label: "Emergency Contact", value: patientDetails.profile.emergencyContact },
-          ].map((item, idx) => (
-            <div key={idx} className="flex items-center gap-1.5 rounded-full bg-custom-mutedgreen px-3 py-2 text-sm">
-              {item.icon}
-              <span className="text-xs">{item.label}:</span>
-              <span className="font-semibold">{item.value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </Card>
-  );
-
-  const LabReportsSection = () => (
-    <Card className="rounded-lg p-4 bg-custom-mutedgreen">
-      <h3 className="font-semibold text-xl mb-4">Lab Reports</h3>
-      <div className="flex flex-wrap gap-4">
-        {patientDetails?.labBookings.map(labBooking => (
-          <Card
-            key={labBooking.id}
-            className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center"
-          >
-            <div className="absolute -right-4 -top-4 h-24 w-24 opacity-5">
-              <FileText className="h-full w-full" />
-            </div>
-            <h4 className="font-medium mb-2"><b>{labBooking.labPackageName}</b></h4>
-            <p className="text-sm mb-4">Booked on {new Date(labBooking.date).toLocaleDateString()}</p>
-            <div className="mt-auto flex items-center justify-between">
-              {Array.isArray(labBooking.reportLink) && labBooking.reportLink.length > 0 ? (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant={"outline"} size="sm">View Reports</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogTitle>Lab Reports</DialogTitle>
-                    <div className="flex flex-wrap gap-2">
-                      {labBooking.reportLink.map((url, index) => {
-                        const fileName = decodeURIComponent(url.split("/").pop() || `LabReport-${index + 1}`);
-                        return (
-                          <a key={index} href={url} target="_blank" rel="noopener noreferrer">
-                            <Button variant="outline" size="sm" className="whitespace-nowrap">{fileName}</Button>
-                          </a>
-                        );
-                      })}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              ) : (
-                <span className="text-gray-500 text-sm">No reports</span>
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
-    </Card>
-  );
-
-  const AppointmentPrescriptionsSection = () => (
-    <Card className="rounded-lg p-4 bg-custom-mutedgreen">
-      <h3 className="font-semibold text-xl mb-4">Appointment Prescriptions</h3>
-      <div className="flex flex-wrap gap-4">
-        {patientDetails?.doctorAppointments?.filter(apt => 
-          apt.status === "COMPLETED" || apt.prescriptionLink
-        ).map(appointment => (
-          <Card key={appointment.id}
-            className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center">
-            <Badge variant="outline" className="mb-2 text-secondary">
-              # {appointment.id}
-            </Badge>
-            <h4 className="font-medium mb-2">{appointment.doctorName}</h4>
-            <p className="text-sm mb-2">
-              Date: {new Date(appointment.date).toLocaleDateString('en-GB')}
-            </p>
-            <div className="mt-auto flex flex-col items-center gap-2">
-              {appointment.prescriptionLink ? (
-                <a
-                  href={appointment.prescriptionLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button variant="outline" size="sm">View</Button>
-                </a>
-              ) : (
-                <span className="text-gray-500 text-sm">No prescription</span>
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
-    </Card>
-  );
-
-  const UpcomingAppointmentsSection = () => (
-    <Card className="rounded-lg p-4 bg-custom-mutedgreen">
-      <h3 className="font-semibold text-xl mb-4">Upcoming Appointments</h3>
-      <div className="flex flex-wrap gap-4">
-        {patientDetails?.doctorAppointments?.filter(apt => 
-          apt.status === "Scheduled" && new Date(apt.date) > new Date()
-        ).map(appointment => (
-          <Card key={appointment.id}
-            className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center">
-            <Badge variant="outline" className="mb-2 text-secondary">
-              # {appointment.id}
-            </Badge>
-            <h4 className="font-medium mb-2">{appointment.doctorName}</h4>
-            <p className="text-sm mb-2">
-              Date: {new Date(appointment.date).toLocaleDateString('en-GB')}
-            </p>
-            <div className="mt-auto flex flex-col items-center gap-2">
-              <Badge variant="outline" className="text-orange-600 border-orange-300">
-                {appointment.type}
-              </Badge>
-            </div>
-          </Card>
-        ))}
-      </div>
-    </Card>
-  );
 
   const SummarySection = () => {
     const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>("");
@@ -614,27 +465,31 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
     <>
       <ToastContainer />
       <div className="container mx-auto p-4">
-        {/* Dashboard Grid */}
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-          {/* Patient Info */}
-          <ProfileInfoCard />
+        {/* Top Row - 12 columns layout */}
+        <div className="grid gap-4 grid-cols-12 mb-6">
+          {/* First 6 columns (2+2+2) */}
+          <PatientInfoCard patient={{
+            ...patientDetails,
+            subscriptions: patientDetails.subscriptions
+          }} />
+          <UpcomingAppointmentCard appointments={patientDetails.doctorAppointments} />
+          <DietPlanRequestCard patient={patientDetails} />
+          
+          {/* Next 6 columns */}
+          <PrescriptionsSection appointments={patientDetails.doctorAppointments} patientName={patientDetails.name} />
+        </div>
 
-          {/* Lab Reports */}
-          <LabReportsSection />
+        {/* Lab Reports Section */}
+        <LabReportsSection labBookings={patientDetails.labBookings} />
 
-          {/* Appointment Prescriptions */}
-          <AppointmentPrescriptionsSection />
+        {/* Health Insights */}
+        <div className="col-span-full mt-6">
+          <HealthInsightsPanel patientId={patientId} />
+        </div>
 
-          {/* Health Insights */}
-          <div className="col-span-full">
-            <HealthInsightsPanel patientId={patientId} />
-          </div>
-
-          {/* Summary Section */}
+        {/* Summary Section */}
+        <div className="col-span-full mt-6">
           <SummarySection />
-
-          {/* Upcoming Appointments */}
-          <UpcomingAppointmentsSection />
         </div>
       </div>
     </>
