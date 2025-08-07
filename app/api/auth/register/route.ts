@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { decryptData } from '@/lib/encryption';
+import jwt from 'jsonwebtoken';
 
 export async function POST(request: Request) {
   const { name, age, gender, phoneNumber, doctorCode: rawDoctorCode } = await request.json();
@@ -96,7 +97,26 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, user: newUser });
+    // Create JWT token for newly registered user
+    const TOKEN_LIFETIME_DAYS = 15;
+    const TOKEN_LIFETIME_SECONDS = TOKEN_LIFETIME_DAYS * 24 * 60 * 60;
+    
+    const token = jwt.sign(
+      { plusAddedPhoneNumber: phoneNumber, userExists: true },
+      process.env.JWT_SECRET!,
+      { expiresIn: `${TOKEN_LIFETIME_DAYS}d` }
+    );
+    
+    const response = NextResponse.json({ success: true, user: newUser });
+    response.cookies.set("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: TOKEN_LIFETIME_SECONDS,
+      path: "/",
+    });
+    
+    return response;
   } catch (error) {
     console.error('Registration error:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json({ 
