@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import EnhancedUploadModal from "@/components/pathology/EnhancedUploadModal";
+import ConsolidatedUploadModal from "@/components/pathology/ConsolidatedUploadModal";
+import ViewReportsModal from "@/components/pathology/ViewReportsModal";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
@@ -72,6 +73,7 @@ export default function PatientDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [activeBooking, setActiveBooking] = useState<LabBooking | null>(null);
+  const [viewReportsModalOpen, setViewReportsModalOpen] = useState(false);
   const [selectedReports, setSelectedReports] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [buttonClicked, setButtonClicked] = useState<number | null>(null);
@@ -195,7 +197,7 @@ export default function PatientDetailsPage() {
 
   const openReportsModal = (reports: string[]) => {
     setSelectedReports(reports);
-    setIsModalOpen(true);
+    setViewReportsModalOpen(true);
   };
 
   const closeModal = () => {
@@ -485,7 +487,10 @@ export default function PatientDetailsPage() {
                                   variant="ghost"
                                   size="sm"
                                   className="text-primary hover:text-primary/80 hover:bg-primary/10 text-xs px-3 py-1.5 h-auto whitespace-nowrap"
-                                  onClick={() => openReportsModal(reports)}
+                                  onClick={() => {
+                                    setActiveBooking(booking);
+                                    setViewReportsModalOpen(true);
+                                  }}
                                 >
                                   <FileText className="h-3 w-3 mr-1.5" />
                                   View Reports ({reports.length})
@@ -504,8 +509,8 @@ export default function PatientDetailsPage() {
         </div>
       </div>
 
-      {/* Enhanced Upload Modal */}
-      <EnhancedUploadModal
+      {/* Consolidated Upload Modal */}
+      <ConsolidatedUploadModal
         isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
         booking={activeBooking}
@@ -513,70 +518,14 @@ export default function PatientDetailsPage() {
         onUploadComplete={handleUploadComplete}
       />
 
-      {/* Reports Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">Lab Reports</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={closeModal}
-                className="h-8 w-8 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
-              {selectedReports.length === 0 ? (
-                <div className="text-center py-8">
-                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">No reports available</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {selectedReports.map((report, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5 text-primary" />
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            Report {index + 1}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {report.split('/').pop() || 'Lab Report'}
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(report, '_blank')}
-                        className="text-primary border-primary/20 hover:bg-primary/10"
-                      >
-                        View
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="flex justify-end p-6 border-t">
-              <Button
-                variant="outline"
-                onClick={closeModal}
-                className="mr-2"
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* View Reports Modal */}
+      <ViewReportsModal
+        isOpen={viewReportsModalOpen}
+        onClose={() => setViewReportsModalOpen(false)}
+        booking={activeBooking}
+        patientName={patient?.name || 'Patient'}
+        existingReports={activeBooking?.reportLink || activeBooking?.labResult || []}
+      />
     </>
   );
 } 

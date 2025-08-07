@@ -1,17 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, CheckCircle, X, AlertCircle } from "lucide-react";
+import { 
+  Upload, FileText, CheckCircle, X, Edit2, Eye, Download, 
+  Trash2, Save, X as CloseIcon, Plus
+} from "lucide-react";
 import { toast } from "react-toastify";
 import { put } from "@vercel/blob";
 import axios from "axios";
 import { format } from "date-fns";
 
-interface EnhancedUploadModalProps {
+interface ConsolidatedUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   booking: any;
@@ -19,18 +23,54 @@ interface EnhancedUploadModalProps {
   onUploadComplete: () => void;
 }
 
-export default function EnhancedUploadModal({
+interface ReportFile {
+  id: string;
+  originalName: string;
+  displayName: string;
+  url: string;
+  isEditing: boolean;
+  isNew?: boolean;
+}
+
+export default function ConsolidatedUploadModal({
   isOpen,
   onClose,
   booking,
   patientName,
   onUploadComplete,
-}: EnhancedUploadModalProps) {
+}: ConsolidatedUploadModalProps) {
   const [files, setFiles] = useState<FileList | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [reportFiles, setReportFiles] = useState<ReportFile[]>([]);
+  const [editingFileName, setEditingFileName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load existing reports when modal opens
+  useEffect(() => {
+    if (isOpen && booking?.labBooking?.labResult) {
+      const existingFiles: ReportFile[] = booking.labBooking.labResult.map((url: string, index: number) => ({
+        id: `existing-${index}`,
+        originalName: url.split('/').pop() || `Report ${index + 1}`,
+        displayName: url.split('/').pop() || `Report ${index + 1}`,
+        url,
+        isEditing: false,
+      }));
+      setReportFiles(existingFiles);
+    }
+  }, [isOpen, booking]);
+
+  const generateUniqueFileName = (originalName: string): string => {
+    const timestamp = format(new Date(), "yyyyMMdd-HHmmss");
+    const extension = originalName.split('.').pop();
+    const nameWithoutExt = originalName.replace(/\.[^/.]+$/, "");
+    const cleanPatientName = patientName?.replace(/[^a-zA-Z0-9]/g, "-") || "patient";
+    const testName = booking?.labPackageName?.replace(/[^a-zA-Z0-9]/g, "-") || "test";
+    
+    return `${cleanPatientName}-${testName}-${nameWithoutExt}-${timestamp}.${extension}`;
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     console.log("File input change event triggered");
@@ -46,16 +86,6 @@ export default function EnhancedUploadModal({
     } else {
       console.log("No files selected");
     }
-  };
-
-  const generateFileName = (originalName: string, index: number) => {
-    const date = format(new Date(), "yyyy-MM-dd");
-    const testName = booking?.labPackageName || "lab-test";
-    const extension = originalName.split('.').pop();
-    const cleanPatientName = patientName?.replace(/[^a-zA-Z0-9]/g, "-") || "patient";
-    const cleanTestName = testName?.replace(/[^a-zA-Z0-9]/g, "-") || "test";
-    
-    return `${cleanPatientName}-${cleanTestName}-${date}-${index + 1}.${extension}`;
   };
 
   const handleUpload = async () => {
@@ -74,7 +104,7 @@ export default function EnhancedUploadModal({
 
       for (let i = 0; i < totalFiles; i++) {
         const file = files[i];
-        const newFileName = generateFileName(file.name, i);
+        const newFileName = generateUniqueFileName(file.name);
         
         console.log(`Uploading file ${i + 1}/${totalFiles}: ${newFileName}`);
         
@@ -86,6 +116,16 @@ export default function EnhancedUploadModal({
 
         uploadedLinks.push(url);
         setUploadedFiles(prev => [...prev, newFileName]);
+        
+        // Add new file to the list
+        setReportFiles(prev => [...prev, {
+          id: `new-${Date.now()}-${i}`,
+          originalName: file.name,
+          displayName: newFileName,
+          url,
+          isEditing: false,
+          isNew: true,
+        }]);
         
         // Update progress
         const progress = ((i + 1) / totalFiles) * 100;
@@ -118,18 +158,83 @@ export default function EnhancedUploadModal({
     }
   };
 
+  const startEditing = (fileId: string, currentName: string) => {
+    setReportFiles(prev => 
+      prev.map(file => 
+        file.id === fileId 
+          ? { ...file, isEditing: true }
+          : { ...file, isEditing: false }
+      )
+    );
+    setEditingFileName(currentName);
+  };
+
+  const saveFileName = (fileId: string) => {
+    if (editingFileName.trim()) {
+      setReportFiles(prev => 
+        prev.map(file => 
+          file.id === fileId 
+            ? { ...file, displayName: editingFileName.trim(), isEditing: false }
+            : file
+        )
+      );
+      toast.success("File name updated successfully!");
+    } else {
+      toast.warning("File name cannot be empty");
+    }
+  };
+
+  const cancelEditing = (fileId: string) => {
+    setReportFiles(prev => 
+      prev.map(file => 
+        file.id === fileId 
+          ? { ...file, isEditing: false }
+          : file
+      )
+    );
+  };
+
+  const deleteFile = async (fileId: string, fileUrl: string) => {
+    if (confirm("Are you sure you want to delete this report?")) {
+      try {
+        // Remove from local state
+        setReportFiles(prev => prev.filter(file => file.id !== fileId));
+        
+        // Update the lab booking to remove this file
+        const updatedUrls = reportFiles
+          .filter(file => file.id !== fileId)
+          .map(file => file.url);
+        
+        const response = await axios.put(`/api/admin/dashboard/patients-details`, {
+          labBookingId: booking?.id,
+          links: updatedUrls,
+          status: "COMPLETED"
+        });
+
+        if (response.status === 200) {
+          toast.success("Report deleted successfully!");
+          onUploadComplete();
+        }
+      } catch (error) {
+        console.error("Delete failed", error);
+        toast.error("Failed to delete report");
+      }
+    }
+  };
+
   const handleClose = () => {
     setFiles(null);
     setUploading(false);
     setUploadProgress(0);
     setUploadSuccess(false);
     setUploadedFiles([]);
+    setEditingFileName("");
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-gray-800 flex items-center justify-between">
             <span>Upload Lab Reports</span>
@@ -163,20 +268,8 @@ export default function EnhancedUploadModal({
               <span className="ml-2 font-medium">{booking?.date ? new Date(booking.date).toLocaleDateString() : 'N/A'}</span>
             </div>
             <div>
-              <span className="text-gray-600">Status:</span>
-              <Badge className={`ml-2 ${
-                booking?.status === "COMPLETED" 
-                  ? "bg-green-100 text-green-800" 
-                  : booking?.pathologyStatus === "IN_PROGRESS"
-                    ? "bg-orange-100 text-orange-800"
-                    : "bg-gray-100 text-gray-800"
-              }`}>
-                {booking?.status === "COMPLETED" 
-                  ? "Completed" 
-                  : booking?.pathologyStatus === "IN_PROGRESS"
-                    ? "In Progress"
-                    : "Scheduled"}
-              </Badge>
+              <span className="text-gray-600">Total Reports:</span>
+              <span className="ml-2 font-medium">{reportFiles.length}</span>
             </div>
           </div>
         </div>
@@ -211,7 +304,7 @@ export default function EnhancedUploadModal({
                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                   onChange={handleFileSelect}
                   className="hidden"
-                  id={`enhanced-upload-files-${booking?.id || 'default'}`}
+                  id={`consolidated-upload-files-${booking?.id || 'default'}`}
                   disabled={uploading}
                   ref={(input) => {
                     if (input) {
@@ -225,7 +318,7 @@ export default function EnhancedUploadModal({
                   disabled={uploading}
                   onClick={() => {
                     console.log("Choose Files button clicked");
-                    const fileInput = document.getElementById(`enhanced-upload-files-${booking?.id || 'default'}`);
+                    const fileInput = document.getElementById(`consolidated-upload-files-${booking?.id || 'default'}`);
                     console.log("File input element:", fileInput);
                     if (fileInput) {
                       fileInput.click();
@@ -245,7 +338,7 @@ export default function EnhancedUploadModal({
                         <FileText className="h-4 w-4 text-green-600" />
                         <span className="text-green-600">{file.name}</span>
                         <span className="text-gray-500">→</span>
-                        <span className="text-blue-600">{generateFileName(file.name, index)}</span>
+                        <span className="text-blue-600">{generateUniqueFileName(file.name)}</span>
                       </div>
                     ))}
                   </div>
@@ -272,6 +365,118 @@ export default function EnhancedUploadModal({
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Existing Reports Management */}
+            {reportFiles.length > 0 && (
+              <div className="space-y-4">
+                <h4 className="font-medium text-gray-800">Manage Existing Reports ({reportFiles.length})</h4>
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {reportFiles.map((file, index) => (
+                    <div
+                      key={file.id}
+                      className={`flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 ${
+                        file.isNew ? 'bg-green-50 border-green-200' : 'bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <FileText className="h-5 w-5 text-primary flex-shrink-0" />
+                        
+                        {file.isEditing ? (
+                          <div className="flex items-center gap-2 flex-1">
+                            <Input
+                              value={editingFileName}
+                              onChange={(e) => setEditingFileName(e.target.value)}
+                              className="flex-1"
+                              autoFocus
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => saveFileName(file.id)}
+                              className="h-8 px-2"
+                            >
+                              <Save className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => cancelEditing(file.id)}
+                              className="h-8 px-2"
+                            >
+                              <CloseIcon className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-gray-900 truncate">
+                                {file.displayName}
+                              </p>
+                              {file.isNew && (
+                                <Badge className="bg-green-100 text-green-800 text-xs">
+                                  New
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-500">
+                              Original: {file.originalName}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {!file.isEditing && (
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(file.url, '_blank')}
+                            className="h-8 px-2 text-blue-600 hover:text-blue-700"
+                            title="View Report"
+                          >
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const link = document.createElement('a');
+                              link.href = file.url;
+                              link.download = file.displayName;
+                              link.click();
+                            }}
+                            className="h-8 px-2 text-green-600 hover:text-green-700"
+                            title="Download Report"
+                          >
+                            <Download className="h-3 w-3" />
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => startEditing(file.id, file.displayName)}
+                            className="h-8 px-2 text-orange-600 hover:text-orange-700"
+                            title="Edit File Name"
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteFile(file.id, file.url)}
+                            className="h-8 px-2 text-red-600 hover:text-red-700"
+                            title="Delete Report"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

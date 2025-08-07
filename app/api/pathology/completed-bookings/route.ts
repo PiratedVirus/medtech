@@ -3,9 +3,9 @@ import prisma from "@/lib/prisma";
 
 export async function GET(request: Request) {
   try {
-    const completedBookings = await prisma.labBooking.findMany({
+    const completedAssignments = await prisma.labAssignment.findMany({
       where: {
-        status: "COMPLETED", // Using single status
+        status: "COMPLETED", // Using LabAssignment status
         deletedAt: null,
       },
       include: {
@@ -15,70 +15,81 @@ export async function GET(request: Request) {
             name: true,
           },
         },
-        labPackage: {
-          select: {
-            id: true,
-            name: true,
-            price: true,
+        phlebotomist: {
+          include: {
+            user: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
-        labAssignments: {
+        labBooking: {
           include: {
-            phlebotomist: {
-              include: {
-                user: {
-                  select: {
-                    name: true,
-                  },
-                },
+            labPackage: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+              },
+            },
+            payment: {
+              select: {
+                id: true,
+                amount: true,
+                paymentStatus: true,
+                paymentMethod: true,
+                currency: true,
               },
             },
           },
         },
       },
       orderBy: {
-        labDate: "desc",
+        assignedDate: "desc",
       },
     });
 
-    const transformedBookings = completedBookings.map((booking) => ({
-      id: booking.id,
+    const transformedBookings = completedAssignments.map((assignment) => ({
+      id: assignment.id,
+      labBookingId: assignment.labBookingId,
       patient: {
-        name: booking.patient.name,
+        name: assignment.patient.name,
       },
-      labBooking: {
-        id: booking.id,
-        labPackageId: booking.labPackageId,
-        appointmentFor: booking.appointmentFor,
-        fullName: booking.fullName,
-        mobile: booking.mobile,
-        email: booking.email,
-        address: booking.address,
-        paymentOption: booking.paymentOption,
-        status: booking.status, // Single status
-        labDate: booking.labDate,
-        labResult: booking.labResult || [],
-        labPackage: {
-          id: booking.labPackage.id,
-          name: booking.labPackage.name,
-          price: booking.labPackage.price,
-        },
-      },
-      assignedDate: booking.labAssignments[0]?.assignedDate || booking.labDate,
-      assignedTime: booking.labAssignments[0]?.assignedTime || "09:00",
-      status: booking.status, // Single status
-      sampleCollected: booking.labAssignments[0]?.sampleCollected || false,
-      phlebotomist: booking.labAssignments[0]?.phlebotomist || null,
+      labBooking: assignment.labBooking ? {
+        id: assignment.labBooking.id,
+        labPackageId: assignment.labBooking.labPackageId,
+        appointmentFor: assignment.labBooking.appointmentFor,
+        fullName: assignment.labBooking.fullName,
+        mobile: assignment.labBooking.mobile,
+        email: assignment.labBooking.email,
+        address: assignment.labBooking.address,
+        paymentOption: assignment.labBooking.paymentOption,
+        status: assignment.labBooking.status,
+        labDate: assignment.labBooking.labDate,
+        labResult: assignment.labBooking.labResult || [],
+        labPackage: assignment.labBooking.labPackage ? {
+          id: assignment.labBooking.labPackage.id,
+          name: assignment.labBooking.labPackage.name,
+          price: assignment.labBooking.labPackage.price,
+        } : null,
+        payment: assignment.labBooking.payment,
+      } : null,
+      assignedDate: assignment.assignedDate,
+      assignedTime: assignment.assignedTime,
+      status: assignment.status,
+      sampleCollected: assignment.sampleCollected,
+      phlebotomist: assignment.phlebotomist,
     }));
 
     return NextResponse.json({
       success: true,
-      completedBookings: transformedBookings,
+      bookings: transformedBookings,
     });
   } catch (error) {
-    console.error("Error fetching completed bookings:", error);
+    console.error("Error fetching completed assignments:", error);
     return NextResponse.json(
-      { error: "Failed to fetch completed bookings" },
+      { error: "Failed to fetch completed assignments" },
       { status: 500 }
     );
   }

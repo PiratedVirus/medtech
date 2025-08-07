@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { FileText, ArrowUpRight, Search, Download, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import StatusUpdateModal from "@/components/pathology/StatusUpdateModal";
-import LabBookingUploadModal from "@/components/pathology/LabBookingUploadModal";
+import ConsolidatedUploadModal from "@/components/pathology/ConsolidatedUploadModal";
 
 interface Booking {
   id: number;
@@ -270,10 +270,11 @@ export function AllLabBookingsCard() {
       />
 
       {/* Upload Reports Modal */}
-      <LabBookingUploadModal
+      <ConsolidatedUploadModal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
-        assignment={selectedBooking}
+        booking={selectedBooking}
+        patientName={selectedBooking?.patientName || selectedBooking?.fullName || 'Patient'}
         onUploadComplete={handleUploadComplete}
       />
 

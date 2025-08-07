@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import StatusUpdateModal from "@/components/pathology/StatusUpdateModal";
-import LabBookingUploadModal from "@/components/pathology/LabBookingUploadModal";
+import ConsolidatedUploadModal from "@/components/pathology/ConsolidatedUploadModal";
 import CdLoader from "@/components/ui/custom/cd-loader";
 
 interface Booking {
@@ -493,10 +493,11 @@ export default function BookingsPage() {
       />
 
       {/* Upload Reports Modal */}
-      <LabBookingUploadModal
+      <ConsolidatedUploadModal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
-        assignment={selectedBooking}
+        booking={selectedBooking}
+        patientName={selectedBooking?.patientName || selectedBooking?.fullName || 'Patient'}
         onUploadComplete={handleUploadComplete}
       />
 
