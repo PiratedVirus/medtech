@@ -487,7 +487,7 @@ const formatParameters = (parameters?: string) => {
 
             {/* Success Modal */}
             <SuccessModal open={isProcessing} text="Processing your plan..." isLoading onClose={() => {}} />
-            <SuccessModal text="Plan booked successfully!" open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
+            <SuccessModal text="Congratulations! Your journey to better health begins now with CareDiabetics!" open={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
 
             {/* Dialog for Viewing Parameters */}
             <ViewParametersDialog

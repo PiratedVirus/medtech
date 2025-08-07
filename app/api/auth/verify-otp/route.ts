@@ -51,25 +51,29 @@ export async function POST(request: Request) {
     // Adjust this check based on the response format from MSG91
     if (verificationCheck.type === "success" || verificationCheck.status === "success") {
       const user = await checkUserExists(plusAddedPhoneNumber);
-      const userExists = !!user;
-      const userRole = user?.role;
+      if (!user) {
+        return NextResponse.json({ success: true, userExists: false });
+      }
 
-      const token = jwt.sign(
-        { plusAddedPhoneNumber, userExists, userRole },
-        process.env.JWT_SECRET!,
-        { expiresIn: `${TOKEN_LIFETIME_DAYS}d` }   // e.g. "15d"
-      );
+      const userRole = user?.role;
       
-      const response = NextResponse.json({ success: true, userExists });
-      response.cookies.set("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: TOKEN_LIFETIME_SECONDS,
-        path: "/",
-      });
-      
-      return response;
+      // Only create token for existing users
+        const token = jwt.sign(
+          { plusAddedPhoneNumber, userExists: true, userRole: userRole },
+          process.env.JWT_SECRET!,
+          { expiresIn: `${TOKEN_LIFETIME_DAYS}d` }
+        );
+        
+        const response = NextResponse.json({ success: true, userExists: true });
+        response.cookies.set("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+          maxAge: TOKEN_LIFETIME_SECONDS,
+          path: "/",
+        });
+        
+        return response;
     } else {
       return NextResponse.json({
         success: false,

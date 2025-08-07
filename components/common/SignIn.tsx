@@ -17,6 +17,10 @@ export default function SignInForm() {
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [phoneError, setPhoneError] = useState("");
   const [otpError, setOtpError] = useState("");
+  const [registrationError, setRegistrationError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const registerButtonRef = useRef<HTMLButtonElement>(null);
   const searchParams = useSearchParams();
   const encryptedCode = searchParams.get("code");
   const [doctorCode, setDoctorCode] = useState<string | null>(null);
@@ -43,6 +47,63 @@ export default function SignInForm() {
       }
     }
   }, [encryptedCode]);
+
+  // Handle page visibility changes to prevent race conditions
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // Page is being hidden (user switching apps, receiving call, etc.)
+        // Reset submission state to prevent issues when user returns
+        setIsSubmitting(false);
+        setIsRedirecting(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + Enter to scroll to register button (only on registration step)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && step === 'register' && registerButtonRef.current) {
+        e.preventDefault();
+        registerButtonRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [step]);
+
+  // Reset redirecting state when step changes
+  useEffect(() => {
+    setIsRedirecting(false);
+  }, [step]);
+
+  // Auto-scroll to register button when registration step is active
+  useEffect(() => {
+    if (step === "register" && registerButtonRef.current) {
+      // Small delay to ensure the form is rendered
+      const timer = setTimeout(() => {
+        const button = registerButtonRef.current;
+        if (button) {
+          const rect = button.getBoundingClientRect();
+          // Only scroll if button is completely hidden (not just partially visible)
+          const isCompletelyHidden = rect.bottom < 0 || rect.top > window.innerHeight;
+          
+          if (isCompletelyHidden) {
+            button.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center' 
+            });
+          }
+        }
+      }, 300); // Increased delay to be less aggressive
+      
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
 
   const handleOtpChange = (index: number, value: string) => {
     if (value.length <= 1) {
@@ -111,8 +172,10 @@ export default function SignInForm() {
 
         if (data.success) {
           if (data.userExists) {
+            // Existing user - redirect to dashboard (token already set)
             window.location.href = "/dashboard";
           } else {
+            // New user - go to registration (no token set yet)
             setStep("register");
           }
           setOtpError("");
@@ -128,19 +191,56 @@ export default function SignInForm() {
   };
 
   const handleRegistrationSubmit = async (data: any) => {
+    // Prevent duplicate submissions
+    if (isSubmitting || isRedirecting) {
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setRegistrationError(""); // Clear any existing errors
+    
     try {
       const response = await axios.post("/api/auth/register", {
         ...data,
         phoneNumber: formatPhoneNumber(phoneNumber),
         doctorCode: doctorCode || data.doctorCode,
+      }, {
+        timeout: 30000, // 30 second timeout
       });
+      console.log("handleRegistrationSubmit response is ", response)
       if (response.data.success) {
-        window.location.href = "/dashboard";
+        setIsRedirecting(true); // Mark as redirecting
+        // Small delay to ensure state is updated before redirect
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 100);
+        return; // Exit early to prevent finally block from executing
       } else {
-        alert("Registration Failed: " + response.data.error);
+        // Check if the error is due to user already existing
+        if (response.data.error === 'User already exists') {
+          setIsRedirecting(true); // Mark as redirecting
+          // Small delay to ensure state is updated before redirect
+          setTimeout(() => {
+            window.location.href = "/dashboard";
+          }, 100);
+          return; // Exit early to prevent finally block from executing
+        } else {
+          // Clear any existing error and set new error after 5 seconds
+          setTimeout(() => {
+            setRegistrationError("Error on registering user: " + response.data.error);
+          }, 5000);
+        }
       }
     } catch (error: any) {
-      alert("Registration Failed: " + error.message);
+      // Clear any existing error and set new error after 5 seconds
+      setTimeout(() => {
+        setRegistrationError("Registration Failed: " + error.message);
+      }, 5000);
+    } finally {
+      // Only reset isSubmitting if we're not redirecting
+      if (!isRedirecting) {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -171,13 +271,18 @@ export default function SignInForm() {
           </div>
         ) : (
           // **Registration View**
-          <div className="max-h-[calc(100vh-4rem)] overflow-y-auto pb-20 px-2">
+          <div className="max-h-[calc(100vh-8rem)] overflow-y-auto pb-8 px-2">
             <h1 className="text-custom-green text-center text-2xl font-normal">Register</h1>
             <div className="h-0.5 w-12 bg-custom-green text-center mt-2 mx-auto" />
+            {registrationError && (
+              <p className="text-red-500 text-sm mt-4 text-center">{registrationError}</p>
+            )}
             <RegistrationForm 
+              ref={registerButtonRef}
               onSubmit={handleRegistrationSubmit} 
               preFilledDoctorCode={doctorCode}
               isDoctorCodeDisabled={!!doctorCode}
+              isSubmitting={isSubmitting || isRedirecting}
             />
           </div>
         )}

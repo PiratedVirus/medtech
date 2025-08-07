@@ -89,6 +89,14 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
+    // Verify that user exists (token should only be created for existing users)
+    if (!decodedUser.userExists) {
+      // Token indicates user doesn't exist, clear token and redirect to login
+      const response = NextResponse.redirect(new URL("/login", request.url));
+      response.cookies.delete("token");
+      return response;
+    }
+
     return NextResponse.next();
   }
 
