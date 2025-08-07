@@ -1,15 +1,15 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-async function seedSubscriptionTrackers() {
+async function seedSubscriptionTrackers(tx = prisma) {
   console.log("📊 Seeding subscription trackers...");
 
   // Get patients and plans
-  const patients = await prisma.patientProfile.findMany({
+  const patients = await tx.patientProfile.findMany({
     include: { user: true }
   });
 
-  const plans = await prisma.plan.findMany();
+  const plans = await tx.plan.findMany();
 
   if (patients.length === 0 || plans.length === 0) {
     console.log("⚠️ No patients or plans found, skipping subscription tracker seeding");
@@ -27,7 +27,7 @@ async function seedSubscriptionTrackers() {
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + (plan.duration === "6months" ? 6 : 12));
 
-    const subscriptionTracker = await prisma.subscriptionTracker.create({
+    const subscriptionTracker = await tx.subscriptionTracker.create({
       data: {
         patientId: patient.id,
         planId: plan.id,

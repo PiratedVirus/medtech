@@ -1,11 +1,11 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-async function seedHealthMetrics() {
+async function seedHealthMetrics(tx = prisma) {
   console.log("📊 Seeding health metrics...");
 
   // Get patients
-  const patients = await prisma.user.findMany({
+  const patients = await tx.user.findMany({
     where: { role: "PATIENT" }
   });
 
@@ -184,7 +184,7 @@ async function seedHealthMetrics() {
   const healthMetrics = [];
   for (const metricData of healthMetricsData) {
     if (metricData.userId) {
-      const metric = await prisma.healthMetric.create({
+      const metric = await tx.healthMetric.create({
         data: metricData,
       });
       healthMetrics.push(metric);

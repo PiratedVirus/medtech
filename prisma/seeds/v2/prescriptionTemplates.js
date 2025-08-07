@@ -1,11 +1,11 @@
 const { PrismaClient, ComplaintSeverity } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-async function seedPrescriptionTemplates() {
+async function seedPrescriptionTemplates(tx = prisma) {
   console.log("📋 Seeding prescription templates...");
 
   // Get doctors
-  const doctors = await prisma.user.findMany({
+  const doctors = await tx.user.findMany({
     where: { role: "DOCTOR" }
   });
 
@@ -19,7 +19,7 @@ async function seedPrescriptionTemplates() {
   // Create prescription templates for doctors
   for (const doctor of doctors) {
     // Template 1: Diabetes Management
-    const diabetesTemplate = await prisma.prescriptionTemplate.create({
+    const diabetesTemplate = await tx.prescriptionTemplate.create({
       data: {
         doctorId: doctor.id,
         templateName: "Diabetes Management",
@@ -29,7 +29,7 @@ async function seedPrescriptionTemplates() {
     });
 
     // Add complaints for diabetes template
-    await prisma.templateComplaint.createMany({
+    await tx.templateComplaint.createMany({
       data: [
         {
           templateId: diabetesTemplate.id,
@@ -45,7 +45,7 @@ async function seedPrescriptionTemplates() {
     });
 
     // Add medicines for diabetes template
-    await prisma.templateMedicine.createMany({
+    await tx.templateMedicine.createMany({
       data: [
         {
           templateId: diabetesTemplate.id,
@@ -69,7 +69,7 @@ async function seedPrescriptionTemplates() {
     });
 
     // Template 2: Hypertension Management
-    const hypertensionTemplate = await prisma.prescriptionTemplate.create({
+    const hypertensionTemplate = await tx.prescriptionTemplate.create({
       data: {
         doctorId: doctor.id,
         templateName: "Hypertension Management",
@@ -79,7 +79,7 @@ async function seedPrescriptionTemplates() {
     });
 
     // Add complaints for hypertension template
-    await prisma.templateComplaint.createMany({
+    await tx.templateComplaint.createMany({
       data: [
         {
           templateId: hypertensionTemplate.id,
@@ -95,7 +95,7 @@ async function seedPrescriptionTemplates() {
     });
 
     // Add medicines for hypertension template
-    await prisma.templateMedicine.createMany({
+    await tx.templateMedicine.createMany({
       data: [
         {
           templateId: hypertensionTemplate.id,

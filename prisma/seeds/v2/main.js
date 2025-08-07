@@ -106,6 +106,11 @@ async function main() {
       const { seedPayments } = require('./payments');
       const payments = await seedPayments(tx);
       
+      // 17. Comprehensive Seed (ensure all tables are populated)
+      console.log("\n🔧 Step 17/17: Running comprehensive seed...");
+      const { comprehensiveSeed } = require('./comprehensiveSeed');
+      await comprehensiveSeed(tx);
+      
       console.log("\n✅ All seeding steps completed successfully!");
       
       return {
@@ -149,7 +154,13 @@ async function main() {
     console.log(`🔬 Lab Tests: ${result.labTests?.length || 0}`);
     console.log(`💊 Medicines: ${result.medicinesData?.medicines?.length || 0}`);
     console.log(`📅 Appointments: ${result.appointmentsData?.appointments?.length || 0}`);
+    console.log(`🔬 Lab Bookings: ${result.labBookings?.labBookings?.length || 0}`);
+    console.log(`📊 Health Metrics: ${result.healthMetrics?.length || 0}`);
+    console.log(`📋 Prescriptions: ${result.prescriptionData?.length || 0}`);
+    console.log(`📋 Prescription Templates: ${result.prescriptionTemplates?.length || 0}`);
+    console.log(`📊 Subscription Trackers: ${result.subscriptionTrackers?.length || 0}`);
     console.log(`💰 Payments: ${result.payments?.length || 0}`);
+    console.log(`🔧 Comprehensive seed completed successfully`);
     
   } catch (error) {
     console.error("\n❌ ERROR DURING SEEDING:");
@@ -189,6 +200,7 @@ const { seedPrescriptionData } = require('./prescriptions');
 const { seedPrescriptionTemplates } = require('./prescriptionTemplates');
 const { seedSubscriptionTrackers } = require('./subscriptionTrackers');
 const { seedPayments } = require('./payments');
+const { comprehensiveSeed } = require('./comprehensiveSeed');
 
 main()
   .catch((e) => {

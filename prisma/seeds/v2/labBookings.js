@@ -1,17 +1,17 @@
 const { PrismaClient, LabAssignmentStatus } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-async function seedLabBookings() {
+async function seedLabBookings(tx = prisma) {
   console.log("🧪 Seeding lab bookings and assignments...");
 
   // Get patients, lab packages, phlebotomists, and pathology lab
-  const patients = await prisma.user.findMany({
+  const patients = await tx.user.findMany({
     where: { role: "PATIENT" }
   });
 
-  const labPackages = await prisma.labPackage.findMany();
-  const phlebotomists = await prisma.phlebotomist.findMany();
-  const pathologyLab = await prisma.pathologyLab.findFirst();
+  const labPackages = await tx.labPackage.findMany();
+  const phlebotomists = await tx.phlebotomist.findMany();
+  const pathologyLab = await tx.pathologyLab.findFirst();
 
   // Seed Lab Bookings
   const labBookingsData = [
@@ -56,7 +56,7 @@ async function seedLabBookings() {
   const labBookings = [];
   for (const bookingData of labBookingsData) {
     if (bookingData.patientId && bookingData.labPackageId) {
-      const booking = await prisma.labBooking.create({
+      const booking = await tx.labBooking.create({
         data: bookingData,
       });
       labBookings.push(booking);
@@ -94,7 +94,7 @@ async function seedLabBookings() {
   const labAssignments = [];
   for (const assignmentData of labAssignmentsData) {
     if (assignmentData.patientId && assignmentData.phlebotomistId && assignmentData.labId) {
-      const assignment = await prisma.labAssignment.create({
+      const assignment = await tx.labAssignment.create({
         data: assignmentData,
       });
       labAssignments.push(assignment);

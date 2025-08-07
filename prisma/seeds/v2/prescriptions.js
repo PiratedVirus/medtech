@@ -1,11 +1,11 @@
 const { PrismaClient, ComplaintSeverity } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-async function seedPrescriptionData() {
+async function seedPrescriptionData(tx = prisma) {
   console.log("📋 Seeding prescription data...");
 
   // Get appointments, doctors, and patients
-  const appointments = await prisma.appointment.findMany({
+  const appointments = await tx.appointment.findMany({
     include: {
       doctor: true,
       patient: true,
@@ -21,7 +21,7 @@ async function seedPrescriptionData() {
 
   for (const appointment of appointments) {
     // Create prescription for each appointment
-    const prescription = await prisma.prescription.create({
+    const prescription = await tx.prescription.create({
       data: {
         appointmentId: appointment.id,
         patientId: appointment.patientId,
@@ -36,7 +36,7 @@ async function seedPrescriptionData() {
     });
 
     // Add complaints
-    await prisma.prescriptionComplaint.createMany({
+    await tx.prescriptionComplaint.createMany({
       data: [
         {
           prescriptionId: prescription.id,
@@ -54,7 +54,7 @@ async function seedPrescriptionData() {
     });
 
     // Add vitals
-    await prisma.prescriptionVitals.create({
+    await tx.prescriptionVitals.create({
       data: {
         prescriptionId: prescription.id,
         bloodPressure: "140/90",
@@ -65,7 +65,7 @@ async function seedPrescriptionData() {
     });
 
     // Add history
-    await prisma.prescriptionHistory.create({
+    await tx.prescriptionHistory.create({
       data: {
         prescriptionId: prescription.id,
         allergies: "None",
@@ -76,7 +76,7 @@ async function seedPrescriptionData() {
     });
 
     // Add systemic examination
-    await prisma.prescriptionSystemicExamination.create({
+    await tx.prescriptionSystemicExamination.create({
       data: {
         prescriptionId: prescription.id,
         general: "Conscious, oriented, afebrile",
@@ -87,7 +87,7 @@ async function seedPrescriptionData() {
     });
 
     // Add medicines
-    await prisma.prescriptionMedicine.createMany({
+    await tx.prescriptionMedicine.createMany({
       data: [
         {
           prescriptionId: prescription.id,
