@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 
 export async function POST() {
   try {
@@ -12,8 +12,9 @@ export async function POST() {
         data: {
           name: "Default Pathology Lab",
           address: "123 Main Street",
-          phone: "+91-1234567890",
+          contactNumber: "+91-1234567890",
           email: "lab@example.com",
+          licenseNumber: "LAB001",
           isActive: true,
         },
       });
@@ -34,8 +35,8 @@ export async function POST() {
     console.error("Create default lab error:", error);
     return NextResponse.json({
       success: false,
-      error: error.message,
-      stack: error.stack
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
     }, { status: 500 });
   }
 } 

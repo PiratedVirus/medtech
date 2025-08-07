@@ -16,7 +16,7 @@ export async function GET(request: Request) {
         appointment: appointment ? {
           id: appointment.id,
           patientId: appointment.patientId,
-          doctorId: appointment.doctorId,
+          userId: appointment.userId,
           appointmentFor: appointment.appointmentFor,
           appointmentDate: appointment.appointmentDate,
           status: appointment.status,

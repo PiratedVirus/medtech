@@ -77,7 +77,6 @@ export async function GET(request: Request) {
             address: true,
             paymentOption: true,
             status: true,
-            pathologyStatus: true,
             labDate: true,
             labResult: true,
             labPackage: {

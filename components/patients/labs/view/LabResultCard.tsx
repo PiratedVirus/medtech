@@ -11,7 +11,6 @@ interface LabResult {
     pdfUrl: string;
     values: string;
   }[];
-  pathologyStatus?: string;
   phlebotomist?: string;
   labAssignmentId?: number;
 }
@@ -67,14 +66,6 @@ export default function LabResultCard({ result }: { result: LabResult }) {
             </p>
           )}
         </div>
-        {result.pathologyStatus && (
-          <div className="flex items-center gap-2">
-            {getStatusIcon(result.pathologyStatus)}
-            <span className="text-sm font-medium text-gray-700">
-              {getStatusText(result.pathologyStatus)}
-            </span>
-          </div>
-        )}
       </div>
 
       <div className="mt-6">

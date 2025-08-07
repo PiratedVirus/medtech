@@ -85,7 +85,6 @@ export async function GET(request: Request) {
         labPackagePrice: booking.labPackage.price,
         paymentOption: booking.paymentOption,
         status: booking.status,
-        pathologyStatus: booking.pathologyStatus,
         labDate: booking.labDate,
         sampleStatus: latestAssignment?.sampleCollected ? "Collected" : "Not Collected",
         assignedPhlebotomist: latestAssignment?.phlebotomist?.user?.name || null,
