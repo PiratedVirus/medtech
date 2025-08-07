@@ -54,7 +54,7 @@ export default function DoctorsPage() {
   return (
     <div className="bg-muted min-h-screen px-4 sm:px-8 md:px-12 lg:px-20 pb-10">
       {/* Mobile tab navigation */}
-      <div className="flex justify-center space-x-4 block md:hidden py-3">
+      <div className="flex justify-center space-x-4 md:hidden py-3">
         <button
           onClick={() => router.push('/dashboard/doctors')}
           className={`px-4 py-2 font-medium ${activeTab === 'doctors'
