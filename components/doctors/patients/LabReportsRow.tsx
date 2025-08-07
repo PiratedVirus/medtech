@@ -1,0 +1,75 @@
+'use client'
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Eye, FileText, Maximize2 } from "lucide-react";
+
+interface LabReportsRowProps {
+  labBookings: Array<{
+    id: number;
+    labPackageName: string;
+    date: string;
+    status: string;
+    reportLink?: string[] | null;
+  }>;
+}
+
+export default function LabReportsRow({ labBookings }: LabReportsRowProps) {
+  const recentReports = labBookings.slice(0, 3);
+
+  return (
+    <Card className="col-span-6 relative overflow-hidden rounded-xl bg-gray-50/80 p-4 shadow-sm border border-gray-100 h-16">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-50/50 to-gray-100/30 rounded-xl" />
+      
+      {/* Expand Icon - Top Right Corner */}
+      {labBookings.length > 0 && (
+        <div className="absolute top-2 right-2 z-30 translate-x-1 md:translate-x-0">
+          <div className="group relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 text-gray-500 hover:text-secondary hover:bg-secondary/10 rounded"
+              title="View More"
+            >
+              <Maximize2 className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      )}
+      
+      <div className="relative z-10 flex items-center justify-between h-full pr-12">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <h3 className="text-lg font-bold text-gray-900">Lab Reports</h3>
+        </div>
+        
+        {/* Report Name Buttons - Slightly Left from Edge */}
+        <div className="flex gap-2 mr-12 md:mr-8">
+          {recentReports.map((labBooking) => (
+            <Button
+              key={labBooking.id}
+              variant="ghost"
+              size="sm"
+              className="text-xs text-primary hover:bg-primary/20 hover:text-primary bg-primary/10 border border-primary/10 rounded-lg px-3 py-2 h-auto"
+              onClick={() => {
+                if (labBooking.reportLink && labBooking.reportLink.length > 0) {
+                  window.open(labBooking.reportLink[0], '_blank');
+                }
+              }}
+            >
+              <FileText className="h-3 w-3 mr-1" />
+              {labBooking.labPackageName}
+            </Button>
+          ))}
+          
+          {/* Empty state if no reports */}
+          {recentReports.length === 0 && (
+            <div className="text-center">
+              <p className="text-xs text-gray-500">No lab reports available</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+} 

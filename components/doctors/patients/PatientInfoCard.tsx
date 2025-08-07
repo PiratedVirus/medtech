@@ -46,13 +46,13 @@ export default function PatientInfoCard({ patient }: PatientInfoCardProps) {
         <div className="relative mb-4">
           {/* Corner Pills */}
           <div className="absolute top-0 left-0 z-20">
-            <Badge className="bg-gray-600 text-white text-xs font-medium">
+            <Badge className="bg-primary/10 text-primary text-xs font-medium">
               ID: {patient.id}
             </Badge>
           </div>
           {activeSubscription && (
             <div className="absolute top-0 right-0 z-20">
-              <Badge className="bg-green-600 text-white text-xs font-medium">
+              <Badge className="bg-primary text-white text-xs font-medium">
                 {activeSubscription.planName}
               </Badge>
             </div>

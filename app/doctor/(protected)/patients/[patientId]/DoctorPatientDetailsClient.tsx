@@ -22,6 +22,8 @@ import UpcomingAppointmentCard from "@/components/doctors/patients/UpcomingAppoi
 import DietPlanRequestCard from "@/components/doctors/patients/DietPlanRequestCard";
 import PrescriptionsSection from "@/components/doctors/patients/PrescriptionsSection";
 import LabReportsSection from "@/components/doctors/patients/LabReportsSection";
+import LabReportsRow from "@/components/doctors/patients/LabReportsRow";
+import HealthToolsRow from "@/components/doctors/patients/HealthToolsRow";
 
 // Icons
 import {
@@ -120,7 +122,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
   useEffect(() => {
     const activeSub = patientDetails?.subscriptions?.find(sub => sub.isActive);
     setActiveSubscription(activeSub || null);
-    
+
     // Initialize doctor notes with the latest appointment's notes
     if (patientDetails?.doctorAppointments?.[0]?.doctorNotes) {
       setDoctorNotes(patientDetails.doctorAppointments[0].doctorNotes);
@@ -139,7 +141,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
 
   const handleSaveNotes = async () => {
     if (!patientDetails?.doctorAppointments?.[0]?.id) return;
-    
+
     setSavingNotes(true);
     try {
       await axios.put(`/api/doctor/patients/${patientId}`, {
@@ -158,16 +160,16 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
 
   const SummarySection = () => {
     const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>("");
-    
+
     // Get completed appointments (those with status COMPLETED or with prescriptions)
-    const completedAppointments = patientDetails?.doctorAppointments?.filter(apt => 
+    const completedAppointments = patientDetails?.doctorAppointments?.filter(apt =>
       apt.status === "COMPLETED" || apt.prescriptionLink
     ) || [];
     const latestCompletedAppointment = completedAppointments[0];
     const previousCompletedAppointments = completedAppointments.slice(1) || [];
 
     // Get selected appointment or aggregate all previous
-    const selectedAppointment = selectedAppointmentId 
+    const selectedAppointment = selectedAppointmentId
       ? completedAppointments.find(apt => apt.id.toString() === selectedAppointmentId)
       : null;
 
@@ -176,7 +178,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
       .map(apt => apt.complaints)
       .filter(Boolean)
       .join(", ") : "";
-    
+
     const aggregatedMedicines = !selectedAppointmentId ? previousCompletedAppointments
       .map(apt => apt.medicines)
       .filter(Boolean)
@@ -190,20 +192,19 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
     ];
 
     return (
-      <div className="col-span-full">
-        <h3 className="text-2xl font-bold text-secondary mb-6">Patient Summary</h3>
-        
+      <div className="col-span-full"> 
+
         <div className="relative">
           <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
             {/* Latest Completed Appointment Card */}
-            <Card className="w-[85%] flex-shrink-0 bg-white border-1 shadow-sm border-gray-200 rounded-lg ">
-              <CardHeader className="pb-3 border-b bg-custom-mutedgreen">
-                <div className="flex items-center justify-between">
+            <Card className="w-[85%] flex-shrink-0 bg-white shadow-sm rounded-lg ">
+              <CardHeader className="bg-primary/20 p-4">
+                <div className="flex rounded-lg items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <h4 className="font-semibold text-lg text-gray-800">Latest Completed Appointment</h4>
+                    <h3 className="font-semibold text-lg text-primary">Latest Appointment</h3>
                   </div>
                   {latestCompletedAppointment && (
-                    <Badge variant="outline" className="bg-secondary/10 text-secondary border-secondary/20">
+                    <Badge variant="outline" className="bg-primary/30 text-primary border-primary/30">
                       {new Date(latestCompletedAppointment.date).toLocaleDateString()}
                     </Badge>
                   )}
@@ -217,13 +218,13 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
                     <div className="flex justify-between">
                       <h5 className="font-semibold text-gray-800 mb-1 flex items-center gap-2"> Checkups </h5>
                       <button className="w-8 h-8 bg-secondary text-white rounded-full flex mr-10 items-center justify-center hover:bg-secondary/90 transition-colors">
-                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                        </button>
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      </button>
                     </div>
                     <div>
-    
+
                       <div className="space-y-3">
                         {mockCheckups.map((checkup, index) => (
                           <div key={index} className="flex items-center gap-2">
@@ -255,7 +256,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
                                 {/* Show flag icon for flagged complaints (mock logic) */}
                                 {complaint.toLowerCase().includes('blood pressure') && (
                                   <svg className="h-3 w-3 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                                   </svg>
                                 )}
                               </span>
@@ -305,10 +306,10 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
 
             {/* Previous Appointments Card */}
             <Card className="w-[85%] flex-shrink-0  border-1 border-gray-200 rounded-lg shadow-sm">
-              <CardHeader className="pb-3 border-b bg-custom-mutedgreen">
+              <CardHeader className="bg-primary/20 p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <h4 className="font-semibold text-lg text-gray-800">Previous Appointments</h4>
+                    <h4 className="font-semibold text-lg text-primary">Previous Appointments</h4>
                   </div>
                   <div className="flex items-center gap-2">
                     <select
@@ -335,14 +336,14 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
                   <div className="space-y-6">
                     {/* Checkups */}
                     <div>
-                    <div className="flex justify-between">
-                      <h5 className="font-semibold text-gray-800 mb-1 flex items-center gap-2"> Checkups </h5>
-                      <button className="w-8 h-8 bg-secondary text-white rounded-full flex mr-10 items-center justify-center hover:bg-secondary/90 transition-colors">
+                      <div className="flex justify-between">
+                        <h5 className="font-semibold text-gray-800 mb-1 flex items-center gap-2"> Checkups </h5>
+                        <button className="w-8 h-8 bg-secondary text-white rounded-full flex mr-10 items-center justify-center hover:bg-secondary/90 transition-colors">
                           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                           </svg>
                         </button>
-                    </div>
+                      </div>
                       <div className="space-y-3">
                         {mockCheckups.map((checkup, index) => (
                           <div key={index} className="flex items-center gap-2">
@@ -375,7 +376,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
                                   {/* Show flag icon for flagged complaints (mock logic) */}
                                   {complaint.toLowerCase().includes('blood pressure') && (
                                     <svg className="h-3 w-3 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
-                                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                                     </svg>
                                   )}
                                 </span>
@@ -433,7 +434,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
               </CardContent>
             </Card>
           </div>
-          
+
           {/* Carousel Indicators */}
           <div className="flex justify-center mt-4 gap-2">
             <div className="w-3 h-3 bg-secondary rounded-full"></div>
@@ -443,7 +444,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
 
         {/* Save Notes Button */}
         <div className="mt-6 flex justify-end">
-          <Button 
+          <Button
             onClick={handleSaveNotes}
             disabled={savingNotes}
             className="bg-secondary hover:bg-secondary/90"
@@ -474,23 +475,28 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
           }} />
           <UpcomingAppointmentCard appointments={patientDetails.doctorAppointments} />
           <DietPlanRequestCard patient={patientDetails} />
-          
+
           {/* Next 6 columns */}
           <PrescriptionsSection appointments={patientDetails.doctorAppointments} patientName={patientDetails.name} />
         </div>
 
         {/* Lab Reports Section */}
-        <LabReportsSection labBookings={patientDetails.labBookings} />
-
+        <div className="grid gap-4 grid-cols-12 mt-6">
+          <LabReportsRow labBookings={patientDetails.labBookings} />
+          <HealthToolsRow />
+        </div>
+        <div className="col-span-full mt-6">
+          <SummarySection />
+        </div>
         {/* Health Insights */}
         <div className="col-span-full mt-6">
           <HealthInsightsPanel patientId={patientId} />
         </div>
 
-        {/* Summary Section */}
-        <div className="col-span-full mt-6">
-          <SummarySection />
-        </div>
+
+
+        {/* New Row - Lab Reports and Health Tools */}
+
       </div>
     </>
   );

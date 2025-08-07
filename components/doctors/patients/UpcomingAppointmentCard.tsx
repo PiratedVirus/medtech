@@ -19,7 +19,7 @@ export default function UpcomingAppointmentCard({ appointments }: UpcomingAppoin
   );
 
   return (
-    <Card className="col-span-2 relative overflow-hidden rounded-xl bg-gray-50/80 p-4 shadow-sm border border-gray-100">
+    <Card className="col-span-2 relative overflow-hidden rounded-xl bg-custom-mutedgreen p-4 shadow-sm border border-gray-100">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-50/50 to-gray-100/30 rounded-xl" />
       
@@ -77,15 +77,15 @@ export default function UpcomingAppointmentCard({ appointments }: UpcomingAppoin
         ) : (
           <div className="text-center py-6">
             {/* Empty State Icon */}
-            <div className="w-12 h-12 bg-gray-100/80 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Calendar className="h-6 w-6 text-gray-400" />
+            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Calendar className="h-6 w-6 text-primary" />
             </div>
             
             <h4 className="text-sm font-semibold text-gray-700 mb-1">No Upcoming Appointments</h4>
             <p className="text-xs text-gray-500 mb-3">Patient has no scheduled consultations</p>
             
             {/* Action Button */}
-            <button className="inline-flex items-center gap-1 px-3 py-1.5 bg-secondary/10 text-secondary rounded-lg border border-secondary/20 hover:bg-secondary/20 transition-colors duration-200 text-xs">
+            <button className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-lg border border-primary/20 hover:bg-primary/20 transition-colors duration-200 text-xs">
               <Calendar className="h-3 w-3" />
               <span className="font-medium">Schedule</span>
             </button>
