@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     });
 
     const labBookingsPending = await prisma.labBooking.count({
-      where: { status: 'Pending' },
+      where: { status: 'PENDING' },
     });
 
     const monthlyRevenue = await prisma.payment.aggregate({

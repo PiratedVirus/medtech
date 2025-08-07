@@ -50,12 +50,16 @@ export async function POST(request: Request) {
     const plusAddedPhoneNumber = "+" + phoneNumber
     // Adjust this check based on the response format from MSG91
     if (verificationCheck.type === "success" || verificationCheck.status === "success") {
-      const userExists = await checkUserExists(plusAddedPhoneNumber);
+      const user = await checkUserExists(plusAddedPhoneNumber);
+      if (!user) {
+        return NextResponse.json({ success: true, userExists: false });
+      }
+
+      const userRole = user?.role;
       
       // Only create token for existing users
-      if (userExists) {
         const token = jwt.sign(
-          { plusAddedPhoneNumber, userExists: true },
+          { plusAddedPhoneNumber, userExists: true, userRole: userRole },
           process.env.JWT_SECRET!,
           { expiresIn: `${TOKEN_LIFETIME_DAYS}d` }
         );
@@ -70,10 +74,6 @@ export async function POST(request: Request) {
         });
         
         return response;
-      } else {
-        // For new users, just return success without token
-        return NextResponse.json({ success: true, userExists: false });
-      }
     } else {
       return NextResponse.json({
         success: false,

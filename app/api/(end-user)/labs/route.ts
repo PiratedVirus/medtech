@@ -22,6 +22,19 @@ export async function GET(request: Request) {
             name: true,
           },
         },
+        labAssignments: {
+          include: {
+            phlebotomist: {
+              include: {
+                user: {
+                  select: {
+                    name: true,
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       orderBy: {
         labDate: "desc",
@@ -29,7 +42,7 @@ export async function GET(request: Request) {
     });
 
     const scheduled = bookings
-      .filter(b => b.status === "Scheduled")
+      .filter(b => b.status !== "COMPLETED" && b.status !== "CANCELLED")
       .map((b) => ({
         id: b.id,
         resultDate: b.labDate,
@@ -37,6 +50,8 @@ export async function GET(request: Request) {
         resultName: `${b.patient.name} - ${b.labPackage.name} - ${new Date(b.labDate).toLocaleDateString("en-GB")}`,
         reports: [],
         status: b.status,
+        phlebotomist: b.labAssignments[0]?.phlebotomist?.user?.name || "Not assigned",
+        labAssignmentId: b.labAssignments[0]?.id,
       }));
 
     const completed = bookings
@@ -62,11 +77,14 @@ export async function GET(request: Request) {
             })
           : [],
         status: b.status,
+        phlebotomist: b.labAssignments[0]?.phlebotomist?.user?.name || "Not assigned",
+        labAssignmentId: b.labAssignments[0]?.id,
       }));
 
     return NextResponse.json({ scheduled, completed });
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to fetch lab results" }, { status: 500 });
+    console.error("Error fetching lab bookings:", error);
+    return NextResponse.json({ success: false, error: "Failed to fetch lab bookings" }, { status: 500 });
   }
 }
 
@@ -114,11 +132,65 @@ export async function POST(request: Request) {
           address,
           paymentOption,
           labDate: new Date(date),
-          status: "Scheduled",
+          status: "PENDING", // Single status for entire workflow
         },
       });
 
       console.log("LabBooking created:", booking);
+
+      // Check if there's already an active assignment for this patient
+      const existingAssignment = await tx.labAssignment.findFirst({
+        where: {
+          patientId,
+          status: {
+            in: ["PENDING", "ASSIGNED", "PHLEBOTOMIST_LEFT", "SAMPLE_COLLECTED", "IN_LAB", "ANALYZING"],
+          },
+          deletedAt: null,
+        },
+      });
+
+      // Only create lab assignment if no existing assignment
+      if (!existingAssignment) {
+        // Get default lab and phlebotomist for assignment
+        const defaultLab = await tx.pathologyLab.findFirst({
+          where: { isActive: true, deletedAt: null }
+        });
+
+        const availablePhlebotomist = await tx.phlebotomist.findFirst({
+          where: { isAvailable: true, deletedAt: null }
+        });
+
+        // Create lab assignment automatically
+        if (defaultLab && availablePhlebotomist) {
+          const labAssignment = await tx.labAssignment.create({
+            data: {
+              patientId,
+              phlebotomistId: availablePhlebotomist.id,
+              labId: defaultLab.id,
+              labBookingId: booking.id,
+              assignedDate: new Date(date),
+              assignedTime: "09:00", // Default time
+              status: "PENDING",
+              sampleCollected: false,
+            },
+          });
+
+          console.log("LabAssignment created:", labAssignment);
+
+          // Update lab booking with assignment ID
+          await tx.labBooking.update({
+            where: { id: booking.id },
+            data: { labAssignmentId: labAssignment.id },
+          });
+        }
+      } else {
+        // Link existing assignment to this booking
+        await tx.labBooking.update({
+          where: { id: booking.id },
+          data: { labAssignmentId: existingAssignment.id },
+        });
+        console.log("Linked existing assignment to booking:", existingAssignment.id);
+      }
 
       // Update subscription tracker if using plan
       if (paymentOption === "plan") {

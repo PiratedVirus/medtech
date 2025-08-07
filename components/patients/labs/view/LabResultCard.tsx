@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { DownloadIcon, Eye } from "lucide-react";
+import { DownloadIcon, Eye, Clock, CheckCircle, AlertCircle } from "lucide-react";
 
 interface LabResult {
   id: number;
@@ -11,7 +11,44 @@ interface LabResult {
     pdfUrl: string;
     values: string;
   }[];
+  phlebotomist?: string;
+  labAssignmentId?: number;
 }
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case "COMPLETED":
+      return <CheckCircle className="w-5 h-5 text-green-600" />;
+    case "ANALYZING":
+    case "IN_LAB":
+    case "SAMPLE_COLLECTED":
+      return <Clock className="w-5 h-5 text-blue-600" />;
+    case "PENDING":
+    case "ASSIGNED":
+      return <Clock className="w-5 h-5 text-yellow-600" />;
+    default:
+      return <AlertCircle className="w-5 h-5 text-gray-600" />;
+  }
+};
+
+const getStatusText = (status: string) => {
+  switch (status) {
+    case "COMPLETED":
+      return "Completed";
+    case "ANALYZING":
+      return "Analyzing";
+    case "IN_LAB":
+      return "In Lab";
+    case "SAMPLE_COLLECTED":
+      return "Sample Collected";
+    case "PENDING":
+      return "Pending";
+    case "ASSIGNED":
+      return "Assigned";
+    default:
+      return "Unknown";
+  }
+};
 
 export default function LabResultCard({ result }: { result: LabResult }) {
   return (
@@ -23,6 +60,11 @@ export default function LabResultCard({ result }: { result: LabResult }) {
           <p className="text-sm text-gray-400">
             Date: {format(new Date(result.resultDate), "dd/MM/yyyy")}
           </p>
+          {result.phlebotomist && (
+            <p className="text-sm text-gray-400">
+              Phlebotomist: {result.phlebotomist}
+            </p>
+          )}
         </div>
       </div>
 

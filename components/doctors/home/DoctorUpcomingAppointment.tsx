@@ -42,11 +42,10 @@ export default function DoctorUpcomingAppointment() {
   return (
     <div className="flex flex-col justify-between">
       <div className="mb-2">
-
         {isLoading ? (
           <div className="text-gray-600">Loading upcoming appointments...</div>
         ) : upcomingAppointment ? (
-          <UpcomingAppointment appointment={upcomingAppointment} />
+          <UpcomingAppointment appointment={upcomingAppointment} mode="doctor" />
         ) : (
           <div className="text-gray-600">No upcoming appointments</div>
         )}

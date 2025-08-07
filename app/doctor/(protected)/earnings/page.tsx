@@ -222,7 +222,7 @@ export default function DoctorEarningsPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 space-y-4 bg-white">
+    <div className="container mx-auto p-4 space-y-4 bg-mutedbg">
       {/* Earnings Cards */}
       <div className="grid grid-cols-4 md:grid-cols-4 gap-4 mb-6">
         <div className="col-span-1">
@@ -272,7 +272,7 @@ export default function DoctorEarningsPage() {
       </div>
 
       {/* Payments Table */}
-      <div className="rounded-md border">
+      <div className="rounded-md border bg-white">
         <Table>
           <TableHeader className="bg-custom-mutedgreen text-gray-950">
             {table.getHeaderGroups().map((headerGroup) => (

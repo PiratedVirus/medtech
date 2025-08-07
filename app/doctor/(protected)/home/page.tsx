@@ -4,7 +4,7 @@ import DoctorUpcomingAppointment from '@/components/doctors/home/DoctorUpcomingA
 import DoctorQuickActions from '@/components/doctors/home/DoctorQuickActions';
 import DoctorActivePatients from '@/components/doctors/home/DoctorActivePatients';
 import DoctorDashboardActionCard from "@/components/ui/custom/cd-doctor-dashboard-action-card";
-import { BicepsFlexed, FileText, LineChart, Users } from "lucide-react"
+import { BicepsFlexed, FileText, LineChart, Users, Video, VideoIcon, Videotape, VideotapeIcon } from "lucide-react"
 import { useDecryptedProfile } from '@/hooks/use-profile';
 
 function getGreeting() {
@@ -46,11 +46,11 @@ export default function DoctorDashboardPage() {
             <div className="flex-1">
               <DoctorDashboardActionCard
                 href="/dashboard/dieticians"
-                headerLabel="Prescriptions Details"
-                cardTitle="View Prescriptions"
-                cardDescription="Create new prescriptions and Edit prescriptions"
-                PrimaryIcon={FileText}
-                OutlineIcon={FileText}
+                headerLabel="Video Consultation"
+                cardTitle="Join meet room"
+                cardDescription="Single meet link for all video consultations"
+                PrimaryIcon={Video}
+                OutlineIcon={VideotapeIcon}
               />
             </div>
           </div>
