@@ -64,6 +64,9 @@ model User {
   labTechProfile      LabTechProfile?
   patientProfile      PatientProfile?
   clinic              Clinic?           @relation(fields: [clinicId], references: [id])
+  phlebotomistProfile Phlebotomist?
+  labAssignments      LabAssignment[]   @relation("PatientLabAssignment")
+  testResultsReported TestResult[]      @relation("TestResultReporter")
 
   @@unique([phoneNumber, deletedAt])
   @@index([deletedAt])
@@ -197,6 +200,8 @@ model Appointment {
   subscriptionTracker  SubscriptionTracker? @relation(fields: [subscriptionId], references: [subscriptionId])
   payment              Payment?             @relation("AppointmentPayment")
   prescription         Prescription?
+  labAssignments       LabAssignment[]
+  appointmentReports   AppointmentReport[]
 
   @@index([deletedAt])
   @@index([patientId, isDietician])
@@ -270,28 +275,31 @@ model LabPackage {
 }
 
 model LabBooking {
-  id             Int        @id @default(autoincrement())
-  patientId      Int
-  labTechId      Int?
-  labPackageId   Int
-  appointmentFor String?
-  fullName       String?
-  mobile         String?
-  email          String?
-  address        String?
-  paymentOption  String?
-  status         String
-  labDate        DateTime   @db.Date
-  labResult      String[]   @default([])
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  deletedAt      DateTime?
-  labPackage     LabPackage @relation(fields: [labPackageId], references: [id])
-  labTech        User?      @relation("LabTech", fields: [labTechId], references: [id])
-  patient        User       @relation("LabPatient", fields: [patientId], references: [id])
-  payment        Payment?   @relation("LabBookingPayment")
+  id                Int        @id @default(autoincrement())
+  patientId         Int
+  labTechId         Int?
+  labPackageId      Int
+  labAssignmentId   Int?       // Link to pathology assignment
+  appointmentFor    String?
+  fullName          String?
+  mobile            String?
+  email             String?
+  address           String?
+  paymentOption     String?
+  status            LabAssignmentStatus @default(PENDING) // Single status for entire workflow
+  labDate           DateTime   @db.Date
+  labResult         String[]   @default([])
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  deletedAt         DateTime?
+  labPackage        LabPackage @relation(fields: [labPackageId], references: [id])
+  labTech           User?      @relation("LabTech", fields: [labTechId], references: [id])
+  patient           User       @relation("LabPatient", fields: [patientId], references: [id])
+  payment           Payment?   @relation("LabBookingPayment")
+  labAssignments    LabAssignment[]
 
   @@index([deletedAt])
+  @@index([labAssignmentId])
 }
 
 model Plan {
@@ -371,6 +379,8 @@ enum UserRole {
   DOCTOR
   DIETICIAN
   LAB_TECH
+  PATHOLOGY
+  PHLEBOTOMIST
   ADMIN
   SUPER_ADMIN
   NOT_SET
@@ -560,4 +570,135 @@ enum ComplaintSeverity {
   MODERATE
   RISK
   CRITICAL
+}
+
+// Pathology related models
+model Phlebotomist {
+  id                Int                    @id @default(autoincrement())
+  userId            Int                    @unique
+  employeeId        String                 @unique
+  specialization    String?
+  isAvailable       Boolean                @default(true)
+  currentLocation   String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  deletedAt         DateTime?
+  user              User                   @relation(fields: [userId], references: [id])
+  labAssignments    LabAssignment[]
+
+  @@index([deletedAt])
+}
+
+model PathologyLab {
+  id                Int                    @id @default(autoincrement())
+  name              String
+  address           String
+  contactNumber     String
+  email             String?
+  licenseNumber     String                 @unique
+  isActive          Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  deletedAt         DateTime?
+  labAssignments    LabAssignment[]
+
+  @@index([deletedAt])
+}
+
+model LabAssignment {
+  id                Int                    @id @default(autoincrement())
+  patientId         Int
+  phlebotomistId    Int
+  labId             Int
+  labBookingId      Int?                   // Link to patient lab booking
+  appointmentId     Int?
+  assignedDate      DateTime               @db.Date
+  assignedTime      String
+  status            LabAssignmentStatus    @default(PENDING)
+  sampleCollected   Boolean                @default(false)
+  sampleCollectedAt DateTime?
+  notes             String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  deletedAt         DateTime?
+  patient           User                   @relation("PatientLabAssignment", fields: [patientId], references: [id])
+  phlebotomist      Phlebotomist           @relation(fields: [phlebotomistId], references: [id])
+  lab               PathologyLab           @relation(fields: [labId], references: [id])
+  appointment       Appointment?           @relation(fields: [appointmentId], references: [id])
+  labBooking        LabBooking?            @relation(fields: [labBookingId], references: [id])
+  testResults       TestResult[]
+
+  @@index([deletedAt])
+  @@index([patientId])
+  @@index([phlebotomistId])
+  @@index([status])
+  @@index([labBookingId])
+}
+
+model LabTest {
+  id                Int                    @id @default(autoincrement())
+  name              String
+  code              String                 @unique
+  description       String?
+  parameters        Json?                  // Array of test parameters
+  normalRange       Json?                  // Normal range values
+  unit              String?
+  isActive          Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  deletedAt         DateTime?
+  testResults       TestResult[]
+
+  @@index([deletedAt])
+}
+
+model TestResult {
+  id                Int                    @id @default(autoincrement())
+  labAssignmentId   Int
+  labTestId         Int
+  result            String?
+  unit              String?
+  normalRange       String?
+  isAbnormal        Boolean                @default(false)
+  remarks           String?
+  reportedAt        DateTime?
+  reportedBy        Int?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  deletedAt         DateTime?
+  labAssignment     LabAssignment          @relation(fields: [labAssignmentId], references: [id])
+  labTest           LabTest                @relation(fields: [labTestId], references: [id])
+  reportedByUser    User?                  @relation("TestResultReporter", fields: [reportedBy], references: [id])
+
+  @@index([deletedAt])
+  @@index([labAssignmentId])
+  @@index([labTestId])
+}
+
+model AppointmentReport {
+  id            Int         @id @default(autoincrement())
+  appointmentId Int
+  fileName      String
+  fileUrl       String
+  fileSize      Int?
+  mimeType      String?
+  uploadedAt    DateTime    @default(now())
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+
+  @@index([appointmentId])
+  @@index([deletedAt])
+}
+
+enum LabAssignmentStatus {
+  PENDING
+  ASSIGNED
+  PHLEBOTOMIST_LEFT
+  SAMPLE_COLLECTED
+  IN_LAB
+  ANALYZING
+  COMPLETED
+  CANCELLED
 }

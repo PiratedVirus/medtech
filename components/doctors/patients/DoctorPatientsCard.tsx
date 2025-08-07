@@ -23,7 +23,9 @@ export function DoctorPatientsCard() {
         setPatients(response.data);
       } catch (error) {
         console.error("Failed to fetch patients:", error);
-        console.error("Error details:", error.response?.data);
+        if (error && typeof error === 'object' && 'response' in error) {
+          console.error("Error details:", (error as any).response?.data);
+        }
       } finally {
         setLoading(false);
       }

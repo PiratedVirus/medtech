@@ -280,7 +280,7 @@ export default function AppointmentPrescriptionPage() {
       if (result.success) {
         toast({ title: "Success", description: "PDF downloaded successfully", variant: "success" });
       } else {
-        throw new Error(result.error || 'Failed to generate PDF');
+        throw new Error('error' in result ? result.error : 'Failed to generate PDF');
       }
     } catch (error) {
       console.error("PDF download error", error);

@@ -44,6 +44,7 @@ export default function PrescriptionForm({
   const [newComplaint, setNewComplaint] = useState("");
   const [newMedicine, setNewMedicine] = useState("");
   const [showStickyHeader, setShowStickyHeader] = useState(false);
+  const [isSplitScreen, setIsSplitScreen] = useState(false);
   const patientCardRef = useRef<HTMLDivElement>(null);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
@@ -220,17 +221,23 @@ export default function PrescriptionForm({
   };
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (patientCardRef.current) {
-        const rect = patientCardRef.current.getBoundingClientRect();
-        const cardHeight = patientCardRef.current.offsetHeight;
-        // Show sticky header when patient card is halfway out of view
-        setShowStickyHeader(rect.bottom < cardHeight / 2);
-      }
+    const detectSplitScreen = () => {
+      // Check if we're in split screen mode by looking for the split screen container
+      const splitContainer = document.querySelector('.lg\\:w-1\\/2') as HTMLElement;
+      const scrollContainer = document.querySelector('.lg\\:h-full.overflow-y-auto') as HTMLElement;
+      const isSplit = !!(splitContainer || scrollContainer);
+      setIsSplitScreen(isSplit);
+      
+      // Header is always visible now in both modes
+      setShowStickyHeader(true);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    // Initial detection
+    detectSplitScreen();
+
+    // Re-check on window resize
+    window.addEventListener('resize', detectSplitScreen);
+    return () => window.removeEventListener('resize', detectSplitScreen);
   }, []);
 
   const handleSaveTemplate = async () => {
@@ -432,10 +439,10 @@ export default function PrescriptionForm({
   };
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Sticky Header - Shows when patient card is out of view */}
-      <div className={`fixed top-0 left-0 right-0 z-50 bg-white shadow-md border-b transition-all duration-300 ${showStickyHeader ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
-        <div className="flex items-center justify-between px-6 py-3">
+    <>
+      {/* Sticky Header - Always visible and positioned outside padded container */}
+      <div className="sticky top-0 left-0 right-0 z-50 bg-white shadow-md border-b -mx-2 lg:-mx-4">
+        <div className="flex items-center justify-between px-4 lg:px-6 py-3">
           <div className="flex items-center gap-4">
             {onBack && (
               <Button variant="ghost" size="icon" onClick={onBack} className="mr-2 p-2">
@@ -486,6 +493,8 @@ export default function PrescriptionForm({
           </div>
         </div>
       </div>
+
+      <div className="space-y-6 w-full">
 
       {/* Patient Information */}
       <div
@@ -1090,6 +1099,7 @@ export default function PrescriptionForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 } 

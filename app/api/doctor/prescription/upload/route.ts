@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       });
       console.log("Prescription link updated successfully");
     } catch (updateError) {
-      console.error("Failed to update appointment:", updateError?.message || 'Unknown error');
+      console.error("Failed to update appointment:", updateError instanceof Error ? updateError.message : 'Unknown error');
       return NextResponse.json(
         { success: false, error: "Failed to update prescription link" },
         { status: 500 }
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, url: blob.url });
   } catch (error) {
-    console.error("PDF upload error:", error?.message || error?.toString() || 'Unknown error');
+    console.error("PDF upload error:", error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
       { success: false, error: "Failed to upload PDF" },
       { status: 500 }

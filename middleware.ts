@@ -69,6 +69,25 @@ export async function middleware(request: NextRequest) {
       console.log("Redirecting to doctor home");
       return NextResponse.redirect(new URL("/doctor/home", request.url));
     }
+    if(decodedUser.userRole === "PATHOLOGY"){
+      console.log("Redirecting to pathology dashboard");
+      return NextResponse.redirect(new URL("/pathology", request.url));
+    }
+
+    return NextResponse.next();
+  }
+
+  // Pathology routes protection
+  if (pathname.startsWith("/pathology")) {
+    const userToken = request.cookies.get("token")?.value;
+    if (!userToken) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    const decodedUser = await verifyUserToken(userToken);
+    if (!decodedUser || decodedUser.userRole !== "PATHOLOGY") {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
 
     return NextResponse.next();
   }
@@ -78,5 +97,5 @@ export async function middleware(request: NextRequest) {
 
 // Specify the paths to protect
 export const config = {
-  matcher: ["/admin/:path*", "/dashboard/:path*"],
+  matcher: ["/admin/:path*", "/dashboard/:path*", "/pathology/:path*"],
 };

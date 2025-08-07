@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Calendar, Clock, FileText, Link2, Pill, User, Building2, Video, CreditCard, Banknote } from "lucide-react";
+import { Calendar, Clock, FileText, Link2, Pill, User, Building2, Video, CreditCard, Banknote, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function formatDate(dateString: string) {
@@ -110,6 +110,18 @@ export default function DoctorAppointmentsPage() {
               <>
                 <Video className="h-4 w-4 text-gray-600" />
                 <span className="font-bold text-gray-800">Video consultation</span>
+                {appt.meetingRoomLink && (
+                  <a
+                    href={appt.meetingRoomLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 ml-2"
+                    title="Meeting Room Link"
+                  >
+                    <Link2 className="h-3 w-3" />
+                    <span className="text-xs">Room</span>
+                  </a>
+                )}
               </>
             )}
           </div>
@@ -129,8 +141,8 @@ export default function DoctorAppointmentsPage() {
                 href={`/doctor/appointments/${appt.id}`}
                 className="inline-flex items-center gap-2 text-green-600 text-sm pr-4 py-2 hover:cursor-pointer hover:text-green-700"
               >
-                <FileText className="h-4 w-4" />
-                Generate Prescription
+                <Play className="h-4 w-4" />
+                Start appointment
               </a>
             )}
           </div>

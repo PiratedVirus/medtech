@@ -95,8 +95,8 @@ export async function GET(request: Request) {
             id: appt.id,
             patientName: appt.patient.name,
             patientId: appt.patient.id,
-            doctorName: user.name, // Add doctor name from the logged-in user
-            doctorId: user.id, // Add doctor ID
+            doctorName: user?.name || "Unknown Doctor", // Add doctor name from the logged-in user
+            doctorId: user?.id || 0, // Add doctor ID
             date: appt.doctorAvailability?.date,
             startTime: appt.doctorAvailability?.startTime,
             endTime: appt.doctorAvailability?.endTime,
@@ -105,6 +105,8 @@ export async function GET(request: Request) {
             consultationType: appt.consultationType,
             isFirst: first,
             prescriptionLink: isPast ? appt.prescriptionLink : undefined,
+            meetingRoomLink: user?.doctorProfile?.meetingRoomLink || null, // Add meetingRoomLink
+            ownerToken1: user?.doctorProfile?.ownerToken1 || null, // Add ownerToken1
           };
         })
       );
