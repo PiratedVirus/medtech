@@ -6,17 +6,18 @@ import { Plus } from "lucide-react";
 
 interface DietPlanRequestCardProps {
   patient: {
+    id: number;
     name: string;
   };
 }
 
 export default function DietPlanRequestCard({ patient }: DietPlanRequestCardProps) {
-  // Mock data - in real app this would come from props
+  // Mock diet plan request data
   const dietPlanRequest = {
-    status: "pending", // or "completed"
-    requestDate: new Date().toISOString(),
-    requestCount: 1,
-    description: "Patient requested a new diet plan for diabetes management and weight control."
+    requestCount: 3,
+    status: 'pending' as 'pending' | 'completed',
+    requestDate: '2024-01-15',
+    description: 'Patient requesting personalized diet plan for diabetes management with low-carb focus.'
   };
 
   return (
@@ -33,7 +34,7 @@ export default function DietPlanRequestCard({ patient }: DietPlanRequestCardProp
         {/* Request Info - New Layout */}
         <div className="group relative overflow-hidden bg-white/80 rounded-xl border border-gray-200/50 p-3 shadow-sm hover:shadow-md transition-all duration-300">
           {/* Card Background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-green-50/30 to-emerald-50/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           
           <div className="relative z-10 space-y-3">
             {/* First Row: Request Count and Status */}
@@ -42,7 +43,7 @@ export default function DietPlanRequestCard({ patient }: DietPlanRequestCardProp
               <Badge className={`text-xs font-medium ${
                 dietPlanRequest.status === 'pending' 
                   ? 'bg-orange-100 text-orange-700 border-orange-200' 
-                  : 'bg-green-100 text-green-700 border-green-200'
+                  : 'bg-primary/10 text-primary border-primary/20'
               }`}>
                 {dietPlanRequest.status === 'pending' ? 'Pending' : 'Completed'}
               </Badge>
@@ -62,9 +63,8 @@ export default function DietPlanRequestCard({ patient }: DietPlanRequestCardProp
             </p>
 
             {/* Process Button */}
-            <Button className="w-full bg-custom-orange hover:bg-custom-orange/90 text-white rounded-lg py-2 shadow-sm hover:shadow-md transition-all duration-300 group text-xs">
+            <Button className="w-full bg-primary hover:bg-primary/90 text-white rounded-lg py-2 shadow-sm hover:shadow-md transition-all duration-300 group text-xs">
               <span className="font-semibold">
-                {/* {dietPlanRequest.status === 'pending' ? 'Process Request' : 'Create New Diet Plan'} */}
                 Create Plan
               </span>
             </Button>

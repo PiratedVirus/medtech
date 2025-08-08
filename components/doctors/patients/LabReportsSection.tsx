@@ -18,13 +18,12 @@ interface LabReportsSectionProps {
 
 export default function LabReportsSection({ labBookings }: LabReportsSectionProps) {
   const [showAllLabReports, setShowAllLabReports] = useState(false);
+
+  // Get recent reports (first 3)
   const recentReports = labBookings.slice(0, 3);
 
-  const icons = [
-    <Microscope key="microscope" className="h-5 w-5 text-secondary" />,
-    <FileText key="filetext" className="h-5 w-5 text-secondary" />,
-    <Activity key="activity" className="h-5 w-5 text-secondary" />
-  ];
+  // Icons for different lab types
+  const icons = [FileText, Activity, Microscope];
 
   return (
     <div className="col-span-full">
@@ -40,43 +39,56 @@ export default function LabReportsSection({ labBookings }: LabReportsSectionProp
             {labBookings.length > 3 && (
               <Dialog open={showAllLabReports} onOpenChange={setShowAllLabReports}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs">
+                  <Button variant="outline" size="sm" className="text-primary border-primary/30 hover:bg-primary/10 rounded-lg text-xs">
                     <Eye className="h-3 w-3 mr-1" />
                     View All ({labBookings.length})
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                  <DialogTitle className="text-xl font-semibold text-gray-800">All Lab Reports</DialogTitle>
+                  <DialogTitle>All Lab Reports</DialogTitle>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {labBookings.map(labBooking => (
-                      <Card key={labBooking.id} className="p-4 border border-gray-200 bg-white shadow-sm rounded-xl">
-                        <h4 className="font-medium mb-2">{labBooking.labPackageName}</h4>
-                        <p className="text-sm text-gray-600 mb-3">
-                          {new Date(labBooking.date).toLocaleDateString()}
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <Badge variant="outline" className="text-xs">
-                            {labBooking.status}
-                          </Badge>
-                          {Array.isArray(labBooking.reportLink) && labBooking.reportLink.length > 0 ? (
-                            <div className="flex gap-1">
-                              {labBooking.reportLink.map((url, index) => {
-                                const fileName = decodeURIComponent(url.split("/").pop() || `Report-${index + 1}`);
-                                return (
-                                  <a key={index} href={url} target="_blank" rel="noopener noreferrer">
-                                    <Button variant="outline" size="sm" className="text-xs text-secondary border-secondary/30 hover:bg-secondary/10">
-                                      {fileName.length > 15 ? fileName.substring(0, 15) + '...' : fileName}
-                                    </Button>
-                                  </a>
-                                );
-                              })}
+                    {labBookings.map((labBooking) => {
+                      const IconComponent = icons[labBooking.id % icons.length];
+                      return (
+                        <div key={labBooking.id} className="group relative overflow-hidden bg-white/80 rounded-xl border border-gray-200/50 p-4 shadow-sm hover:shadow-md transition-all duration-300">
+                          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                                <IconComponent className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-900 text-sm">{labBooking.labPackageName}</h4>
+                                <p className="text-xs text-gray-600">{new Date(labBooking.date).toLocaleDateString('en-GB')}</p>
+                              </div>
                             </div>
-                          ) : (
-                            <span className="text-gray-500 text-xs">No reports</span>
-                          )}
+                            
+                            <div className="flex items-center justify-between">
+                              <Badge className={`text-xs font-medium ${
+                                labBooking.status === 'COMPLETED' 
+                                  ? 'bg-primary/10 text-primary border-primary/20' 
+                                  : 'bg-orange-100 text-orange-700 border-orange-200'
+                              }`}>
+                                {labBooking.status}
+                              </Badge>
+                              
+                              {labBooking.reportLink && labBooking.reportLink.length > 0 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-primary hover:text-primary/80 p-0 h-auto text-xs"
+                                  onClick={() => window.open(labBooking.reportLink![0], '_blank')}
+                                >
+                                  <ExternalLink className="h-3 w-3 mr-1" />
+                                  View Report
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </Card>
-                    ))}
+                      );
+                    })}
                   </div>
                 </DialogContent>
               </Dialog>
@@ -85,57 +97,59 @@ export default function LabReportsSection({ labBookings }: LabReportsSectionProp
           
           {/* Lab Tests Grid - Compact */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {recentReports.map((labBooking, index) => (
-              <Card key={labBooking.id} className="group relative overflow-hidden bg-white/80 border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 rounded-xl p-3">
-                {/* Card Background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-50/20 to-indigo-50/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                
-                <div className="relative z-10">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-secondary to-secondary/80 rounded-lg flex items-center justify-center shadow-md">
-                      {icons[index % icons.length]}
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-xs mb-1">{labBooking.labPackageName}</h4>
-                      <p className="text-xs text-gray-600">
-                        {new Date(labBooking.date).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
+            {recentReports.map((labBooking) => {
+              const IconComponent = icons[labBooking.id % icons.length];
+              return (
+                <div key={labBooking.id} className="group relative overflow-hidden bg-white/80 rounded-xl border border-gray-200/50 p-3 shadow-sm hover:shadow-md transition-all duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="text-xs font-medium">
-                      {labBooking.status}
-                    </Badge>
-                    {Array.isArray(labBooking.reportLink) && labBooking.reportLink.length > 0 ? (
-                      <a href={labBooking.reportLink[0]} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" size="sm" className="text-xs text-secondary border-secondary/30 hover:bg-secondary/10 group/link">
-                          <ExternalLink className="h-3 w-3 mr-1 group-hover/link:scale-110 transition-transform duration-200" />
-                          View
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <IconComponent className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-gray-900 text-xs truncate">{labBooking.labPackageName}</h4>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <Badge className={`text-xs font-medium ${
+                        labBooking.status === 'COMPLETED' 
+                          ? 'bg-primary/10 text-primary border-primary/20' 
+                          : 'bg-orange-100 text-orange-700 border-orange-200'
+                      }`}>
+                        {labBooking.status}
+                      </Badge>
+                      
+                      {labBooking.reportLink && labBooking.reportLink.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-primary hover:text-primary/80 p-0 h-auto text-xs"
+                          onClick={() => window.open(labBooking.reportLink![0], '_blank')}
+                        >
+                          <ExternalLink className="h-3 w-3" />
                         </Button>
-                      </a>
-                    ) : (
-                      <span className="text-gray-500 text-xs px-2 py-1 bg-gray-100/50 rounded-lg">
-                        No report
-                      </span>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
-              </Card>
-            ))}
+              );
+            })}
             
-            {/* Empty State Cards */}
-            {recentReports.length < 3 && Array.from({ length: 3 - recentReports.length }).map((_, index) => (
-              <Card key={`empty-lab-${index}`} className="group relative overflow-hidden bg-white/60 border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 rounded-xl p-3">
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-50/20 to-gray-100/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            {/* Empty state cards if less than 3 reports */}
+            {Array.from({ length: Math.max(0, 3 - recentReports.length) }).map((_, index) => (
+              <div key={`empty-${index}`} className="group relative overflow-hidden bg-white/60 rounded-xl border border-gray-200/30 p-3 shadow-sm">
+                <div className="absolute inset-0 bg-gradient-to-br from-gray-50/30 to-gray-100/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 
-                <div className="relative z-10 text-center">
-                  <div className="w-8 h-8 bg-gray-200/60 rounded-lg flex items-center justify-center mx-auto mb-2">
+                <div className="relative z-10 text-center py-4">
+                  <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center mx-auto mb-2">
                     <Microscope className="h-4 w-4 text-gray-400" />
                   </div>
-                  <p className="text-xs text-gray-500">No lab test</p>
+                  <p className="text-xs text-gray-500">No lab tests</p>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         </div>
