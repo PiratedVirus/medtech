@@ -2,10 +2,11 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X, FileText, TrendingUp, AlertTriangle, Loader2 } from "lucide-react";
+import { X, FileText, TrendingUp, AlertTriangle, Loader2, Search, ToggleLeft, ToggleRight } from "lucide-react";
 import { toast } from "react-toastify";
 
 interface LabReport {
@@ -16,13 +17,14 @@ interface LabReport {
   reportLink?: string[] | null;
 }
 
-interface CriticalValue {
+interface LabValue {
   parameter: string;
-  value: string;
+  value: string | number;
   unit: string;
   normalRange: string;
   isAbnormal: boolean;
   severity: 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
+  category?: string;
 }
 
 interface TrendData {
@@ -37,7 +39,8 @@ interface TrendData {
 interface LabReportAnalysis {
   id: number;
   llmSummary: string;
-  criticalValues: CriticalValue[];
+  criticalValues: LabValue[];
+  allValues: LabValue[];
   trendAnalysis: TrendData[];
   processingStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   llmModel: string;
@@ -62,8 +65,34 @@ export default function LabReportAnalysisModal({
   const [analysis, setAnalysis] = useState<LabReportAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('summary');
+  const [showAllValues, setShowAllValues] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const selectedReport = labReports.find(r => r.id === selectedReportId);
+
+  // Filter values based on search term and toggle
+  const getFilteredValues = () => {
+    const values = showAllValues ? (analysis?.allValues || []) : (analysis?.criticalValues || []);
+    if (!searchTerm) return values;
+    
+    return values.filter(value => 
+      value.parameter.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      value.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      value.value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  // Group values by category
+  const groupValuesByCategory = (values: LabValue[]) => {
+    const grouped = values.reduce((acc, value) => {
+      const category = value.category || 'Other';
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(value);
+      return acc;
+    }, {} as Record<string, LabValue[]>);
+    
+    return Object.entries(grouped).sort();
+  };
 
   // Remove auto-selection of first report
 
@@ -82,31 +111,8 @@ export default function LabReportAnalysisModal({
     setLoading(true);
     
     try {
-      // Single endpoint call to check status and get existing analysis
-      const response = await fetch(`/api/llm-process?reportId=${reportId}`);
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch report status');
-      }
-      
-      if (data.status === 'exists') {
-        // Analysis exists, display it
-        setAnalysis(data.analysis);
-        setLoading(false);
-        toast.success("Analysis loaded successfully!");
-        return;
-      }
-      
-      if (data.status === 'not_found') {
-        // No analysis exists, start processing
-        if (!data.canProcess) {
-          toast.warning("No PDF available for this report. Creating sample analysis.");
-        }
-        await processReport(reportId);
-        return;
-      }
-      
+      await processReport(reportId);
+      return;
     } catch (error) {
       console.error('Error in report selection:', error);
       toast.error(`Error: ${(error as Error).message}`);
@@ -118,47 +124,96 @@ export default function LabReportAnalysisModal({
 
   const processReport = async (reportId: number) => {
     try {
-      const response = await fetch(`/api/llm-process`, {
+      const selected = labReports.find(r => r.id === reportId);
+      const pdfUrl = selected?.reportLink?.[0];
+      if (!pdfUrl) {
+        throw new Error('No PDF URL found for this report');
+      }
+
+      // 1) Parse text once
+      const parseRes = await fetch(`/api/llm-process/parse-text`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ reportId, patientId }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdfUrl })
       });
-
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Processing failed');
+      const parseJson = await parseRes.json();
+      if (!parseRes.ok || !parseJson.success) {
+        throw new Error(parseJson.error || 'Failed to parse PDF');
       }
+      const text: string = parseJson.text;
+      console.log('[UI][PARSED_TEXT]', text);
+      toast.info('Parsed report text successfully');
 
-      // Handle different response statuses
-      switch (result.status) {
-        case 'already_exists':
-          setAnalysis(result.analysis);
-          setLoading(false);
-          toast.success("Analysis already completed!");
-          break;
-          
-        case 'processing':
-          toast.info("Analysis is already being processed. Please wait...");
-          pollForCompletion(reportId);
-          break;
-          
-        case 'sample_created':
-          setAnalysis(result.analysis);
-          setLoading(false);
-          toast.success("Sample analysis created for testing!");
-          break;
-          
-        case 'processing_started':
-          toast.success(`AI analysis started! Estimated time: ${result.estimatedTime}`);
-          pollForCompletion(reportId);
-          break;
-          
-        default:
-          throw new Error(`Unknown status: ${result.status}`);
-      }
+      // Prepare a base analysis object to update incrementally
+      let partial: LabReportAnalysis = {
+        id: 0,
+        llmSummary: '',
+        criticalValues: [],
+        allValues: [],
+        trendAnalysis: [],
+        processingStatus: 'PROCESSING',
+        llmModel: 'meta-llama/llama-3.2-3b-instruct:free + openai/gpt-oss-20b:free',
+        processedAt: new Date().toISOString(),
+      };
+      setAnalysis(partial);
+
+      // Run summary and values independently
+      const runSummary = (async () => {
+        try {
+          const summaryRes = await fetch(`/api/llm-process/generate-summary`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+          });
+          const summaryJson = await summaryRes.json();
+          if (summaryRes.ok && summaryJson.success) {
+            partial = {
+              ...partial,
+              llmSummary: summaryJson.summary,
+              processingStatus: 'COMPLETED',
+              processedAt: new Date().toISOString(),
+            };
+            setAnalysis(prev => ({ ...(prev || partial), ...partial }));
+          } else {
+            console.warn('[UI][SUMMARY] failed:', summaryJson.error);
+          }
+        } catch (e) {
+          console.warn('[UI][SUMMARY] error:', e);
+        }
+      })();
+
+      const runValues = (async () => {
+        try {
+          // Optional small delay to mitigate free-tier 429s
+          await new Promise(r => setTimeout(r, 900));
+          const valuesRes = await fetch(`/api/llm-process/extract-values`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+          });
+          const valuesJson = await valuesRes.json();
+          if (valuesRes.ok && valuesJson.success) {
+            partial = {
+              ...partial,
+              criticalValues: Array.isArray(valuesJson.criticalValues) ? valuesJson.criticalValues : [],
+              allValues: Array.isArray(valuesJson.allValues) ? valuesJson.allValues : [],
+              processingStatus: 'COMPLETED',
+              processedAt: new Date().toISOString(),
+            };
+            setAnalysis(prev => ({ ...(prev || partial), ...partial }));
+          } else {
+            console.warn('[UI][VALUES] failed:', valuesJson.error);
+          }
+        } catch (e) {
+          console.warn('[UI][VALUES] error:', e);
+        }
+      })();
+
+      // Wait for both to finish but don't throw if one fails
+      await Promise.allSettled([runSummary, runValues]);
+
+      setLoading(false);
+      toast.success('AI analysis updated');
     } catch (error) {
       console.error('Error processing report:', error);
       toast.error(`Error: ${(error as Error).message}`);
@@ -166,70 +221,13 @@ export default function LabReportAnalysisModal({
     }
   };
 
-  const pollForCompletion = async (reportId: number) => {
-    let pollCount = 0;
-    const maxPolls = 60; // 3 minutes max (3 seconds * 60 = 180 seconds)
-    
-    const pollInterval = setInterval(async () => {
-      pollCount++;
-      
-      try {
-        const response = await fetch(`/api/llm-process?reportId=${reportId}`);
-        const data = await response.json();
-        
-        if (data.success && data.status === 'exists') {
-          const analysis = data.analysis;
-          
-          if (analysis.processingStatus === 'COMPLETED') {
-            clearInterval(pollInterval);
-            setAnalysis(analysis);
-            setLoading(false);
-            toast.success("AI analysis completed successfully!");
-          } else if (analysis.processingStatus === 'FAILED') {
-            clearInterval(pollInterval);
-            setLoading(false);
-            toast.error(`Analysis failed: ${analysis.processingError || 'Unknown error'}`);
-          }
-          // If still processing, continue polling
-        } else if (pollCount >= maxPolls) {
-          clearInterval(pollInterval);
-          setLoading(false);
-          toast.warning("Analysis is taking longer than expected. Please refresh and try again.");
-        }
-      } catch (error) {
-        console.error('Polling error:', error);
-        if (pollCount >= maxPolls) {
-          clearInterval(pollInterval);
-          setLoading(false);
-          toast.error("Connection error while checking analysis status.");
-        }
-      }
-    }, 3000); // Poll every 3 seconds
-  };
+  // Remove polling-based flow; not needed with direct LLM calls
+  // const pollForCompletion = async (reportId: number) => { /* removed */ };
 
   const retryAnalysis = async (reportId: number) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/llm-process`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          reportId,
-          patientId, 
-          forceReprocess: true 
-        }),
-      });
-
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Retry failed');
-      }
-
-      toast.success("Retrying analysis...");
-      pollForCompletion(reportId);
+      await processReport(reportId);
     } catch (error) {
       console.error('Error retrying analysis:', error);
       toast.error(`Retry failed: ${(error as Error).message}`);
@@ -320,10 +318,9 @@ export default function LabReportAnalysisModal({
             </div>
           ) : analysis ? (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="p-4">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="summary">AI Summary</TabsTrigger>
-                <TabsTrigger value="critical">Critical Values</TabsTrigger>
-                <TabsTrigger value="trends">Trend Analysis</TabsTrigger>
+                <TabsTrigger value="values">Lab Values</TabsTrigger>
               </TabsList>
 
               <TabsContent value="summary" className="mt-4">
@@ -339,9 +336,14 @@ export default function LabReportAnalysisModal({
                   <CardContent>
                     <div className="prose max-w-none">
                       {analysis.llmSummary ? (
-                        <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                          {analysis.llmSummary}
-                        </p>
+                        <>
+                          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                            {analysis.llmSummary}
+                          </p>
+                          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                            {analysis.llmSummary}
+                          </p>
+                        </>
                       ) : (
                         <div className="text-center text-gray-500 py-8">
                           {analysis.processingStatus === 'FAILED' ? (
@@ -379,116 +381,114 @@ export default function LabReportAnalysisModal({
                 </Card>
               </TabsContent>
 
-              <TabsContent value="critical" className="mt-4">
+              <TabsContent value="values" className="mt-4">
                 <Card>
                   <CardHeader>
-                    <h3 className="text-lg font-semibold">Critical Values & Parameters</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold">Laboratory Values</h3>
+                      <div className="flex items-center gap-4">
+                        {/* Search Bar */}
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                          <Input
+                            type="text"
+                            placeholder="Search parameters..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10 w-64"
+                          />
+                        </div>
+                        
+                        {/* Toggle Button */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowAllValues(!showAllValues)}
+                          className="flex items-center gap-2"
+                        >
+                          {showAllValues ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+                          {showAllValues ? 'All Values' : 'Critical Only'}
+                          {showAllValues && analysis?.allValues && (
+                            <Badge variant="secondary" className="ml-1">
+                              {analysis.allValues.length}
+                            </Badge>
+                          )}
+                          {!showAllValues && analysis?.criticalValues && (
+                            <Badge variant="destructive" className="ml-1">
+                              {analysis.criticalValues.length}
+                            </Badge>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left p-2 font-medium">Parameter</th>
-                            <th className="text-left p-2 font-medium">Value</th>
-                            <th className="text-left p-2 font-medium">Normal Range</th>
-                            <th className="text-left p-2 font-medium">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {analysis.criticalValues && Array.isArray(analysis.criticalValues) && analysis.criticalValues.length > 0 ? analysis.criticalValues.map((value, index) => (
-                            <tr key={index} className="border-b hover:bg-gray-50">
-                              <td className="p-2 font-medium">{value.parameter}</td>
-                              <td className="p-2">
-                                {value.value} {value.unit}
-                              </td>
-                              <td className="p-2 text-sm text-gray-600">
-                                {value.normalRange}
-                              </td>
-                              <td className="p-2">
-                                <Badge className={getSeverityColor(value.severity)}>
-                                  {value.isAbnormal && value.severity !== 'NORMAL' && (
-                                    <AlertTriangle className="h-3 w-3 mr-1" />
-                                  )}
-                                  {value.severity}
-                                </Badge>
-                              </td>
-                            </tr>
-                          )) : (
-                            <tr>
-                              <td colSpan={4} className="p-4 text-center text-gray-500">
-                                {analysis.processingStatus === 'FAILED' 
-                                  ? (
-                                    <div className="text-red-600">
-                                      <AlertTriangle className="h-5 w-5 mx-auto mb-2" />
-                                      <div className="font-medium">Analysis Failed</div>
-                                      <div className="text-sm mt-1">{analysis.processingError || 'Unknown error occurred'}</div>
-                                    </div>
-                                  )
-                                  : 'No critical values found in this analysis.'
-                                }
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+                    {(() => {
+                      const filteredValues = getFilteredValues();
+                      const groupedValues = groupValuesByCategory(filteredValues);
+                      
+                      if (filteredValues.length === 0) {
+                        return (
+                          <div className="text-center py-8">
+                            <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                            <p className="text-gray-500">
+                              {searchTerm ? 'No values match your search.' : 
+                               showAllValues ? 'No values found in this report.' : 
+                               'No critical values detected.'}
+                            </p>
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <div className="space-y-6">
+                          {groupedValues.map(([category, values]) => (
+                            <div key={category}>
+                              <h4 className="font-semibold text-md mb-3 text-gray-700 border-b pb-1">
+                                {category}
+                              </h4>
+                              <div className="overflow-x-auto">
+                                <table className="w-full border-collapse">
+                                  <thead>
+                                    <tr className="border-b bg-gray-50">
+                                      <th className="text-left p-3 font-medium">Parameter</th>
+                                      <th className="text-left p-3 font-medium">Value</th>
+                                      <th className="text-left p-3 font-medium">Normal Range</th>
+                                      <th className="text-left p-3 font-medium">Status</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {values.map((value, index) => (
+                                      <tr key={index} className="border-b hover:bg-gray-50">
+                                        <td className="p-3 font-medium">{value.parameter}</td>
+                                        <td className="p-3">
+                                          <span className="font-mono">{value.value}</span> 
+                                          <span className="text-gray-500 ml-1">{value.unit}</span>
+                                        </td>
+                                        <td className="p-3 text-gray-600 text-sm">{value.normalRange}</td>
+                                        <td className="p-3">
+                                          <Badge className={getSeverityColor(value.severity)}>
+                                            {value.isAbnormal && value.severity !== 'NORMAL' && (
+                                              <AlertTriangle className="h-3 w-3 mr-1" />
+                                            )}
+                                            {value.severity}
+                                          </Badge>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              <TabsContent value="trends" className="mt-4">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5" />
-                      <h3 className="text-lg font-semibold">Trend Comparison</h3>
-                    </div>
-                  </CardHeader>
-{/* 
-                  <CardContent>
-                    <div className="space-y-4">
-                      {analysis.trendAnalysis.map((trend, index) => (
-                        <div key={index} className="border rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium">{trend.parameter}</h4>
-                            <div className="flex items-center gap-2">
-                              <span className="text-2xl">{getTrendIcon(trend.trend)}</span>
-                              <Badge variant={trend.trend === 'IMPROVING' ? 'default' : 
-                                           trend.trend === 'WORSENING' ? 'destructive' : 'secondary'}>
-                                {trend.trend}
-                              </Badge>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-600">Previous:</span>
-                              <div className="font-medium">{trend.previousValue}</div>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Current:</span>
-                              <div className="font-medium">{trend.currentValue}</div>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Change:</span>
-                              <div className={`font-medium ${
-                                trend.changePercent > 0 ? 'text-green-600' : 
-                                trend.changePercent < 0 ? 'text-red-600' : 'text-gray-600'
-                              }`}>
-                                {trend.changePercent > 0 ? '+' : ''}{trend.changePercent}%
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-xs text-gray-500 mt-2">
-                            Period: {trend.dateRange}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                 */}
-                </Card>
-              </TabsContent>
+
             </Tabs>
           ) : (
             <div className="flex items-center justify-center h-full">

@@ -29,14 +29,17 @@
 
       "@/custom/*": ["./components/ui/custom/*"],
       "@/app/*": ["./app/*"]
-    }
+    },
+    "typeRoots": ["./types", "./node_modules/@types"]
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "**/*.cjs"
-, "app/api/doctor/stats/route.js", "app/api/doctor/appointments/upcoming/route.js"  ],
+    "**/*.cjs",
+    "app/api/doctor/stats/route.js",
+    "app/api/doctor/appointments/upcoming/route.js"
+  ],
   "exclude": ["node_modules"]
 }

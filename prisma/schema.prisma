@@ -714,10 +714,11 @@ model AppointmentReport {
 model LabReportAnalysis {
   id                  Int       @id @default(autoincrement())
   labBookingId        Int       @unique
-  reportUrl           String
+  reportUrl           String?
   extractedText       String?   @db.Text
   llmSummary          String?   @db.Text
-  criticalValues      Json?     // Array of {parameter, value, unit, isAbnormal, severity}
+  criticalValues      Json?     // Array of critical/abnormal values only
+  allValues           Json?     // Array of ALL values from the report for table display
   trendAnalysis       Json?     // Comparison with previous reports
   llmModel            String?   // Model used for analysis
   processingStatus    ProcessingStatus @default(PENDING)

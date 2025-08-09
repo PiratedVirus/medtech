@@ -76,6 +76,7 @@ Please configure your API key to enable real-time AI analysis of lab reports wit
     // Download and validate PDF
     const pdfBuffer = await this.downloadPDF(pdfUrl);
     const extractedText = await this.extractTextFromPDF(pdfBuffer);
+    console.log('Extracted text:', extractedText);
     
     // Send extracted text to LLM
     return await this.sendTextToLLM(extractedText, apiKey, siteUrl);
@@ -146,8 +147,13 @@ Please configure your API key to enable real-time AI analysis of lab reports wit
    */
   static async extractTextFromPDF(buffer: Buffer): Promise<string> {
     try {
-      // Dynamic import to avoid server-side issues
-      const pdfParse = (await import('pdf-parse')).default;
+      // Dynamic import to avoid server-side issues; prefer pure JS entry
+      let pdfParse: any;
+      try {
+        pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
+      } catch {
+        pdfParse = (await import('pdf-parse')).default;
+      }
       const pdfData = await pdfParse(buffer);
       let text = pdfData.text;
 
@@ -187,9 +193,7 @@ Please configure your API key to enable real-time AI analysis of lab reports wit
    */
   private static async sendTextToLLM(text: string, apiKey: string, siteUrl: string): Promise<string> {
     const models = [
-      'meta-llama/llama-3.2-3b-instruct:free',
-      'microsoft/phi-3-mini-128k-instruct:free',
-      'openai/gpt-oss-20b:free'
+      'meta-llama/llama-3.2-3b-instruct:free'
     ];
 
     let lastError: Error | null = null;
