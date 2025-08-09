@@ -404,8 +404,8 @@ export default function LabReportAnalysisModal({
                         onClick={() => setShowAllValues(!showAllValues)}
                         className="flex items-center gap-2"
                       >
-                        {showAllValues ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
-                        {showAllValues ? 'All Values' : 'Critical Only'}
+                        {/* {showAllValues ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />} */}
+                        {showAllValues ? 'Show Critical Values' : 'Show All Values'}
                         {showAllValues && analysis?.allValues && (
                           <Badge variant="secondary" className="ml-1">{analysis.allValues.length}</Badge>
                         )}
