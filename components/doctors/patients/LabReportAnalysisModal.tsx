@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X, FileText, TrendingUp, AlertTriangle, Loader2, Search, ToggleLeft, ToggleRight } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -46,6 +45,9 @@ interface LabReportAnalysis {
   llmModel: string;
   processedAt: string;
   processingError?: string;
+  keyFindings?: string[];
+  recommendations?: string[];
+  urgency?: 'ROUTINE' | 'SOON' | 'URGENT';
 }
 
 interface LabReportAnalysisModalProps {
@@ -64,7 +66,6 @@ export default function LabReportAnalysisModal({
   const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
   const [analysis, setAnalysis] = useState<LabReportAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('summary');
   const [showAllValues, setShowAllValues] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -94,8 +95,6 @@ export default function LabReportAnalysisModal({
     return Object.entries(grouped).sort();
   };
 
-  // Remove auto-selection of first report
-
   useEffect(() => {
     // Reset analysis when modal opens/closes or report changes
     if (isOpen) {
@@ -104,7 +103,6 @@ export default function LabReportAnalysisModal({
     }
   }, [isOpen]);
 
-  // When user selects a report, check status and process if needed
   const handleReportSelect = async (reportId: number) => {
     setSelectedReportId(reportId);
     setAnalysis(null);
@@ -119,8 +117,6 @@ export default function LabReportAnalysisModal({
       setLoading(false);
     }
   };
-
-  // Removed fetchAnalysis and handleGenerateAnalysis - now handled in handleReportSelect
 
   const processReport = async (reportId: number) => {
     try {
@@ -154,6 +150,9 @@ export default function LabReportAnalysisModal({
         processingStatus: 'PROCESSING',
         llmModel: 'meta-llama/llama-3.2-3b-instruct:free + openai/gpt-oss-20b:free',
         processedAt: new Date().toISOString(),
+        keyFindings: [],
+        recommendations: [],
+        urgency: undefined
       };
       setAnalysis(partial);
 
@@ -170,6 +169,9 @@ export default function LabReportAnalysisModal({
             partial = {
               ...partial,
               llmSummary: summaryJson.summary,
+              keyFindings: Array.isArray(summaryJson.keyFindings) ? summaryJson.keyFindings : [],
+              recommendations: Array.isArray(summaryJson.recommendations) ? summaryJson.recommendations : [],
+              urgency: summaryJson.urgency,
               processingStatus: 'COMPLETED',
               processedAt: new Date().toISOString(),
             };
@@ -209,7 +211,6 @@ export default function LabReportAnalysisModal({
         }
       })();
 
-      // Wait for both to finish but don't throw if one fails
       await Promise.allSettled([runSummary, runValues]);
 
       setLoading(false);
@@ -220,9 +221,6 @@ export default function LabReportAnalysisModal({
       setLoading(false);
     }
   };
-
-  // Remove polling-based flow; not needed with direct LLM calls
-  // const pollForCompletion = async (reportId: number) => { /* removed */ };
 
   const retryAnalysis = async (reportId: number) => {
     try {
@@ -252,39 +250,48 @@ export default function LabReportAnalysisModal({
     }
   };
 
+  const getUrgencyBadge = (urgency?: string) => {
+    switch (urgency) {
+      case 'URGENT': return <Badge className="bg-red-600 text-white">URGENT</Badge>;
+      case 'SOON': return <Badge className="bg-amber-500 text-white">SOON</Badge>;
+      default: return <Badge variant="outline">ROUTINE</Badge>;
+    }
+  };
+
+  // Normalize bullet arrays in case model returned single semicolon-joined string
+  const toBullets = (arr?: string[]) => {
+    if (!arr || arr.length === 0) return [] as string[];
+    if (arr.length > 1) return arr.filter(Boolean);
+    const [only] = arr;
+    if (typeof only === 'string' && only.includes(';')) {
+      return only.split(';').map(s => s.trim()).filter(Boolean);
+    }
+    return arr.filter(Boolean);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-hidden">
-        {/* Header - 10% of screen height */}
-        <DialogHeader className="h-[10vh] bg-gradient-to-r from-secondary to-secondary/80 text-white p-4 flex flex-row items-center justify-between">
+        {/* Header */}
+        <DialogHeader className="bg-gradient-to-r from-secondary to-secondary/80 text-white p-4 flex flex-row items-center justify-between">
           <div className="flex items-center gap-4">
-            {/* <Brain className="h-6 w-6" /> */}
             <DialogTitle className="text-xl font-bold">AI Lab Report Analysis</DialogTitle>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="text-white hover:bg-white/20"
-          >
+          <Button variant="ghost" size="sm" onClick={onClose} className="text-white hover:bg-white/20">
             <X className="h-4 w-4" />
           </Button>
         </DialogHeader>
 
-        {/* Report Tabs - Top Row */}
-        <div className="h-[8vh] border-b bg-gray-50 px-4 py-2 overflow-x-auto">
-          <div className="flex gap-2 h-full items-center">
+        {/* Report Tabs Row */}
+        <div className="border-b bg-gray-50 px-4 py-2 overflow-x-auto">
+          <div className="flex gap-2 items-center">
             {labReports.map((report) => (
               <Button
                 key={report.id}
                 variant={selectedReportId === report.id ? "default" : "outline"}
                 size="sm"
                 onClick={() => handleReportSelect(report.id)}
-                className={`whitespace-nowrap ${
-                  selectedReportId === report.id 
-                    ? 'bg-secondary text-white' 
-                    : 'text-gray-700 border-gray-300'
-                }`}
+                className={`whitespace-nowrap ${selectedReportId === report.id ? 'bg-secondary text-white' : 'text-gray-700 border-gray-300'}`}
               >
                 <FileText className="h-4 w-4 mr-2" />
                 {report.labPackageName}
@@ -296,16 +303,14 @@ export default function LabReportAnalysisModal({
           </div>
         </div>
 
-        {/* Main Content - 82% of screen height */}
-        <div className="h-[82vh] overflow-y-auto">
+        {/* Main Content */}
+        <div className="h-[82vh] overflow-y-auto p-4 space-y-4">
           {!selectedReportId ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                 <p className="text-lg font-medium text-gray-600">Select a Lab Report</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Click on a report tab above to automatically process with AI
-                </p>
+                <p className="text-sm text-gray-500 mt-2">Click on a report tab above to automatically process with AI</p>
               </div>
             </div>
           ) : loading ? (
@@ -317,187 +322,162 @@ export default function LabReportAnalysisModal({
               </div>
             </div>
           ) : analysis ? (
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="p-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="summary">AI Summary</TabsTrigger>
-                <TabsTrigger value="values">Lab Values</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="summary" className="mt-4">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">AI Analysis Summary</h3>
-                      <Badge variant="outline">
-                        {analysis.llmModel || 'AI Model'}
-                      </Badge>
+            <div className="space-y-4">
+              {/* Summary Card */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">AI Summary</h3>
+                    <div className="flex items-center gap-2">
+                      {getUrgencyBadge(analysis.urgency)}
+                      <Badge variant="outline">{analysis.llmModel || 'AI Model'}</Badge>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="prose max-w-none">
-                      {analysis.llmSummary ? (
-                        <>
-                          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                            {analysis.llmSummary}
-                          </p>
-                          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                            {analysis.llmSummary}
-                          </p>
-                        </>
-                      ) : (
-                        <div className="text-center text-gray-500 py-8">
-                          {analysis.processingStatus === 'FAILED' ? (
-                            <div className="text-red-600">
-                              <AlertTriangle className="h-8 w-8 mx-auto mb-4" />
-                              <div className="font-medium text-lg">Analysis Failed</div>
-                              <div className="text-sm mt-2 max-w-md mx-auto">
-                                {analysis.processingError || 'Unknown error occurred during processing'}
-                              </div>
-                              <div className="mt-4">
-                                <button 
-                                  onClick={() => retryAnalysis(selectedReportId!)}
-                                  className="px-4 py-2 bg-secondary text-white rounded hover:bg-secondary/90"
-                                  disabled={loading}
-                                >
-                                  {loading ? 'Retrying...' : 'Retry Analysis'}
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div>
-                              <FileText className="h-8 w-8 mx-auto mb-4 text-gray-400" />
-                              <p>No analysis summary available</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    {analysis.processedAt && (
-                      <div className="mt-4 text-sm text-gray-500">
-                        Analysis completed: {new Date(analysis.processedAt).toLocaleString()}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="prose max-w-none">
+                    {analysis.llmSummary ? (
+                      <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{analysis.llmSummary}</p>
+                    ) : (
+                      <div className="text-center text-gray-500 py-8">
+                        <FileText className="h-8 w-8 mx-auto mb-4 text-gray-400" />
+                        <p>No analysis summary available</p>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </div>
 
-              <TabsContent value="values" className="mt-4">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold">Laboratory Values</h3>
-                      <div className="flex items-center gap-4">
-                        {/* Search Bar */}
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                          <Input
-                            type="text"
-                            placeholder="Search parameters..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 w-64"
-                          />
-                        </div>
-                        
-                        {/* Toggle Button */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowAllValues(!showAllValues)}
-                          className="flex items-center gap-2"
-                        >
-                          {showAllValues ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
-                          {showAllValues ? 'All Values' : 'Critical Only'}
-                          {showAllValues && analysis?.allValues && (
-                            <Badge variant="secondary" className="ml-1">
-                              {analysis.allValues.length}
-                            </Badge>
-                          )}
-                          {!showAllValues && analysis?.criticalValues && (
-                            <Badge variant="destructive" className="ml-1">
-                              {analysis.criticalValues.length}
-                            </Badge>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {(() => {
-                      const filteredValues = getFilteredValues();
-                      const groupedValues = groupValuesByCategory(filteredValues);
-                      
-                      if (filteredValues.length === 0) {
-                        return (
-                          <div className="text-center py-8">
-                            <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                            <p className="text-gray-500">
-                              {searchTerm ? 'No values match your search.' : 
-                               showAllValues ? 'No values found in this report.' : 
-                               'No critical values detected.'}
-                            </p>
-                          </div>
-                        );
-                      }
-                      
-                      return (
-                        <div className="space-y-6">
-                          {groupedValues.map(([category, values]) => (
-                            <div key={category}>
-                              <h4 className="font-semibold text-md mb-3 text-gray-700 border-b pb-1">
-                                {category}
-                              </h4>
-                              <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
-                                  <thead>
-                                    <tr className="border-b bg-gray-50">
-                                      <th className="text-left p-3 font-medium">Parameter</th>
-                                      <th className="text-left p-3 font-medium">Value</th>
-                                      <th className="text-left p-3 font-medium">Normal Range</th>
-                                      <th className="text-left p-3 font-medium">Status</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {values.map((value, index) => (
-                                      <tr key={index} className="border-b hover:bg-gray-50">
-                                        <td className="p-3 font-medium">{value.parameter}</td>
-                                        <td className="p-3">
-                                          <span className="font-mono">{value.value}</span> 
-                                          <span className="text-gray-500 ml-1">{value.unit}</span>
-                                        </td>
-                                        <td className="p-3 text-gray-600 text-sm">{value.normalRange}</td>
-                                        <td className="p-3">
-                                          <Badge className={getSeverityColor(value.severity)}>
-                                            {value.isAbnormal && value.severity !== 'NORMAL' && (
-                                              <AlertTriangle className="h-3 w-3 mr-1" />
-                                            )}
-                                            {value.severity}
-                                          </Badge>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
+                  {/* Key Findings & Recommendations */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="font-semibold mb-2">Key Findings</h4>
+                      {toBullets(analysis.keyFindings).length > 0 ? (
+                        <ul className="list-disc pl-5 space-y-1 text-gray-700">
+                          {toBullets(analysis.keyFindings).map((item, idx) => (
+                            <li key={idx}>{item}</li>
                           ))}
+                        </ul>
+                      ) : (
+                        <p className="text-gray-500 text-sm">No key findings provided</p>
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2">Recommendations</h4>
+                      {toBullets(analysis.recommendations).length > 0 ? (
+                        <ul className="list-disc pl-5 space-y-1 text-gray-700">
+                          {toBullets(analysis.recommendations).map((item, idx) => (
+                            <li key={idx}>{item}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-gray-500 text-sm">No recommendations provided</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {analysis.processedAt && (
+                    <div className="mt-2 text-sm text-gray-500">Analysis completed: {new Date(analysis.processedAt).toLocaleString()}</div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Lab Values Card */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-semibold">Laboratory Values</h3>
+                    <div className="flex items-center gap-4">
+                      {/* Search Bar */}
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <Input
+                          type="text"
+                          placeholder="Search parameters..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10 w-64"
+                        />
+                      </div>
+                      {/* Toggle Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAllValues(!showAllValues)}
+                        className="flex items-center gap-2"
+                      >
+                        {showAllValues ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+                        {showAllValues ? 'All Values' : 'Critical Only'}
+                        {showAllValues && analysis?.allValues && (
+                          <Badge variant="secondary" className="ml-1">{analysis.allValues.length}</Badge>
+                        )}
+                        {!showAllValues && analysis?.criticalValues && (
+                          <Badge variant="destructive" className="ml-1">{analysis.criticalValues.length}</Badge>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const filteredValues = getFilteredValues();
+                    const groupedValues = groupValuesByCategory(filteredValues);
+                    if (filteredValues.length === 0) {
+                      return (
+                        <div className="text-center py-8">
+                          <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                          <p className="text-gray-500">
+                            {searchTerm ? 'No values match your search.' : showAllValues ? 'No values found in this report.' : 'No critical values detected.'}
+                          </p>
                         </div>
                       );
-                    })()}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-
-            </Tabs>
+                    }
+                    return (
+                      <div className="space-y-6">
+                        {groupedValues.map(([category, values]) => (
+                          <div key={category}>
+                            <h4 className="font-semibold text-md mb-3 text-gray-700 border-b pb-1">{category}</h4>
+                            <div className="overflow-x-auto">
+                              <table className="w-full border-collapse">
+                                <thead>
+                                  <tr className="border-b bg-gray-50">
+                                    <th className="text-left p-3 font-medium">Parameter</th>
+                                    <th className="text-left p-3 font-medium">Value</th>
+                                    <th className="text-left p-3 font-medium">Normal Range</th>
+                                    <th className="text-left p-3 font-medium">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {values.map((value, index) => (
+                                    <tr key={index} className="border-b hover:bg-gray-50">
+                                      <td className="p-3 font-medium">{value.parameter}</td>
+                                      <td className="p-3"><span className="font-mono">{value.value}</span> <span className="text-gray-500 ml-1">{value.unit}</span></td>
+                                      <td className="p-3 text-gray-600 text-sm">{value.normalRange}</td>
+                                      <td className="p-3">
+                                        <Badge className={getSeverityColor(value.severity)}>
+                                          {value.isAbnormal && value.severity !== 'NORMAL' && (
+                                            <AlertTriangle className="h-3 w-3 mr-1" />
+                                          )}
+                                          {value.severity}
+                                        </Badge>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            </div>
           ) : (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                 <p className="text-lg font-medium text-gray-600">Processing Lab Report</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  AI analysis will appear here shortly...
-                </p>
+                <p className="text-sm text-gray-500 mt-2">AI analysis will appear here shortly...</p>
               </div>
             </div>
           )}
