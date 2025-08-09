@@ -162,7 +162,7 @@ export default function LabReportAnalysisModal({
           const summaryRes = await fetch(`/api/llm-process/generate-summary`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text })
+            body: JSON.stringify({ text, reportId })
           });
           const summaryJson = await summaryRes.json();
           if (summaryRes.ok && summaryJson.success) {
@@ -191,7 +191,7 @@ export default function LabReportAnalysisModal({
           const valuesRes = await fetch(`/api/llm-process/extract-values`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text })
+            body: JSON.stringify({ text, reportId })
           });
           const valuesJson = await valuesRes.json();
           if (valuesRes.ok && valuesJson.success) {
