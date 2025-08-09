@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Eye, ExternalLink } from "lucide-react";
 
+
+
 interface LabReportsSectionProps {
   labBookings: Array<{
     id: number;
@@ -12,9 +14,11 @@ interface LabReportsSectionProps {
     status: string;
     reportLink?: string[] | null;
   }>;
+  patientId?: string;
+  onViewMore?: () => void;
 }
 
-export default function LabReportsSection({ labBookings }: LabReportsSectionProps) {
+export default function LabReportsSection({ labBookings, onViewMore }: LabReportsSectionProps) {
   const recentReports = labBookings.slice(0, 3);
 
   return (
@@ -26,7 +30,12 @@ export default function LabReportsSection({ labBookings }: LabReportsSectionProp
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-bold text-gray-900">Lab Reports</h3>
-          <Button variant="outline" size="sm" className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs"
+            onClick={onViewMore}
+          >
             <Eye className="h-3 w-3 mr-1" />
             View More
           </Button>

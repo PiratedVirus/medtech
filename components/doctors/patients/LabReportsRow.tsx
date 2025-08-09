@@ -1,7 +1,9 @@
 'use client'
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Eye, FileText, Maximize2 } from "lucide-react";
+import LabReportAnalysisModal from "./LabReportAnalysisModal";
 
 interface LabReportsRowProps {
   labBookings: Array<{
@@ -11,9 +13,11 @@ interface LabReportsRowProps {
     status: string;
     reportLink?: string[] | null;
   }>;
+  patientId: string;
 }
 
-export default function LabReportsRow({ labBookings }: LabReportsRowProps) {
+export default function LabReportsRow({ labBookings, patientId }: LabReportsRowProps) {
+  const [modalOpen, setModalOpen] = useState(false);
   const recentReports = labBookings.slice(0, 3);
 
   return (
@@ -29,7 +33,8 @@ export default function LabReportsRow({ labBookings }: LabReportsRowProps) {
               variant="ghost"
               size="sm"
               className="h-6 w-6 p-0 text-gray-500 hover:text-secondary hover:bg-secondary/10 rounded"
-              title="View More"
+              title="AI Analysis"
+              onClick={() => setModalOpen(true)}
             >
               <Maximize2 className="h-3 w-3" />
             </Button>
@@ -70,6 +75,13 @@ export default function LabReportsRow({ labBookings }: LabReportsRowProps) {
           )}
         </div>
       </div>
+      
+      <LabReportAnalysisModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        patientId={patientId}
+        labReports={labBookings}
+      />
     </Card>
   );
 } 

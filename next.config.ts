@@ -15,6 +15,18 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Enhanced configuration for PDF processing
+  experimental: {
+    // Disable ISR cache for large files
+    // isrMemoryCacheSize: 0,
+  },
+  // API route configuration
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb', // Allow larger payloads (adjust based on Vercel plan)
+    },
+    responseLimit: '50mb',
+  },
 };
 
 export default nextConfig;

@@ -68,6 +68,7 @@ model User {
   phlebotomistProfile Phlebotomist?
   labAssignments      LabAssignment[]   @relation("PatientLabAssignment")
   testResultsReported TestResult[]      @relation("TestResultReporter")
+  patientTrendData    ReportTrendData[] @relation("PatientTrendData")
 
   @@unique([phoneNumber, deletedAt])
   @@index([deletedAt])
@@ -298,6 +299,8 @@ model LabBooking {
   patient           User       @relation("LabPatient", fields: [patientId], references: [id])
   payment           Payment?   @relation("LabBookingPayment")
   labAssignments    LabAssignment[]
+  reportAnalysis    LabReportAnalysis?
+  trendData         ReportTrendData[]
 
   @@index([deletedAt])
   @@index([labAssignmentId])
@@ -708,6 +711,55 @@ model AppointmentReport {
   @@index([deletedAt])
 }
 
+model LabReportAnalysis {
+  id                  Int       @id @default(autoincrement())
+  labBookingId        Int       @unique
+  reportUrl           String
+  extractedText       String?   @db.Text
+  llmSummary          String?   @db.Text
+  criticalValues      Json?     // Array of {parameter, value, unit, isAbnormal, severity}
+  trendAnalysis       Json?     // Comparison with previous reports
+  llmModel            String?   // Model used for analysis
+  processingStatus    ProcessingStatus @default(PENDING)
+  processingError     String?
+  processedAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+  labBooking          LabBooking @relation(fields: [labBookingId], references: [id])
+  trendDataEntries    ReportTrendData[] @relation("SourceReportTrend")
+
+  @@index([labBookingId])
+  @@index([processingStatus])
+  @@index([deletedAt])
+}
+
+model ReportTrendData {
+  id                  Int       @id @default(autoincrement())
+  patientId           Int
+  parameter           String    // e.g., "HbA1c", "Glucose", "Cholesterol"
+  value               String
+  unit                String?
+  normalRange         String?
+  isAbnormal          Boolean   @default(false)
+  severity            TrendSeverity? // LOW, NORMAL, HIGH, CRITICAL
+  reportDate          DateTime
+  labBookingId        Int
+  sourceReportId      Int?      // Reference to LabReportAnalysis
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+  patient             User      @relation("PatientTrendData", fields: [patientId], references: [id])
+  labBooking          LabBooking @relation(fields: [labBookingId], references: [id])
+  sourceReport        LabReportAnalysis? @relation("SourceReportTrend", fields: [sourceReportId], references: [id])
+
+  @@index([patientId])
+  @@index([parameter])
+  @@index([reportDate])
+  @@index([labBookingId])
+  @@index([deletedAt])
+}
+
 enum LabAssignmentStatus {
   PENDING
   ASSIGNED
@@ -717,4 +769,18 @@ enum LabAssignmentStatus {
   ANALYZING
   COMPLETED
   CANCELLED
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum TrendSeverity {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
 }
