@@ -167,7 +167,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
           <div className="flex items-center gap-3 mb-4">
 
             <div>
-              <h3 className="text-2xl font-bold text-primary">Patient Summary</h3>
+              <h3 className="text-2xl font-bold text-secondary">Patient Summary</h3>
             </div>
           </div>
         </div>

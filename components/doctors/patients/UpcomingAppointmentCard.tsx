@@ -71,7 +71,7 @@ export default function UpcomingAppointmentCard({ appointments }: UpcomingAppoin
                     {/* Status Badge */}
                     <Badge className={`text-xs font-medium ${
                       appointment.status === 'SCHEDULED' 
-                        ? 'bg-primary/10 text-primary border-primary/20' 
+                        ? 'bg-secondary/10 text-secondary border-secondary/20' 
                         : 'bg-orange-100 text-orange-700 border-orange-200'
                     }`}>
                       {appointment.status === 'SCHEDULED' ? 'Scheduled' : 'Pending'}
@@ -83,11 +83,11 @@ export default function UpcomingAppointmentCard({ appointments }: UpcomingAppoin
           </div>
         ) : (
           <div className="text-center py-6">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Calendar className="h-6 w-6 text-primary" />
+            <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Calendar className="h-6 w-6 text-secondary" />
             </div>
             <p className="text-sm text-gray-600 mb-3">No upcoming appointments</p>
-            <button className="px-3 py-1.5 bg-primary text-white text-xs rounded-lg hover:bg-primary/90 transition-colors">
+            <button className="px-3 py-1.5 bg-secondary text-white text-xs rounded-lg hover:bg-secondary/90 transition-colors">
               Schedule Appointment
             </button>
           </div>

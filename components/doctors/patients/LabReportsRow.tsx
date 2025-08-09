@@ -50,7 +50,7 @@ export default function LabReportsRow({ labBookings }: LabReportsRowProps) {
               key={labBooking.id}
               variant="ghost"
               size="sm"
-              className="text-xs text-primary hover:bg-primary/20 hover:text-primary bg-primary/10 border border-primary/10 rounded-lg px-3 py-2 h-auto"
+              className="text-xs text-secondary hover:bg-secondary/20 hover:text-secondary bg-secondary/10 border border-secondary/10 rounded-lg px-3 py-2 h-auto"
               onClick={() => {
                 if (labBooking.reportLink && labBooking.reportLink.length > 0) {
                   window.open(labBooking.reportLink[0], '_blank');

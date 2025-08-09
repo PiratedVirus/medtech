@@ -43,7 +43,7 @@ export default function DietPlanRequestCard({ patient }: DietPlanRequestCardProp
               <Badge className={`text-xs font-medium ${
                 dietPlanRequest.status === 'pending' 
                   ? 'bg-orange-100 text-orange-700 border-orange-200' 
-                  : 'bg-primary/10 text-primary border-primary/20'
+                  : 'bg-secondary/10 text-secondary border-secondary/20'
               }`}>
                 {dietPlanRequest.status === 'pending' ? 'Pending' : 'Completed'}
               </Badge>
@@ -63,7 +63,7 @@ export default function DietPlanRequestCard({ patient }: DietPlanRequestCardProp
             </p>
 
             {/* Process Button */}
-            <Button className="w-full bg-primary hover:bg-primary/90 text-white rounded-lg py-2 shadow-sm hover:shadow-md transition-all duration-300 group text-xs">
+            <Button className="w-full bg-secondary hover:bg-secondary/90 text-white rounded-lg py-2 shadow-sm hover:shadow-md transition-all duration-300 group text-xs">
               <span className="font-semibold">
                 Create Plan
               </span>

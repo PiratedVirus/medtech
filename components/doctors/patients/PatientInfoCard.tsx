@@ -46,13 +46,13 @@ export default function PatientInfoCard({ patient }: PatientInfoCardProps) {
         <div className="relative mb-4">
           {/* Corner Pills */}
           <div className="absolute top-0 left-0 z-20">
-            <Badge className="bg-primary text-white text-xs font-medium">
+            <Badge className="bg-secondary text-white text-xs font-medium">
               ID: {patient.id}
             </Badge>
           </div>
           {activeSubscription && (
             <div className="absolute top-0 right-0 z-20">
-              <Badge className="bg-primary/80 text-white text-xs font-medium">
+              <Badge className="bg-secondary/80 text-white text-xs font-medium">
                 {activeSubscription.planName}
               </Badge>
             </div>
@@ -60,7 +60,7 @@ export default function PatientInfoCard({ patient }: PatientInfoCardProps) {
           
           {/* Centered User Icon and Name */}
           <div className="flex flex-col items-center pt-6">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center shadow-lg mb-3">
+            <div className="w-16 h-16 bg-gradient-to-br from-secondary to-secondary/80 rounded-full flex items-center justify-center shadow-lg mb-3">
               <User className="h-8 w-8 text-white" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 text-center">{patient.name}</h3>
@@ -72,29 +72,29 @@ export default function PatientInfoCard({ patient }: PatientInfoCardProps) {
           <div className="grid grid-cols-2 gap-2">
             <div className="flex items-center justify-between p-2 bg-white/60 rounded-lg border border-gray-200/50">
               <span className="text-xs text-gray-600">Gender</span>
-              <span className="text-xs font-semibold text-primary">{patient.profile.gender}</span>
+              <span className="text-xs font-semibold text-secondary">{patient.profile.gender}</span>
             </div>
             
             <div className="flex items-center justify-between p-2 bg-white/60 rounded-lg border border-gray-200/50">
               <span className="text-xs text-gray-600">Age</span>
-              <span className="text-xs font-semibold text-primary">{patient.profile.age} yrs</span>
+              <span className="text-xs font-semibold text-secondary">{patient.profile.age} yrs</span>
             </div>
             
             <div className="flex items-center justify-between p-2 bg-white/60 rounded-lg border border-gray-200/50">
               <span className="text-xs text-gray-600">Weight</span>
-              <span className="text-xs font-semibold text-primary">{patient.profile.weight} kg</span>
+              <span className="text-xs font-semibold text-secondary">{patient.profile.weight} kg</span>
             </div>
             
             <div className="flex items-center justify-between p-2 bg-white/60 rounded-lg border border-gray-200/50">
               <span className="text-xs text-gray-600">Height</span>
-              <span className="text-xs font-semibold text-primary">{patient.profile.height} cm</span>
+              <span className="text-xs font-semibold text-secondary">{patient.profile.height} cm</span>
             </div>
           </div>
 
           {/* Last Visit */}
           <div className="flex items-center justify-between p-2 bg-white/60 rounded-lg border border-gray-200/50">
             <span className="text-xs text-gray-600">Last Visit</span>
-            <span className="text-xs font-semibold text-primary">{lastVisit}</span>
+            <span className="text-xs font-semibold text-secondary">{lastVisit}</span>
           </div>
         </div>
       </div>

@@ -26,7 +26,7 @@ export default function LabReportsSection({ labBookings }: LabReportsSectionProp
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-bold text-gray-900">Lab Reports</h3>
-          <Button variant="outline" size="sm" className="text-primary border-primary/30 hover:bg-primary/10 rounded-lg text-xs">
+          <Button variant="outline" size="sm" className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs">
             <Eye className="h-3 w-3 mr-1" />
             View More
           </Button>
@@ -87,11 +87,7 @@ export default function LabReportsSection({ labBookings }: LabReportsSectionProp
           )}
         </div>
         
-        {/* Action Button */}
-        <Button className="w-full bg-secondary hover:bg-secondary/90 text-white rounded-xl py-2 shadow-lg hover:shadow-xl transition-all duration-300 group text-sm">
-          <FileText className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
-          <span className="font-semibold">Schedule Lab Test</span>
-        </Button>
+
       </div>
     </Card>
   );

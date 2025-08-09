@@ -69,9 +69,9 @@ export default function PatientSummarySection({
           <Card className="w-[85%] flex-shrink-0 bg-white shadow-sm rounded-lg">
             <div className="flex h-full">
               {/* Left Side Header */}
-              <div className="bg-primary/20 p-4 flex items-center justify-center max-w-[40px]">
+              <div className="bg-secondary/20 p-4 flex items-center justify-center max-w-[40px]">
                 <div className="writing-mode-vertical text-center">
-                  <h4 className="font-semibold text-lg text-primary transform -rotate-90 whitespace-nowrap">
+                  <h4 className="font-semibold text-lg text-secondary transform -rotate-90 whitespace-nowrap">
                     Latest Appointment
                   </h4>
                 </div>
@@ -82,7 +82,7 @@ export default function PatientSummarySection({
                 {/* Top Right Corner Elements */}
                 <div className="absolute top-4 right-4 flex items-center gap-2">
                   {latestCompletedAppointment && (
-                    <Badge variant="outline" className="bg-primary/30 text-primary border-primary/30">
+                    <Badge variant="outline" className="bg-secondary/30 text-secondary border-secondary/30">
                       {new Date(latestCompletedAppointment.date).toLocaleDateString()}
                     </Badge>
                   )}
@@ -94,7 +94,7 @@ export default function PatientSummarySection({
                     {/* Checkups */}
                     <div className="flex justify-between">
                       <h5 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">Checkups</h5>
-                      <button className="w-8 h-8 bg-primary text-white rounded-full flex mr-10 items-center justify-center hover:bg-primary/90 transition-colors">
+                      <button className="w-8 h-8 bg-secondary text-white rounded-full flex mr-10 items-center justify-center hover:bg-secondary/90 transition-colors">
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
@@ -104,9 +104,9 @@ export default function PatientSummarySection({
                       {mockCheckups.map((checkup, index) => (
                         <div key={index} className="flex items-center gap-2">
                           <span className="text-sm font-medium text-gray-700 min-w-[60px]">{checkup.name}:</span>
-                          <span className="bg-primary/10 text-primary px-2 py-1 rounded text-sm font-medium">{checkup.value}</span>
+                          <span className="bg-secondary/10 text-secondary px-2 py-1 rounded text-sm font-medium">{checkup.value}</span>
                           <span className="rounded text-sm font-medium">{checkup.unit}</span>
-                          <button className="text-primary hover:text-primary/80">
+                          <button className="text-secondary hover:text-secondary/80">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                             </svg>
@@ -124,7 +124,7 @@ export default function PatientSummarySection({
                         {latestCompletedAppointment?.complaints ? (
                           latestCompletedAppointment.complaints.split(',').map((complaint, index) => (
                             <div key={index} className="text-sm text-gray-700 flex items-start gap-2">
-                              <span className="flex items-center gap-2 bg-primary/10 p-2 rounded-lg">
+                              <span className="flex items-center gap-2 bg-secondary/10 p-2 rounded-lg">
                                 {complaint.trim()}
                                 {complaint.toLowerCase().includes('blood pressure') && (
                                   <svg className="h-3 w-3 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
@@ -162,7 +162,7 @@ export default function PatientSummarySection({
                       <div className="space-y-2">
                         {latestCompletedAppointment?.medicines ? (
                           latestCompletedAppointment.medicines.split(',').map((medicine, index) => (
-                            <div key={index} className="text-sm text-gray-700 bg-primary/10 p-3 rounded">
+                            <div key={index} className="text-sm text-gray-700 bg-secondary/10 p-3 rounded">
                               <div className="font-semibold">{medicine.trim()}</div>
                             </div>
                           ))
@@ -181,9 +181,9 @@ export default function PatientSummarySection({
           <Card className="w-[85%] flex-shrink-0 border-1 border-gray-200 rounded-lg shadow-sm">
             <div className="flex h-full">
               {/* Left Side Header */}
-              <div className="bg-primary/20 p-4 flex items-center justify-center max-w-[30px]">
+              <div className="bg-secondary/20 p-4 flex items-center justify-center max-w-[30px]">
                 <div className="writing-mode-vertical text-center">
-                  <h4 className="font-semibold text-lg text-primary transform -rotate-90 whitespace-nowrap">
+                  <h4 className="font-semibold text-lg text-secondary transform -rotate-90 whitespace-nowrap">
                     Previous Appointments
                   </h4>
                 </div>
@@ -205,7 +205,7 @@ export default function PatientSummarySection({
                       </option>
                     ))}
                   </select>
-                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                  <Badge variant="outline" className="bg-secondary/10 text-secondary border-secondary/20">
                     {selectedAppointmentId ? "1" : previousCompletedAppointments.length} appointment{selectedAppointmentId ? "" : "s"}
                   </Badge>
                 </div>
@@ -217,7 +217,7 @@ export default function PatientSummarySection({
                     <div>
                       <div className="flex justify-between">
                         <h5 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">Checkups</h5>
-                        <button className="w-8 h-8 bg-primary text-white rounded-full flex mr-10 items-center justify-center hover:bg-primary/90 transition-colors">
+                        <button className="w-8 h-8 bg-secondary text-white rounded-full flex mr-10 items-center justify-center hover:bg-secondary/90 transition-colors">
                           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                           </svg>
@@ -227,9 +227,9 @@ export default function PatientSummarySection({
                         {mockCheckups.map((checkup, index) => (
                           <div key={index} className="flex items-center gap-2">
                             <span className="text-sm font-medium text-gray-700 min-w-[60px]">{checkup.name}:</span>
-                            <span className="bg-primary/10 text-primary px-2 py-1 rounded text-sm font-medium">{checkup.value}</span>
-                            <span className="bg-primary/10 text-primary px-2 py-1 rounded text-sm font-medium">{checkup.unit}</span>
-                            <button className="text-primary hover:text-primary/80">
+                            <span className="bg-secondary/10 text-secondary px-2 py-1 rounded text-sm font-medium">{checkup.value}</span>
+                            <span className="bg-secondary/10 text-secondary px-2 py-1 rounded text-sm font-medium">{checkup.unit}</span>
+                            <button className="text-secondary hover:text-secondary/80">
                               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                               </svg>
@@ -249,7 +249,7 @@ export default function PatientSummarySection({
                           selectedAppointment.complaints ? (
                             selectedAppointment.complaints.split(',').map((complaint, index) => (
                               <div key={index} className="text-sm text-gray-700 flex items-start gap-2">
-                                <span className="flex items-center gap-2 bg-primary/10 p-2 rounded-lg">
+                                <span className="flex items-center gap-2 bg-secondary/10 p-2 rounded-lg">
                                   {complaint.trim()}
                                   {complaint.toLowerCase().includes('blood pressure') && (
                                     <svg className="h-3 w-3 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
@@ -263,7 +263,7 @@ export default function PatientSummarySection({
                             <p className="text-sm text-gray-500">No complaints recorded</p>
                           )
                         ) : (
-                          <p className="text-sm text-gray-700 bg-primary/10 p-3 rounded-lg">
+                          <p className="text-sm text-gray-700 bg-secondary/10 p-3 rounded-lg">
                             {aggregatedComplaints || "No complaints recorded"}
                           </p>
                         )}
@@ -278,8 +278,8 @@ export default function PatientSummarySection({
                       <h5 className="font-semibold text-gray-800 mb-3">
                         AI Summary (Coming Soon)
                       </h5>
-                      <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
-                        <p className="text-sm text-primary">
+                      <div className="bg-secondary/10 p-4 rounded-lg border border-secondary/20">
+                        <p className="text-sm text-secondary">
                           AI-powered analysis of patient history will be available here to provide insights and trends.
                         </p>
                       </div>
@@ -292,7 +292,7 @@ export default function PatientSummarySection({
                         {selectedAppointment ? (
                           selectedAppointment.medicines ? (
                             selectedAppointment.medicines.split(',').map((medicine, index) => (
-                              <div key={index} className="text-sm text-gray-700 bg-primary/10 p-3 rounded">
+                              <div key={index} className="text-sm text-gray-700 bg-secondary/10 p-3 rounded">
                                 <div className="font-semibold">{medicine.trim()}</div>
                               </div>
                             ))
@@ -300,7 +300,7 @@ export default function PatientSummarySection({
                             <p className="text-sm text-gray-500">No medicines prescribed</p>
                           )
                         ) : (
-                          <div className="text-sm text-gray-700 bg-primary/10 p-3 rounded">
+                          <div className="text-sm text-gray-700 bg-secondary/10 p-3 rounded">
                             <div className="font-semibold">{aggregatedMedicines || "No medicines prescribed"}</div>
                           </div>
                         )}
@@ -315,7 +315,7 @@ export default function PatientSummarySection({
 
         {/* Carousel Indicators
         <div className="flex justify-center mt-4 gap-2">
-          <div className="w-3 h-3 bg-primary rounded-full"></div>
+          <div className="w-3 h-3 bg-secondary rounded-full"></div>
           <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
         </div> */}
       </div>
@@ -325,7 +325,7 @@ export default function PatientSummarySection({
         <Button
           onClick={onSaveNotes}
           disabled={savingNotes}
-          className="bg-primary hover:bg-primary/90"
+          className="bg-secondary hover:bg-secondary/90"
         >
           {savingNotes ? "Saving..." : "Save Notes"}
         </Button>
