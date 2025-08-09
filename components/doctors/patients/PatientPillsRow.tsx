@@ -1,29 +1,120 @@
-'use client'
+"use client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Edit, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useDecryptedProfile } from "@/hooks/use-profile";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { toast } from "react-toastify";
 
 interface PatientPill {
-  id: string;
+  id: number;
   key: string;
   value: string;
 }
 
 interface PatientPillsRowProps {
-  pills: PatientPill[];
+  pills?: PatientPill[];
   onEditPill?: (pillId: string) => void;
   onAddPill?: () => void;
+  userIdOverride?: number;
 }
 
-export default function PatientPillsRow({ pills, onEditPill, onAddPill }: PatientPillsRowProps) {
+export default function PatientPillsRow({ pills: pillsProp, onEditPill, onAddPill, userIdOverride }: PatientPillsRowProps) {
+  const { profile } = useDecryptedProfile();
+  const userId = userIdOverride ?? (profile?.id ? Number(profile.id) : undefined);
+
+  const [pills, setPills] = useState<PatientPill[]>(pillsProp || []);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editing, setEditing] = useState<{ id: number | null; key: string; value: string }>({ id: null, key: "", value: "" });
+  const [isAdding, setIsAdding] = useState(false);
+
+  // fetch from backend
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/patients/pills?userId=${userId}`);
+        const json = await res.json();
+        if (!cancelled && json?.success) setPills(json.data || []);
+      } catch (_) {
+        // swallow
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  const handleStartEdit = (pill: PatientPill) => {
+    setEditing({ id: pill.id, key: pill.key, value: pill.value });
+    setIsAdding(false);
+    setEditOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!editing.key.trim() || !editing.value.trim()) {
+      toast.error("Please fill in both metric name and value");
+      return;
+    }
+    
+    try {
+      if (isAdding) {
+        // Adding new pill
+        const res = await fetch(`/api/patients/pills`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, key: editing.key.trim(), value: editing.value.trim() }),
+        });
+        const json = await res.json();
+        if (json?.success) {
+          const newPill: PatientPill = { id: json.data.id, key: json.data.key, value: json.data.value };
+          setPills(prev => [newPill, ...prev]);
+          toast.success("Metric added successfully!");
+        } else {
+          toast.error(json?.error || "Failed to add metric");
+        }
+      } else {
+        // Editing existing pill
+        const res = await fetch(`/api/patients/pills`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editing.id, key: editing.key.trim(), value: editing.value.trim() }),
+        });
+        const json = await res.json();
+        if (json?.success) {
+          setPills(prev => prev.map(p => (p.id === editing.id ? { ...p, key: editing.key.trim(), value: editing.value.trim() } : p)));
+          toast.success("Metric updated successfully!");
+        } else {
+          toast.error(json?.error || "Failed to update metric");
+        }
+      }
+      setEditOpen(false);
+      setEditing({ id: null, key: "", value: "" });
+      setIsAdding(false);
+    } catch (error) {
+      toast.error("An error occurred. Please try again.");
+    }
+  };
+
+  const handleAdd = () => {
+    if (!userId) {
+      toast.error("User ID not found");
+      return;
+    }
+    setEditing({ id: null, key: "", value: "" });
+    setIsAdding(true);
+    setEditOpen(true);
+  };
+
   return (
     <Card className="col-span-full relative overflow-hidden rounded-xl bg-gray-50/80 p-4 shadow-sm border border-gray-100">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-50/50 to-gray-100/30 rounded-xl" />
       
       <div className="relative z-10">
-        {/* Header */}
-
         
         {/* Pills Container */}
         <div className="flex flex-wrap gap-3 items-start">
@@ -34,7 +125,7 @@ export default function PatientPillsRow({ pills, onEditPill, onAddPill }: Patien
                 variant="ghost"
                 size="sm"
                 className="absolute -top-2 -right-2 h-6 w-6 p-0 bg-white/80 hover:bg-white text-gray-500 hover:text-primary rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-200 z-10"
-                onClick={() => onEditPill?.(pill.id)}
+                onClick={() => (onEditPill ? onEditPill(String(pill.id)) : handleStartEdit(pill))}
               >
                 <Edit className="h-3 w-3" />
               </Button>
@@ -54,13 +145,49 @@ export default function PatientPillsRow({ pills, onEditPill, onAddPill }: Patien
             variant="outline"
             size="sm"
             className="rounded-full px-4 py-2 border-dashed border-gray-300 hover:border-primary hover:text-primary transition-all duration-200 bg-white/60 hover:bg-white/80"
-            onClick={onAddPill}
+            onClick={() => (onAddPill ? onAddPill() : handleAdd())}
           >
             <Plus className="h-4 w-4 mr-1" />
             <span className="text-sm font-medium">Add Metric</span>
           </Button>
         </div>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={(open) => {
+        if (!open) {
+          setEditOpen(false);
+          setEditing({ id: null, key: "", value: "" });
+          setIsAdding(false);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{isAdding ? "Add New Metric" : "Edit Metric"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input 
+              placeholder="Metric name (e.g., Blood Pressure)" 
+              value={editing.key} 
+              onChange={(e) => setEditing(prev => ({ ...prev, key: e.target.value }))} 
+            />
+            <Input 
+              placeholder="Value (e.g., 120/80 mmHg)" 
+              value={editing.value} 
+              onChange={(e) => setEditing(prev => ({ ...prev, value: e.target.value }))} 
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setEditOpen(false);
+              setEditing({ id: null, key: "", value: "" });
+              setIsAdding(false);
+            }}>Cancel</Button>
+            <Button onClick={handleSave} disabled={!editing.key.trim() || !editing.value.trim()}>
+              {isAdding ? "Add" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 } 

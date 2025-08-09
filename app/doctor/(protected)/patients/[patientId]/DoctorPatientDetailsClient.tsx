@@ -97,15 +97,6 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
   const [savingNotes, setSavingNotes] = useState(false);
   const { profile } = useDecryptedProfile();
 
-  // Mock data for pills and AI summary
-  const [patientPills, setPatientPills] = useState([
-    { id: "1", key: "Blood Pressure", value: "140/90 mmHg" },
-    { id: "2", key: "Blood Sugar", value: "120 mg/dL" },
-    { id: "3", key: "Weight", value: "75 kg" },
-    { id: "4", key: "BMI", value: "24.5" },
-    { id: "5", key: "Heart Rate", value: "72 bpm" }
-  ]);
-
   const aiSummary = `Patient John Doe, a 45-year-old male with a history of type 2 diabetes and hypertension, presents with well-controlled chronic conditions. Recent lab results show HbA1c at 6.2%, indicating good glycemic control. Blood pressure readings average 140/90 mmHg, slightly elevated but within acceptable range for this patient's risk profile. Weight has remained stable at 75 kg with a BMI of 24.5, indicating healthy body composition. Lipid panel reveals total cholesterol of 180 mg/dL with LDL at 100 mg/dL, both within target ranges. Renal function tests show normal creatinine levels at 0.9 mg/dL with an eGFR of 85 mL/min/1.73m². The patient demonstrates good medication adherence and lifestyle modifications, including regular exercise and dietary compliance. No significant complications of diabetes are noted, with normal fundoscopic examination and intact peripheral pulses. Current treatment regimen includes metformin 500mg twice daily and lisinopril 10mg daily, both well-tolerated. The patient reports good energy levels and no new symptoms. Overall, this represents a stable clinical picture with well-managed chronic conditions and no immediate concerns requiring intervention.`;
 
   useEffect(() => {
@@ -141,18 +132,6 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
     }
   };
 
-  const handleEditPill = (pillId: string) => {
-    // TODO: Implement edit functionality when backend is ready
-    console.log("Edit pill:", pillId);
-    toast.info("Edit functionality will be available soon");
-  };
-
-  const handleAddPill = () => {
-    // TODO: Implement add functionality when backend is ready
-    console.log("Add new pill");
-    toast.info("Add functionality will be available soon");
-  };
-
   // Loading State
   if (!patientDetails) {
     return <CdLoader />;
@@ -180,37 +159,42 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
           <UpcomingAppointmentCard appointments={patientDetails.doctorAppointments} />
           <DietPlanRequestCard patient={patientDetails} />
 
-          {/* Next 6 columns */}
+          {/* Next 6 columns - Prescriptions (3) + Lab Reports (3) */}
           <PrescriptionsSection appointments={patientDetails.doctorAppointments} patientName={patientDetails.name} />
+          <LabReportsSection labBookings={patientDetails.labBookings} />
+        </div>
+        <div className="mt-1">
+          <div className="flex items-center gap-3 mb-4">
+
+            <div>
+              <h3 className="text-2xl font-bold text-primary">Patient Summary</h3>
+            </div>
+          </div>
         </div>
 
-        {/* Lab Reports Section */}
-
-
-                  {/* Pills and AI Summary Section */}
-          <div className="mt-6">
-            <PatientPillsRow pills={patientPills} onEditPill={handleEditPill} onAddPill={handleAddPill} />
-          </div>
-          <div className="mt-1">
-            <PatientAISummaryRow summary={aiSummary} />
-          </div>
+        {/* Pills and AI Summary Section */}
+        <div className="mt-6">
+          <PatientPillsRow userIdOverride={Number(patientId)} />
+        </div>
+        <div className="mt-1">
+          <PatientAISummaryRow summary={aiSummary} />
+        </div>
 
         {/* Summary Section */}
         <div className="mt-6">
-        <PatientSummarySection
-          latestCompletedAppointment={latestCompletedAppointment}
-          previousCompletedAppointments={previousCompletedAppointments}
-          doctorNotes={doctorNotes}
-          onNotesChange={setDoctorNotes}
-          onSaveNotes={handleSaveNotes}
-          savingNotes={savingNotes}
-        />
+
+          <PatientSummarySection
+            latestCompletedAppointment={latestCompletedAppointment}
+            previousCompletedAppointments={previousCompletedAppointments}
+            doctorNotes={doctorNotes}
+            onNotesChange={setDoctorNotes}
+            onSaveNotes={handleSaveNotes}
+            savingNotes={savingNotes}
+          />
         </div>
         <div className="grid gap-4 grid-cols-12 mt-6">
-          <LabReportsRow labBookings={patientDetails.labBookings} />
           <HealthToolsRow />
         </div>
-
 
         {/* Health Insights */}
         {/* <div className="col-span-full mt-6">
