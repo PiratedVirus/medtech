@@ -6,6 +6,14 @@ const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 const MAX_PDF_MB = Number(process.env.OPENROUTER_MAX_PDF_MB ?? 10);
 const MAX_TEXT_TOKENS = 8000;
 
+function assertValidGroqKey(apiKey: string) {
+  // OpenRouter keys commonly start with "sk-or-"; Groq keys start with "gsk_"
+  const isOpenRouterKey = apiKey.startsWith('sk-or-') || apiKey.toLowerCase().includes('openrouter');
+  if (isOpenRouterKey) {
+    throw new Error('Configured API key looks like an OpenRouter key. Set GROQ_API_KEY to a valid Groq key (starts with "gsk_") for this endpoint.');
+  }
+}
+
 export async function extractPdfText(pdfUrl: string): Promise<string> {
   console.log('[LLM-PROC][PDF] Downloading PDF from URL');
   const response = await fetch(pdfUrl);
@@ -108,6 +116,7 @@ function safeParseSummary(content: string): { summary: string; keyFindings: stri
 }
 
 export async function llmGenerateSummaryFromText(text: string, apiKey: string, _siteUrl: string): Promise<{ summary: string; keyFindings: string[]; recommendations: string[]; urgency: 'ROUTINE'|'SOON'|'URGENT' }>{
+  assertValidGroqKey(apiKey);
   const prompt = `Return STRICT JSON ONLY with this schema (no extra keys):\n{\n  \"summary\": \"200-250 word clinical summary emphasizing significant abnormalities and their implications\",\n  \"keyFindings\": [\"short bullet of critical and notable findings (max 8)\"],\n  \"recommendations\": [\"short actionable next-step suggestions (max 8)\"],\n  \"urgency\": \"ROUTINE|SOON|URGENT\"\n}\nRules: Use precise medical language, avoid hallucinations, do not include code fences, comments, or trailing commas. Double quotes everywhere.\n\nLab Report Text:\n${text}`;
 
   const payload = {
@@ -135,6 +144,7 @@ export async function llmGenerateSummaryFromText(text: string, apiKey: string, _
 }
 
 export async function llmGenerateValuesFromText(text: string, apiKey: string, _siteUrl: string): Promise<{ allValues: any[]; criticalValues: any[]; }>{
+  assertValidGroqKey(apiKey);
   const prompt = `Return STRICT JSON ONLY with this schema (no extra keys):\n{\n  \"allValues\": [\n    {\"parameter\": \"\", \"value\": \"\", \"unit\": \"\", \"normalRange\": \"\", \"isAbnormal\": false, \"severity\": \"LOW|NORMAL|HIGH|CRITICAL\", \"category\": \"CBC|LFT|KFT|Lipid Profile|Glucose|Thyroid|Kidney|Liver|Electrolytes|Other\"}\n  ],\n  \"criticalValues\": [\n    {\"parameter\": \"\", \"value\": \"\", \"unit\": \"\", \"normalRange\": \"\", \"isAbnormal\": true, \"severity\": \"LOW|NORMAL|HIGH|CRITICAL\", \"category\": \"CBC|LFT|KFT|Lipid Profile|Glucose|Thyroid|Kidney|Liver|Electrolytes|Other\"}\n  ]\n}\nRules: Include every discernible parameter in allValues. criticalValues must be the subset with abnormal/clinically concerning values. Use double quotes only, no trailing commas, no code fences. If a section has no data, return an empty array.\n\nLab Report Text:\n${text}`;
 
   async function callModel(model: string) {

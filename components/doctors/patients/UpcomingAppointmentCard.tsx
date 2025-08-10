@@ -1,6 +1,7 @@
 'use client'
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Calendar, Clock, User, CalendarDays, Clock3, Play } from "lucide-react";
 
 interface UpcomingAppointmentCardProps {
@@ -11,10 +12,11 @@ interface UpcomingAppointmentCardProps {
     type: string;
     status: string;
   }>;
+  patientName: string;
   className?: string;
 }
 
-export default function UpcomingAppointmentCard({ appointments, className }: UpcomingAppointmentCardProps) {
+export default function UpcomingAppointmentCard({ appointments, patientName, className }: UpcomingAppointmentCardProps) {
   const upcomingAppointments = appointments?.filter(apt => 
     apt.status === "SCHEDULED" || apt.status === "PENDING"
   ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) || [];
@@ -56,7 +58,7 @@ export default function UpcomingAppointmentCard({ appointments, className }: Upc
                       {/* Appointment Details */}
                       <div className="flex-1 min-w-0">
                         <h4 className="font-semibold text-white text-sm mb-1 truncate">
-                          Dr. {appointment.doctorName}
+                          {patientName}
                         </h4>
                         <p className="text-xs text-emerald-50/90 mb-2 capitalize">
                           {appointment.type.toLowerCase()} Consultation
@@ -81,12 +83,16 @@ export default function UpcomingAppointmentCard({ appointments, className }: Upc
                       {/* Action Button + Upcoming pill */}
                       <div className="flex items-center gap-3">
                         <span className="px-2 py-1 rounded-full text-xs font-medium border-white/20 bg-white/25 p-2 backdrop-blur-sm text-emerald-50 border">Upcoming</span>
-                        <a
-                          href={`/doctor/appointments/${appointment.id}`}
-                          className="inline-flex items-center gap-2 text-green-700 text-sm px-3 py-1.5 bg-green-100 hover:bg-emerald-500 rounded-md transition-colors"
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => {
+                            window.location.href = `/doctor/appointments/${appointment.id}`;
+                          }}
                         >
+                          <Play className="h-4 w-4 mr-2" />
                           Start
-                        </a>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -109,7 +115,7 @@ export default function UpcomingAppointmentCard({ appointments, className }: Upc
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${apt ? 'border-emerald-300 text-emerald-800' : 'border-gray-300 text-gray-500'}`}>{apt ? `ID: ${apt.id}` : 'ID: —'}</span>
                       </div>
 
-                      <h5 className={`text-sm font-semibold ${apt ? 'text-emerald-900' : 'text-emerald-900/50'}`}>{apt ? `Dr. ${apt.doctorName}` : 'No past appointment'}</h5>
+                      <h5 className={`text-sm font-semibold ${apt ? 'text-emerald-900' : 'text-emerald-900/50'}`}>{apt ? patientName : 'No past appointment'}</h5>
 
                       {/* Date line */}
                       <div className="mt-1 text-xs text-emerald-800/80">
@@ -117,10 +123,7 @@ export default function UpcomingAppointmentCard({ appointments, className }: Upc
                       </div>
                     </div>
 
-                    {/* Bottom-right View button */}
-                    <div className="absolute bottom-2 right-2">
-                      <button className={`px-2.5 py-1 rounded-md text-xs font-medium ${apt ? 'bg-emerald-600 text-white hover:bg-emerald-500' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>View</button>
-                    </div>
+                    {/* View button removed from past appointments */}
                   </div>
                 ))}
               </div>

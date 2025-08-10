@@ -1,8 +1,9 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Calendar, Clock, FileText, Link2, Pill, User, Building2, Video, CreditCard, Banknote, Play } from "lucide-react";
+import { Calendar, Clock, FileText, Link2, Pill, User, Building2, Video, CreditCard, Banknote, Play, Clock3 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 function formatDate(dateString: string) {
   if (!dateString) return "-";
@@ -61,6 +62,12 @@ export default function DoctorAppointmentsPage() {
     const hasPreviousAppointments = data.past.some((pastAppt: any) => 
       pastAppt.patientId === appt.patientId && pastAppt.id !== appt.id
     );
+
+    // Check if this is a past appointment that's not completed and has no prescription
+    const isPastIncomplete = isPast && 
+      appt.status.toUpperCase() !== "COMPLETED" && 
+      !appt.prescriptionLink;
+
     return (
       <div className={cn("relative rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow mb-4 bg-custom-mutedgreen flex flex-col justify-between min-h-[170px]", ribbon)}>
         {/* Embossed Background Icon (Outline style, top-right, low opacity) */}
@@ -126,24 +133,61 @@ export default function DoctorAppointmentsPage() {
             )}
           </div>
           {/* Prescription Actions */}
-          <div className="flex items-center justify-start mt-2">
+          <div className="flex items-center justify-start mt-2 gap-2">
             {isPast ? (
-              <a
-                href={appt.prescriptionLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-primary text-sm pr-4 py-2 hover:cursor-pointer"
-              >
-                 View prescription
-              </a>
+              isPastIncomplete ? (
+                // Past appointment that's not completed and has no prescription - show "Start Appointment Now" button
+                <Button
+                  size="sm"
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  onClick={() => {
+                    // Navigate to start appointment page
+                    window.location.href = `/doctor/appointments/${appt.id}`;
+                  }}
+                >
+                  <Clock3 className="h-4 w-4 mr-2" />
+                  Start Appointment Now
+                </Button>
+              ) : appt.prescriptionLink ? (
+                // Past appointment with prescription - show "View Prescription" button
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-primary border-primary hover:bg-primary hover:text-white"
+                  onClick={() => {
+                    window.open(appt.prescriptionLink, '_blank');
+                  }}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  View Prescription
+                </Button>
+              ) : (
+                // Past appointment without prescription - show "Start Appointment Now" button
+                <Button
+                  size="sm"
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  onClick={() => {
+                    // Navigate to start appointment page
+                    window.location.href = `/doctor/appointments/${appt.id}`;
+                  }}
+                >
+                  <Clock3 className="h-4 w-4 mr-2" />
+                  Start Appointment Now
+                </Button>
+              )
             ) : (
-              <a
-                href={`/doctor/appointments/${appt.id}`}
-                className="inline-flex items-center gap-2 text-green-600 text-sm pr-4 py-2 hover:cursor-pointer hover:text-green-700"
+              // Future appointment - show "Start Appointment" button
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => {
+                  // Navigate to start appointment page
+                  window.location.href = `/doctor/appointments/${appt.id}`;
+                }}
               >
-                <Play className="h-4 w-4" />
-                Start appointment
-              </a>
+                <Play className="h-4 w-4 mr-2" />
+                Start Appointment
+              </Button>
             )}
           </div>
         </div>

@@ -164,7 +164,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
 
           {/* Upcoming appointments - 2 cols normally, 4 cols when diet card hidden */}
           <div className={isDietician ? "col-span-2 h-full" : "col-span-4 h-full"}>
-            <UpcomingAppointmentCard appointments={patientDetails.doctorAppointments} />
+            <UpcomingAppointmentCard appointments={patientDetails.doctorAppointments} patientName={patientDetails.name} />
           </div>
 
           {/* Diet plan - 2 cols only for dieticians */}
@@ -201,7 +201,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
 
         {/* AI Summary Section */}
         <div className="mt-2">
-          <PatientAISummaryRow summary={aiSummary} />
+          <PatientAISummaryRow patientId={Number(patientId)} summary={aiSummary} />
         </div>
 
 

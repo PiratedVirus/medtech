@@ -90,6 +90,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Trigger background processing of the prescription PDF
+    try {
+      // Get appointment details for background processing
+      const appointment = await prisma.appointment.findUnique({
+        where: { id: parseInt(appointmentId) },
+        include: {
+          prescription: true
+        }
+      });
+
+      if (appointment?.prescription?.id) {
+        // Trigger background processing asynchronously
+        fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/prescription/process`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            appointmentId: appointmentId,
+            pdfUrl: blob.url,
+            patientId: appointment.patientId,
+            prescriptionId: appointment.prescription.id
+          }),
+        }).catch(error => {
+          console.error("Background processing trigger failed:", error);
+          // Don't fail the upload if background processing fails
+        });
+        
+        console.log("Background processing triggered for prescription:", appointment.prescription.id);
+      }
+    } catch (processingError) {
+      console.error("Failed to trigger background processing:", processingError);
+      // Don't fail the upload if background processing setup fails
+    }
+
     return NextResponse.json({ success: true, url: blob.url });
   } catch (error) {
     console.error("PDF upload error:", error instanceof Error ? error.message : 'Unknown error');

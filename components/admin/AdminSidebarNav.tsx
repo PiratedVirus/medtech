@@ -57,6 +57,11 @@ export function SidebarNav({ className, logout, ...props }: SidebarNavProps) {
       icon: HeartPulse,
       title: "Patients",
     },
+    {
+      href: "/admin/patients/analysis",
+      icon: BarChart,
+      title: "AI Analysis",
+    },
 
     {
       href: "/admin/dieticians",

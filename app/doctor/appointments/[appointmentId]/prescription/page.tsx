@@ -82,6 +82,8 @@ export default function AppointmentPrescriptionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState<'PENDING' | 'COMPLETED' | 'FAILED' | null>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
 
   // Default visible sections
@@ -108,6 +110,10 @@ export default function AppointmentPrescriptionPage() {
 
   useEffect(() => {
     fetchPrescription();
+  }, [appointmentId]);
+
+  useEffect(() => {
+    checkProcessingStatus();
   }, [appointmentId]);
 
   // Scroll to the top of the pdf preview when data is loaded
@@ -288,6 +294,82 @@ export default function AppointmentPrescriptionPage() {
     }
   };
 
+  const checkProcessingStatus = async () => {
+    try {
+      // Get appointment details to find the prescription ID
+      const appointmentRes = await fetch(`/api/doctor/appointments/all`);
+      if (!appointmentRes.ok) return;
+      const appointmentData = await appointmentRes.json();
+
+      const appointment =
+        appointmentData.upcoming.find((apt: any) => apt.id.toString() === appointmentId) ||
+        appointmentData.past.find((apt: any) => apt.id.toString() === appointmentId);
+
+      if (!appointment?.prescriptionId) return;
+
+      // Check processing status from the database
+      const statusRes = await fetch(`/api/prescription/status?prescriptionId=${appointment.prescriptionId}`);
+      if (statusRes.ok) {
+        const statusData = await statusRes.json();
+        if (statusData.success) {
+          setProcessingStatus(statusData.data.processingStatus);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking processing status:", error);
+    }
+  };
+
+  const handleProcessPrescription = async () => {
+    try {
+      setIsProcessing(true);
+      
+      // Get appointment details to find the patient id
+      const appointmentRes = await fetch(`/api/doctor/appointments/all`);
+      if (!appointmentRes.ok) throw new Error("Failed to fetch appointment data");
+      const appointmentData = await appointmentRes.json();
+
+      const appointment =
+        appointmentData.upcoming.find((apt: any) => apt.id.toString() === appointmentId) ||
+        appointmentData.past.find((apt: any) => apt.id.toString() === appointmentId);
+
+      if (!appointment) throw new Error("Appointment not found");
+
+      // Trigger processing for ALL prescriptions for this patient
+      const processRes = await fetch(`/api/prescription/process-all/${appointment.patientId}`, {
+        method: 'POST',
+      });
+
+      if (!processRes.ok) {
+        const errorData = await processRes.json();
+        throw new Error(errorData.error || 'Failed to process prescription');
+      }
+
+      const result = await processRes.json();
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: `Processed ${result.totals.completed}/${result.totals.total} prescriptions. Summary updated with ${result.summary?.count || 0} texts.`,
+          variant: 'success',
+        });
+        // We can set status to completed for this appointment if its PDF existed and processed.
+        setProcessingStatus('COMPLETED');
+      } else {
+        throw new Error(result.error || 'Processing failed');
+      }
+    } catch (error) {
+      console.error("Prescription processing error:", error);
+      toast({ 
+        title: "Error", 
+        description: error instanceof Error ? error.message : "Failed to process prescription", 
+        variant: "destructive" 
+      });
+      setProcessingStatus('FAILED');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
   }
@@ -395,6 +477,61 @@ export default function AppointmentPrescriptionPage() {
                       <Share2 className="h-5 w-5 text-primary" />
                       <span>Share Prescription</span>
                     </Button>
+                  </div>
+                </div>
+
+                {/* AI Processing Section */}
+                <div className="mb-8 border-t pt-6">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-900">AI Processing</h3>
+                  <div className="space-y-3">
+                    <Button
+                      variant={processingStatus === 'COMPLETED' ? "default" : "outline"}
+                      className="w-full justify-start gap-3 h-12"
+                      onClick={handleProcessPrescription}
+                      disabled={isProcessing || processingStatus === 'COMPLETED'}
+                    >
+                      <div className="h-5 w-5 text-primary">
+                        {isProcessing ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                        ) : processingStatus === 'COMPLETED' ? (
+                          <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                          </svg>
+                        )}
+                      </div>
+                      <span>
+                        {isProcessing ? "Processing..." : 
+                         processingStatus === 'COMPLETED' ? "Already Processed" : 
+                         processingStatus === 'FAILED' ? "Retry Processing" : 
+                         "Process with AI"}
+                      </span>
+                    </Button>
+                    
+                    {processingStatus && (
+                      <div className="text-xs space-y-1">
+                        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                          processingStatus === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                          processingStatus === 'FAILED' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          Status: {processingStatus}
+                        </div>
+                        {processingStatus === 'COMPLETED' && (
+                          <p className="text-green-600">✓ Text extracted and AI summary generated</p>
+                        )}
+                        {processingStatus === 'FAILED' && (
+                          <p className="text-red-600">✗ Processing failed. Click to retry.</p>
+                        )}
+                      </div>
+                    )}
+                    
+                    <p className="text-xs text-gray-500">
+                      Extract text and generate AI summary from prescription PDF
+                    </p>
                   </div>
                 </div>
 
