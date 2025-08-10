@@ -1,7 +1,8 @@
 'use client'
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { User } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User, HeartPulse, Stethoscope } from "lucide-react";
 
 interface PatientInfoCardProps {
   patient: {
@@ -23,9 +24,19 @@ interface PatientInfoCardProps {
       endDate: string;
     }>;
   };
+  className?: string;
 }
 
-export default function PatientInfoCard({ patient }: PatientInfoCardProps) {
+function initials(name: string) {
+  return (name || '')
+    .split(' ')
+    .map(p => p[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase();
+}
+
+export default function PatientInfoCard({ patient, className }: PatientInfoCardProps) {
   const lastVisit = patient.doctorAppointments?.[0]?.date 
     ? new Date(patient.doctorAppointments[0].date).toLocaleDateString('en-GB', { 
         day: 'numeric', 
@@ -37,64 +48,51 @@ export default function PatientInfoCard({ patient }: PatientInfoCardProps) {
   const activeSubscription = patient.subscriptions?.find(sub => sub.isActive);
 
   return (
-    <Card className="col-span-2 relative overflow-hidden rounded-xl bg-gray-50/80 text-gray-700 p-4 shadow-sm border border-gray-100">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-50/50 to-gray-100/30 rounded-xl" />
-      
-      <div className="relative z-10">
-        {/* Header Section - Centered with Corner Pills */}
-        <div className="relative mb-4">
-          {/* Corner Pills */}
-          <div className="absolute top-0 left-0 z-20">
-            <Badge className="bg-secondary text-white text-xs font-medium">
-              ID: {patient.id}
-            </Badge>
+    <Card className={`relative overflow-hidden rounded-xl border border-emerald-400/40 bg-emerald-600 p-4 shadow-lg h-full ${className ?? ''}`}>
+      <div className="absolute inset-0 bg-gradient-to-b to-[#1e5636] from-[#2e8b57]" />
+      <div className="relative z-10 h-full flex flex-col">
+        {/* Top: Identity row */}
+        <div className="flex items-start gap-3">
+          <div className="h-12 w-12 shrink-0 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
+            <User className="h-6 w-6 text-white" />
           </div>
-          {activeSubscription && (
-            <div className="absolute top-0 right-0 z-20">
-              <Badge className="bg-secondary/80 text-white text-xs font-medium">
-                {activeSubscription.planName}
-              </Badge>
+          <div className="min-w-0">
+            <div className="text-[10px] text-emerald-50/90">ID: {patient.id}</div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-xl font-semibold text-white truncate">{patient.name}</h3>
             </div>
-          )}
-          
-          {/* Centered User Icon and Name */}
-          <div className="flex flex-col items-center pt-6">
-            <div className="w-16 h-16 bg-gradient-to-br from-secondary to-secondary/80 rounded-full flex items-center justify-center shadow-lg mb-3">
-              <User className="h-8 w-8 text-white" />
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {activeSubscription && <Badge className="bg-slate-200 text-emerald-900">{activeSubscription.planName}</Badge>}
             </div>
-            <h3 className="text-xl font-bold text-gray-900 text-center">{patient.name}</h3>
           </div>
         </div>
-        
-        {/* Patient Details - Below Name */}
-        <div className="space-y-2">
+
+        {/* Bottom: Info section */}
+        <div className="space-y-2 mt-auto pt-6 md:pt-8">
           <div className="grid grid-cols-2 gap-2">
-            <div className="flex items-center justify-between p-2 bg-white/60 rounded-lg border border-gray-200/50">
-              <span className="text-xs text-gray-600">Gender</span>
-              <span className="text-xs font-semibold text-secondary">{patient.profile.gender}</span>
+            <div className="flex items-center justify-between rounded-md border border-white/20 bg-white/15 p-2 backdrop-blur-sm">
+              <span className="inline-flex items-center gap-1 text-xs text-emerald-50">Gender</span>
+              <span className="text-xs font-semibold text-white">{patient.profile.gender}</span>
             </div>
-            
-            <div className="flex items-center justify-between p-2 bg-white/60 rounded-lg border border-gray-200/50">
-              <span className="text-xs text-gray-600">Age</span>
-              <span className="text-xs font-semibold text-secondary">{patient.profile.age} yrs</span>
+            <div className="flex items-center justify-between rounded-md border border-white/20 bg-white/15 p-2 backdrop-blur-sm">
+              <span className="inline-flex items-center gap-1 text-xs text-emerald-50">Age</span>
+              <span className="text-xs font-semibold text-white">{patient.profile.age} yrs</span>
             </div>
-            
-            <div className="flex items-center justify-between p-2 bg-white/60 rounded-lg border border-gray-200/50">
-              <span className="text-xs text-gray-600">Weight</span>
-              <span className="text-xs font-semibold text-secondary">{patient.profile.weight} kg</span>
+            <div className="flex items-center justify-between rounded-md border border-white/20 bg-white/15 p-2 backdrop-blur-sm">
+              <span className="inline-flex items-center gap-1 text-xs text-emerald-50">Weight</span>
+              <span className="text-xs font-semibold text-white">{patient.profile.weight} kg</span>
             </div>
-            
-            <div className="flex items-center justify-between p-2 bg-white/60 rounded-lg border border-gray-200/50">
-              <span className="text-xs text-gray-600">Height</span>
-              <span className="text-xs font-semibold text-secondary">{patient.profile.height} cm</span>
+            <div className="flex items-center justify-between rounded-md border border-white/20 bg-white/15 p-2 backdrop-blur-sm">
+              <span className="inline-flex items-center gap-1 text-xs text-emerald-50">Height</span>
+              <span className="text-xs font-semibold text-white">{patient.profile.height} cm</span>
             </div>
           </div>
-
-          {/* Last Visit */}
-          <div className="flex items-center justify-between p-2 bg-white/60 rounded-lg border border-gray-200/50">
-            <span className="text-xs text-gray-600">Last Visit</span>
-            <span className="text-xs font-semibold text-secondary">{lastVisit}</span>
+          <div className="flex items-center justify-between rounded-md border border-white/20 bg-white/15 p-2 backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1 text-xs text-emerald-50">
+              <Stethoscope className="h-3.5 w-3.5 text-lime-300" />
+              Last Visit
+            </span>
+            <span className="text-xs font-semibold text-white">{lastVisit}</span>
           </div>
         </div>
       </div>

@@ -69,11 +69,15 @@ export default function PatientSummarySection({
           <Card className="w-[85%] flex-shrink-0 bg-white shadow-sm rounded-lg">
             <div className="flex h-full">
               {/* Left Side Header */}
-              <div className="bg-secondary/20 p-4 flex items-center justify-center max-w-[40px]">
-                <div className="writing-mode-vertical text-center">
-                  <h4 className="font-semibold text-lg text-secondary transform -rotate-90 whitespace-nowrap">
+              <div className="relative max-w-[56px] w-[56px] border-r border-white/20">
+                <div className="absolute inset-0 bg-gradient-to-b to-[#1e5636] from-[#2e8b57] rounded-l-lg" />
+                <div className="relative h-full w-full flex items-end justify-center pb-2.5">
+                  <h2
+                    className="font-extrabold text-white text-base md:text-lg leading-tight tracking-wide drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)] rotate-180"
+                    style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+                  >
                     Latest Appointment
-                  </h4>
+                  </h2>
                 </div>
               </div>
               
@@ -181,9 +185,13 @@ export default function PatientSummarySection({
           <Card className="w-[85%] flex-shrink-0 border-1 border-gray-200 rounded-lg shadow-sm">
             <div className="flex h-full">
               {/* Left Side Header */}
-              <div className="bg-secondary/20 p-4 flex items-center justify-center max-w-[30px]">
-                <div className="writing-mode-vertical text-center">
-                  <h4 className="font-semibold text-lg text-secondary transform -rotate-90 whitespace-nowrap">
+              <div className="relative max-w-[44px] w-[44px] border-r border-white/20">
+                <div className="absolute inset-0 bg-gradient-to-b to-[#1e5636] from-[#2e8b57] rounded-l-lg" />
+                <div className="relative h-full w-full flex items-end justify-center pb-2.5">
+                  <h4
+                    className="font-extrabold text-white text-sm md:text-base leading-tight tracking-wide drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)] rotate-180"
+                    style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+                  >
                     Previous Appointments
                   </h4>
                 </div>

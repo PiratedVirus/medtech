@@ -98,6 +98,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
   const [savingNotes, setSavingNotes] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const { profile } = useDecryptedProfile();
+  const isDietician = profile?.role === 'DIETICIAN' || profile?.role === 'DIETICIAN_ADMIN' || profile?.role === 'NUTRITIONIST';
 
   const aiSummary = `Patient John Doe, a 45-year-old male with a history of type 2 diabetes and hypertension, presents with well-controlled chronic conditions. Recent lab results show HbA1c at 6.2%, indicating good glycemic control. Blood pressure readings average 140/90 mmHg, slightly elevated but within acceptable range for this patient's risk profile. Weight has remained stable at 75 kg with a BMI of 24.5, indicating healthy body composition. Lipid panel reveals total cholesterol of 180 mg/dL with LDL at 100 mg/dL, both within target ranges. Renal function tests show normal creatinine levels at 0.9 mg/dL with an eGFR of 85 mL/min/1.73m². The patient demonstrates good medication adherence and lifestyle modifications, including regular exercise and dietary compliance. No significant complications of diabetes are noted, with normal fundoscopic examination and intact peripheral pulses. Current treatment regimen includes metformin 500mg twice daily and lisinopril 10mg daily, both well-tolerated. The patient reports good energy levels and no new symptoms. Overall, this represents a stable clinical picture with well-managed chronic conditions and no immediate concerns requiring intervention.`;
 
@@ -152,39 +153,57 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
       <ToastContainer />
       <div className="container mx-auto p-4">
         {/* Top Row - 12 columns layout */}
-        <div className="grid gap-4 grid-cols-12 mb-6">
-          {/* First 6 columns (2+2+2) */}
-          <PatientInfoCard patient={{
-            ...patientDetails,
-            subscriptions: patientDetails.subscriptions
-          }} />
-          <UpcomingAppointmentCard appointments={patientDetails.doctorAppointments} />
-          <DietPlanRequestCard patient={patientDetails} />
+        <div className="grid gap-4 grid-cols-12 mb-6 items-stretch">
+          {/* Patient info - always 2 cols */}
+          <div className="col-span-2 h-full">
+            <PatientInfoCard patient={{
+              ...patientDetails,
+              subscriptions: patientDetails.subscriptions
+            }} />
+          </div>
 
-          {/* Next 6 columns - Prescriptions (3) + Lab Reports (3) */}
-          <PrescriptionsSection appointments={patientDetails.doctorAppointments} patientName={patientDetails.name} />
-          <LabReportsSection 
-            labBookings={patientDetails.labBookings} 
-            patientId={patientId}
-            onViewMore={() => setModalOpen(true)}
-          />
+          {/* Upcoming appointments - 2 cols normally, 4 cols when diet card hidden */}
+          <div className={isDietician ? "col-span-2 h-full" : "col-span-4 h-full"}>
+            <UpcomingAppointmentCard appointments={patientDetails.doctorAppointments} />
+          </div>
+
+          {/* Diet plan - 2 cols only for dieticians */}
+          {isDietician && (
+            <div className="col-span-2 h-full">
+              <DietPlanRequestCard patient={patientDetails} />
+            </div>
+          )}
+
+          {/* Prescriptions - 3 cols */}
+          <div className="col-span-3 h-full">
+            <PrescriptionsSection appointments={patientDetails.doctorAppointments} patientName={patientDetails.name} />
+          </div>
+
+          {/* Lab Reports - 3 cols */}
+          <div className="col-span-3 h-full">
+            <LabReportsSection 
+              labBookings={patientDetails.labBookings} 
+              patientId={patientId}
+              onViewMore={() => setModalOpen(true)}
+            />
+          </div>
         </div>
-        <div className="mt-1">
-          <div className="flex items-center gap-3 mb-4">
-
-            <div>
-              <h3 className="text-2xl font-bold text-secondary">Patient Summary</h3>
+        {/* Patient Summary + Metrics Row */}
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-2xl font-bold text-secondary">Patient Summary</h3>
+            <div className="flex-1" />
+            <div className="max-w-[65%] w-full">
+              <PatientPillsRow userIdOverride={Number(patientId)} inline />
             </div>
           </div>
         </div>
 
-        {/* Pills and AI Summary Section */}
-        <div className="mt-6">
-          <PatientPillsRow userIdOverride={Number(patientId)} />
-        </div>
-        <div className="mt-1">
+        {/* AI Summary Section */}
+        <div className="mt-2">
           <PatientAISummaryRow summary={aiSummary} />
         </div>
+
 
         {/* Summary Section */}
         <div className="mt-6">
