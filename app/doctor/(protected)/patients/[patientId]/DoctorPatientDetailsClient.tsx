@@ -15,7 +15,7 @@ import UpcomingAppointmentCard from "@/components/doctors/patients/UpcomingAppoi
 import DietPlanRequestCard from "@/components/doctors/patients/DietPlanRequestCard";
 import PrescriptionsSection from "@/components/doctors/patients/PrescriptionsSection";
 import LabReportsSection from "@/components/doctors/patients/LabReportsSection";
-import LabReportsRow from "@/components/doctors/patients/LabReportsRow";
+import PastAppointmentRow from "@/components/doctors/patients/PastAppointmentRow";
 import LabReportAnalysisModal from "@/components/doctors/patients/LabReportAnalysisModal";
 import HealthToolsRow from "@/components/doctors/patients/HealthToolsRow";
 import PatientSummarySection from "@/components/doctors/patients/PatientSummarySection";
@@ -219,7 +219,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
           />
         </div>
         <div className="grid gap-4 grid-cols-12 mt-6">
-          <LabReportsRow labBookings={patientDetails.labBookings} patientId={patientId} />
+          <PastAppointmentRow appointments={patientDetails.doctorAppointments} patientId={patientId} />
           <HealthToolsRow />
         </div>
 

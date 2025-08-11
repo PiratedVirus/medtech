@@ -241,7 +241,7 @@ export default function PatientSummarySection({
                     {/* All Complaints */}
                     <div>
                       <h5 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                        All Complaints
+                        Flagged  Complaints
                       </h5>
                       <div className="space-y-2">
                         {latestCompletedAppointment?.complaints ? (
@@ -373,117 +373,57 @@ export default function PatientSummarySection({
                 <div className="grid grid-cols-2 gap-6">
                   {/* Left Column */}
                   <div className="space-y-6">
-                    {/* Lab Reports Summary */}
-                    <div>
-                      <div className="flex justify-between">
-                        <h5 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">Lab Reports</h5>
-                        <button className="w-8 h-8 bg-secondary text-white rounded-full flex mr-10 items-center justify-center hover:bg-secondary/90 transition-colors">
-                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                        </button>
-                      </div>
-                      <div className="space-y-3">
-                        {loadingCheckups ? (
-                          <div className="text-sm text-gray-500">Loading lab reports...</div>
-                        ) : checkups.length > 0 ? (
-                        <div className="max-h-28 overflow-y-auto pr-1 custom-scrollbar">
-                            <div className="grid grid-cols-2 gap-2">
-                              {checkups.slice(0, 8).map((checkup, index) => {
-                                const s = getSeverityClasses(checkup.severity, checkup.isAbnormal);
-                                return (
-                                <div
-                                  key={`sum-${checkup.name}-${index}`}
-                                  className={`group relative flex items-center gap-2 rounded-full ${s.bg} h-8 px-3 shadow-sm`}
-                                  >
-                                  <div className="flex items-center w-full gap-2">
-                                    <span className="flex-1 truncate text-[13px] font-medium text-gray-700" title={checkup.name}>{checkup.name}</span>
-                                    <span className="ml-auto inline-flex items-baseline gap-1.5">
-                                      <span className={`text-[13px] font-bold ${s.text}`}>{checkup.value}</span>
-                                      {checkup.unit && (
-                                        <span className="text-[11px] text-gray-600">{checkup.unit}</span>
-                                      )}
-                                    </span>
-                                  </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                            {checkups.length > 8 && (
-                              <div className="mt-1 text-[11px] text-gray-500">+{checkups.length - 8} more values</div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="text-sm text-gray-500">No lab reports available</div>
-                        )}
-                      </div>
-                    </div>
 
                     {/* All Complaints */}
                     <div>
                       <h5 className="font-semibold text-gray-800 mb-3">
                         All Complaints
                       </h5>
-                      <div className="space-y-2">
-                        {selectedAppointment ? (
-                          selectedAppointment.complaints ? (
-                            selectedAppointment.complaints.split(',').map((complaint, index) => (
-                              <div key={index} className="text-sm text-gray-700 flex items-start gap-2">
-                                <span className="flex items-center gap-2 bg-secondary/10 p-2 rounded-lg">
-                                  {complaint.trim()}
-                                  {complaint.toLowerCase().includes('blood pressure') && (
-                                    <svg className="h-3 w-3 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
-                                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                                    </svg>
-                                  )}
-                                </span>
-                              </div>
+                      <div className="max-h-28 overflow-y-auto pr-1 custom-scrollbar">
+                        <div className="flex flex-wrap gap-2">
+                          {(selectedAppointment ? selectedAppointment.complaints : aggregatedComplaints)
+                            ?.split(',')
+                            .map(c => c.trim())
+                            .filter(Boolean)
+                            .map((complaint, index) => (
+                              <span key={`complaint-${index}`} className="inline-flex items-center gap-1.5 rounded-full bg-secondary/10 px-2.5 py-1 text-xs text-secondary">
+                                {complaint}
+                                {complaint.toLowerCase().includes('blood pressure') && (
+                                  <svg className="h-3 w-3 text-orange-500" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                  </svg>
+                                )}
+                              </span>
                             ))
-                          ) : (
-                            <p className="text-sm text-gray-500">No complaints recorded</p>
-                          )
-                        ) : (
-                          <p className="text-sm text-gray-700 bg-secondary/10 p-3 rounded-lg">
-                            {aggregatedComplaints || "No complaints recorded"}
-                          </p>
-                        )}
+                          || (
+                            <span className="text-sm text-gray-500">No complaints recorded</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Right Column */}
                   <div className="space-y-6">
-                    {/* AI Summary */}
-                    <div>
-                      <h5 className="font-semibold text-gray-800 mb-3">
-                        AI Summary (Coming Soon)
-                      </h5>
-                      <div className="bg-secondary/10 p-4 rounded-lg border border-secondary/20">
-                        <p className="text-sm text-secondary">
-                          AI-powered analysis of patient history will be available here to provide insights and trends.
-                        </p>
-                      </div>
-                    </div>
 
                     {/* Medicines */}
                     <div>
                       <h5 className="font-bold text-gray-800 mb-3">Medicines</h5>
-                      <div className="space-y-2">
-                        {selectedAppointment ? (
-                          selectedAppointment.medicines ? (
-                            selectedAppointment.medicines.split(',').map((medicine, index) => (
-                              <div key={index} className="text-sm text-gray-700 bg-secondary/10 p-3 rounded">
-                                <div className="font-semibold">{medicine.trim()}</div>
-                              </div>
+                      <div className="max-h-28 overflow-y-auto pr-1 custom-scrollbar">
+                        <div className="flex flex-wrap gap-2">
+                          {(selectedAppointment ? selectedAppointment.medicines : aggregatedMedicines)
+                            ?.split(',')
+                            .map(m => m.trim())
+                            .filter(Boolean)
+                            .map((medicine, index) => (
+                              <span key={`medicine-${index}`} className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-1 text-xs text-secondary">
+                                {medicine}
+                              </span>
                             ))
-                          ) : (
-                            <p className="text-sm text-gray-500">No medicines prescribed</p>
-                          )
-                        ) : (
-                          <div className="text-sm text-gray-700 bg-secondary/10 p-3 rounded">
-                            <div className="font-semibold">{aggregatedMedicines || "No medicines prescribed"}</div>
-                          </div>
-                        )}
+                          || (
+                            <span className="text-sm text-gray-500">No medicines prescribed</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

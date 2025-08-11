@@ -1,7 +1,7 @@
 "use client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Edit, Plus } from "lucide-react";
+import { Edit, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -140,8 +140,12 @@ export default function PatientPillsRow({ pills: pillsProp, onEditPill, onAddPil
                         toast.error('Failed to delete');
                       }
                     }}
+                    aria-label="Delete metric"
                   >
-                    ✕
+                    {/* <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
+                      <path fillRule="evenodd" d="M6.225 4.811a.75.75 0 011.06 0L12 9.525l4.715-4.714a.75.75 0 111.06 1.06L13.06 10.586l4.715 4.714a.75.75 0 11-1.06 1.06L12 11.646l-4.715 4.714a.75.75 0 11-1.06-1.06l4.714-4.715-4.714-4.715a.75.75 0 010-1.059z" clipRule="evenodd" />
+                    </svg> */}
+                    <X className="h-3 w-3" />
                   </button>
                 </div>
               </div>

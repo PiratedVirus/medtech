@@ -45,7 +45,7 @@ export default function LabReportsRow({ labBookings, patientId }: LabReportsRowP
       <div className="relative z-10 flex items-center justify-between h-full pr-12">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <h3 className="text-lg font-bold text-gray-900">Lab Reports</h3>
+          <h3 className="text-lg font-bold text-gray-900">Past Appointments</h3>
         </div>
         
         {/* Report Name Buttons - Slightly Left from Edge */}

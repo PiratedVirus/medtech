@@ -156,21 +156,12 @@ export default function PatientAISummaryRow({ patientId, summary: fallbackSummar
           </div>
           
           <div className="flex items-center gap-2">
-            {aiSummary && (
+            {/* {aiSummary && (
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${urgencyBgColor} ${urgencyColor} border`}>
                 {aiSummary.urgency}
               </span>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={regenerateSummary}
-              disabled={loading}
-              className="text-xs"
-            >
-              {loading ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
-              Regenerate
-            </Button>
+            )} */}
+
           </div>
         </div>
 
