@@ -207,16 +207,20 @@ export default function PatientSummarySection({
                               return (
                                 <div
                                   key={`${checkup.name}-${index}`}
-                                  className={`group flex items-center gap-2 rounded-full ${s.bg} px-3 py-1.5 shadow-sm`}
+                                  className={`group relative flex items-center gap-2 rounded-full ${s.bg} h-8 px-3 shadow-sm`}
                                   title={checkup.normalRange ? `Normal: ${checkup.normalRange}` : undefined}
                                 >
-                                  <span className="truncate text-[13px] font-semibold text-gray-700 max-w-[8.5rem]" title={checkup.name}>{checkup.name}</span>
-                                  <span className={`truncate text-[13px] font-bold ${s.text}`}>{checkup.value}</span>
-                                  {checkup.unit && (
-                                    <span className="truncate text-[11px] text-gray-600">{checkup.unit}</span>
-                                  )}
+                                  <div className="flex items-center w-full gap-2">
+                                    <span className="flex-1 truncate text-[13px] font-semibold text-gray-700" title={checkup.name}>{checkup.name}</span>
+                                    <span className="ml-auto inline-flex items-baseline gap-1.5">
+                                      <span className={`text-[13px] font-bold ${s.text}`}>{checkup.value}</span>
+                                      {checkup.unit && (
+                                        <span className="text-[11px] text-gray-600">{checkup.unit}</span>
+                                      )}
+                                    </span>
+                                  </div>
                                   <button
-                                    className="ml-auto hidden group-hover:flex items-center justify-center rounded-full bg-white/60 hover:bg-white text-gray-600 hover:text-gray-800 h-6 w-6 transition"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center rounded-full bg-white/70 hover:bg-red-100 text-gray-600 hover:text-red-600 h-6 w-6 transition-opacity opacity-0 group-hover:opacity-100"
                                     title="Untrack"
                                     onClick={() => handleUntrack(checkup.name)}
                                   >
@@ -388,16 +392,19 @@ export default function PatientSummarySection({
                               {checkups.slice(0, 8).map((checkup, index) => {
                                 const s = getSeverityClasses(checkup.severity, checkup.isAbnormal);
                                 return (
-                                  <div
-                                    key={`sum-${checkup.name}-${index}`}
-                                  className={`group flex items-center gap-2 rounded-full ${s.bg} px-3 py-1.5 shadow-sm`}
+                                <div
+                                  key={`sum-${checkup.name}-${index}`}
+                                  className={`group relative flex items-center gap-2 rounded-full ${s.bg} h-8 px-3 shadow-sm`}
                                   >
-                                  <span className={`inline-block h-2 w-2 rounded-full ${s.dot}`} />
-                                  <span className="truncate text-[13px] font-medium text-gray-700 max-w-[8.5rem]" title={checkup.name}>{checkup.name}</span>
-                                  <span className={`truncate text-[13px] font-bold ${s.text}`}>{checkup.value}</span>
-                                    {checkup.unit && (
-                                    <span className="truncate text-[11px] text-gray-600">{checkup.unit}</span>
-                                    )}
+                                  <div className="flex items-center w-full gap-2">
+                                    <span className="flex-1 truncate text-[13px] font-medium text-gray-700" title={checkup.name}>{checkup.name}</span>
+                                    <span className="ml-auto inline-flex items-baseline gap-1.5">
+                                      <span className={`text-[13px] font-bold ${s.text}`}>{checkup.value}</span>
+                                      {checkup.unit && (
+                                        <span className="text-[11px] text-gray-600">{checkup.unit}</span>
+                                      )}
+                                    </span>
+                                  </div>
                                   </div>
                                 );
                               })}

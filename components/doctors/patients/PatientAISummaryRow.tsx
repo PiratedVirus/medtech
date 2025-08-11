@@ -180,33 +180,35 @@ export default function PatientAISummaryRow({ patientId, summary: fallbackSummar
 
         {aiSummary && (
           <div className="mt-4 space-y-3">
-            {aiSummary.keyFindings.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold text-blue-700 mb-2">Key Findings</h4>
-                <ul className="space-y-1">
-                  {aiSummary.keyFindings.map((finding, index) => (
-                    <li key={index} className="text-xs text-gray-700 flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
-                      {finding}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <div className="grid grid-cols-2 gap-6">
+              {aiSummary.keyFindings.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-blue-700 mb-2">Key Findings</h4>
+                  <ul className="space-y-1">
+                    {aiSummary.keyFindings.map((finding, index) => (
+                      <li key={index} className="text-xs text-gray-700 flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                        {finding}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-            {aiSummary.recommendations.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold text-green-700 mb-2">Recommendations</h4>
-                <ul className="space-y-1">
-                  {aiSummary.recommendations.map((recommendation, index) => (
-                    <li key={index} className="text-xs text-gray-700 flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 flex-shrink-0"></span>
-                      {recommendation}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+              {aiSummary.recommendations.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-green-700 mb-2">Recommendations</h4>
+                  <ul className="space-y-1">
+                    {aiSummary.recommendations.map((recommendation, index) => (
+                      <li key={index} className="text-xs text-gray-700 flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 flex-shrink-0"></span>
+                        {recommendation}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t border-blue-200/30">
               <span>Based on {aiSummary.prescriptionCount} prescriptions</span>

@@ -114,7 +114,7 @@ export default function PatientPillsRow({ pills: pillsProp, onEditPill, onAddPil
     return (
       <div className="relative z-10">
         <div className="flex flex-wrap gap-3 items-center justify-end">
-          {pills.map((pill) => (
+           {pills.map((pill) => (
             <div key={pill.id} className="group relative">
               <Button
                 variant="ghost"
@@ -128,6 +128,21 @@ export default function PatientPillsRow({ pills: pillsProp, onEditPill, onAddPil
                 <div className="flex items-center gap-2 text-white">
                   <span className="text-sm font-bold opacity-90">{pill.key}:</span>
                   <span className="text-sm font-semibold">{pill.value}</span>
+                  <button
+                    className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white/90 hover:text-white"
+                    title="Delete metric"
+                    onClick={async () => {
+                      try {
+                        await fetch(`/api/patients/pills?id=${pill.id}`, { method: 'DELETE' });
+                        setPills(prev => prev.filter(p => p.id !== pill.id));
+                        toast.success('Metric deleted');
+                      } catch {
+                        toast.error('Failed to delete');
+                      }
+                    }}
+                  >
+                    ✕
+                  </button>
                 </div>
               </div>
             </div>
