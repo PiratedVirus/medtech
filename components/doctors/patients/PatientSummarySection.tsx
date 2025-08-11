@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import AllValuesModal from "./AllValuesModal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +47,7 @@ export default function PatientSummarySection({
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>("");
   const [checkups, setCheckups] = useState<Checkup[]>([]);
   const [loadingCheckups, setLoadingCheckups] = useState(false);
+  const [showAllValuesModal, setShowAllValuesModal] = useState(false);
 
   const handleUntrack = async (parameter: string) => {
     const previous = [...checkups];
@@ -188,7 +190,7 @@ export default function PatientSummarySection({
                     {/* Checkups */}
                     <div className="flex justify-between">
                       <h5 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">Tracked Values</h5>
-                      <button className="w-8 h-8 bg-secondary text-white rounded-full flex mr-10 items-center justify-center hover:bg-secondary/90 transition-colors">
+                      <button onClick={() => setShowAllValuesModal(true)} className="w-8 h-8 bg-secondary text-white rounded-full flex mr-10 items-center justify-center hover:bg-secondary/90 transition-colors">
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
@@ -208,7 +210,6 @@ export default function PatientSummarySection({
                                   className={`group flex items-center gap-2 rounded-full ${s.bg} px-3 py-1.5 shadow-sm`}
                                   title={checkup.normalRange ? `Normal: ${checkup.normalRange}` : undefined}
                                 >
-                                  <span className={`inline-block h-2 w-2 rounded-full ${s.dot}`} />
                                   <span className="truncate text-[13px] font-semibold text-gray-700 max-w-[8.5rem]" title={checkup.name}>{checkup.name}</span>
                                   <span className={`truncate text-[13px] font-bold ${s.text}`}>{checkup.value}</span>
                                   {checkup.unit && (
@@ -221,8 +222,8 @@ export default function PatientSummarySection({
                                   >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
                                       <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.256 1.476l-.209-.035-1.005 12.063A3.75 3.75 0 0115.168 22H8.832a3.75 3.75 0 01-3.74-3.279L4.087 6.658l-.209.035a.75.75 0 11-.256-1.476A48.567 48.567 0 017.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.969a52.662 52.662 0 013.368 0C15.287 1.805 16.5 3.141 16.5 4.705zm-6.136-1.47a51.196 51.196 0 013.272 0C14.454 3.074 15 3.62 15 4.295v.26a49.488 49.488 0 00-6 0v-.26c0-.674.546-1.22 1.364-1.287zM9.75 9a.75.75 0 00-1.5 0v8.25a.75.75 0 001.5 0V9zm3 0a.75.75 0 00-1.5 0v8.25a.75.75 0 001.5 0V9zm3 0a.75.75 0 00-1.5 0v8.25a.75.75 0 001.5 0V9z" clipRule="evenodd" />
-                                    </svg>
-                                  </button>
+                            </svg>
+                          </button>
                                 </div>
                               );
                             })}
@@ -294,6 +295,39 @@ export default function PatientSummarySection({
               </CardContent>
             </div>
           </Card>
+          {showAllValuesModal && (
+            <AllValuesModal 
+              patientId={patientId} 
+              onClose={() => setShowAllValuesModal(false)} 
+              onChanged={() => {
+                // Refresh tracked values after a change
+                (async () => {
+                  setLoadingCheckups(true);
+                  try {
+                    const response = await fetch(`/api/patient/${patientId}/tracked-values`);
+                    if (response.ok) {
+                      const data = await response.json();
+                      if (data.success && data.data.criticalValues) {
+                        const transformedCheckups: Checkup[] = data.data.criticalValues.map((cv: any) => ({
+                          name: cv.parameter,
+                          value: cv.value.toString(),
+                          unit: cv.unit || '',
+                          normalRange: cv.normalRange,
+                          isAbnormal: cv.isAbnormal,
+                          severity: cv.severity,
+                          category: cv.category,
+                          reportDate: cv.reportDate
+                        }));
+                        setCheckups(transformedCheckups);
+                      }
+                    }
+                  } finally {
+                    setLoadingCheckups(false);
+                  }
+                })();
+              }}
+            />
+          )}
 
           {/* Previous Appointments Card */}
           <Card className="w-[85%] flex-shrink-0 border-1 border-gray-200 rounded-lg shadow-sm">

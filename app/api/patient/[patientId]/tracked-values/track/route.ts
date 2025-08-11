@@ -46,24 +46,39 @@ export async function POST(
       const analysis: any = booking.reportAnalysis;
       if (!analysis) continue;
       const criticalValues: any[] = Array.isArray(analysis.criticalValues) ? analysis.criticalValues : [];
+      const allValues: any[] = Array.isArray(analysis.allValues) ? analysis.allValues : [];
       const idx = criticalValues.findIndex((v) => v?.parameter?.toLowerCase() === String(parameter).toLowerCase());
+      const idxAll = allValues.findIndex((v) => v?.parameter?.toLowerCase() === String(parameter).toLowerCase());
       console.log('[TRACKED-VALUES][POST] Checking booking', {
         bookingId: booking.id,
         labDate: booking.labDate,
-        parametersFound: criticalValues.map(v => v?.parameter).filter(Boolean)
+        criticalFound: criticalValues.map(v => v?.parameter).filter(Boolean),
+        allFound: allValues.map(v => v?.parameter).filter(Boolean)
       });
-      if (idx >= 0) {
-        const before = criticalValues[idx];
-        criticalValues[idx] = { ...criticalValues[idx], isTracked };
-        console.log('[TRACKED-VALUES][POST] Updating parameter', {
-          bookingId: booking.id,
-          parameter: before?.parameter,
-          previousIsTracked: before?.isTracked,
-          newIsTracked: isTracked
-        });
+      if (idx >= 0 || idxAll >= 0) {
+        if (idx >= 0) {
+          const before = criticalValues[idx];
+          criticalValues[idx] = { ...criticalValues[idx], isTracked };
+          console.log('[TRACKED-VALUES][POST] Updating parameter (critical)', {
+            bookingId: booking.id,
+            parameter: before?.parameter,
+            previousIsTracked: before?.isTracked,
+            newIsTracked: isTracked
+          });
+        }
+        if (idxAll >= 0) {
+          const beforeAll = allValues[idxAll];
+          allValues[idxAll] = { ...allValues[idxAll], isTracked };
+          console.log('[TRACKED-VALUES][POST] Updating parameter (all)', {
+            bookingId: booking.id,
+            parameter: beforeAll?.parameter,
+            previousIsTracked: beforeAll?.isTracked,
+            newIsTracked: isTracked
+          });
+        }
         await prisma.labReportAnalysis.update({
           where: { labBookingId: booking.id },
-          data: { criticalValues: criticalValues as any },
+          data: { criticalValues: criticalValues as any, allValues: allValues as any },
         });
         console.log('[TRACKED-VALUES][POST] Update saved for booking', booking.id);
         updated = true;

@@ -26,7 +26,7 @@ export async function GET(
       orderBy: { labDate: "desc" },
     });
 
-    const allCriticalValues: Array<{
+    const selectedValues: Array<{
       parameter: string;
       value: string | number;
       unit: string;
@@ -42,12 +42,15 @@ export async function GET(
 
     labBookings.forEach((booking) => {
       const analysis = booking.reportAnalysis as any;
-      const list: any[] = Array.isArray(analysis?.criticalValues) ? analysis.criticalValues : [];
-      for (const value of list) {
+      const criticalList: any[] = Array.isArray(analysis?.criticalValues) ? analysis.criticalValues : [];
+      const allList: any[] = Array.isArray(analysis?.allValues) ? analysis.allValues : [];
+
+      // 1) Include critical values unless explicitly untracked
+      for (const value of criticalList) {
         if (!value || !value.parameter || value.value === undefined) continue;
         const isTracked = value.isTracked !== false; // default to true
-        if (!isTracked) continue; // skip untracked
-        allCriticalValues.push({
+        if (!isTracked) continue; // skip untracked critical
+        selectedValues.push({
           parameter: value.parameter,
           value: value.value,
           unit: value.unit || "",
@@ -61,10 +64,30 @@ export async function GET(
           isTracked,
         });
       }
+
+      // 2) Include non-critical (allValues) ONLY if explicitly tracked
+      for (const value of allList) {
+        if (!value || !value.parameter || value.value === undefined) continue;
+        const isTracked = value.isTracked === true; // default to false unless explicitly tracked
+        if (!isTracked) continue;
+        selectedValues.push({
+          parameter: value.parameter,
+          value: value.value,
+          unit: value.unit || "",
+          normalRange: value.normalRange,
+          isAbnormal: value.isAbnormal ?? false,
+          severity: value.severity || "NORMAL",
+          category: value.category,
+          reportDate: booking.labDate.toISOString().split("T")[0],
+          labPackageName: booking.labPackage?.name || "Unknown",
+          reportId: booking.id,
+          isTracked,
+        });
+      }
     });
 
-    const uniqueLatest = new Map<string, (typeof allCriticalValues)[number]>();
-    for (const v of allCriticalValues) {
+    const uniqueLatest = new Map<string, (typeof selectedValues)[number]>();
+    for (const v of selectedValues) {
       const existing = uniqueLatest.get(v.parameter);
       if (!existing || new Date(v.reportDate) > new Date(existing.reportDate)) {
         uniqueLatest.set(v.parameter, v);
@@ -75,7 +98,7 @@ export async function GET(
       success: true,
       data: {
         totalReports: labBookings.length,
-        totalCriticalValues: allCriticalValues.length,
+        totalCriticalValues: selectedValues.length,
         criticalValues: Array.from(uniqueLatest.values()),
       },
     });
