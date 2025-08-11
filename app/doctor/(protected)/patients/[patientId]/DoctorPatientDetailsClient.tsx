@@ -209,6 +209,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
         <div className="mt-6">
 
           <PatientSummarySection
+            patientId={patientId}
             latestCompletedAppointment={latestCompletedAppointment}
             previousCompletedAppointments={previousCompletedAppointments}
             doctorNotes={doctorNotes}

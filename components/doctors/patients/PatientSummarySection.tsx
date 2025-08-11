@@ -1,5 +1,5 @@
 'use client'
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,11 @@ interface Checkup {
   name: string;
   value: string;
   unit: string;
+  normalRange?: string;
+  isAbnormal?: boolean;
+  severity?: string;
+  category?: string;
+  reportDate?: string;
 }
 
 interface Appointment {
@@ -20,6 +25,7 @@ interface Appointment {
 }
 
 interface PatientSummarySectionProps {
+  patientId: string;
   latestCompletedAppointment?: Appointment;
   previousCompletedAppointments: Appointment[];
   doctorNotes: string;
@@ -29,6 +35,7 @@ interface PatientSummarySectionProps {
 }
 
 export default function PatientSummarySection({
+  patientId,
   latestCompletedAppointment,
   previousCompletedAppointments,
   doctorNotes,
@@ -37,13 +44,96 @@ export default function PatientSummarySection({
   savingNotes
 }: PatientSummarySectionProps) {
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>("");
+  const [checkups, setCheckups] = useState<Checkup[]>([]);
+  const [loadingCheckups, setLoadingCheckups] = useState(false);
 
-  // Mock checkups data
-  const mockCheckups: Checkup[] = [
-    { name: "HbA1c", value: "48", unit: "mmol | mol" },
-    { name: "FBS", value: "100", unit: "mg | dL" },
-    { name: "BP", value: "140 / 70", unit: "mm | Hg" }
-  ];
+  const handleUntrack = async (parameter: string) => {
+    const previous = [...checkups];
+    setCheckups((current) => current.filter((c) => c.name.toLowerCase() !== parameter.toLowerCase()));
+    try {
+      await fetch(`/api/patient/${patientId}/tracked-values/track`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parameter, isTracked: false })
+      });
+    } catch (e) {
+      setCheckups(previous);
+    }
+  };
+
+  const getSeverityClasses = (severity?: string, isAbnormal?: boolean) => {
+    const s = (severity || 'NORMAL').toUpperCase();
+    if (!isAbnormal || s === 'NORMAL') {
+      return {
+        bg: 'bg-emerald-100',
+        text: 'text-emerald-700',
+        dot: 'bg-emerald-500'
+      } as const;
+    }
+    if (s === 'CRITICAL') {
+      return {
+        bg: 'bg-red-100',
+        text: 'text-red-700',
+        dot: 'bg-red-500'
+      } as const;
+    }
+    if (s === 'HIGH') {
+      return {
+        bg: 'bg-orange-100',
+        text: 'text-orange-700',
+        dot: 'bg-orange-500'
+      } as const;
+    }
+    if (s === 'LOW') {
+      return {
+        bg: 'bg-sky-100',
+        text: 'text-sky-700',
+        dot: 'bg-sky-500'
+      } as const;
+    }
+    return {
+      bg: 'bg-gray-100',
+      text: 'text-gray-700',
+      dot: 'bg-gray-400'
+    } as const;
+  };
+
+  // Fetch critical values from lab reports
+  useEffect(() => {
+    const fetchLabAnalysis = async () => {
+      if (!patientId) return;
+      
+      setLoadingCheckups(true);
+      try {
+        const response = await fetch(`/api/patient/${patientId}/tracked-values`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data.criticalValues) {
+            // Transform critical values to Checkup format
+            const transformedCheckups: Checkup[] = data.data.criticalValues.map((cv: any) => ({
+              name: cv.parameter,
+              value: cv.value.toString(),
+              unit: cv.unit || '',
+              normalRange: cv.normalRange,
+              isAbnormal: cv.isAbnormal,
+              severity: cv.severity,
+              category: cv.category,
+              reportDate: cv.reportDate
+            }));
+            setCheckups(transformedCheckups);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching lab analysis:', error);
+        // Fallback to empty array if API fails
+        setCheckups([]);
+      } finally {
+        setLoadingCheckups(false);
+      }
+    };
+
+    fetchLabAnalysis();
+  }, [patientId]);
 
   // Get selected appointment or aggregate all previous
   const selectedAppointment = selectedAppointmentId
@@ -70,7 +160,7 @@ export default function PatientSummarySection({
             <div className="flex h-full">
               {/* Left Side Header */}
               <div className="relative max-w-[56px] w-[56px] border-r border-white/20">
-                <div className="absolute inset-0 bg-gradient-to-b to-[#1e5636] from-[#2e8b57] rounded-l-lg" />
+                <div className="absolute inset-0 bg-gradient-to-b to-[#1e5636] from-[#2e8b57] rounded-lg" />
                 <div className="relative h-full w-full flex items-end justify-center pb-2.5">
                   <h2
                     className="font-extrabold text-white text-base md:text-lg leading-tight tracking-wide drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)] rotate-180"
@@ -97,26 +187,50 @@ export default function PatientSummarySection({
                   <div className="space-y-6">
                     {/* Checkups */}
                     <div className="flex justify-between">
-                      <h5 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">Checkups</h5>
+                      <h5 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">Tracked Values</h5>
                       <button className="w-8 h-8 bg-secondary text-white rounded-full flex mr-10 items-center justify-center hover:bg-secondary/90 transition-colors">
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
                       </button>
                     </div>
-                    <div className="space-y-3">
-                      {mockCheckups.map((checkup, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-700 min-w-[60px]">{checkup.name}:</span>
-                          <span className="bg-secondary/10 text-secondary px-2 py-1 rounded text-sm font-medium">{checkup.value}</span>
-                          <span className="rounded text-sm font-medium">{checkup.unit}</span>
-                          <button className="text-secondary hover:text-secondary/80">
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                          </button>
+                    <div className="mt-2">
+                      {loadingCheckups ? (
+                        <div className="text-sm text-gray-500">Loading lab values...</div>
+                      ) : checkups.length > 0 ? (
+                        <div className="max-h-36 overflow-y-auto pr-1 custom-scrollbar">
+                          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+                            {checkups.map((checkup, index) => {
+                              const s = getSeverityClasses(checkup.severity, checkup.isAbnormal);
+                              return (
+                                <div
+                                  key={`${checkup.name}-${index}`}
+                                  className={`group flex items-center gap-2 rounded-full ${s.bg} px-3 py-1.5 shadow-sm`}
+                                  title={checkup.normalRange ? `Normal: ${checkup.normalRange}` : undefined}
+                                >
+                                  <span className={`inline-block h-2 w-2 rounded-full ${s.dot}`} />
+                                  <span className="truncate text-[13px] font-semibold text-gray-700 max-w-[8.5rem]" title={checkup.name}>{checkup.name}</span>
+                                  <span className={`truncate text-[13px] font-bold ${s.text}`}>{checkup.value}</span>
+                                  {checkup.unit && (
+                                    <span className="truncate text-[11px] text-gray-600">{checkup.unit}</span>
+                                  )}
+                                  <button
+                                    className="ml-auto hidden group-hover:flex items-center justify-center rounded-full bg-white/60 hover:bg-white text-gray-600 hover:text-gray-800 h-6 w-6 transition"
+                                    title="Untrack"
+                                    onClick={() => handleUntrack(checkup.name)}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
+                                      <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.256 1.476l-.209-.035-1.005 12.063A3.75 3.75 0 0115.168 22H8.832a3.75 3.75 0 01-3.74-3.279L4.087 6.658l-.209.035a.75.75 0 11-.256-1.476A48.567 48.567 0 017.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.969a52.662 52.662 0 013.368 0C15.287 1.805 16.5 3.141 16.5 4.705zm-6.136-1.47a51.196 51.196 0 013.272 0C14.454 3.074 15 3.62 15 4.295v.26a49.488 49.488 0 00-6 0v-.26c0-.674.546-1.22 1.364-1.287zM9.75 9a.75.75 0 00-1.5 0v8.25a.75.75 0 001.5 0V9zm3 0a.75.75 0 00-1.5 0v8.25a.75.75 0 001.5 0V9zm3 0a.75.75 0 00-1.5 0v8.25a.75.75 0 001.5 0V9z" clipRule="evenodd" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      ))}
+                      ) : (
+                        <div className="text-sm text-gray-500">No lab values available</div>
+                      )}
                     </div>
 
                     {/* All Complaints */}
@@ -221,10 +335,10 @@ export default function PatientSummarySection({
                 <div className="grid grid-cols-2 gap-6">
                   {/* Left Column */}
                   <div className="space-y-6">
-                    {/* Checkups */}
+                    {/* Lab Reports Summary */}
                     <div>
                       <div className="flex justify-between">
-                        <h5 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">Checkups</h5>
+                        <h5 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">Lab Reports</h5>
                         <button className="w-8 h-8 bg-secondary text-white rounded-full flex mr-10 items-center justify-center hover:bg-secondary/90 transition-colors">
                           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -232,18 +346,35 @@ export default function PatientSummarySection({
                         </button>
                       </div>
                       <div className="space-y-3">
-                        {mockCheckups.map((checkup, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-gray-700 min-w-[60px]">{checkup.name}:</span>
-                            <span className="bg-secondary/10 text-secondary px-2 py-1 rounded text-sm font-medium">{checkup.value}</span>
-                            <span className="bg-secondary/10 text-secondary px-2 py-1 rounded text-sm font-medium">{checkup.unit}</span>
-                            <button className="text-secondary hover:text-secondary/80">
-                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                              </svg>
-                            </button>
+                        {loadingCheckups ? (
+                          <div className="text-sm text-gray-500">Loading lab reports...</div>
+                        ) : checkups.length > 0 ? (
+                        <div className="max-h-28 overflow-y-auto pr-1 custom-scrollbar">
+                            <div className="grid grid-cols-2 gap-2">
+                              {checkups.slice(0, 8).map((checkup, index) => {
+                                const s = getSeverityClasses(checkup.severity, checkup.isAbnormal);
+                                return (
+                                  <div
+                                    key={`sum-${checkup.name}-${index}`}
+                                  className={`group flex items-center gap-2 rounded-full ${s.bg} px-3 py-1.5 shadow-sm`}
+                                  >
+                                  <span className={`inline-block h-2 w-2 rounded-full ${s.dot}`} />
+                                  <span className="truncate text-[13px] font-medium text-gray-700 max-w-[8.5rem]" title={checkup.name}>{checkup.name}</span>
+                                  <span className={`truncate text-[13px] font-bold ${s.text}`}>{checkup.value}</span>
+                                    {checkup.unit && (
+                                    <span className="truncate text-[11px] text-gray-600">{checkup.unit}</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {checkups.length > 8 && (
+                              <div className="mt-1 text-[11px] text-gray-500">+{checkups.length - 8} more values</div>
+                            )}
                           </div>
-                        ))}
+                        ) : (
+                          <div className="text-sm text-gray-500">No lab reports available</div>
+                        )}
                       </div>
                     </div>
 
