@@ -177,11 +177,18 @@ export default function PatientSummarySection({
               <CardContent className="p-6 bg-stone-10 flex-1 relative">
                 {/* Top Right Corner Elements */}
                 <div className="absolute top-4 right-4 flex items-center gap-2">
-                  {latestCompletedAppointment && (
-                    <Badge variant="outline" className="bg-secondary/30 text-secondary border-secondary/30">
-                      {new Date(latestCompletedAppointment.date).toLocaleDateString()}
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" className="text-secondary border-secondary/30 hover:bg-secondary/10 text-xs"
+                      onClick={onSaveNotes} disabled={savingNotes}
+                    >
+                      {savingNotes ? 'Saving...' : 'Save Notes'}
+                    </Button>
+                    {latestCompletedAppointment && (
+                      <Badge variant="outline" className="bg-secondary/30 text-secondary border-secondary/30">
+                        {new Date(latestCompletedAppointment.date).toLocaleDateString()}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-6">
@@ -268,9 +275,9 @@ export default function PatientSummarySection({
                   <div className="space-y-6">
                     {/* Notes */}
                     <div>
-                      <h5 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                        Notes
-                      </h5>
+                      <div className="mb-3">
+                        <h5 className="font-semibold text-gray-800 flex items-center gap-2">Notes</h5>
+                      </div>
                       <Textarea
                         placeholder="Doctor Notes will be displayed here"
                         value={doctorNotes}
@@ -377,7 +384,7 @@ export default function PatientSummarySection({
                     {/* All Complaints */}
                     <div>
                       <h5 className="font-semibold text-gray-800 mb-3">
-                        All Complaints
+                        Flagged Complaints
                       </h5>
                       <div className="max-h-28 overflow-y-auto pr-1 custom-scrollbar">
                         <div className="flex flex-wrap gap-2">
@@ -385,6 +392,7 @@ export default function PatientSummarySection({
                             ?.split(',')
                             .map(c => c.trim())
                             .filter(Boolean)
+                            .filter(c => /high|low|severe|critical|urgent|blood pressure|bp|sugar|glucose|pain|fever/i.test(c))
                             .map((complaint, index) => (
                               <span key={`complaint-${index}`} className="inline-flex items-center gap-1.5 rounded-full bg-secondary/10 px-2.5 py-1 text-xs text-secondary">
                                 {complaint}

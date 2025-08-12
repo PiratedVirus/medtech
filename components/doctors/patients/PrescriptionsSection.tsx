@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Pill, Plus, Eye } from "lucide-react";
+import { useState } from "react";
 
 interface PrescriptionsSectionProps {
   appointments: Array<{
@@ -16,6 +17,7 @@ interface PrescriptionsSectionProps {
 }
 
 export default function PrescriptionsSection({ appointments, patientName }: PrescriptionsSectionProps) {
+  const [open, setOpen] = useState(false);
   const prescriptions = appointments?.filter(apt => apt.prescriptionLink) || [];
 
   const items = prescriptions.slice(0, 3);
@@ -81,12 +83,36 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
             ))}
           </div>
 
-          <Button className="w-full bg-secondary hover:bg-secondary/90 text-white rounded-xl py-2 shadow-lg hover:shadow-xl transition-all duration-300 group text-sm">
+          <Button onClick={() => setOpen(true)} className="w-full bg-secondary hover:bg-secondary/90 text-white rounded-xl py-2 shadow-lg hover:shadow-xl transition-all duration-300 group text-sm">
             <Plus className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
             <span className="font-semibold">Create New Prescription</span>
           </Button>
         </div>
       </Card>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+          <div className="relative z-10 w-[720px] max-w-[95vw] rounded-xl bg-white shadow-xl">
+            <div className="flex items-center justify-between px-5 py-3 border-b">
+              <h3 className="text-lg font-semibold">Select Appointment</h3>
+              <button className="text-gray-500 hover:text-gray-700" onClick={() => setOpen(false)} aria-label="Close">✕</button>
+            </div>
+            <div className="p-4 max-h-[70vh] overflow-y-auto">
+              <ul className="divide-y">
+                {appointments?.map((apt) => (
+                  <li key={apt.id} className="py-2 flex items-center justify-between">
+                    <div className="text-sm text-gray-800">Appointment #{apt.id} · {new Date((apt as any).date || apt.appointmentDate || '').toLocaleString()}</div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => window.open(`/doctor/appointments/${apt.id}`, '_blank')}>Open Form</Button>
+                      <Button size="sm" onClick={() => window.open(`/doctor/appointments/${apt.id}`, '_blank')}>Generate</Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
