@@ -101,11 +101,12 @@ export default function DoctorActivePatients() {
   // Group appointments by date
   const grouped: { [date: string]: Appointment[] } = {};
   appointments.forEach((appt) => {
-    const date = appt.doctorAvailability.date.split('T')[0];
-    if (!grouped[date]) grouped[date] = [];
-    grouped[date].push(appt);
+    const jsDate = new Date(appt.date ?? appt.doctorAvailability?.date);
+    const key = jsDate.toISOString().split('T')[0];
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(appt);
   });
-  const sortedDates = Object.keys(grouped).sort();
+  const sortedDates = Object.keys(grouped).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
 
   // Flatten appointments with date info for column distribution
   const flatAppointments: { appointment: Appointment; date: string }[] = [];

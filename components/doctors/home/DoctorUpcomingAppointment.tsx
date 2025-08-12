@@ -23,7 +23,11 @@ export default function DoctorUpcomingAppointment() {
         setIsLoading(true);
         const res = await axios.get('/api/doctor/appointments/upcoming');
         if (res.data.appointments && res.data.appointments.length > 0) {
-          setUpcomingAppointment(res.data.appointments[0]); // Get the first upcoming appointment
+          // Defensive sort by the transformed date to avoid server/client drift
+          const sorted = [...res.data.appointments].sort(
+            (a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime()
+          );
+          setUpcomingAppointment(sorted[0]);
         }
       } catch (error) {
         console.error('Error fetching upcoming appointment:', error);

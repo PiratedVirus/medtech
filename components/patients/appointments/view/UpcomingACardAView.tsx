@@ -18,17 +18,12 @@ export default function UpcomingAppointment({ appointment, mode = 'patient' }: U
     );
   }
   // const appointment = appointments[0];
-  let appointmentDate
-  let formattedDate
-
-  if(appointment.doctorAvailability){
-    appointmentDate = new Date(appointment.doctorAvailability?.date);
-    formattedDate = appointmentDate.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  }
+  // Prefer canonical date from API if present, fallback to doctorAvailability.date
+  const rawDate: string | undefined = appointment?.date || appointment?.doctorAvailability?.date;
+  const appointmentDate: Date | null = rawDate ? new Date(rawDate) : null;
+  const formattedDate: string = appointmentDate
+    ? appointmentDate.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })
+    : "-";
 
   // Determine display info based on mode
   const displayName = mode === 'doctor'
@@ -53,8 +48,8 @@ export default function UpcomingAppointment({ appointment, mode = 'patient' }: U
         {/* Left Section */}
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold text-gray-800">Upcoming Appointment</h2>
-          <p className="text-gray-600 flex items-center gap-2">
-            Session starts at {appointment.doctorAvailability?.startTime} with <b>{displayName}</b>
+            <p className="text-gray-600 flex items-center gap-2">
+              Session starts at {(appointment.startTime || appointment.doctorAvailability?.startTime)} with <b>{displayName}</b>
           </p>
         </div>
 
@@ -80,7 +75,7 @@ export default function UpcomingAppointment({ appointment, mode = 'patient' }: U
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="h-4 w-4" />
-                    <span><b>{appointment.doctorAvailability.startTime}</b></span>
+                    <span><b>{appointment.startTime || appointment.doctorAvailability.startTime}</b></span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="h-4 w-4" />
@@ -107,7 +102,7 @@ export default function UpcomingAppointment({ appointment, mode = 'patient' }: U
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <Clock className="h-4 w-4" />
-                <span>{appointment.doctorAvailability.startTime}</span>
+                 <span>{appointment.startTime || appointment.doctorAvailability.startTime}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4" />

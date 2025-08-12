@@ -17,9 +17,11 @@ interface UpcomingAppointmentCardProps {
 }
 
 export default function UpcomingAppointmentCard({ appointments, patientName, className }: UpcomingAppointmentCardProps) {
-  const upcomingAppointments = appointments?.filter(apt => 
-    apt.status === "SCHEDULED" || apt.status === "PENDING"
-  ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) || [];
+  const upcomingAppointments = appointments?.filter(apt => {
+    const isScheduledLike = ["SCHEDULED", "PENDING", "CONFIRMED", "Scheduled", "Pending", "Confirmed"].includes(apt.status);
+    const isFuture = new Date(apt.date).getTime() >= new Date().setHours(0,0,0,0);
+    return isScheduledLike && isFuture;
+  }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) || [];
   const pastAppointments = (appointments || [])
     .filter(a => {
       const isPast = new Date(a.date).getTime() < Date.now();
