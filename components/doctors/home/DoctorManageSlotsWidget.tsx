@@ -40,7 +40,7 @@ export default function DoctorManageSlotsWidget() {
         <div className="text-[#e6ffe6] text-lg font-medium">
           Booked: <span className="font-bold">{isLoading ? '...' : summary.bookedSlots}</span>
         </div>
-        <button className="mt-3 px-6 py-2 rounded-xl border border-[#6ee7b7] bg-transparent text-white text-lg font-medium hover:bg-[#134F30]/30 transition">Manage</button>
+        <a href="/doctor/slots" className="mt-3 px-6 py-2 rounded-xl border border-[#6ee7b7] bg-transparent text-white text-lg font-medium hover:bg-[#134F30]/30 transition">Manage</a>
       </div>
     </div>
   );

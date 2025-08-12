@@ -9,14 +9,6 @@ interface UpcomingAppointmentProps {
 }
 
 export default function UpcomingAppointment({ appointment, mode = 'patient' }: UpcomingAppointmentProps) {
-  if (!appointment) {
-    return (
-      <div className="p-6 rounded-3xl h-full bg-custom-mutedgreen">
-        <h2 className="text-2xl font-semibold text-gray-800">Upcoming Appointment</h2>
-        <p className="text-gray-600">No upcoming appointments scheduled.</p>
-      </div>
-    );
-  }
   // const appointment = appointments[0];
   // Prefer canonical date from API if present, fallback to doctorAvailability.date
   const rawDate: string | undefined = appointment?.date || appointment?.doctorAvailability?.date;
@@ -27,8 +19,8 @@ export default function UpcomingAppointment({ appointment, mode = 'patient' }: U
 
   // Determine display info based on mode
   const displayName = mode === 'doctor'
-    ? appointment.patient?.name || 'Patient'
-    : appointment.doctor?.name || 'Doctor';
+    ? (appointment?.patient?.name || 'Patient')
+    : (appointment?.doctor?.name || 'Doctor');
   const displayRole = mode === 'doctor' ? 'Patient' : 'Doctor';
   const displayImage = mode === 'doctor' ? '/icons/medicine-pills.svg' : '/images/doc.png';
 
@@ -48,13 +40,17 @@ export default function UpcomingAppointment({ appointment, mode = 'patient' }: U
         {/* Left Section */}
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold text-gray-800">Upcoming Appointment</h2>
-            <p className="text-gray-600 flex items-center gap-2">
-              Session starts at {(appointment.startTime || appointment.doctorAvailability?.startTime)} with <b>{displayName}</b>
-          </p>
+            {appointment ? (
+              <p className="text-gray-600 flex items-center gap-2">
+                Session starts at {(appointment.startTime || appointment.doctorAvailability?.startTime)} with <b>{displayName}</b>
+              </p>
+            ) : (
+              <p className="text-gray-600">No upcoming appointments scheduled.</p>
+            )}
         </div>
 
         {/* Right Section - Appointment Card */}
-        {(appointment.consultationType === 'Video') ? (
+        {appointment && appointment.consultationType === 'Video' ? (
           <Card className="bg-gradient-to-r to-[#134F30] from-[#56A67C] text-white p-4 rounded-2xl w-full md:w-auto">
             <div className="flex items-center gap-4">
                 {/* Image */}
@@ -87,7 +83,7 @@ export default function UpcomingAppointment({ appointment, mode = 'patient' }: U
                 </div>
               </div>
           </Card>
-        ) : (
+        ) : appointment ? (
           <Card className="bg-gradient-to-tr from-[#134F30] to-[#56A67C] text-white p-4 rounded-2xl w-full md:w-auto">
           <div className="flex items-center gap-4">
             {/* Image */}
@@ -120,6 +116,15 @@ export default function UpcomingAppointment({ appointment, mode = 'patient' }: U
             </div>
           </div>
         </Card>
+        ) : (
+          <Card className="bg-gradient-to-tr from-[#134F30] to-[#56A67C] text-white p-4 rounded-2xl w-full md:w-auto">
+            <div className="flex items-center gap-4 w-full">
+              <div className="flex-grow">
+                <h3 className="font-semibold text-lg">No upcoming appointments</h3>
+                <p className="text-sm text-white/80">You’re all caught up for now.</p>
+              </div>
+            </div>
+          </Card>
         )}
 
       </div>

@@ -18,6 +18,7 @@ import LabReportsSection from "@/components/doctors/patients/LabReportsSection";
 import PastAppointmentRow from "@/components/doctors/patients/PastAppointmentRow";
 import LabReportAnalysisModal from "@/components/doctors/patients/LabReportAnalysisModal";
 import HealthToolsRow from "@/components/doctors/patients/HealthToolsRow";
+import PatientInsightsModal from "@/components/doctors/patients/PatientInsightsModal";
 import PatientSummarySection from "@/components/doctors/patients/PatientSummarySection";
 import PatientPillsRow from "@/components/doctors/patients/PatientPillsRow";
 import PatientAISummaryRow from "@/components/doctors/patients/PatientAISummaryRow";
@@ -97,6 +98,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
   const [doctorNotes, setDoctorNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [insightsOpen, setInsightsOpen] = useState(false);
   const { profile } = useDecryptedProfile();
   const isDietician = profile?.role === 'DIETICIAN' || profile?.role === 'DIETICIAN_ADMIN' || profile?.role === 'NUTRITIONIST';
 
@@ -228,7 +230,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
         </div>
         <div className="grid gap-4 grid-cols-12 mt-6">
           <PastAppointmentRow appointments={patientDetails.doctorAppointments} patientId={patientId} />
-          <HealthToolsRow />
+          <HealthToolsRow onOpenInsights={() => setInsightsOpen(true)} />
         </div>
 
         {/* Health Insights */}
@@ -242,6 +244,13 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
           onClose={() => setModalOpen(false)}
           patientId={patientId}
           labReports={patientDetails.labBookings}
+        />
+
+        {/* Patient Insights Modal (Full insights reused from dashboard) */}
+        <PatientInsightsModal
+          isOpen={insightsOpen}
+          onClose={() => setInsightsOpen(false)}
+          patientId={Number(patientId)}
         />
       </div>
     </>

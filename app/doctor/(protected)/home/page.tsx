@@ -1,5 +1,7 @@
 // Doctor Home Page
 'use client'
+import { useEffect, useState } from 'react';
+import axios from 'axios';
 import DoctorUpcomingAppointment from '@/components/doctors/home/DoctorUpcomingAppointment';
 import DoctorQuickActions from '@/components/doctors/home/DoctorQuickActions';
 import DoctorActivePatients from '@/components/doctors/home/DoctorActivePatients';
@@ -17,6 +19,28 @@ function getGreeting() {
 export default function DoctorDashboardPage() {
   const { profile } = useDecryptedProfile();
   const doctorName = profile?.name || 'Doctor';
+  const [meetingLink, setMeetingLink] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function ensureMeetingLink() {
+      if (!profile?.id) return;
+      // Prefer value from session profile if present
+      const inline = (profile as any)?.doctorProfile?.meetingRoomLink || (profile as any)?.doctorProfile?.meetRoomLink;
+      if (inline) {
+        setMeetingLink(inline);
+        return;
+      }
+      // Fallback: fetch full profile which includes doctorProfile.meetingRoomLink
+      try {
+        const res = await axios.get(`/api/(end-user)/profile?userId=${profile.id}`);
+        const link = res.data?.data?.doctorProfile?.meetingRoomLink || null;
+        setMeetingLink(link);
+      } catch (_) {
+        setMeetingLink(null);
+      }
+    }
+    ensureMeetingLink();
+  }, [profile?.id]);
 
   return (
     <div className="min-h-screen bg-[#F8FAF9] px-8 py-8">
@@ -34,7 +58,7 @@ export default function DoctorDashboardPage() {
             {/* wrap each card in a flex-item that can grow */}
             <div className="flex-1">
               <DoctorDashboardActionCard
-                href="/dashboard/insights"
+                href="/doctor/patients"
                 headerLabel="Patient Analytics"
                 cardTitle="View Patients Info"
                 cardDescription="Personalized analysis of your patients health"
@@ -45,7 +69,7 @@ export default function DoctorDashboardPage() {
 
             <div className="flex-1">
               <DoctorDashboardActionCard
-                href="/dashboard/dieticians"
+                href={meetingLink || "/doctor/meet"}
                 headerLabel="Video Consultation"
                 cardTitle="Join meet room"
                 cardDescription="Single meet link for all video consultations"

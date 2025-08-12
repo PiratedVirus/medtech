@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import AppointmentSkeleton from '@/components/ui/custom/cd-appointment-skeleton';
 import { useDecryptedProfile } from '@/hooks/use-profile';
 import { Calendar, Clock, User } from 'lucide-react';
 
@@ -197,9 +198,7 @@ export default function DoctorActivePatients() {
         </div>
       </div>
       {isLoading ? (
-        <div className="text-center text-white">
-          <p>Loading appointments...</p>
-        </div>
+        <AppointmentSkeleton />
       ) : limitedAppointments.length > 0 ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

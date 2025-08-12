@@ -1,13 +1,17 @@
-'use client'
+"use client";
 import { Card } from "@/components/ui/card";
 import { Activity, Heart, Calculator } from "lucide-react";
 
-export default function HealthToolsRow() {
+interface HealthToolsRowProps {
+  onOpenInsights?: () => void;
+}
+
+export default function HealthToolsRow({ onOpenInsights }: HealthToolsRowProps) {
   return (
     <div className="col-span-6 grid grid-cols-3 gap-3">
       {/* Health Insights Card */}
       <Card className="group relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 rounded-xl cursor-pointer h-16"
-            onClick={() => window.open('/dashboard/insights', '_blank')}>
+            onClick={() => (onOpenInsights ? onOpenInsights() : window.open('/dashboard/insights', '_blank'))}>
         <div className="absolute inset-0 bg-gradient-to-br from-green-600 to-emerald-700 rounded-xl" />
         <div className="absolute inset-0 bg-gradient-to-br from-green-600/10 to-emerald-700/10 opacity-50 transition-opacity duration-300 group-hover:opacity-70" />
         

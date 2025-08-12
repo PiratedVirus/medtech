@@ -10,6 +10,11 @@ interface DecryptedProfile {
   subscriptionDetails: any;
   patientProfile: any;
   phoneNumber: any;
+  // Optional doctor profile info when the logged-in user is a doctor
+  doctorProfile?: {
+    meetRoomLink?: string;
+    [key: string]: any;
+  };
 }
 
 export const useDecryptedProfile = () => {
