@@ -413,23 +413,43 @@ export default function PatientSummarySection({
 
                   {/* Right Column */}
                   <div className="space-y-6">
-
-                    {/* Medicines */}
+                    {/* Details container with scroll to avoid height growth */}
                     <div>
-                      <h5 className="font-bold text-gray-800 mb-3">Medicines</h5>
-                      <div className="max-h-28 overflow-y-auto pr-1 custom-scrollbar">
-                        <div className="flex flex-wrap gap-2">
-                          {(selectedAppointment ? selectedAppointment.medicines : aggregatedMedicines)
-                            ?.split(',')
-                            .map(m => m.trim())
-                            .filter(Boolean)
-                            .map((medicine, index) => (
-                              <span key={`medicine-${index}`} className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-1 text-xs text-secondary">
-                                {medicine}
-                              </span>
-                            ))
-                          || (
-                            <span className="text-sm text-gray-500">No medicines prescribed</span>
+                      <h5 className="font-bold text-gray-800 mb-3">Details</h5>
+                      <div className="max-h-44 overflow-y-auto pr-1 custom-scrollbar space-y-4">
+                        {/* Medicines */}
+                        <div>
+                          <div className="text-xs font-semibold text-gray-600 mb-1">Medicines</div>
+                          <div className="flex flex-wrap gap-2">
+                            {(selectedAppointment ? selectedAppointment.medicines : aggregatedMedicines)
+                              ?.split(',')
+                              .map(m => m.trim())
+                              .filter(Boolean)
+                              .map((medicine, index) => (
+                                <span key={`medicine-${index}`} className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-1 text-xs text-secondary">
+                                  {medicine}
+                                </span>
+                              ))
+                            || (
+                              <span className="text-sm text-gray-500">No medicines prescribed</span>
+                            )}
+                          </div>
+                        </div>
+                        {/* Notes for selected appointment */}
+                        <div>
+                          <div className="text-xs font-semibold text-gray-600 mb-1">Notes</div>
+                          {selectedAppointment ? (
+                            selectedAppointment.doctorNotes ? (
+                              <div className="text-sm text-gray-700 bg-secondary/10 p-3 rounded whitespace-pre-wrap">
+                                {selectedAppointment.doctorNotes}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-500">No notes recorded for this appointment</p>
+                            )
+                          ) : previousCompletedAppointments.length > 0 ? (
+                            <p className="text-sm text-gray-500">Select an appointment to view its notes</p>
+                          ) : (
+                            <p className="text-sm text-gray-500">No previous appointments</p>
                           )}
                         </div>
                       </div>

@@ -99,15 +99,43 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
             </div>
             <div className="p-4 max-h-[70vh] overflow-y-auto">
               <ul className="divide-y">
-                {appointments?.map((apt) => (
-                  <li key={apt.id} className="py-2 flex items-center justify-between">
-                    <div className="text-sm text-gray-800">Appointment #{apt.id} · {new Date((apt as any).date || apt.appointmentDate || '').toLocaleString()}</div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => window.open(`/doctor/appointments/${apt.id}`, '_blank')}>Open Form</Button>
-                      <Button size="sm" onClick={() => window.open(`/doctor/appointments/${apt.id}`, '_blank')}>Generate</Button>
-                    </div>
-                  </li>
-                ))}
+                {appointments?.map((apt) => {
+                  const hasPrescription = Boolean(apt.prescriptionLink);
+                  const viewHref = apt.prescriptionLink || `/doctor/appointments/${apt.id}/prescription`;
+                  return (
+                    <li key={apt.id} className="py-2 flex items-center">
+                      <div className="text-sm text-gray-800">Appointment #{apt.id} · {new Date(apt.date || apt.appointmentDate || '').toLocaleString()}</div>
+                      <div className="flex items-center gap-2 ml-auto">
+                        {hasPrescription && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(viewHref, '_blank')}
+                          >
+                            View
+                          </Button>
+                        )}
+                        {hasPrescription ? (
+                          <Button
+                            size="sm"
+                            className="w-44 shrink-0"
+                            onClick={() => window.open(`/doctor/appointments/${apt.id}`, '_blank')}
+                          >
+                            Edit Prescription
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="w-44 shrink-0"
+                            onClick={() => window.open(`/doctor/appointments/${apt.id}`, '_blank')}
+                          >
+                            Generate Prescription
+                          </Button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>

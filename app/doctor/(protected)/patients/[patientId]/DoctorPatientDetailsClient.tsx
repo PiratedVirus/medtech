@@ -110,8 +110,14 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
     try {
       setLoading(true);
       const response = await axios.get(`/api/doctor/patients/${patientId}`);
-      setPatientDetails(response.data);
-      setDoctorNotes(response.data.doctorNotes || "");
+      const data = response.data;
+      setPatientDetails(data);
+      // Initialize notes from the latest completed appointment
+      const completed = (data?.doctorAppointments || []).filter(
+        (apt: any) => apt.status === "COMPLETED" || apt.prescriptionLink
+      );
+      const latest = completed[0];
+      setDoctorNotes(latest?.doctorNotes || "");
     } catch (error) {
       console.error("Error fetching patient details:", error);
       toast.error("Failed to fetch patient details");
@@ -127,6 +133,8 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
         notes: doctorNotes
       });
       toast.success("Notes saved successfully");
+      // Refresh to fetch updated notes on the appointment
+      await fetchPatientDetails();
     } catch (error) {
       console.error("Error saving notes:", error);
       toast.error("Failed to save notes");
