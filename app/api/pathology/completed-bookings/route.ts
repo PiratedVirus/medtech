@@ -3,9 +3,10 @@ import prisma from "@/lib/prisma";
 
 export async function GET(request: Request) {
   try {
+    console.log('[PATHO][COMPLETED] fetching completed assignments');
     const completedAssignments = await prisma.labAssignment.findMany({
       where: {
-        status: "COMPLETED", // Using LabAssignment status
+        status: 'COMPLETED',
         deletedAt: null,
       },
       include: {
@@ -50,6 +51,7 @@ export async function GET(request: Request) {
       },
     });
 
+    console.log('[PATHO][COMPLETED] found:', completedAssignments.length);
     const transformedBookings = completedAssignments.map((assignment) => ({
       id: assignment.id,
       labBookingId: assignment.labBookingId,

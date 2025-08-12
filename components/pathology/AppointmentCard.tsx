@@ -98,43 +98,41 @@ export default function AppointmentCard({
   };
 
   const getDateDisplay = () => {
-    // For unassigned appointments (no phlebotomist assigned), show TBD
-    if (type === 'upcoming' && !data.assignedPhlebotomist) {
+    // Always prefill date from lab booking date if present
+    const labDate = data.labBooking?.labDate;
+    if (labDate) {
       return {
-        date: 'Date TBD',
-        time: 'Time TBD'
+        date: format(new Date(labDate), "dd-MMM-yyyy"),
+        time: data.assignedTime || 'Time TBD',
       };
     }
-    
-    // For assigned appointments, show assigned date/time
-    if (data.assignedDate && data.assignedTime) {
+
+    // If no lab booking date, fallback to assigned date/time if available
+    if (data.assignedDate) {
       return {
         date: format(new Date(data.assignedDate), "dd-MMM-yyyy"),
-        time: data.assignedTime
+        time: data.assignedTime || 'Time TBD',
       };
     }
-    
-    // Fallback to appointment date if available
+
+    // Fallback to any appointment date present
     if (data.appointmentDate) {
       return {
         date: data.appointmentDate,
-        time: data.startTime || 'TBD'
+        time: data.startTime || 'Time TBD',
       };
     }
-    
-    return {
-      date: 'Date TBD',
-      time: 'Time TBD'
-    };
+
+    return { date: 'Date TBD', time: 'Time TBD' };
   };
 
   const getPaymentBadge = () => {
     const payment = data.labBooking?.payment;
     if (!payment) return null;
-    
+    const amountInRupees = typeof payment.amount === 'number' ? (payment.amount / 100) : payment.amount;
     return {
-      text: payment.paymentStatus === "PAID" ? "Paid" : `Collect ₹${payment.amount}`,
-      isPaid: payment.paymentStatus === "PAID"
+      text: payment.paymentStatus?.toUpperCase() === "PAID" ? "Paid" : `Collect ₹${amountInRupees}`,
+      isPaid: payment.paymentStatus?.toUpperCase() === "PAID",
     };
   };
 

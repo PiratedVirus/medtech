@@ -28,7 +28,9 @@ export async function POST(request: Request) {
     }
 
     const currentTime = new Date();
-    const currentDate = currentTime.toISOString().split('T')[0];
+    // Use Date object for Prisma filters (assignedDate is a Date in schema)
+    const startOfToday = new Date(currentTime);
+    startOfToday.setHours(0, 0, 0, 0);
     const currentTimeString = currentTime.toLocaleTimeString('en-US', { 
       hour12: false, 
       hour: '2-digit', 
@@ -40,9 +42,7 @@ export async function POST(request: Request) {
     const assignmentsToMove = await prisma.labAssignment.findMany({
       where: {
         status: "ASSIGNED", // Ready to start but not started yet
-        assignedDate: {
-          lte: currentDate, // Date has passed or is today
-        },
+        assignedDate: { lte: startOfToday }, // Date has passed or is today
         deletedAt: null,
       },
     });

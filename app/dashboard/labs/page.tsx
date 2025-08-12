@@ -55,6 +55,7 @@ export default function LabsPage() {
 
   const [searchPackages, setSearchPackages] = useState("");
   const [searchTests, setSearchTests] = useState("");
+  const [tab, setTab] = useState<'catalog' | 'bookings'>("catalog");
 
   const labPackages = (labs || [])
     .filter((lab: any) => lab.isLabPackage === true)
@@ -71,8 +72,29 @@ export default function LabsPage() {
   if (isError) {
     return <p className="text-red-500 text-center py-5">Something went wrong. Failed to load labs.</p>;
   }
+
   return (
     <>
+      {/* Toggle Tabs */}
+      <div className="bg-muted px-4 sm:px-8 md:px-12 lg:px-20 py-4 flex items-center justify-center">
+        <div className="inline-flex border rounded-full overflow-hidden">
+          <button
+            className={`px-4 py-2 text-sm font-medium ${tab === 'catalog' ? 'bg-primary text-white' : 'bg-white text-gray-700'}`}
+            onClick={() => setTab('catalog')}
+          >
+            Tests & Packages
+          </button>
+          <button
+            className={`px-4 py-2 text-sm font-medium border-l ${tab === 'bookings' ? 'bg-primary text-white' : 'bg-white text-gray-700'}`}
+            onClick={() => setTab('bookings')}
+          >
+            My Bookings
+          </button>
+        </div>
+      </div>
+
+      {tab === 'catalog' && (
+      <>
       {/* Lab Booking Section */}
       <div className="bookPackages">
         <div className="bg-muted h-fit px-4 sm:px-8 md:px-12 lg:px-20 pb-4">
@@ -156,6 +178,11 @@ export default function LabsPage() {
       </div>
 
       {/* Past Lab Bookings Section */}
+      </>
+      )}
+
+      {tab === 'bookings' && (
+      <>
       <div className="currentPackages">
         <div className="bg-muted h-fit px-4 sm:px-8 md:px-12 lg:px-20 pb-10">
           <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
@@ -211,6 +238,8 @@ export default function LabsPage() {
           )}
         </div>
       </div>
+      </>
+      )}
 
     </>
   );

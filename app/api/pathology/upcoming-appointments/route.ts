@@ -109,9 +109,9 @@ export async function GET(request: Request) {
     // Fetch lab bookings that don't have lab assignments yet (truly unassigned)
     const unassignedBookings = await prisma.labBooking.findMany({
       where: {
-        labDate: {
-          gte: today,
-        },
+        // labDate: {
+        //   gte: today,
+        // },
         labAssignmentId: null, // No lab assignment created yet = no phlebotomist assigned
         status: "PENDING", // Using single status
         deletedAt: null,
