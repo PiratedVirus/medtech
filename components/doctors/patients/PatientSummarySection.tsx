@@ -3,8 +3,10 @@ import { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import AllValuesModal from "./AllValuesModal";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { ChevronDown, Eye } from "lucide-react";
 
 interface Checkup {
   name: string;
@@ -23,6 +25,7 @@ interface Appointment {
   complaints?: string;
   medicines?: string;
   doctorNotes?: string;
+  prescriptionLink?: string | null;
 }
 
 interface PatientSummarySectionProps {
@@ -48,6 +51,7 @@ export default function PatientSummarySection({
   const [checkups, setCheckups] = useState<Checkup[]>([]);
   const [loadingCheckups, setLoadingCheckups] = useState(false);
   const [showAllValuesModal, setShowAllValuesModal] = useState(false);
+  const [showAllLatestComplaints, setShowAllLatestComplaints] = useState(false);
 
   const handleUntrack = async (parameter: string) => {
     const previous = [...checkups];
@@ -153,6 +157,18 @@ export default function PatientSummarySection({
     .filter(Boolean)
     .join(", ") : "";
 
+  // Latest appointment complaints: flagged vs all
+  const latestComplaintsArray = (latestCompletedAppointment?.complaints || "")
+    .split(',')
+    .map(c => c.trim())
+    .filter(Boolean);
+  const flaggedComplaintsRegex = /high|low|severe|critical|urgent|blood pressure|bp|sugar|glucose|pain|fever/i;
+  const flaggedLatestComplaints = latestComplaintsArray.filter(c => flaggedComplaintsRegex.test(c));
+  const latestComplaintsToShow = showAllLatestComplaints ? latestComplaintsArray : flaggedLatestComplaints;
+
+  // Previous appointments with prescriptions for dropdown
+  const previousWithPrescription = previousCompletedAppointments.filter(apt => !!apt.prescriptionLink);
+
   return (
     <div className="col-span-full">
       <div className="relative">
@@ -178,13 +194,27 @@ export default function PatientSummarySection({
                 {/* Top Right Corner Elements */}
                 <div className="absolute top-4 right-4 flex items-center gap-2">
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" className="text-secondary border-secondary/30 hover:bg-secondary/10 text-xs"
-                      onClick={onSaveNotes} disabled={savingNotes}
+                    {latestCompletedAppointment?.prescriptionLink && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-5 min-h-0 px-2 py-0 leading-none text-secondary border-secondary/30 hover:bg-secondary/10 text-xs rounded-full"
+                        onClick={() => window.open(latestCompletedAppointment.prescriptionLink as string, '_blank')}
+                      >
+                        <Eye className="h-3 w-3 mr-1" /> View Prescription
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-5 min-h-0 px-2 py-0 leading-none text-secondary border-secondary/30 hover:bg-secondary/10 text-xs rounded-full"
+                      onClick={onSaveNotes}
+                      disabled={savingNotes}
                     >
                       {savingNotes ? 'Saving...' : 'Save Notes'}
                     </Button>
                     {latestCompletedAppointment && (
-                      <Badge variant="outline" className="bg-secondary/30 text-secondary border-secondary/30">
+                      <Badge variant="outline" className="bg-secondary/30 text-secondary border-secondary/30 rounded-full px-2 py-0.5 text-xs">
                         {new Date(latestCompletedAppointment.date).toLocaleDateString()}
                       </Badge>
                     )}
@@ -245,17 +275,25 @@ export default function PatientSummarySection({
                       )}
                     </div>
 
-                    {/* All Complaints */}
+                    {/* Latest Complaints with toggle */}
                     <div>
-                      <h5 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                        Flagged  Complaints
-                      </h5>
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-semibold text-gray-800 flex items-center gap-2">
+                          {showAllLatestComplaints ? 'All Complaints' : 'Flagged Complaints'}
+                        </h5>
+                        <button
+                          className="text-xs text-secondary hover:underline"
+                          onClick={() => setShowAllLatestComplaints(v => !v)}
+                        >
+                          {showAllLatestComplaints ? 'Show flagged' : 'Show all'}
+                        </button>
+                      </div>
                       <div className="space-y-2">
-                        {latestCompletedAppointment?.complaints ? (
-                          latestCompletedAppointment.complaints.split(',').map((complaint, index) => (
+                        {latestComplaintsToShow.length > 0 ? (
+                          latestComplaintsToShow.map((complaint, index) => (
                             <div key={index} className="text-sm text-gray-700 flex items-start gap-2">
                               <span className="flex items-center gap-2 bg-secondary/10 p-2 rounded-lg">
-                                {complaint.trim()}
+                                {complaint}
                                 {complaint.toLowerCase().includes('blood pressure') && (
                                   <svg className="h-3 w-3 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
@@ -265,7 +303,7 @@ export default function PatientSummarySection({
                             </div>
                           ))
                         ) : (
-                          <p className="text-sm text-gray-500">No complaints recorded</p>
+                          <p className="text-sm text-gray-500">{showAllLatestComplaints ? 'No complaints recorded' : 'No flagged complaints for latest appointment'}</p>
                         )}
                       </div>
                     </div>
@@ -360,20 +398,42 @@ export default function PatientSummarySection({
               <CardContent className="p-6 flex-1 relative">
                 {/* Top Right Corner Elements */}
                 <div className="absolute top-4 right-4 flex items-center gap-2">
-                  <select
-                    value={selectedAppointmentId}
-                    onChange={(e) => setSelectedAppointmentId(e.target.value)}
-                    className="text-sm border border-gray-300 rounded px-2 py-1 bg-white"
+                  {/* View Prescription for selected previous appointment */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-5 min-h-0 px-2 py-0 leading-none text-xs rounded-full"
+                    disabled={!selectedAppointment || !selectedAppointment?.prescriptionLink}
+                    onClick={() => {
+                      if (selectedAppointment?.prescriptionLink) {
+                        window.open(selectedAppointment.prescriptionLink as string, '_blank')
+                      }
+                    }}
                   >
-                    <option value="">All Previous</option>
-                    {previousCompletedAppointments.map(apt => (
-                      <option key={apt.id} value={apt.id.toString()}>
-                        {new Date(apt.date).toLocaleDateString()}
-                      </option>
-                    ))}
-                  </select>
-                  <Badge variant="outline" className="bg-secondary/10 text-secondary border-secondary/20">
-                    {selectedAppointmentId ? "1" : previousCompletedAppointments.length} appointment{selectedAppointmentId ? "" : "s"}
+                    <Eye className="h-3 w-3 mr-1" /> View Prescription
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-5 min-h-0 px-2 py-0 leading-none text-xs flex items-center gap-1 rounded-full">
+                        <span>
+                          {selectedAppointmentId
+                            ? `Selected: ${new Date((previousWithPrescription.find(a => a.id.toString() === selectedAppointmentId)?.date || '')).toLocaleDateString()}`
+                            : 'All Previous'}
+                        </span>
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="bg-white" align="end">
+                      <DropdownMenuItem onClick={() => setSelectedAppointmentId("")}>All Previous</DropdownMenuItem>
+                      {previousWithPrescription.map(apt => (
+                        <DropdownMenuItem key={apt.id} onClick={() => setSelectedAppointmentId(apt.id.toString())}>
+                          {new Date(apt.date).toLocaleDateString()}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Badge variant="outline" className="bg-secondary/10 text-secondary border-secondary/20 rounded-full px-2 py-0.5 text-xs">
+                    {selectedAppointmentId ? '1' : previousWithPrescription.length} appointment{selectedAppointmentId ? '' : 's'}
                   </Badge>
                 </div>
                 
@@ -384,7 +444,7 @@ export default function PatientSummarySection({
                     {/* All Complaints */}
                     <div>
                       <h5 className="font-semibold text-gray-800 mb-3">
-                        Flagged Complaints
+                        All Complaints
                       </h5>
                       <div className="max-h-28 overflow-y-auto pr-1 custom-scrollbar">
                         <div className="flex flex-wrap gap-2">
@@ -460,24 +520,9 @@ export default function PatientSummarySection({
             </div>
           </Card>
         </div>
-
-        {/* Carousel Indicators
-        <div className="flex justify-center mt-4 gap-2">
-          <div className="w-3 h-3 bg-secondary rounded-full"></div>
-          <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
-        </div> */}
       </div>
 
-      {/* Save Notes Button */}
-      {/* <div className="mt-6 flex justify-end">
-        <Button
-          onClick={onSaveNotes}
-          disabled={savingNotes}
-          className="bg-secondary hover:bg-secondary/90"
-        >
-          {savingNotes ? "Saving..." : "Save Notes"}
-        </Button>
-      </div> */}
+
     </div>
   );
 } 
