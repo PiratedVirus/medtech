@@ -56,10 +56,7 @@ export default function UpcomingAppointment({ appointment, mode = 'patient' }: U
         {/* Right Section - Appointment Card */}
         {(appointment.consultationType === 'Video') ? (
           <Card className="bg-gradient-to-r to-[#134F30] from-[#56A67C] text-white p-4 rounded-2xl w-full md:w-auto">
-            <Link
-              href={`${appointment.appointmentLink}`}
-            >
-              <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4">
                 {/* Image */}
                 <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
                   {/* <VideoIcon className="absolute top-0 left-0 w-full h-full" /> */}
@@ -82,10 +79,16 @@ export default function UpcomingAppointment({ appointment, mode = 'patient' }: U
                     <span><b>{formattedDate}</b></span>
                   </div>
                 </div>
+                {/* Start button inline to the right of date/time */}
+                <div className="ml-4">
+                  <Link href={`/doctor/appointments/${appointment.id}`} className="inline-flex items-center gap-1 rounded-full bg-white/90 text-[#134F30] px-3 py-1 text-xs font-semibold">
+                    Start
+                  </Link>
+                </div>
               </div>
-            </Link>
           </Card>
-        ) : (<Card className="bg-gradient-to-tr from-[#134F30] to-[#56A67C] text-white p-4 rounded-2xl w-full md:w-auto">
+        ) : (
+          <Card className="bg-gradient-to-tr from-[#134F30] to-[#56A67C] text-white p-4 rounded-2xl w-full md:w-auto">
           <div className="flex items-center gap-4">
             {/* Image */}
             <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
@@ -108,6 +111,12 @@ export default function UpcomingAppointment({ appointment, mode = 'patient' }: U
                 <Calendar className="h-4 w-4" />
                 <span>{formattedDate}</span>
               </div>
+            </div>
+            {/* Start button inline to the right */}
+            <div className="ml-4">
+              <Link href={`/doctor/appointments/${appointment.id}`} className="inline-flex items-center gap-1 rounded-full bg-white/90 text-[#134F30] px-3 py-1 text-xs font-semibold">
+                Start
+              </Link>
             </div>
           </div>
         </Card>

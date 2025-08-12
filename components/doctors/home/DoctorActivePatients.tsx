@@ -164,6 +164,11 @@ export default function DoctorActivePatients() {
                 {formatTime(item.appointment.doctorAvailability.startTime)} - {formatTime(item.appointment.doctorAvailability.endTime)}
               </p>
             </div>
+            <div className="absolute bottom-3 right-3">
+              <a href={`/doctor/appointments/${(item as any).appointment.id}`} className="inline-flex items-center gap-1 rounded-full bg-primary text-white px-3 py-1 text-xs font-semibold shadow hover:bg-primary/90">
+                Start
+              </a>
+            </div>
           </div>
         </React.Fragment>
       );
