@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 function formatDate(dateString: string) {
   if (!dateString) return "-";
   const date = new Date(dateString);
-  return date.toLocaleDateString("en-IN", {
+  // dd Mon yyyy (e.g., 05 Jan 2025)
+  return date.toLocaleDateString("en-GB", {
     day: "2-digit",
-    month: "2-digit",
+    month: "short",
     year: "numeric",
   });
 }
@@ -42,6 +43,7 @@ const RIBBON_COLORS = [
 export default function DoctorAppointmentsPage() {
   const [data, setData] = useState<any>({ upcoming: [], past: [] });
   const [loading, setLoading] = useState(true);
+  const [scheduledView, setScheduledView] = useState<"upcoming" | "past">("upcoming");
 
   useEffect(() => {
     async function fetchData() {
@@ -49,6 +51,15 @@ export default function DoctorAppointmentsPage() {
       try {
         const res = await axios.get("/api/doctor/appointments/all");
         setData(res.data);
+        // After fetching, auto-mark any appointments with a prescription as COMPLETED
+        const all = [...(res.data.upcoming || []), ...(res.data.past || [])];
+        const toMark = all.filter((a: any) => a.prescriptionLink && String(a.status).toUpperCase() !== "COMPLETED");
+        if (toMark.length > 0) {
+          // Fire and forget; no need to block UI
+          toMark.forEach((a: any) => {
+            axios.put(`/api/doctor/appointments/${a.id}/mark-completed`).catch(() => {});
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -91,23 +102,24 @@ export default function DoctorAppointmentsPage() {
             {appt.status}
           </span>
         </div>
-        <div className="flex-1 flex flex-col gap-3 pr-4 z-10">
+        <div className="flex-1 flex flex-col gap-2 pr-4 z-10">
+          {/* Appointment ID pill */}
+          <div>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium border border-emerald-300 text-emerald-800 bg-emerald-50">
+              ID: {appt.id}
+            </span>
+          </div>
           {/* Patient Name and Previous Tag */}
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2">
             <span className="font-semibold text-gray-800 text-base">{appt.patientName}</span>
             {appt.isFirst && !hasPreviousAppointments ? (
               <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">New</span>
             ) : null}
           </div>
-          {/* Date and Time */}
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Calendar className="h-4 w-4" />
-            <span>{formatDate(appt.date)}</span>
-            <Clock className="h-4 w-4 ml-4" />
-            <span>{formatTime(appt.startTime)} - {formatTime(appt.endTime)}</span>
-          </div>
+
           {/* Consultation Type */}
           <div className="flex items-center gap-2 text-sm">
+            <>
             {appt.consultationType.toUpperCase() === "CLINIC" ? (
               <>
                 <Building2 className="h-4 w-4 text-gray-600" />
@@ -131,6 +143,14 @@ export default function DoctorAppointmentsPage() {
                 )}
               </>
             )}
+            
+            </>
+          </div>
+                    {/* Date and Time */}
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">{formatDate(appt.date)}</span>
+            <Clock className="h-4 w-4 ml-4" />
+            <span>{formatTime(appt.startTime)} - {formatTime(appt.endTime)}</span>
           </div>
           {/* Prescription Actions */}
           <div className="flex items-center justify-start mt-2 gap-2">
@@ -139,7 +159,7 @@ export default function DoctorAppointmentsPage() {
                 // Past appointment that's not completed and has no prescription - show "Start Appointment Now" button
                 <Button
                   size="sm"
-                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  className="bg-primary hover:bg-primary/80 text-white"
                   onClick={() => {
                     // Navigate to start appointment page
                     window.location.href = `/doctor/appointments/${appt.id}`;
@@ -165,7 +185,7 @@ export default function DoctorAppointmentsPage() {
                 // Past appointment without prescription - show "Start Appointment Now" button
                 <Button
                   size="sm"
-                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  className="bg-primary hover:bg-primary/80 text-white"
                   onClick={() => {
                     // Navigate to start appointment page
                     window.location.href = `/doctor/appointments/${appt.id}`;
@@ -206,6 +226,20 @@ export default function DoctorAppointmentsPage() {
     );
   }
 
+  // Derived partitions irrespective of date: Scheduled vs Completed
+  const allAppointments = [...(data.upcoming || []), ...(data.past || [])];
+  const completedAppointments = allAppointments.filter((a: any) => String(a.status).toUpperCase() === "COMPLETED" || a.prescriptionLink);
+  const scheduledAppointments = allAppointments.filter((a: any) => !(String(a.status).toUpperCase() === "COMPLETED" || a.prescriptionLink));
+
+  const now = new Date();
+  const isFutureDate = (d?: string) => {
+    if (!d) return false;
+    const dt = new Date(d);
+    return dt.getTime() >= now.getTime();
+  };
+  const scheduledUpcoming = scheduledAppointments.filter((a: any) => isFutureDate(a.date));
+  const scheduledPast = scheduledAppointments.filter((a: any) => !isFutureDate(a.date));
+
   return (
     <div className="bg-muted flex flex-col items-center">
       <div className="container w-full bg-mutedbg p-4">
@@ -214,31 +248,59 @@ export default function DoctorAppointmentsPage() {
           <div className="text-center text-gray-600 py-12">Loading appointments...</div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Upcoming Appointments - Left Column */}
+            {/* Scheduled Appointments - Left Column */}
             <section className="lg:border-r lg:border-gray-200 lg:pr-6 ">
-              <h3 className="text-xl font-semibold mb-4">Upcoming Appointments</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold">Scheduled Appointments</h3>
+                <div className="inline-flex items-center rounded-md border border-gray-200 overflow-hidden">
+                  <button
+                    className={cn(
+                      "px-3 py-1 text-sm",
+                      scheduledView === "upcoming"
+                        ? "bg-primary text-white"
+                        : "bg-gray-100 text-gray-600"
+                    )}
+                    onClick={() => setScheduledView("upcoming")}
+                  >
+                    Upcoming
+                  </button>
+                  <button
+                    className={cn(
+                      "px-3 py-1 text-sm border-l border-gray-200",
+                      scheduledView === "past"
+                        ? "bg-primary text-white"
+                        : "bg-gray-100 text-gray-600"
+                    )}
+                    onClick={() => setScheduledView("past")}
+                  >
+                    Past
+                  </button>
+                </div>
+              </div>
               <div className="h-[600px] overflow-y-auto pr-2">
-                {data.upcoming.length === 0 ? (
-                  <div className="text-gray-500">No upcoming appointments.</div>
+                {(
+                  scheduledView === "upcoming" ? scheduledUpcoming : scheduledPast
+                ).length === 0 ? (
+                  <div className="text-gray-500">No {scheduledView} scheduled appointments.</div>
                 ) : (
                   <div>
-                    {data.upcoming.map((appt: any, idx: number) => (
-                      <AppointmentCard appt={appt} idx={idx} key={appt.id} />
+                    {(scheduledView === "upcoming" ? scheduledUpcoming : scheduledPast).map((appt: any, idx: number) => (
+                      <AppointmentCard appt={appt} idx={idx} key={appt.id} isPast={scheduledView === "past"} />
                     ))}
                   </div>
                 )}
               </div>
             </section>
 
-            {/* Past Appointments - Right Column */}
+            {/* Completed Appointments - Right Column */}
             <section className="lg:pl-6">
-              <h3 className="text-xl font-semibold mb-4">Past Appointments</h3>
+              <h3 className="text-xl font-semibold mb-4">Completed Appointments</h3>
               <div className="h-[600px] overflow-y-auto pr-2">
-                {data.past.length === 0 ? (
-                  <div className="text-gray-500">No past appointments.</div>
+                {completedAppointments.length === 0 ? (
+                  <div className="text-gray-500">No completed appointments.</div>
                 ) : (
                   <div>
-                    {data.past.map((appt: any, idx: number) => (
+                    {completedAppointments.map((appt: any, idx: number) => (
                       <AppointmentCard appt={appt} idx={idx} key={appt.id} isPast />
                     ))}
                   </div>

@@ -20,7 +20,8 @@
     "seed:v2:fresh": "node prisma/seeds/v2/main.js --start-fresh",
     "fix:missing-data": "node prisma/seeds/v2/fixMissingData.js",
     "fix:robust": "node prisma/seeds/v2/runRobustFix.js",
-    "ensure:complete-data": "node prisma/seeds/v2/ensureCompleteData.js"
+    "ensure:complete-data": "node prisma/seeds/v2/ensureCompleteData.js",
+    "fix:appointments-status": "node scripts/backfill-mark-completed.js"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.77.0",
