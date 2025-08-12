@@ -48,8 +48,25 @@ export default function AppointmentBookingHomeOne({
       .then((res) => {
         if (!isMounted) return;
         if (res.data.success) {
-          setAvailability(res.data.availability);
-          setSlotCounts(res.data.slotCounts);
+          const apiAvailability = res.data.availability as Availability[];
+          const apiSlotCounts = res.data.slotCounts as { date: string; count: number }[];
+
+          setAvailability(apiAvailability);
+
+          // Fallback: recompute counts from availability in case API counts are zero/mismatched
+          const computedMap = new Map<string, number>();
+          for (const a of apiAvailability) {
+            const key = new Date(a.date).toISOString().split("T")[0];
+            computedMap.set(key, (computedMap.get(key) || 0) + 1);
+          }
+          const finalCounts = (apiSlotCounts || []).map((sc: { date: string; count: number }) => {
+            const key = sc.date;
+            const computed = computedMap.get(key) || 0;
+            return { date: key, count: Math.max(sc.count ?? 0, computed) };
+          });
+          // If API returned empty slotCounts but availability exists, build from computed map
+          const slotCountsToSet = finalCounts.length > 0 ? finalCounts : Array.from(computedMap.entries()).map(([date, count]) => ({ date, count }));
+          setSlotCounts(slotCountsToSet);
           setDayIndex(0);
           setError("");
         } else {

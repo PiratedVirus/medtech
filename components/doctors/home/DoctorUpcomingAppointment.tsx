@@ -2,7 +2,7 @@ import UpcomingAppointment from '@/components/patients/appointments/view/Upcomin
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useDecryptedProfile } from '@/hooks/use-profile';
-import AppointmentSkeleton from '@/components/ui/custom/cd-appointment-skeleton';
+import { DoctorUpcomingSkeleton } from '@/components/ui/custom/cd-appointment-skeleton';
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -48,7 +48,7 @@ export default function DoctorUpcomingAppointment() {
     <div className="flex flex-col justify-between">
       <div className="mb-2">
         {isLoading ? (
-          <AppointmentSkeleton />
+          <DoctorUpcomingSkeleton />
         ) : upcomingAppointment ? (
           <UpcomingAppointment appointment={upcomingAppointment} mode="doctor" />
         ) : (

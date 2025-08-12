@@ -33,9 +33,33 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
   const [filteredlabTestsDatesDates, setFilteredlabTestsDatesDates] = useState<string[] | null>(null);
   const [isLabPlanBookable, setIsLabPlanBookable] = useState(false);
 
-  const parametersArray = labBbookingData.parameters
-    ? labBbookingData.parameters.split(",").map((p: string) => p.trim())
-    : [];
+  // Normalize parameters coming from DB: can be string (comma-separated), array, or JSON
+  let parametersArray: string[] = [];
+  try {
+    const raw = labBbookingData?.parameters;
+    if (Array.isArray(raw)) {
+      parametersArray = raw.map((p: any) => String(p).trim()).filter(Boolean);
+    } else if (typeof raw === "string") {
+      // If looks like JSON array, parse; else split by comma
+      const trimmed = raw.trim();
+      if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith("\"") && trimmed.endsWith("\""))) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          parametersArray = Array.isArray(parsed) ? parsed.map((p: any) => String(p).trim()).filter(Boolean) : [String(parsed).trim()];
+        } catch {
+          parametersArray = trimmed.split(",").map((p: string) => p.trim()).filter(Boolean);
+        }
+      } else {
+        parametersArray = trimmed.split(",").map((p: string) => p.trim()).filter(Boolean);
+      }
+    } else if (raw && typeof raw === "object") {
+      // Object/JSON from DB
+      const vals = Object.values(raw as Record<string, any>);
+      parametersArray = vals.map((v) => String(v).trim()).filter(Boolean);
+    }
+  } catch {
+    parametersArray = [];
+  }
 
   const fetchSubscriptionTracker = async (userId: string) => {
     try {

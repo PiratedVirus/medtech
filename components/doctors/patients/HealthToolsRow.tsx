@@ -25,7 +25,7 @@ export default function HealthToolsRow({ onOpenInsights }: HealthToolsRowProps) 
 
       {/* Heart Rate Predictor Card */}
       <Card className="group relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 rounded-xl cursor-pointer h-16"
-            onClick={() => window.open('/dashboard/heart-risk', '_blank')}>
+            onClick={() => window.open('/calculators/heart-risk', '_blank')}>
         <div className="absolute inset-0 bg-gradient-to-br from-red-600 to-red-900 rounded-xl" />
         <div className="absolute inset-0 bg-gradient-to-br from-red-600/10 to-red-900/10 opacity-50 transition-opacity duration-300 group-hover:opacity-70" />
         
@@ -39,7 +39,7 @@ export default function HealthToolsRow({ onOpenInsights }: HealthToolsRowProps) 
 
       {/* FIB4 Calculator Card */}
       <Card className="group relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 rounded-xl cursor-pointer h-16"
-            onClick={() => window.open('/fib4-calculator', '_blank')}>
+            onClick={() => window.open('/calculators/fib4', '_blank')}>
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl" />
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-indigo-600/10 opacity-50 transition-opacity duration-300 group-hover:opacity-70" />
         

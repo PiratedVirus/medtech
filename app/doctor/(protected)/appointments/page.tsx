@@ -129,18 +129,7 @@ export default function DoctorAppointmentsPage() {
               <>
                 <Video className="h-4 w-4 text-gray-600" />
                 <span className="font-bold text-gray-800">Video consultation</span>
-                {appt.meetingRoomLink && (
-                  <a
-                    href={appt.meetingRoomLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 ml-2"
-                    title="Meeting Room Link"
-                  >
-                    <Link2 className="h-3 w-3" />
-                    <span className="text-xs">Room</span>
-                  </a>
-                )}
+                {/* Room link removed as per request; available on Home -> Join meet room */}
               </>
             )}
             
