@@ -18,6 +18,7 @@ interface PrescriptionsSectionProps {
 
 export default function PrescriptionsSection({ appointments, patientName }: PrescriptionsSectionProps) {
   const [open, setOpen] = useState(false);
+  const [showOnlyWithPrescription, setShowOnlyWithPrescription] = useState(false);
   const prescriptions = appointments?.filter(apt => apt.prescriptionLink) || [];
 
   const items = prescriptions.slice(0, 3);
@@ -32,7 +33,15 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
         <div className="relative z-10 h-full flex flex-col">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-bold text-gray-900">Prescriptions</h3>
-            <Button variant="outline" size="sm" className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs"
+              onClick={() => {
+                setShowOnlyWithPrescription(true);
+                setOpen(true);
+              }}
+            >
               <Eye className="h-3 w-3 mr-1" />
               View More
             </Button>
@@ -83,7 +92,13 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
             ))}
           </div>
 
-          <Button onClick={() => setOpen(true)} className="w-full bg-secondary hover:bg-secondary/90 text-white rounded-xl py-2 shadow-lg hover:shadow-xl transition-all duration-300 group text-sm">
+          <Button
+            onClick={() => {
+              setShowOnlyWithPrescription(false);
+              setOpen(true);
+            }}
+            className="w-full bg-secondary hover:bg-secondary/90 text-white rounded-xl py-2 shadow-lg hover:shadow-xl transition-all duration-300 group text-sm"
+          >
             <Plus className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
             <span className="font-semibold">Create New Prescription</span>
           </Button>
@@ -99,7 +114,7 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
             </div>
             <div className="p-4 max-h-[70vh] overflow-y-auto">
               <ul className="divide-y">
-                {appointments?.map((apt) => {
+                {(showOnlyWithPrescription ? appointments?.filter(a => a.prescriptionLink) : appointments)?.map((apt) => {
                   const hasPrescription = Boolean(apt.prescriptionLink);
                   const viewHref = apt.prescriptionLink || `/doctor/appointments/${apt.id}/prescription`;
                   return (
