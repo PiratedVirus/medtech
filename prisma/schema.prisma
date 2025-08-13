@@ -540,6 +540,7 @@ model PrescriptionTemplate {
   doctorId            Int
   templateName        String
   templateDescription String?
+  templateScope       TemplateScope?      @default(FULL)
   advice              String?
   testsRequested      String?
   isActive            Boolean             @default(true)
@@ -552,6 +553,12 @@ model PrescriptionTemplate {
 
   @@index([deletedAt])
   @@index([doctorId])
+}
+
+enum TemplateScope {
+  FULL
+  COMPLAINTS
+  MEDICINES
 }
 
 model TemplateComplaint {

@@ -211,10 +211,10 @@ export default function AppointmentPrescriptionPage() {
               weight: prescription.vitals.weight?.toString() || "",
             }
           : {
-              bloodPressure: "120/80",
-              pulse: "72",
-              height: "182",
-              weight: "95",
+              bloodPressure: "",
+              pulse: "",
+              height: "",
+              weight: "",
             },
         history: prescription.history
           ? {
@@ -404,7 +404,6 @@ export default function AppointmentPrescriptionPage() {
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-gray-600">#APT0{appointmentId}</span>
                   <span className="text-lg font-semibold text-gray-900">{patientInfo.name}</span>
-                  <span className="text-sm text-gray-500">({patientInfo.prescriptionId})</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">

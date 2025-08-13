@@ -54,6 +54,18 @@ export default function PrescriptionForm({
   const [savedTemplates, setSavedTemplates] = useState([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showLoadDialog, setShowLoadDialog] = useState(false);
+  // Section-specific templates state
+  const [complaintTemplateName, setComplaintTemplateName] = useState("");
+  const [isSavingComplaintTemplate, setIsSavingComplaintTemplate] = useState(false);
+  const [showComplaintSaveDialog, setShowComplaintSaveDialog] = useState(false);
+  const [showComplaintLoadDialog, setShowComplaintLoadDialog] = useState(false);
+  const [complaintTemplates, setComplaintTemplates] = useState<any[]>([]);
+
+  const [medicineTemplateName, setMedicineTemplateName] = useState("");
+  const [isSavingMedicineTemplate, setIsSavingMedicineTemplate] = useState(false);
+  const [showMedicineSaveDialog, setShowMedicineSaveDialog] = useState(false);
+  const [showMedicineLoadDialog, setShowMedicineLoadDialog] = useState(false);
+  const [medicineTemplates, setMedicineTemplates] = useState<any[]>([]);
   const { toast } = useToast();
 
   const severityOptions = [
@@ -196,6 +208,18 @@ export default function PrescriptionForm({
     });
   };
 
+  // Initialize default next visit date (7 days) if not set
+  useEffect(() => {
+    if (!prescriptionData.nextVisit?.date) {
+      const d = calculateNextVisitDate(prescriptionData.nextVisit?.type || 'days', prescriptionData.nextVisit?.value || 7);
+      setPrescriptionData((prev: any) => ({
+        ...prev,
+        nextVisit: { ...(prev.nextVisit || { type: 'days', value: 7 }), date: d },
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const processFrequencyInput = (input: string): string => {
     // Remove all non-numeric characters except dashes
     const cleanInput = input.replace(/[^0-9-]/g, '');
@@ -312,6 +336,114 @@ export default function PrescriptionForm({
     }
   };
 
+  // Complaints templates handlers
+  const handleSaveComplaintsTemplate = async () => {
+    if (!complaintTemplateName.trim()) {
+      toast({ title: "Error", description: "Please enter a template name", variant: "destructive" });
+      return;
+    }
+    setIsSavingComplaintTemplate(true);
+    try {
+      const response = await fetch('/api/doctor/prescription/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: complaintTemplateName,
+          complaints: prescriptionData.complaints,
+          medicines: [],
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to save complaints template');
+      toast({ title: 'Saved', description: `Complaints template "${complaintTemplateName}" saved` });
+      setShowComplaintSaveDialog(false);
+      setComplaintTemplateName("");
+    } catch (e) {
+      toast({ title: 'Error', description: 'Failed to save complaints template', variant: 'destructive' });
+    } finally {
+      setIsSavingComplaintTemplate(false);
+    }
+  };
+
+  const handleLoadComplaintsTemplates = async () => {
+    try {
+      const res = await fetch('/api/doctor/prescription/templates?type=complaints');
+      if (!res.ok) throw new Error('Failed to load complaints templates');
+      const data = await res.json();
+      setComplaintTemplates(data.templates || []);
+      setShowComplaintLoadDialog(true);
+    } catch (e) {
+      toast({ title: 'Error', description: 'Failed to load complaints templates', variant: 'destructive' });
+    }
+  };
+
+  const applyComplaintsTemplate = (template: any) => {
+    const comps = (template.complaints || []).map((c: any) => ({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      text: c.complaintText,
+      severity: c.severity || 'MODERATE',
+      daysSince: 1,
+      isFlagged: false,
+    }));
+    setPrescriptionData({ ...prescriptionData, complaints: comps });
+    setShowComplaintLoadDialog(false);
+    toast({ title: 'Loaded', description: `Complaints template applied` });
+  };
+
+  // Medicines templates handlers
+  const handleSaveMedicinesTemplate = async () => {
+    if (!medicineTemplateName.trim()) {
+      toast({ title: "Error", description: "Please enter a template name", variant: "destructive" });
+      return;
+    }
+    setIsSavingMedicineTemplate(true);
+    try {
+      const response = await fetch('/api/doctor/prescription/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: medicineTemplateName,
+          complaints: [],
+          medicines: prescriptionData.medicines,
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to save medicines template');
+      toast({ title: 'Saved', description: `Medicines template "${medicineTemplateName}" saved` });
+      setShowMedicineSaveDialog(false);
+      setMedicineTemplateName("");
+    } catch (e) {
+      toast({ title: 'Error', description: 'Failed to save medicines template', variant: 'destructive' });
+    } finally {
+      setIsSavingMedicineTemplate(false);
+    }
+  };
+
+  const handleLoadMedicinesTemplates = async () => {
+    try {
+      const res = await fetch('/api/doctor/prescription/templates?type=medicines');
+      if (!res.ok) throw new Error('Failed to load medicines templates');
+      const data = await res.json();
+      setMedicineTemplates(data.templates || []);
+      setShowMedicineLoadDialog(true);
+    } catch (e) {
+      toast({ title: 'Error', description: 'Failed to load medicines templates', variant: 'destructive' });
+    }
+  };
+
+  const applyMedicinesTemplate = (template: any) => {
+    const meds = (template.medicines || []).map((m: any) => ({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: m.medicineName,
+      frequency: m.frequency || "",
+      medicineTime: m.medicineTime || "",
+      duration: m.duration || "",
+      quantity: (m.quantity ?? '').toString(),
+      instructions: m.instructions || "",
+    }));
+    setPrescriptionData({ ...prescriptionData, medicines: meds });
+    setShowMedicineLoadDialog(false);
+    toast({ title: 'Loaded', description: `Medicines template applied` });
+  };
+
   const handleSelectTemplate = (template: any) => {
     // Ensure template exists
     if (!template) {
@@ -333,10 +465,10 @@ export default function PrescriptionForm({
         isFlagged: false,
       })) || [],
       vitals: {
-        bloodPressure: "120/80",
-        pulse: "72",
-        height: "182",
-        weight: "95",
+        bloodPressure: "",
+        pulse: "",
+        height: "",
+        weight: "",
       },
       history: {
         allergies: "",
@@ -370,10 +502,10 @@ export default function PrescriptionForm({
     setPrescriptionData({
       complaints: templateData.complaints || [],
       vitals: {
-        bloodPressure: templateData.vitals?.bloodPressure || "120/80",
-        pulse: templateData.vitals?.pulse || "72",
-        height: templateData.vitals?.height || "182",
-        weight: templateData.vitals?.weight || "95",
+        bloodPressure: templateData.vitals?.bloodPressure || "",
+        pulse: templateData.vitals?.pulse || "",
+        height: templateData.vitals?.height || "",
+        weight: templateData.vitals?.weight || "",
       },
       history: {
         allergies: templateData.history?.allergies || "",
@@ -452,7 +584,6 @@ export default function PrescriptionForm({
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-600">#APT0{patientInfo.appointmentId || '001'}</span>
               <span className="text-lg font-semibold text-gray-900">{patientInfo.name}</span>
-              <span className="text-sm text-gray-500">({patientInfo.prescriptionId || 'No ID'})</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -522,9 +653,7 @@ export default function PrescriptionForm({
             <div>
               <h2 className="text-2xl text-custom-darkgreen font-semibold mb-1">{patientInfo.name}</h2>
             </div>
-            <div>
-              <h4 className="text-sm text-custom-darkgreen font-light mb-4">{patientInfo.prescriptionId || 'No prescription ID'}</h4>
-            </div>
+            {/* Prescription ID hidden as requested */}
           </div>
         </div>
       </div>
@@ -633,7 +762,17 @@ export default function PrescriptionForm({
 
       {/* Complaints Section */}
       <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold mb-4">Complaints</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Complaints</h3>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onMouseDown={(e)=>e.preventDefault()} onClick={handleLoadComplaintsTemplates}>
+              Load Complaints Template
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowComplaintSaveDialog(true)}>
+              Save Complaints Template
+            </Button>
+          </div>
+        </div>
         <div className="space-y-4">
           <TypeAheadInput
             value={newComplaint}
@@ -827,19 +966,27 @@ export default function PrescriptionForm({
       <div className="bg-white p-6 rounded-lg border border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Medicine</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleLoadPrevious}
-            disabled={isLoadingPrevious}
-          >
-            {isLoadingPrevious ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Clock className="h-4 w-4 mr-2" />
-            )}
-            Load from Previous
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowMedicineLoadDialog(true)} onMouseDown={(e)=>e.preventDefault()} onClickCapture={handleLoadMedicinesTemplates}>
+              Load Medicines Template
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowMedicineSaveDialog(true)}>
+              Save Medicines Template
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLoadPrevious}
+              disabled={isLoadingPrevious}
+            >
+              {isLoadingPrevious ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Clock className="h-4 w-4 mr-2" />
+              )}
+              Load from Previous
+            </Button>
+          </div>
         </div>
         <div className="space-y-4">
           <TypeAheadInput
@@ -1096,6 +1243,106 @@ export default function PrescriptionForm({
             <Button variant="outline" onClick={() => setShowLoadDialog(false)}>
               Cancel
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Complaints Templates Dialogs */}
+      <Dialog open={showComplaintSaveDialog} onOpenChange={setShowComplaintSaveDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Save Complaints Template</DialogTitle>
+            <DialogDescription>Enter a name for this complaints template.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="complaintTemplateName" className="text-right">Name</Label>
+              <Input id="complaintTemplateName" value={complaintTemplateName} onChange={(e)=>setComplaintTemplateName(e.target.value)} className="col-span-3" placeholder="Enter template name..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowComplaintSaveDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveComplaintsTemplate} disabled={isSavingComplaintTemplate}>
+              {isSavingComplaintTemplate ? (<Loader2 className="h-4 w-4 mr-2 animate-spin" />) : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showComplaintLoadDialog} onOpenChange={setShowComplaintLoadDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Load Complaints Template</DialogTitle>
+            <DialogDescription>Select a complaints template to load.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4 max-h-[400px] overflow-y-auto">
+            {complaintTemplates.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">No complaints templates found</div>
+            ) : (
+              complaintTemplates.map((template: any) => (
+                <div key={template.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer" onClick={() => applyComplaintsTemplate(template)}>
+                  <div>
+                    <h4 className="font-medium">{template.templateName || 'Unnamed Template'}</h4>
+                    <p className="text-sm text-gray-500">Created: {new Date(template.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); applyComplaintsTemplate(template); }}>Load</Button>
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowComplaintLoadDialog(false)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Medicines Templates Dialogs */}
+      <Dialog open={showMedicineSaveDialog} onOpenChange={setShowMedicineSaveDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Save Medicines Template</DialogTitle>
+            <DialogDescription>Enter a name for this medicines template.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="medicineTemplateName" className="text-right">Name</Label>
+              <Input id="medicineTemplateName" value={medicineTemplateName} onChange={(e)=>setMedicineTemplateName(e.target.value)} className="col-span-3" placeholder="Enter template name..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMedicineSaveDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveMedicinesTemplate} disabled={isSavingMedicineTemplate}>
+              {isSavingMedicineTemplate ? (<Loader2 className="h-4 w-4 mr-2 animate-spin" />) : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showMedicineLoadDialog} onOpenChange={setShowMedicineLoadDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Load Medicines Template</DialogTitle>
+            <DialogDescription>Select a medicines template to load.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4 max-h-[400px] overflow-y-auto">
+            {medicineTemplates.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">No medicines templates found</div>
+            ) : (
+              medicineTemplates.map((template: any) => (
+                <div key={template.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer" onClick={() => applyMedicinesTemplate(template)}>
+                  <div>
+                    <h4 className="font-medium">{template.templateName || 'Unnamed Template'}</h4>
+                    <p className="text-sm text-gray-500">Created: {new Date(template.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); applyMedicinesTemplate(template); }}>Load</Button>
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMedicineLoadDialog(false)}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

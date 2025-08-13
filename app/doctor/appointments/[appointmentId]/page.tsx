@@ -63,10 +63,10 @@ export default function PrescriptionPage() {
   const [prescriptionData, setPrescriptionData] = useState<PrescriptionData>({
     complaints: [],
     vitals: {
-      bloodPressure: "120/80",
-      pulse: "72",
-      height: "182",
-      weight: "95",
+      bloodPressure: "",
+      pulse: "",
+      height: "",
+      weight: "",
     },
     history: {
       allergies: "",
@@ -86,6 +86,7 @@ export default function PrescriptionPage() {
     nextVisit: {
       type: "days",
       value: 7,
+      date: new Date(new Date().setDate(new Date().getDate() + 7)),
     },
   });
 
@@ -158,10 +159,10 @@ export default function PrescriptionPage() {
                 height: prescription.vitals.height?.toString() || "",
                 weight: prescription.vitals.weight?.toString() || "",
               } : {
-                bloodPressure: "120/80",
-                pulse: "72",
-                height: "182",
-                weight: "95",
+                bloodPressure: "",
+                pulse: "",
+                height: "",
+                weight: "",
               },
               history: prescription.history ? {
                 allergies: prescription.history.allergies || "",
