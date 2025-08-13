@@ -4,19 +4,19 @@ import { cache } from 'react';
 
 // Cache the query for 5 minutes
 const getDietPlan = cache(async (patientId: number) => {
-  return prisma.appointment.findFirst({
-    where: {
-      patientId,
-      isDietician: true,
-      deletedAt: null,
-    },
-    orderBy: {
-      id: "desc",
-    },
-    select: {
-      prescriptionLink: true,
-    },
+  // Prefer new DietPlan records; fallback to old diet-appointment prescription links for backward compatibility
+  const latestPlan = await prisma.dietPlan.findFirst({
+    where: { patientId, deletedAt: null },
+    orderBy: { id: 'desc' },
   });
+  if (latestPlan) return { prescriptionLink: null, dietPlan: latestPlan } as any;
+
+  const legacy = await prisma.appointment.findFirst({
+    where: { patientId, isDietician: true, deletedAt: null },
+    orderBy: { id: 'desc' },
+    select: { prescriptionLink: true },
+  });
+  return legacy as any;
 });
 
 export const revalidate = 300; // Cache for 5 minutes
@@ -33,10 +33,10 @@ export async function GET(request: Request) {
             { status: 400 }
         );
         }
-        const appt = await getDietPlan(patientId);
+        const appt = await getDietPlan(patientId) as any;
         const dietLink = appt?.prescriptionLink;
-    
-        return NextResponse.json({ success: true, dietLink });
+        const dietPlan = appt?.dietPlan || null;
+        return NextResponse.json({ success: true, dietLink, dietPlan });
     } catch (error) {
         console.error('Diet plan fetch error:', error);
         return NextResponse.json(

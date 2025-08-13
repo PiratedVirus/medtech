@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useToast } from '@/hooks/use-toast';
 import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, addMinutes, setHours, setMinutes, addDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,7 @@ interface SlotStates {
 }
 
 export default function DoctorSlotsPage() {
+  const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [slotStates, setSlotStates] = useState<SlotStates>({});
   const [loading, setLoading] = useState(false);
@@ -106,6 +108,18 @@ export default function DoctorSlotsPage() {
       await axios.post('/api/doctor/slots', {
         date: selectedDate,
         slots: payload,
+      });
+      toast({
+        variant: 'success',
+        title: 'Slots saved',
+        description: `Availability updated for ${format(parseISO(selectedDate), 'dd MMM yyyy')}`,
+      });
+    } catch (error: any) {
+      const message = error?.response?.data?.error || 'Failed to save availability';
+      toast({
+        variant: 'destructive',
+        title: 'Save failed',
+        description: message,
       });
     } finally {
       setSaving(false);

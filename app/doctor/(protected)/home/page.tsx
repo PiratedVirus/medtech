@@ -8,6 +8,7 @@ import DoctorActivePatients from '@/components/doctors/home/DoctorActivePatients
 import DoctorDashboardActionCard from "@/components/ui/custom/cd-doctor-dashboard-action-card";
 import { BicepsFlexed, FileText, LineChart, Users, Video, VideoIcon, Videotape, VideotapeIcon } from "lucide-react"
 import { useDecryptedProfile } from '@/hooks/use-profile';
+import Link from 'next/link';
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -77,6 +78,18 @@ export default function DoctorDashboardPage() {
                 OutlineIcon={VideotapeIcon}
               />
             </div>
+            {((profile as any)?.doctorProfile?.isDietician || profile?.role === 'DIETICIAN') && (
+              <div className="flex-1">
+                <DoctorDashboardActionCard
+                  href="/doctor/diet-plans"
+                  headerLabel="Diet Plans"
+                  cardTitle="Manage Diet Plans"
+                  cardDescription="Create and manage patient diet plans"
+                  PrimaryIcon={LineChart}
+                  OutlineIcon={LineChart}
+                />
+              </div>
+            )}
           </div>
         </div>
         <div className="col-span-12 sm:col-span-6 md:col-span-3">

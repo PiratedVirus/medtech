@@ -30,6 +30,7 @@
       "@/custom/*": ["./components/ui/custom/*"],
       "@/app/*": ["./app/*"]
     },
+    "types": [],
     "typeRoots": ["./types", "./node_modules/@types"]
   },
   "include": [

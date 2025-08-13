@@ -9,6 +9,7 @@ import CdLoader from "@/components/ui/custom/cd-loader";
 import { CircleCheckBig, CalendarIcon } from "lucide-react";
 import DoctorCard from "@/components/patients/doctors/DoctorCard";
 import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DoctorsPage() {
   const activeTab: 'doctors' | 'dieticians' = 'dieticians';
@@ -16,10 +17,14 @@ export default function DoctorsPage() {
   const dispatch = useDispatch();
   const { clinicId, isLoading: profileLoading } = useDecryptedProfile();
 
+  const { toast } = useToast();
+
   const handleBookAppointment = (doctor: any, type: "video" | "clinic") => {
     dispatch(setBookingData({ doctor, type, isDietician: true }));
     router.push(`/dashboard/appointments/${doctor.id}`);
   };
+
+  // Diet plan requests are now handled entirely inside the View Diet modal on the home page
 
   // Fetch dieticians using React Query
   const { data: dieticians, isLoading, isError } = useQuery({
@@ -52,7 +57,7 @@ export default function DoctorsPage() {
   return (
     <div className="bg-muted min-h-screen px-4 sm:px-8 md:px-12 lg:px-20 pb-10">
       {/* Mobile tab navigation */}
-      <div className="flex justify-center space-x-4 block md:hidden py-3">
+      <div className="flex justify-center space-x-4 md:hidden py-3">
         <button
           onClick={() => router.push('/dashboard/doctors')}
           //@ts-ignore
@@ -83,7 +88,7 @@ export default function DoctorsPage() {
             </p>
           </div>
         </div>
-
+        <div className="hidden md:block" />
       </div>
 
       {dieticians.length > 0 ? (

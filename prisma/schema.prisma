@@ -71,6 +71,11 @@ model User {
   patientTrendData     ReportTrendData[]      @relation("PatientTrendData")
   testResultsReported  TestResult[]           @relation("TestResultReporter")
   clinic               Clinic?                @relation(fields: [clinicId], references: [id])
+  // Diet Plan relations
+  dietPlanRequestsAsPatient   DietPlanRequest[] @relation("DietPlanRequestPatient")
+  dietPlanRequestsAsDietician DietPlanRequest[] @relation("DietPlanRequestDietician")
+  dietPlansAsPatient          DietPlan[]        @relation("DietPlanPatient")
+  dietPlansAsDietician        DietPlan[]        @relation("DietPlanDietician")
 
   @@unique([phoneNumber, deletedAt])
   @@index([deletedAt])
@@ -758,6 +763,53 @@ model ReportTrendData {
   @@index([parameter])
   @@index([reportDate])
   @@index([labBookingId])
+  @@index([deletedAt])
+}
+
+// Diet Plan workflow
+enum DietPlanRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CREATED
+}
+
+model DietPlanRequest {
+  id           Int       @id @default(autoincrement())
+  patientId    Int
+  dieticianId  Int
+  complaint    String
+  status       DietPlanRequestStatus @default(PENDING)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  patient      User      @relation("DietPlanRequestPatient", fields: [patientId], references: [id])
+  dietician    User      @relation("DietPlanRequestDietician", fields: [dieticianId], references: [id])
+
+  @@index([patientId, deletedAt])
+  @@index([dieticianId, deletedAt])
+  @@index([deletedAt])
+}
+
+model DietPlan {
+  id           Int       @id @default(autoincrement())
+  patientId    Int
+  dieticianId  Int
+  title        String?
+  notes        String?
+  startDate    DateTime?
+  endDate      DateTime?
+  meals        Json
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  patient      User      @relation("DietPlanPatient", fields: [patientId], references: [id])
+  dietician    User      @relation("DietPlanDietician", fields: [dieticianId], references: [id])
+
+  @@index([patientId, deletedAt])
+  @@index([dieticianId, deletedAt])
   @@index([deletedAt])
 }
 
