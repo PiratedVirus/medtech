@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractPdfText } from '@/lib/llm/processing';
+import { ocrExtractPdfTextFromUrl } from '@/lib/ocr/google-vision';
 
 export const runtime = 'nodejs';
 
@@ -12,9 +13,29 @@ export async function POST(request: NextRequest) {
     }
     try { new URL(pdfUrl); } catch { return NextResponse.json({ success: false, error: 'Invalid pdfUrl' }, { status: 400 }); }
 
-    const text = await extractPdfText(pdfUrl);
-    console.log('[LLM-PROC][PARSED_TEXT]', text);
-    return NextResponse.json({ success: true, text });
+    let text = '';
+    let method: 'pdf-parse' | 'ocr' = 'pdf-parse';
+    try {
+      text = await extractPdfText(pdfUrl);
+    } catch (e) {
+      // proceed to OCR fallback
+    }
+    if (!text || text.trim().length < 50) {
+      try {
+        console.warn('[PARSE-TEXT] Fallback to OCR via Google Vision');
+        text = await ocrExtractPdfTextFromUrl(pdfUrl);
+        method = 'ocr';
+      } catch (ocrErr) {
+        return NextResponse.json({ success: true, text: '', warning: 'No extractable text found (OCR failed).', method });
+      }
+    }
+    // Log only a preview to avoid flooding logs
+    try {
+      const words = text.split(/\s+/);
+      const preview = words.slice(0, 200).join(' ');
+      console.log('[LLM-PROC][PARSED_TEXT_PREVIEW]', preview);
+    } catch {}
+    return NextResponse.json({ success: true, text, method });
   } catch (error) {
     console.error('[PARSE-TEXT][ERROR]', error);
     return NextResponse.json({ success: false, error: (error as Error).message }, { status: 500 });

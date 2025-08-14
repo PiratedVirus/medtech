@@ -113,6 +113,11 @@ export function SidebarNav({ className, logout, ...props }: SidebarNavProps) {
       icon: Settings,
       title: "Plans",
     },
+    {
+      href: "/admin/llm-playground",
+      icon: Settings,
+      title: "LLM Playground",
+    },
   ]
   return (
     <>

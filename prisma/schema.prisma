@@ -70,6 +70,11 @@ model User {
   prescriptionTexts    PrescriptionText[]     @relation("PatientPrescriptionTexts")
   patientTrendData     ReportTrendData[]      @relation("PatientTrendData")
   testResultsReported  TestResult[]           @relation("TestResultReporter")
+  // LLM playground back-relations
+  llmPlaygroundProfilesCreated LlmPlaygroundProfile[] @relation("LlmPlaygroundProfileCreatedBy")
+  llmPlaygroundProfilesUpdated LlmPlaygroundProfile[] @relation("LlmPlaygroundProfileUpdatedBy")
+  llmPlaygroundRunsCreated     LlmPlaygroundRun[]     @relation("LlmPlaygroundRunCreatedBy")
+  llmDatasetsCreated           LlmDataset[]           @relation("LlmDatasetCreatedBy")
   clinic               Clinic?                @relation(fields: [clinicId], references: [id])
   // Diet Plan relations
   dietPlanRequestsAsPatient   DietPlanRequest[] @relation("DietPlanRequestPatient")
@@ -776,6 +781,103 @@ model ReportTrendData {
   @@index([reportDate])
   @@index([labBookingId])
   @@index([deletedAt])
+}
+
+// LLM Playground and profile management
+model LlmPlaygroundProfile {
+  id                    Int       @id @default(autoincrement())
+  name                  String
+  description           String?
+  provider              String    @default("groq")
+  model                 String
+  temperature           Float?    @default(0.2)
+  topP                  Float?
+  maxTokens             Int?
+  seed                  Int?
+  stop                  String[]  @default([])
+  systemPrompt          String?
+  userPrompt            String?
+  valuesPrompt          String?
+  summaryPrompt         String?
+  toolsConfig           Json?
+  isActive              Boolean   @default(true)
+  isProductionCandidate Boolean   @default(false)
+  version               Int       @default(1)
+  parentProfileId       Int?
+  createdByUserId       Int?
+  updatedByUserId       Int?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  parentProfile   LlmPlaygroundProfile? @relation("ProfileVersions", fields: [parentProfileId], references: [id])
+  versionedChildren LlmPlaygroundProfile[] @relation("ProfileVersions")
+  createdBy       User? @relation("LlmPlaygroundProfileCreatedBy", fields: [createdByUserId], references: [id])
+  updatedBy       User? @relation("LlmPlaygroundProfileUpdatedBy", fields: [updatedByUserId], references: [id])
+  runs            LlmPlaygroundRun[]
+  productionConfig LlmProductionConfig[] @relation("ActivePlaygroundProfile")
+
+  @@index([isActive])
+  @@index([isProductionCandidate])
+}
+
+model LlmPlaygroundRun {
+  id               Int       @id @default(autoincrement())
+  profileId        Int
+  inputType        String    // 'pdf' | 'text' | 'json' | 'prescriptionDraft'
+  status           String    // 'queued' | 'running' | 'completed' | 'failed'
+  sourceFileUrl    String?
+  rawInput         String?
+  finalOutput      String?
+  stageLogs        Json?
+  tokenUsage       Json?
+  costEstimate     Json?
+  meta             Json?
+  startedAt        DateTime  @default(now())
+  finishedAt       DateTime?
+  createdByUserId  Int?
+
+  profile          LlmPlaygroundProfile @relation(fields: [profileId], references: [id])
+  createdBy        User?                @relation("LlmPlaygroundRunCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([profileId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model LlmProductionConfig {
+  id              Int      @id @default(1)
+  activeProfileId Int?
+  updatedAt       DateTime @updatedAt
+
+  activeProfile   LlmPlaygroundProfile? @relation("ActivePlaygroundProfile", fields: [activeProfileId], references: [id])
+}
+
+model LlmDataset {
+  id              Int       @id @default(autoincrement())
+  name            String
+  description     String?
+  createdByUserId Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  items           LlmDatasetItem[]
+
+  createdBy       User?     @relation("LlmDatasetCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([name])
+}
+
+model LlmDatasetItem {
+  id           Int      @id @default(autoincrement())
+  datasetId    Int
+  inputType    String   // 'pdf' | 'text' | 'json'
+  inputText    String?
+  inputFileUrl String?
+  expected     Json?
+  createdAt    DateTime @default(now())
+
+  dataset      LlmDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId])
 }
 
 // Diet Plan workflow
