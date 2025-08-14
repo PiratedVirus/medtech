@@ -55,10 +55,9 @@ interface PrescriptionData {
 }
 
 export default function PrescriptionPage() {
-  const params = useParams();
+  const { appointmentId } = useParams<{ appointmentId: string }>();
   const router = useRouter();
   const { toast } = useToast();
-  const appointmentId = params.appointmentId as string;
 
   const [prescriptionData, setPrescriptionData] = useState<PrescriptionData>({
     complaints: [],
@@ -130,79 +129,114 @@ export default function PrescriptionPage() {
 
     const fetchExistingPrescription = async () => {
       try {
-        const response = await fetch(`/api/doctor/prescription?appointmentId=${appointmentId}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data) {
-            // Set existing prescription ID
-            setExistingPrescriptionId(data.data.id.toString());
-            
-            // Update patientInfo with the existing prescription ID
-            setPatientInfo(prev => ({
-              ...prev,
-              prescriptionId: data.data.prescriptionNumber || `PRES-${data.data.id}`,
-            }));
+        // Check existence first to avoid 404s
+        const existsRes = await fetch(`/api/doctor/prescription/exists?appointmentId=${appointmentId}`);
+        const existsJson = existsRes.ok ? await existsRes.json() : { exists: false };
 
-            // Prefill the form with existing prescription data
-            const prescription = data.data;
-            setPrescriptionData({
-              complaints: prescription.complaints.map((c: any) => ({
-                id: c.id.toString(),
-                text: c.complaintText,
-                severity: c.severity,
-                daysSince: c.daysSince,
-                isFlagged: c.isFlagged || false,
-              })),
-              vitals: prescription.vitals ? {
-                bloodPressure: prescription.vitals.bloodPressure || "",
-                pulse: prescription.vitals.pulse?.toString() || "",
-                height: prescription.vitals.height?.toString() || "",
-                weight: prescription.vitals.weight?.toString() || "",
-              } : {
-                bloodPressure: "",
-                pulse: "",
-                height: "",
-                weight: "",
-              },
-              history: prescription.history ? {
-                allergies: prescription.history.allergies || "",
-                personalHistory: prescription.history.personalHistory || "",
-                pastMedicalHistory: prescription.history.pastMedicalHistory || "",
-                familyHistory: prescription.history.familyHistory || "",
-              } : {
-                allergies: "",
-                personalHistory: "",
-                pastMedicalHistory: "",
-                familyHistory: "",
-              },
-              systemicExamination: prescription.systemicExamination ? {
-                general: prescription.systemicExamination.general || "",
-                cvs: prescription.systemicExamination.cvs || "NAD",
-                rs: prescription.systemicExamination.rs || "NAD",
-                cns: prescription.systemicExamination.cns || "NAD",
-              } : {
-                general: "",
-                cvs: "NAD",
-                rs: "NAD",
-                cns: "NAD",
-              },
-              medicines: prescription.medicines.map((m: any) => ({
-                id: m.id.toString(),
-                name: m.medicineName,
-                frequency: m.frequency,
-                medicineTime: m.medicineTime,
-                duration: m.duration,
-                quantity: m.quantity?.toString() || "",
-                instructions: m.instructions || "",
-              })),
-              advice: prescription.advice || "",
-              testsRequested: prescription.testsRequested || "",
-              nextVisit: {
-                type: prescription.nextVisitType || "days",
-                value: prescription.nextVisitValue || 7,
-                date: prescription.nextVisitDate ? new Date(prescription.nextVisitDate) : undefined,
-              },
-            });
+        if (existsJson?.exists && existsJson.id) {
+          const response = await fetch(`/api/doctor/prescription?prescriptionId=${existsJson.id}`);
+          if (!response.ok) return;
+          const data = await response.json();
+          if (!data.success || !data.data) return;
+
+          // Existing prescription → prefill
+          const prescription = data.data;
+          setExistingPrescriptionId(String(prescription.id));
+          setPatientInfo(prev => ({
+            ...prev,
+            prescriptionId: prescription.prescriptionNumber || `PRES-${prescription.id}`,
+          }));
+          setPrescriptionData({
+            complaints: (prescription.complaints || []).map((c: any) => ({
+              id: String(c.id),
+              text: c.complaintText,
+              severity: c.severity,
+              daysSince: c.daysSince,
+              isFlagged: c.isFlagged || false,
+            })),
+            vitals: prescription.vitals ? {
+              bloodPressure: prescription.vitals.bloodPressure || "",
+              pulse: prescription.vitals.pulse?.toString() || "",
+              height: prescription.vitals.height?.toString() || "",
+              weight: prescription.vitals.weight?.toString() || "",
+            } : { bloodPressure: "", pulse: "", height: "", weight: "" },
+            history: { allergies: "", personalHistory: "", pastMedicalHistory: "", familyHistory: "" },
+            systemicExamination: prescription.systemicExamination ? {
+              general: prescription.systemicExamination.general || "",
+              cvs: prescription.systemicExamination.cvs || "NAD",
+              rs: prescription.systemicExamination.rs || "NAD",
+              cns: prescription.systemicExamination.cns || "NAD",
+            } : { general: "", cvs: "NAD", rs: "NAD", cns: "NAD" },
+            medicines: (prescription.medicines || []).map((m: any) => ({
+              id: String(m.id),
+              name: m.medicineName,
+              frequency: m.frequency,
+              medicineTime: m.medicineTime,
+              duration: m.duration,
+              quantity: m.quantity?.toString() || "",
+              instructions: m.instructions || "",
+            })),
+            advice: prescription.advice || "",
+            testsRequested: prescription.testsRequested || "",
+            nextVisit: {
+              type: prescription.nextVisitType || "days",
+              value: prescription.nextVisitValue || 7,
+              date: prescription.nextVisitDate ? new Date(prescription.nextVisitDate) : undefined,
+            },
+          });
+
+          // History prefill from previous only if no history on current
+          try {
+            const hasHistory = Boolean(prescription.history && (
+              prescription.history.allergies || prescription.history.personalHistory || prescription.history.pastMedicalHistory || prescription.history.familyHistory
+            ));
+            if (!hasHistory) {
+              const prevRes = await fetch(`/api/doctor/prescription/previous?patientId=${prescription.patientId}&latest=true`);
+              if (prevRes.ok) {
+                const prevJson = await prevRes.json();
+                const prevHist = prevJson?.data?.history;
+                if (prevHist && (prevHist.allergies || prevHist.personalHistory || prevHist.pastMedicalHistory || prevHist.familyHistory)) {
+                  setPrescriptionData(prev => ({
+                    ...prev,
+                    history: {
+                      allergies: prevHist.allergies || "",
+                      personalHistory: prevHist.personalHistory || "",
+                      pastMedicalHistory: prevHist.pastMedicalHistory || "",
+                      familyHistory: prevHist.familyHistory || "",
+                    },
+                  }));
+                }
+              }
+            }
+          } catch {
+            // ignore
+          }
+        } else {
+          // No existing prescription; try latest previous for history
+          try {
+            const aptRes = await fetch(`/api/doctor/appointments/all`);
+            if (!aptRes.ok) return;
+            const aptJson = await aptRes.json();
+            const apt = aptJson.upcoming.find((a: any) => a.id.toString() === appointmentId) || aptJson.past.find((a: any) => a.id.toString() === appointmentId);
+            if (!apt?.patientId) return;
+            const prevRes = await fetch(`/api/doctor/prescription/previous?patientId=${apt.patientId}&latest=true`);
+            if (prevRes.ok) {
+              const prevJson = await prevRes.json();
+              const prevHist = prevJson?.data?.history;
+              if (prevHist && (prevHist.allergies || prevHist.personalHistory || prevHist.pastMedicalHistory || prevHist.familyHistory)) {
+                setPrescriptionData(prev => ({
+                  ...prev,
+                  history: {
+                    allergies: prevHist.allergies || "",
+                    personalHistory: prevHist.personalHistory || "",
+                    pastMedicalHistory: prevHist.pastMedicalHistory || "",
+                    familyHistory: prevHist.familyHistory || "",
+                  },
+                }));
+              }
+            }
+          } catch {
+            // ignore
           }
         }
       } catch (error) {
@@ -241,6 +275,28 @@ export default function PrescriptionPage() {
           setMeetingRoomLink(appointment.meetingRoomLink);
           setOwnerToken(appointment.ownerToken1);
           setAppointmentData(appointment);
+
+          // Fetch patient profile to prefill longitudinal history
+          try {
+            const profRes = await fetch(`/api/profile?userId=${appointment.patientId}`);
+            if (profRes.ok) {
+              const profJson = await profRes.json();
+              const pp = profJson?.data?.patientProfile;
+              if (pp) {
+                setPrescriptionData(prev => ({
+                  ...prev,
+                  history: {
+                    allergies: pp.allergies || "",
+                    personalHistory: pp.personalHistory || "",
+                    pastMedicalHistory: pp.pastMedicalHistory || "",
+                    familyHistory: pp.familyHistory || "",
+                  }
+                }));
+              }
+            }
+          } catch (e) {
+            console.warn('Patient profile fetch failed for history prefill');
+          }
 
           // Fetch clinic information from the database
           try {

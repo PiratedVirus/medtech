@@ -9,6 +9,7 @@ import DoctorDashboardActionCard from "@/components/ui/custom/cd-doctor-dashboar
 import { BicepsFlexed, FileText, LineChart, Users, Video, VideoIcon, Videotape, VideotapeIcon } from "lucide-react"
 import { useDecryptedProfile } from '@/hooks/use-profile';
 import Link from 'next/link';
+import DieticianRequestsWidget from '../../../../components/doctors/home/DieticianRequestsWidget';
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -98,6 +99,11 @@ export default function DoctorDashboardPage() {
         <div className="col-span-12 sm:col-span-6 md:col-span-3">
           <DoctorQuickActions type="slots" />
         </div>
+        {((profile as any)?.doctorProfile?.isDietician || profile?.role === 'DIETICIAN') && (
+          <div className="col-span-12">
+            <DieticianRequestsWidget />
+          </div>
+        )}
       </div>
       {/* Active Patients */}
       <DoctorActivePatients />

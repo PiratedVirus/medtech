@@ -216,19 +216,13 @@ export default function AppointmentPrescriptionPage() {
               height: "",
               weight: "",
             },
-        history: prescription.history
-          ? {
-              allergies: prescription.history.allergies || "",
-              personalHistory: prescription.history.personalHistory || "",
-              pastMedicalHistory: prescription.history.pastMedicalHistory || "",
-              familyHistory: prescription.history.familyHistory || "",
-            }
-          : {
-              allergies: "",
-              personalHistory: "",
-              pastMedicalHistory: "",
-              familyHistory: "",
-            },
+        // Initialize from patient profile (fetched below), fallback empty for now
+        history: {
+          allergies: "",
+          personalHistory: "",
+          pastMedicalHistory: "",
+          familyHistory: "",
+        },
         systemicExamination: prescription.systemicExamination
           ? {
               general: prescription.systemicExamination.general || "",
@@ -260,6 +254,28 @@ export default function AppointmentPrescriptionPage() {
           date: prescription.nextVisitDate ? new Date(prescription.nextVisitDate) : undefined,
         },
       });
+
+      // Prefill longitudinal history from patient profile
+      try {
+        const profRes = await fetch(`/api/profile?userId=${appointment.patientId}`);
+        if (profRes.ok) {
+          const profJson = await profRes.json();
+          const pp = profJson?.data?.patientProfile;
+          if (pp) {
+            setPrescriptionData(prev => ({
+              ...prev!,
+              history: {
+                allergies: pp.allergies || "",
+                personalHistory: pp.personalHistory || "",
+                pastMedicalHistory: pp.pastMedicalHistory || "",
+                familyHistory: pp.familyHistory || "",
+              }
+            }));
+          }
+        }
+      } catch (e) {
+        console.warn('History prefill skipped:', e);
+      }
     } catch (err: any) {
       toast({ title: "Error", description: err.message || "Failed to load prescription", variant: "destructive" });
     } finally {

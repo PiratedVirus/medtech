@@ -92,6 +92,9 @@ model PatientProfile {
   gender           String
   bloodGroup       String?
   allergies        String?
+  personalHistory  String?
+  pastMedicalHistory String?
+  familyHistory    String?
   medicalHistory   String?
   emergencyContact String?
   dateOfBirth      DateTime?             @db.Date
@@ -118,6 +121,8 @@ model DoctorProfile {
   consultationFee   Int
   rating            Float?
   type              String?
+  supportsVideo     Boolean?             @default(true)
+  supportsClinic    Boolean?             @default(true)
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
   deletedAt         DateTime?

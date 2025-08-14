@@ -171,6 +171,8 @@ export async function POST(request: Request) {
         ownerToken1: ownerTokens[0],
         ownerToken2: ownerTokens[1],
         isDietician: data.isDietician || false,
+        supportsVideo: typeof data.supportsVideo === 'boolean' ? data.supportsVideo : true,
+        supportsClinic: typeof data.supportsClinic === 'boolean' ? data.supportsClinic : true,
         doctorCode: data.doctorCode?.toUpperCase() || null,
         user: { connect: { id: Number(data.userId) } },
       },
@@ -244,6 +246,8 @@ export async function PUT(request: Request) {
           yearsOfExperience: data.yearsOfExperience,
           consultationFee: data.consultationFee,
           isDietician: isDietician || false,
+          supportsVideo: typeof data.supportsVideo === 'boolean' ? data.supportsVideo : undefined,
+          supportsClinic: typeof data.supportsClinic === 'boolean' ? data.supportsClinic : undefined,
           doctorCode: doctorCode?.toUpperCase() || null
         },
       });

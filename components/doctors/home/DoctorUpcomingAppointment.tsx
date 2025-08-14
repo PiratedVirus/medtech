@@ -52,7 +52,15 @@ export default function DoctorUpcomingAppointment() {
         ) : upcomingAppointment ? (
           <UpcomingAppointment appointment={upcomingAppointment} mode="doctor" />
         ) : (
-          <div className="text-gray-600">No upcoming appointments</div>
+          <div className="relative rounded-3xl px-8 py-7 bg-gradient-to-tr from-[#1e5636] to-[#2e8b57] overflow-hidden shadow-none">
+            <div className="absolute left-0 right-0 bottom-0 top-0 z-0" style={{background: 'radial-gradient(ellipse at 60% 70%, #56A67C55 40%, transparent 80%)'}} />
+            <div className="relative z-10 flex items-center justify-between">
+              <div>
+                <div className="text-white text-2xl font-semibold leading-tight">No upcoming appointments</div>
+                <div className="text-[#e6ffe6] text-sm mt-2">You're all caught up. New appointments will appear here.</div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
