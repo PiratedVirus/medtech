@@ -81,6 +81,7 @@ model User {
   dietPlanRequestsAsDietician DietPlanRequest[] @relation("DietPlanRequestDietician")
   dietPlansAsPatient          DietPlan[]        @relation("DietPlanPatient")
   dietPlansAsDietician        DietPlan[]        @relation("DietPlanDietician")
+  dietMealTimingTemplates    DietMealTimingTemplate[] @relation("DietMealTimingTemplateDietician")
 
   @@unique([phoneNumber, deletedAt])
   @@index([deletedAt])
@@ -141,16 +142,17 @@ model DoctorProfile {
 }
 
 model DieticianProfile {
-  id                Int                     @id @default(autoincrement())
-  userId            Int                     @unique
-  specialty         String?
-  yearsOfExperience Int?
-  certifications    String?
-  createdAt         DateTime                @default(now())
-  updatedAt         DateTime                @updatedAt
-  deletedAt         DateTime?
-  availability      DieticianAvailability[]
-  user              User                    @relation(fields: [userId], references: [id])
+  id                    Int       @id @default(autoincrement())
+  userId                Int       @unique
+  specialization        String?
+  experience            Int?
+  education            String?
+  certifications       String[]
+  availability         DieticianAvailability[]
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?
+  user                 User      @relation(fields: [userId], references: [id])
 
   @@index([deletedAt])
 }
@@ -917,6 +919,7 @@ model DietPlan {
   startDate    DateTime?
   endDate      DateTime?
   meals        Json
+  customMealTimings Json? // Store custom meal timing names and order
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
@@ -925,6 +928,23 @@ model DietPlan {
   dietician    User      @relation("DietPlanDietician", fields: [dieticianId], references: [id])
 
   @@index([patientId, deletedAt])
+  @@index([dieticianId, deletedAt])
+  @@index([deletedAt])
+}
+
+// Custom meal timing templates for dieticians
+model DietMealTimingTemplate {
+  id           Int       @id @default(autoincrement())
+  dieticianId  Int
+  name         String    // Template name
+  mealTimings  Json      // Array of meal timing objects with name, order, icon, etc.
+  isDefault    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  dietician    User      @relation("DietMealTimingTemplateDietician", fields: [dieticianId], references: [id])
+
   @@index([dieticianId, deletedAt])
   @@index([deletedAt])
 }

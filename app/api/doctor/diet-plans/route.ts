@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { patientId, dieticianId, title, notes, startDate, endDate, meals, requestId } = body;
+    const { patientId, dieticianId, title, notes, startDate, endDate, meals, customMealTimings, requestId } = body;
     if (!patientId || !dieticianId || !meals) {
       return NextResponse.json({ success: false, error: "Missing fields" }, { status: 400 });
     }
@@ -19,6 +19,7 @@ export async function POST(request: Request) {
           startDate: startDate ? new Date(startDate) : null,
           endDate: endDate ? new Date(endDate) : null,
           meals,
+          customMealTimings: customMealTimings || null,
         }
       });
       if (requestId) {

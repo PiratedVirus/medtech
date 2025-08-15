@@ -116,6 +116,64 @@ export default function DietPlanModal({ open, onOpenChange, patientId, clinicId,
     return <UtensilsCrossed className="h-4 w-4 text-gray-600" />;
   }
 
+  // Helper function to get meal display info
+  function getMealDisplayInfo(plan: any, mealKey: string) {
+    if (plan?.customMealTimings) {
+      const customTiming = plan.customMealTimings.find((t: any) => t.id === mealKey);
+      if (customTiming) {
+        return {
+          name: customTiming.name,
+          icon: customTiming.icon,
+          order: customTiming.order
+        };
+      }
+    }
+    
+    // Fallback to default meal names and icons
+    const defaultNames: Record<string, string> = {
+      breakfast: 'Breakfast',
+      midMorning: 'Mid-morning Snack',
+      lunch: 'Lunch',
+      eveningSnack: 'Evening Snack',
+      dinner: 'Dinner',
+      bedtime: 'Bedtime'
+    };
+    
+    const defaultIcons: Record<string, string> = {
+      breakfast: '🌅',
+      midMorning: '☕',
+      lunch: '🍽️',
+      eveningSnack: '🍎',
+      dinner: '🌙',
+      bedtime: '🛏️'
+    };
+    
+    return {
+      name: defaultNames[mealKey] || mealKey,
+      icon: defaultIcons[mealKey] || '🍽️',
+      order: 0
+    };
+  }
+
+  // Sort meals by custom order if available
+  function getSortedMeals(plan: any) {
+    if (!plan?.meals) return [];
+    
+    const mealEntries = Object.entries(plan.meals);
+    
+    if (plan?.customMealTimings) {
+      // Sort by custom order
+      return mealEntries.sort(([a], [b]) => {
+        const aInfo = getMealDisplayInfo(plan, a);
+        const bInfo = getMealDisplayInfo(plan, b);
+        return aInfo.order - bInfo.order;
+      });
+    }
+    
+    // Default order
+    return mealEntries;
+  }
+
   async function copyMeal(key: string, value: any) {
     const text = typeof value === 'string' ? value : '';
     try { await navigator.clipboard.writeText(text); toast({ variant: 'success', title: `Copied ${key}` }); } catch {}
@@ -219,29 +277,32 @@ export default function DietPlanModal({ open, onOpenChange, patientId, clinicId,
                   {/* Right column: Meals for selected plan */}
                   <div className="md:col-span-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {Object.entries(selectedPlan?.meals || {}).map(([k, v]: any) => (
-                        <div key={k} className="rounded-lg border p-3 bg-white">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-                              {mealIcon(k)}
-                              <span className="capitalize">{k}</span>
+                      {getSortedMeals(selectedPlan).map(([k, v]: any) => {
+                        const mealInfo = getMealDisplayInfo(selectedPlan, k);
+                        return (
+                          <div key={k} className="rounded-lg border p-3 bg-white">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                                <span>{mealInfo.icon}</span>
+                                <span>{mealInfo.name}</span>
+                              </div>
+                              <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyMeal(k, v)}>
+                                <Copy className="h-4 w-4" />
+                              </Button>
                             </div>
-                            <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyMeal(k, v)}>
-                              <Copy className="h-4 w-4" />
-                            </Button>
+                            <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                              {(expandAll ? parseMealItems(v) : parseMealItems(v).slice(0, 3)).map((item, idx) => (
+                                <li key={idx}>{item}</li>
+                              ))}
+                            </ul>
+                            {parseMealItems(v).length > 3 && (
+                              <button className="mt-2 text-xs text-primary" onClick={() => setExpandAll((val) => !val)}>
+                                {expandAll ? 'Show less' : `Show all (${parseMealItems(v).length})`}
+                              </button>
+                            )}
                           </div>
-                          <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
-                            {(expandAll ? parseMealItems(v) : parseMealItems(v).slice(0, 3)).map((item, idx) => (
-                              <li key={idx}>{item}</li>
-                            ))}
-                          </ul>
-                          {parseMealItems(v).length > 3 && (
-                            <button className="mt-2 text-xs text-primary" onClick={() => setExpandAll((val) => !val)}>
-                              {expandAll ? 'Show less' : `Show all (${parseMealItems(v).length})`}
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -258,12 +319,14 @@ export default function DietPlanModal({ open, onOpenChange, patientId, clinicId,
             <TabsContent value="meals">
             {selectedPlan ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {Object.entries(selectedPlan?.meals || {}).map(([k, v]: any) => (
+                {getSortedMeals(selectedPlan).map(([k, v]: any) => {
+                  const mealInfo = getMealDisplayInfo(selectedPlan, k);
+                  return (
                     <div key={k} className="rounded-lg border p-3 bg-white">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-                          {mealIcon(k)}
-                          <span className="capitalize">{k}</span>
+                          <span>{mealInfo.icon}</span>
+                          <span>{mealInfo.name}</span>
                         </div>
                         <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyMeal(k, v)}>
                           <Copy className="h-4 w-4" />
@@ -280,7 +343,8 @@ export default function DietPlanModal({ open, onOpenChange, patientId, clinicId,
                         </button>
                       )}
                     </div>
-                  ))}
+                  );
+                })}
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-[48vh]">

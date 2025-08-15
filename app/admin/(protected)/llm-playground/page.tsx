@@ -108,21 +108,21 @@ export default function LlmPlaygroundPage() {
       // Special handling for extract-values stage
       if (s.name === 'extract-values' && s.response) {
         return (
-          <div key={idx} className="border rounded p-3 mb-3">
-            <div className="font-semibold">{s.name}</div>
-            {s.error ? <div className="text-red-600 text-sm">{s.error}</div> : null}
-            <div className="grid grid-cols-2 gap-3 mt-2">
-              <div className="relative">
-                <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy request" onClick={() => copyText(JSON.stringify(s.request ?? {}, null, 2))}>
-                  <Copy className="h-4 w-4" />
-                </Button>
+      <div key={idx} className="border rounded p-3 mb-3">
+        <div className="font-semibold">{s.name}</div>
+        {s.error ? <div className="text-red-600 text-sm">{s.error}</div> : null}
+        <div className="grid grid-cols-2 gap-3 mt-2">
+          <div className="relative">
+            <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy request" onClick={() => copyText(JSON.stringify(s.request ?? {}, null, 2))}>
+              <Copy className="h-4 w-4" />
+            </Button>
                 <div className="text-xs text-gray-600 mb-1">Request</div>
-                <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto max-h-64">{JSON.stringify(s.request, null, 2)}</pre>
-              </div>
-              <div className="relative">
-                <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy response" onClick={() => copyText(JSON.stringify(s.response ?? {}, null, 2))}>
-                  <Copy className="h-4 w-4" />
-                </Button>
+            <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto max-h-64">{JSON.stringify(s.request, null, 2)}</pre>
+          </div>
+          <div className="relative">
+            <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy response" onClick={() => copyText(JSON.stringify(s.response ?? {}, null, 2))}>
+              <Copy className="h-4 w-4" />
+            </Button>
                 <div className="text-xs text-gray-600 mb-1">Response</div>
                 <div className="bg-gray-50 p-2 rounded text-xs">
                   <div className="mb-2">
@@ -152,10 +152,10 @@ export default function LlmPlaygroundPage() {
                     View Full JSON
                   </Button>
                 </div>
-              </div>
-            </div>
-            <div className="text-xs text-gray-500 mt-2">{s.latencyMs ? `${s.latencyMs} ms` : ''}</div>
           </div>
+        </div>
+        <div className="text-xs text-gray-500 mt-2">{s.latencyMs ? `${s.latencyMs} ms` : ''}</div>
+      </div>
         );
       }
 
@@ -442,7 +442,7 @@ export default function LlmPlaygroundPage() {
           
           {/* Fallback to raw display */}
           {(!run?.finalOutput || typeof run.finalOutput === 'string') && (
-            <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto min-h-[240px] max-h-[60vh] whitespace-pre-wrap">{run?.finalOutput}</pre>
+          <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto min-h-[240px] max-h-[60vh] whitespace-pre-wrap">{run?.finalOutput}</pre>
           )}
         </div>
       </div>
