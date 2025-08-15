@@ -87,7 +87,13 @@ export async function executePlaygroundRun(input: RunInput) {
         },
         resolvedPromptPreview: resolvedValuesPromptPreview,
       },
-      response: { allValuesCount: allValues.length, criticalValuesCount: criticalValues.length },
+      response: { 
+        allValuesCount: allValues.length, 
+        criticalValuesCount: criticalValues.length,
+        allValues: allValues,
+        criticalValues: criticalValues,
+        summary: `Extracted ${allValues.length} total values with ${criticalValues.length} critical values`
+      },
       error: null,
       latencyMs: Date.now() - valuesStart,
       startedAt: new Date(valuesStart).toISOString(),
@@ -138,7 +144,13 @@ export async function executePlaygroundRun(input: RunInput) {
         },
         resolvedPromptPreview: resolvedSummaryPromptPreview,
       },
-      response: { summaryPreview: summaryRes.summary.slice(0, 200) },
+      response: { 
+        summary: summaryRes.summary,
+        keyFindings: summaryRes.keyFindings,
+        recommendations: summaryRes.recommendations,
+        urgency: summaryRes.urgency,
+        summaryPreview: summaryRes.summary.slice(0, 200)
+      },
       error: null,
       latencyMs: Date.now() - summaryStart,
       startedAt: new Date(summaryStart).toISOString(),

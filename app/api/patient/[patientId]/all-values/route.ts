@@ -20,84 +20,107 @@ export async function GET(
         labResult: { isEmpty: false },
       },
       include: {
-        reportAnalysis: true,
+        labAssignments: {
+          where: { status: 'COMPLETED', deletedAt: null },
+          include: { 
+            labBooking: {
+              include: { reportAnalyses: true }
+            }
+          },
+        },
       },
       orderBy: { labDate: "desc" },
     });
 
-    type ValueEntry = {
+    interface ValueEntry {
       value: string | number;
       unit?: string;
       normalRange?: string;
       isAbnormal?: boolean;
       severity?: string;
-      source: 'CRITICAL' | 'ALL';
-      reportDate: string;
-      reportId: number;
-    };
+      source?: string;
+      reportDate?: string;
+      reportId?: number;
+      labDate?: Date;
+      labBookingId?: number;
+    }
 
-    const paramToValues = new Map<string, { parameter: string; isTracked: boolean; values: ValueEntry[] }>();
+    const criticalValuesMap = new Map<string, ValueEntry[]>();
+    const allValuesMap = new Map<string, ValueEntry[]>();
 
     for (const booking of labBookings) {
-      const analysis = booking.reportAnalysis as any;
-      const criticalList: any[] = Array.isArray(analysis?.criticalValues) ? analysis.criticalValues : [];
-      const allList: any[] = Array.isArray(analysis?.allValues) ? analysis.allValues : [];
-
-      const addValue = (parameter: string, entry: ValueEntry, explicitIsTracked?: boolean | null, defaultTracked = false) => {
-        const existing = paramToValues.get(parameter) || { parameter, isTracked: defaultTracked, values: [] };
-        existing.values.push(entry);
-        // Track state precedence: explicit boolean from the most recent entry wins.
-        if (typeof explicitIsTracked === 'boolean') {
-          existing.isTracked = explicitIsTracked;
+      for (const assignment of booking.labAssignments) {
+        if (assignment.labBooking?.reportAnalyses) {
+          for (const analysis of assignment.labBooking.reportAnalyses) {
+            const criticalList: any[] = Array.isArray(analysis?.criticalValues) ? analysis.criticalValues : [];
+            const allList: any[] = Array.isArray(analysis?.allValues) ? analysis.allValues : [];
+            
+            // Process critical values
+            for (const item of criticalList) {
+              if (item.parameter && item.value) {
+                const key = item.parameter.toLowerCase();
+                if (!criticalValuesMap.has(key)) {
+                  criticalValuesMap.set(key, []);
+                }
+                criticalValuesMap.get(key)!.push({
+                  ...item,
+                  labDate: booking.labDate,
+                  labBookingId: booking.id,
+                });
+              }
+            }
+            
+            // Process all values
+            for (const item of allList) {
+              if (item.parameter && item.value) {
+                const key = item.parameter.toLowerCase();
+                if (!allValuesMap.has(key)) {
+                  allValuesMap.set(key, []);
+                }
+                allValuesMap.get(key)!.push({
+                  ...item,
+                  labDate: booking.labDate,
+                  labBookingId: booking.id,
+                });
+              }
+            }
+          }
         }
-        paramToValues.set(parameter, existing);
-      };
-
-      for (const v of criticalList) {
-        if (!v?.parameter || v.value === undefined) continue;
-        addValue(
-          v.parameter,
-          {
-            value: v.value,
-            unit: v.unit,
-            normalRange: v.normalRange,
-            isAbnormal: v.isAbnormal,
-            severity: v.severity,
-            source: 'CRITICAL',
-            reportDate: booking.labDate.toISOString().split('T')[0],
-            reportId: booking.id,
-          },
-          v.isTracked,
-          true // default tracked for critical
-        );
-      }
-
-      for (const v of allList) {
-        if (!v?.parameter || v.value === undefined) continue;
-        addValue(
-          v.parameter,
-          {
-            value: v.value,
-            unit: v.unit,
-            normalRange: v.normalRange,
-            isAbnormal: v.isAbnormal,
-            severity: v.severity,
-            source: 'ALL',
-            reportDate: booking.labDate.toISOString().split('T')[0],
-            reportId: booking.id,
-          },
-          v.isTracked,
-          false // default not tracked for non-critical
-        );
       }
     }
 
     // Sort values per parameter by report date desc
-    const rows = Array.from(paramToValues.values()).map((row) => ({
-      parameter: row.parameter,
-      isTracked: !!row.isTracked,
-      values: row.values.sort((a, b) => (a.reportDate < b.reportDate ? 1 : -1)),
+    const rows = Array.from(criticalValuesMap.entries()).map(([parameter, values]) => ({
+      parameter: parameter,
+      isTracked: true, // Critical values are always tracked
+      values: values.sort((a, b) => {
+        const dateA = a.labDate || new Date(0);
+        const dateB = b.labDate || new Date(0);
+        return dateA < dateB ? 1 : -1;
+      }),
     }));
+
+    // Add all values to the rows
+    Array.from(allValuesMap.entries()).forEach(([parameter, values]) => {
+      const existingRow = rows.find(row => row.parameter === parameter);
+      if (existingRow) {
+        existingRow.values = [...existingRow.values, ...values.sort((a, b) => {
+          const dateA = a.labDate || new Date(0);
+          const dateB = b.labDate || new Date(0);
+          return dateA < dateB ? 1 : -1;
+        })];
+      } else {
+        rows.push({
+          parameter: parameter,
+          isTracked: false, // All values are not tracked
+          values: values.sort((a, b) => {
+            const dateA = a.labDate || new Date(0);
+            const dateB = b.labDate || new Date(0);
+            return dateA < dateB ? 1 : -1;
+          }),
+        });
+      }
+    });
 
     // Sort parameters alphabetically
     rows.sort((a, b) => a.parameter.localeCompare(b.parameter));

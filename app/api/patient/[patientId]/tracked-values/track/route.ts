@@ -32,9 +32,9 @@ export async function POST(
         patientId,
         status: "COMPLETED",
         labResult: { isEmpty: false },
-        reportAnalysis: { isNot: null },
+        reportAnalyses: { some: {} },
       },
-      include: { reportAnalysis: true },
+      include: { reportAnalyses: true },
       orderBy: { labDate: "desc" },
       take: 10,
     });
@@ -43,7 +43,7 @@ export async function POST(
 
     let updated = false;
     for (const booking of bookings) {
-      const analysis: any = booking.reportAnalysis;
+      const analysis: any = booking.reportAnalyses;
       if (!analysis) continue;
       const criticalValues: any[] = Array.isArray(analysis.criticalValues) ? analysis.criticalValues : [];
       const allValues: any[] = Array.isArray(analysis.allValues) ? analysis.allValues : [];
@@ -76,9 +76,25 @@ export async function POST(
             newIsTracked: isTracked
           });
         }
-        await prisma.labReportAnalysis.update({
-          where: { labBookingId: booking.id },
-          data: { criticalValues: criticalValues as any, allValues: allValues as any },
+        await prisma.labReportAnalysis.upsert({
+          where: { 
+            labBookingId_labResultIndex: { 
+              labBookingId: booking.id, 
+              labResultIndex: 0 
+            } 
+          },
+          create: {
+            labBookingId: booking.id,
+            labResultIndex: 0,
+            criticalValues: criticalValues as any,
+            allValues: allValues as any,
+            processingStatus: 'COMPLETED',
+            processedAt: new Date(),
+          },
+          update: { 
+            criticalValues: criticalValues as any, 
+            allValues: allValues as any 
+          },
         });
         console.log('[TRACKED-VALUES][POST] Update saved for booking', booking.id);
         updated = true;

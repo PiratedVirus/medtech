@@ -64,9 +64,15 @@ export async function createProfile(input: PlaygroundProfileInput) {
 }
 
 export async function updateProfile(profileId: number, input: Partial<PlaygroundProfileInput>) {
-  return prisma.llmPlaygroundProfile.update({ where: { id: profileId }, data: {
-    ...input,
-  }});
+  const cleanData: any = { ...input };
+  if (cleanData.parentProfileId === null) {
+    delete cleanData.parentProfileId;
+  }
+  
+  return prisma.llmPlaygroundProfile.update({ 
+    where: { id: profileId }, 
+    data: cleanData
+  });
 }
 
 export async function promoteProfileToProduction(profileId: number) {

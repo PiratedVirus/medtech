@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Find all analyses for this lab booking
+    // Find all analyses for this lab booking with full data
     const analyses = await prisma.labReportAnalysis.findMany({
       where: {
         labBookingId: labBookingIdNum,
@@ -34,7 +34,11 @@ export async function GET(request: NextRequest) {
         processingStatus: true,
         llmSummary: true,
         processedAt: true,
-        createdAt: true
+        createdAt: true,
+        llmModel: true,
+        allValues: true,
+        criticalValues: true,
+        trendAnalysis: true
       },
       orderBy: {
         labResultIndex: 'asc'

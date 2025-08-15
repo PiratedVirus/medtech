@@ -19,12 +19,12 @@ type Profile = {
   updatedAt: string;
 };
 
-type RunView = {
+interface RunView {
   id: number;
   status: string;
-  finalOutput?: string | null;
+  finalOutput?: any | null;
   stageLogs?: Array<any> | null;
-};
+}
 
 export default function LlmPlaygroundPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -104,27 +104,143 @@ export default function LlmPlaygroundPage() {
 
   const stageCards = useMemo(() => {
     const logs = (run?.stageLogs as any[]) || [];
-    return logs.map((s, idx) => (
-      <div key={idx} className="border rounded p-3 mb-3">
-        <div className="font-semibold">{s.name}</div>
-        {s.error ? <div className="text-red-600 text-sm">{s.error}</div> : null}
-        <div className="grid grid-cols-2 gap-3 mt-2">
-          <div className="relative">
-            <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy request" onClick={() => copyText(JSON.stringify(s.request ?? {}, null, 2))}>
-              <Copy className="h-4 w-4" />
-            </Button>
-            <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto max-h-64">{JSON.stringify(s.request, null, 2)}</pre>
+    return logs.map((s, idx) => {
+      // Special handling for extract-values stage
+      if (s.name === 'extract-values' && s.response) {
+        return (
+          <div key={idx} className="border rounded p-3 mb-3">
+            <div className="font-semibold">{s.name}</div>
+            {s.error ? <div className="text-red-600 text-sm">{s.error}</div> : null}
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <div className="relative">
+                <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy request" onClick={() => copyText(JSON.stringify(s.request ?? {}, null, 2))}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <div className="text-xs text-gray-600 mb-1">Request</div>
+                <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto max-h-64">{JSON.stringify(s.request, null, 2)}</pre>
+              </div>
+              <div className="relative">
+                <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy response" onClick={() => copyText(JSON.stringify(s.response ?? {}, null, 2))}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <div className="text-xs text-gray-600 mb-1">Response</div>
+                <div className="bg-gray-50 p-2 rounded text-xs">
+                  <div className="mb-2">
+                    <strong>Summary:</strong> {s.response.summary || `${s.response.allValuesCount} total values, ${s.response.criticalValuesCount} critical`}
+                  </div>
+                  {s.response.allValues && s.response.allValues.length > 0 && (
+                    <div className="mb-2">
+                      <strong>Sample Values:</strong>
+                      <div className="mt-1 space-y-1">
+                        {s.response.allValues.slice(0, 3).map((val: any, i: number) => (
+                          <div key={i} className="text-xs bg-white p-1 rounded border">
+                            {val.parameter}: {val.value} {val.unit} ({val.isAbnormal ? 'ABNORMAL' : 'Normal'})
+                          </div>
+                        ))}
+                        {s.response.allValues.length > 3 && (
+                          <div className="text-gray-500 text-xs">... and {s.response.allValues.length - 3} more</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="w-full mt-2"
+                    onClick={() => copyText(JSON.stringify(s.response, null, 2))}
+                  >
+                    View Full JSON
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="text-xs text-gray-500 mt-2">{s.latencyMs ? `${s.latencyMs} ms` : ''}</div>
           </div>
-          <div className="relative">
-            <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy response" onClick={() => copyText(JSON.stringify(s.response ?? {}, null, 2))}>
-              <Copy className="h-4 w-4" />
-            </Button>
-            <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto max-h-64">{JSON.stringify(s.response, null, 2)}</pre>
+        );
+      }
+
+      // Special handling for generate-summary stage
+      if (s.name === 'generate-summary' && s.response) {
+        return (
+          <div key={idx} className="border rounded p-3 mb-3">
+            <div className="font-semibold">{s.name}</div>
+            {s.error ? <div className="text-red-600 text-sm">{s.error}</div> : null}
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <div className="relative">
+                <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy request" onClick={() => copyText(JSON.stringify(s.request ?? {}, null, 2))}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <div className="text-xs text-gray-600 mb-1">Request</div>
+                <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto max-h-64">{JSON.stringify(s.request, null, 2)}</pre>
+              </div>
+              <div className="relative">
+                <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy response" onClick={() => copyText(JSON.stringify(s.response ?? {}, null, 2))}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <div className="text-xs text-gray-600 mb-1">Response</div>
+                <div className="bg-gray-50 p-2 rounded text-xs">
+                  <div className="mb-2">
+                    <strong>Summary:</strong> {s.response.summaryPreview || s.response.summary?.slice(0, 100)}
+                  </div>
+                  {s.response.keyFindings && s.response.keyFindings.length > 0 && (
+                    <div className="mb-2">
+                      <strong>Key Findings:</strong>
+                      <div className="mt-1 space-y-1">
+                        {s.response.keyFindings.slice(0, 3).map((finding: string, i: number) => (
+                          <div key={i} className="text-xs bg-white p-1 rounded border">
+                            • {finding}
+                          </div>
+                        ))}
+                        {s.response.keyFindings.length > 3 && (
+                          <div className="text-gray-500 text-xs">... and {s.response.keyFindings.length - 3} more</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className="mb-2">
+                    <strong>Urgency:</strong> <span className="font-medium">{s.response.urgency || 'N/A'}</span>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="w-full mt-2"
+                    onClick={() => copyText(JSON.stringify(s.response, null, 2))}
+                  >
+                    View Full JSON
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="text-xs text-gray-500 mt-2">{s.latencyMs ? `${s.latencyMs} ms` : ''}</div>
           </div>
+        );
+      }
+
+      // Default stage display
+      return (
+        <div key={idx} className="border rounded p-3 mb-3">
+          <div className="font-semibold">{s.name}</div>
+          {s.error ? <div className="text-red-600 text-sm">{s.error}</div> : null}
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            <div className="relative">
+              <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy request" onClick={() => copyText(JSON.stringify(s.request ?? {}, null, 2))}>
+                <Copy className="h-4 w-4" />
+              </Button>
+              <div className="text-xs text-gray-600 mb-1">Request</div>
+              <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto max-h-64">{JSON.stringify(s.request, null, 2)}</pre>
+            </div>
+            <div className="relative">
+              <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy response" onClick={() => copyText(JSON.stringify(s.response ?? {}, null, 2))}>
+                <Copy className="h-4 w-4" />
+              </Button>
+              <div className="text-xs text-gray-600 mb-1">Response</div>
+              <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto max-h-64">{JSON.stringify(s.response, null, 2)}</pre>
+            </div>
+          </div>
+          <div className="text-xs text-gray-500 mt-2">{s.latencyMs ? `${s.latencyMs} ms` : ''}</div>
         </div>
-        <div className="text-xs text-gray-500 mt-2">{s.latencyMs ? `${s.latencyMs} ms` : ''}</div>
-      </div>
-    ));
+      );
+    });
   }, [run]);
 
   return (
@@ -243,7 +359,91 @@ export default function LlmPlaygroundPage() {
           <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy final output" onClick={() => copyText(String(run?.finalOutput ?? ''))}>
             <Copy className="h-4 w-4" />
           </Button>
-          <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto min-h-[240px] max-h-[60vh] whitespace-pre-wrap">{run?.finalOutput}</pre>
+          
+          {/* Structured display for lab analysis results */}
+          {run?.finalOutput && typeof run.finalOutput === 'object' && (
+            <div className="space-y-4">
+              {/* Summary Section */}
+              {run.finalOutput.summary && (
+                <div className="bg-blue-50 p-3 rounded border">
+                  <h4 className="font-medium text-blue-900 mb-2">Clinical Summary</h4>
+                  <p className="text-sm text-blue-800">{run.finalOutput.summary}</p>
+                </div>
+              )}
+              
+              {/* Key Findings */}
+              {run.finalOutput.keyFindings && run.finalOutput.keyFindings.length > 0 && (
+                <div className="bg-yellow-50 p-3 rounded border">
+                  <h4 className="font-medium text-yellow-900 mb-2">Key Findings</h4>
+                  <ul className="text-sm text-yellow-800 space-y-1">
+                    {run.finalOutput.keyFindings.map((finding: string, i: number) => (
+                      <li key={i} className="flex items-start">
+                        <span className="text-yellow-600 mr-2">•</span>
+                        {finding}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {/* Recommendations */}
+              {run.finalOutput.recommendations && run.finalOutput.recommendations.length > 0 && (
+                <div className="bg-green-50 p-3 rounded border">
+                  <h4 className="font-medium text-green-900 mb-2">Recommendations</h4>
+                  <ul className="text-sm text-green-800 space-y-1">
+                    {run.finalOutput.recommendations.map((rec: string, i: number) => (
+                      <li key={i} className="flex items-start">
+                        <span className="text-green-600 mr-2">•</span>
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {/* Urgency */}
+              {run.finalOutput.urgency && (
+                <div className="bg-purple-50 p-3 rounded border">
+                  <h4 className="font-medium text-purple-900 mb-2">Urgency Level</h4>
+                  <span className={`inline-block px-2 py-1 rounded text-sm font-medium ${
+                    run.finalOutput.urgency === 'URGENT' ? 'bg-red-100 text-red-800' :
+                    run.finalOutput.urgency === 'SOON' ? 'bg-orange-100 text-orange-800' :
+                    'bg-blue-100 text-blue-800'
+                  }`}>
+                    {run.finalOutput.urgency}
+                  </span>
+                </div>
+              )}
+              
+              {/* Lab Values Summary */}
+              {run.finalOutput.allValues && run.finalOutput.allValues.length > 0 && (
+                <div className="bg-gray-50 p-3 rounded border">
+                  <h4 className="font-medium text-gray-900 mb-2">Lab Values Summary</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Total Values:</span> {run.finalOutput.allValues.length}
+                    </div>
+                    <div>
+                      <span className="font-medium">Critical Values:</span> {run.finalOutput.criticalValues?.length || 0}
+                    </div>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="mt-2"
+                    onClick={() => copyText(JSON.stringify(run.finalOutput, null, 2))}
+                  >
+                    View Full JSON Data
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Fallback to raw display */}
+          {(!run?.finalOutput || typeof run.finalOutput === 'string') && (
+            <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto min-h-[240px] max-h-[60vh] whitespace-pre-wrap">{run?.finalOutput}</pre>
+          )}
         </div>
       </div>
 
