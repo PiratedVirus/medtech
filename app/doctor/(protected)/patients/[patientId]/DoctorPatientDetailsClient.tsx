@@ -61,6 +61,7 @@ interface LabBooking {
   date: string;
   status: string;
   reportLink?: string[] | null;
+  labResult?: string[] | null;
 }
 
 interface DoctorAppointment {

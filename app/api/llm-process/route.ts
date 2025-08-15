@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { reportId, patientId } = body;
+    const { reportId, patientId, labResultIndex = 0 } = body;
 
     if (!reportId || !patientId) {
       return NextResponse.json(
@@ -182,7 +182,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "No PDF URL found. Please upload a lab report for analysis." }, { status: 400 });
     }
 
-    const pdfUrl = labBooking.labResult[0];
+    // Check if the requested lab result index exists
+    if (labResultIndex >= labBooking.labResult.length) {
+      return NextResponse.json({ 
+        success: false, 
+        error: `Lab result index ${labResultIndex} not found. Available indices: 0-${labBooking.labResult.length - 1}` 
+      }, { status: 400 });
+    }
+
+    const pdfUrl = labBooking.labResult[labResultIndex];
     try { new URL(pdfUrl); } catch { return NextResponse.json({ success: false, error: "Invalid PDF URL format", pdfUrl }, { status: 400 }); }
 
     console.log(`[LLM-PROC][POST] Request received: reportId=${reportIdNum}, patientId=${patientIdNum}, force=false. Model=${OR_MODEL}`);

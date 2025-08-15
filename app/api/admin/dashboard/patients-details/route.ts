@@ -161,6 +161,7 @@ export async function GET(request: Request) {
           date: lb.labDate,
           status: lb.status,
           reportLink: Array.isArray(lb.labResult) ? lb.labResult : lb.labResult ? [lb.labResult] : [],
+          labResult: lb.labResult,
           labPackageName: lb.labPackage.name,
           payment: lb.payment
         }))

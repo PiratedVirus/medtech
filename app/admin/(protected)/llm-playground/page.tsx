@@ -246,6 +246,12 @@ export default function LlmPlaygroundPage() {
           <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto min-h-[240px] max-h-[60vh] whitespace-pre-wrap">{run?.finalOutput}</pre>
         </div>
       </div>
+
+      {/* Lab Analysis Management - full width */}
+      <div className="border rounded p-3 mt-4">
+        <div className="font-medium mb-2">Lab Analysis Management</div>
+        <LabAnalysisManager />
+      </div>
     </div>
   );
 }
@@ -315,5 +321,163 @@ function PdfUploadPicker({ onPick }: { onPick: (url: string) => void }) {
   );
 }
 
+function LabAnalysisManager() {
+  const [labBookings, setLabBookings] = useState<Array<{
+    id: number;
+    labPackageName: string;
+    labResult: string[];
+    analyses: Array<{
+      id: number;
+      labResultIndex: number;
+      processingStatus: string;
+      llmSummary?: string;
+      processedAt?: string;
+    }>;
+  }>>([]);
+  const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    fetchLabBookings();
+  }, []);
 
+  const fetchLabBookings = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/admin/dashboard/lab-bookings?pageSize=100');
+      const data = await response.json();
+      
+      if (data.data) {
+        // Fetch analyses for each lab booking
+        const bookingsWithAnalyses = await Promise.all(
+          data.data.map(async (booking: any) => {
+            try {
+              const analysesResponse = await fetch(`/api/admin/lab-analysis?labBookingId=${booking.id}`);
+              const analysesData = await analysesResponse.json();
+              
+              return {
+                id: booking.id,
+                labPackageName: booking.labPackage?.name || 'Unknown Package',
+                labResult: booking.labResult || [],
+                analyses: analysesData.analyses || []
+              };
+            } catch (error) {
+              return {
+                id: booking.id,
+                labPackageName: booking.labPackage?.name || 'Unknown Package',
+                labResult: booking.labResult || [],
+                analyses: []
+              };
+            }
+          })
+        );
+        
+        setLabBookings(bookingsWithAnalyses);
+      }
+    } catch (error) {
+      console.error('Failed to fetch lab bookings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteAnalysis = async (labBookingId: number, labResultIndex: number) => {
+    try {
+      const response = await fetch(`/api/admin/lab-analysis/delete?labBookingId=${labBookingId}&labResultIndex=${labResultIndex}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        await fetchLabBookings(); // Refresh the list
+      } else {
+        console.error('Failed to delete analysis');
+      }
+    } catch (error) {
+      console.error('Error deleting analysis:', error);
+    }
+  };
+
+  const regenerateAnalysis = async (labBookingId: number, labResultIndex: number) => {
+    try {
+      const response = await fetch('/api/admin/lab-analysis/regenerate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ labBookingId, labResultIndex })
+      });
+      
+      if (response.ok) {
+        await fetchLabBookings(); // Refresh the list
+      } else {
+        console.error('Failed to regenerate analysis');
+      }
+    } catch (error) {
+      console.error('Error regenerating analysis:', error);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-sm text-gray-500">Loading lab analyses...</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="text-sm text-gray-600">
+        Manage individual lab result analyses. Each lab result can have its own AI analysis.
+      </div>
+      
+      {labBookings.map((booking) => (
+        <div key={booking.id} className="border rounded p-3 bg-gray-50">
+          <div className="font-medium mb-2">
+            {booking.labPackageName} (ID: {booking.id})
+          </div>
+          
+          <div className="space-y-2">
+            {booking.labResult.map((result, index) => {
+              const analysis = booking.analyses.find(a => a.labResultIndex === index);
+              
+              return (
+                <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">
+                      Result {index + 1} ({result.split('/').pop() || 'Unknown'})
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Status: {analysis ? analysis.processingStatus : 'No Analysis'}
+                      {analysis?.processedAt && ` • Processed: ${new Date(analysis.processedAt).toLocaleString()}`}
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    {analysis && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteAnalysis(booking.id, index)}
+                        className="text-red-600 border-red-300 hover:bg-red-50"
+                      >
+                        Delete
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => regenerateAnalysis(booking.id, index)}
+                      className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                    >
+                      {analysis ? 'Regenerate' : 'Generate'}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      
+      {labBookings.length === 0 && (
+        <div className="text-sm text-gray-500 text-center py-4">
+          No lab bookings found with analyses.
+        </div>
+      )}
+    </div>
+  );
+}

@@ -10,6 +10,7 @@ interface LabReportsSectionProps {
     date: string;
     status: string;
     reportLink?: string[] | null;
+    labResult?: string[] | null;
   }>;
   patientId?: string;
   onViewMore?: () => void;
@@ -18,13 +19,88 @@ interface LabReportsSectionProps {
 export default function LabReportsSection({ labBookings, onViewMore }: LabReportsSectionProps) {
   const recentReports = labBookings.slice(0, 3);
 
+  // Function to render individual lab results for a package
+  const renderLabResults = (labBooking: any) => {
+    // Use labResult if available, otherwise fall back to reportLink
+    const results = labBooking.labResult || labBooking.reportLink || [];
+    
+    if (results.length === 0) {
+      return (
+        <div className="flex items-center gap-3">
+          <h4 className="font-semibold text-white text-sm truncate flex-1">
+            {labBooking.labPackageName}
+          </h4>
+          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+            {new Date(labBooking.date).toLocaleDateString('en-GB')}
+          </span>
+          <div className="ml-auto">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-1 h-auto text-xs text-green-200 cursor-not-allowed"
+              disabled
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    // If there's only one result, show it normally
+    if (results.length === 1) {
+      return (
+        <div className="flex items-center gap-3">
+          <h4 className="font-semibold text-white text-sm truncate flex-1">
+            {labBooking.labPackageName}
+          </h4>
+          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+            {new Date(labBooking.date).toLocaleDateString('en-GB')}
+          </span>
+          <div className="ml-auto">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-1 h-auto text-xs text-green-50 hover:text-white"
+              onClick={() => window.open(results[0], '_blank')}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    // If there are multiple results, show them as separate items
+    return results.map((result: string, index: number) => (
+      <div key={`${labBooking.id}-${index}`} className="flex items-center gap-3 mb-2 last:mb-0">
+        <h4 className="font-semibold text-white text-sm truncate flex-1">
+          {labBooking.labPackageName}-{index + 1}
+        </h4>
+        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+          {new Date(labBooking.date).toLocaleDateString('en-GB')}
+        </span>
+        <div className="ml-auto">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-1 h-auto text-xs text-green-50 hover:text-white"
+            onClick={() => window.open(result, '_blank')}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    ));
+  };
+
   return (
     <div className="relative h-full">
       <div aria-hidden="true" className="absolute -inset-0.5 rounded-[14px] bg-[conic-gradient(at_70%_20%,#84cc16_0deg,#10b981_120deg,#065f46_240deg,#84cc16_360deg)] opacity-80 blur" />
-      <Card className="relative overflow-hidden rounded-xl border border-emerald-300 bg-white p-4 shadow-md h-full min-h-[220px]">
+      <Card className="relative overflow-hidden rounded-xl border border-emerald-300 bg-white p-4 shadow-md h-[296px]">
         <div className="absolute inset-0 -skew-y-2 bg-gradient-to-tr from-emerald-100 via-emerald-50 to-lime-100 opacity-60" />
 
-        <div className="relative z-10 h-full flex flex-col">
+        <div className="relative z-10 h-full flex flex-col overflow-y-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-bold text-gray-900">Lab Reports</h3>
@@ -39,7 +115,7 @@ export default function LabReportsSection({ labBookings, onViewMore }: LabReport
             </Button>
           </div>
 
-          {/* Lab Reports - condensed single-row items */}
+          {/* Lab Reports - show individual results for each package */}
           <div className="space-y-2 mb-3 flex-1">
             {recentReports.map((labBooking) => (
               <div key={labBooking.id} className="group relative overflow-hidden rounded-lg border border-emerald-200/60 p-3 shadow-sm hover:shadow-md transition-all duration-300">
@@ -52,27 +128,7 @@ export default function LabReportsSection({ labBookings, onViewMore }: LabReport
                 </div>
                 
                 <div className="relative z-10">
-                  <div className="flex items-center gap-3">
-                    <h4 className="font-semibold text-white text-sm truncate flex-1">
-                      {labBooking.labPackageName}
-                    </h4>
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">{new Date(labBooking.date).toLocaleDateString('en-GB')}</span>
-                    <div className="ml-auto">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={`p-1 h-auto text-xs ${labBooking.reportLink && labBooking.reportLink.length > 0 ? 'text-green-50 hover:text-white' : 'text-green-200 cursor-not-allowed'}`}
-                        onClick={() => {
-                          if (labBooking.reportLink && labBooking.reportLink.length > 0) {
-                            window.open(labBooking.reportLink[0] as string, '_blank');
-                          }
-                        }}
-                        aria-disabled={!labBooking.reportLink || labBooking.reportLink.length === 0}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+                  {renderLabResults(labBooking)}
                 </div>
               </div>
             ))}
@@ -82,7 +138,6 @@ export default function LabReportsSection({ labBookings, onViewMore }: LabReport
               <div key={`lr-ph-${i}`} className="relative overflow-hidden rounded-lg border border-gray-200 bg-gray-100/70 p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-600">Lab reports will appear here after they are uploaded.</span>
-                  {/* <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">Pending</span> */}
                 </div>
               </div>
             ))}

@@ -7,9 +7,18 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { text, reportId, force = false } = body || {};
+    const { text, reportId, labResultIndex = 0, force = false } = body || {};
     if (!text || typeof text !== 'string' || text.trim().length < 20) {
       return NextResponse.json({ success: false, error: 'Missing or too-short text' }, { status: 400 });
+    }
+
+    // Check text length to prevent context length exceeded errors
+    const maxTextLength = 32000; // Conservative limit for Groq API
+    if (text.length > maxTextLength) {
+      return NextResponse.json({ 
+        success: false, 
+        error: `Text too long (${text.length} chars). Maximum allowed: ${maxTextLength} characters.` 
+      }, { status: 400 });
     }
 
     const labBookingId = Number(reportId);
@@ -17,11 +26,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing or invalid reportId' }, { status: 400 });
     }
 
+    // Verify that the lab booking exists
+    const labBooking = await prisma.labBooking.findFirst({
+      where: { 
+        id: labBookingId,
+        deletedAt: null
+      }
+    });
+    
+    if (!labBooking) {
+      return NextResponse.json({ success: false, error: 'Lab booking not found' }, { status: 404 });
+    }
+
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) return NextResponse.json({ success: false, error: 'GROQ_API_KEY not configured' }, { status: 500 });
 
     // Try to serve from DB if available and not forced
-    const existing = await prisma.labReportAnalysis.findUnique({ where: { labBookingId } });
+    const existing = await prisma.labReportAnalysis.findFirst({ 
+      where: { 
+        labBookingId,
+        labResultIndex,
+        deletedAt: null
+      } 
+    });
     if (existing && !force) {
       const summaryMeta = (existing.trendAnalysis as any)?.summaryMeta || null;
       if (existing.llmSummary || summaryMeta) {
@@ -46,11 +73,17 @@ export async function POST(request: NextRequest) {
     };
 
     await prisma.labReportAnalysis.upsert({
-      where: { labBookingId },
+      where: { 
+        labBookingId_labResultIndex: {
+          labBookingId,
+          labResultIndex
+        }
+      },
       create: {
         labBookingId,
+        labResultIndex,
         reportUrl: null,
-        extractedText: null,
+        extractedText: text, // Save the parsed text
         llmSummary: summary,
         criticalValues: existing?.criticalValues || [],
         allValues: existing?.allValues || [],
@@ -60,7 +93,10 @@ export async function POST(request: NextRequest) {
         processedAt: new Date(),
       },
       update: {
+        extractedText: text, // Update with new parsed text
         llmSummary: summary,
+        criticalValues: existing?.criticalValues || [],
+        allValues: existing?.allValues || [],
         trendAnalysis,
         llmModel: process.env.GROQ_SUMMARY_MODEL || 'llama-3.3-70b-versatile',
         processingStatus: 'COMPLETED',

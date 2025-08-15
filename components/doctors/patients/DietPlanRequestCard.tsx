@@ -20,11 +20,11 @@ export default function DietPlanRequestCard({ patient }: DietPlanRequestCardProp
   };
 
   return (
-    <Card className="relative overflow-hidden rounded-xl bg-gray-50/80 p-4 shadow-sm border border-gray-100 h-full">
+    <Card className="relative overflow-hidden rounded-xl bg-gray-50/80 p-4 shadow-sm border border-gray-100 h-[296px]">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-50/50 to-gray-100/30 rounded-xl" />
       
-      <div className="relative z-10 h-full flex flex-col">
+      <div className="relative z-10 h-full flex flex-col overflow-y-auto">
         {/* Header - Compact */}
         <div className="flex items-center gap-2 mb-3">
           <h3 className="text-lg font-bold text-gray-900">Diet Plan Request</h3>

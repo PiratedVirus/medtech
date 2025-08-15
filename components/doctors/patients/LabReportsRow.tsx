@@ -12,6 +12,7 @@ interface LabReportsRowProps {
     date: string;
     status: string;
     reportLink?: string[] | null;
+    labResult?: string[] | null;
   }>;
   patientId: string;
 }
@@ -50,22 +51,55 @@ export default function LabReportsRow({ labBookings, patientId }: LabReportsRowP
         
         {/* Report Name Buttons - Slightly Left from Edge */}
         <div className="flex gap-2 mr-12 md:mr-8">
-          {recentReports.map((labBooking) => (
-            <Button
-              key={labBooking.id}
-              variant="ghost"
-              size="sm"
-              className="text-xs text-secondary hover:bg-secondary/20 hover:text-secondary bg-secondary/10 border border-secondary/10 rounded-lg px-3 py-2 h-auto"
-              onClick={() => {
-                if (labBooking.reportLink && labBooking.reportLink.length > 0) {
-                  window.open(labBooking.reportLink[0], '_blank');
-                }
-              }}
-            >
-              <FileText className="h-3 w-3 mr-1" />
-              {labBooking.labPackageName}
-            </Button>
-          ))}
+          {recentReports.map((labBooking) => {
+            // Use labResult if available, otherwise fall back to reportLink
+            const results = labBooking.labResult || labBooking.reportLink || [];
+            
+            if (results.length === 0) {
+              return (
+                <Button
+                  key={labBooking.id}
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-gray-400 bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 h-auto cursor-not-allowed"
+                  disabled
+                >
+                  <FileText className="h-3 w-3 mr-1" />
+                  {labBooking.labPackageName}
+                </Button>
+              );
+            }
+
+            // If there's only one result, show it normally
+            if (results.length === 1) {
+              return (
+                <Button
+                  key={labBooking.id}
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-secondary hover:bg-secondary/20 hover:text-secondary bg-secondary/10 border border-secondary/10 rounded-lg px-3 py-2 h-auto"
+                  onClick={() => window.open(results[0], '_blank')}
+                >
+                  <FileText className="h-3 w-3 mr-1" />
+                  {labBooking.labPackageName}
+                </Button>
+              );
+            }
+
+            // If there are multiple results, show them as separate buttons
+            return results.map((result: string, index: number) => (
+              <Button
+                key={`${labBooking.id}-${index}`}
+                variant="ghost"
+                size="sm"
+                className="text-xs text-secondary hover:bg-secondary/20 hover:text-secondary bg-secondary/10 border border-secondary/10 rounded-lg px-3 py-2 h-auto"
+                onClick={() => window.open(result, '_blank')}
+              >
+                <FileText className="h-3 w-3 mr-1" />
+                {labBooking.labPackageName}-{index + 1}
+              </Button>
+            ));
+          })}
           
           {/* Empty state if no reports */}
           {recentReports.length === 0 && (

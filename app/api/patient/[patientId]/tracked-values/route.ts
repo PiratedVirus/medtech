@@ -21,7 +21,7 @@ export async function GET(
       },
       include: {
         labPackage: true,
-        reportAnalysis: true,
+        reportAnalyses: true,
       },
       orderBy: { labDate: "desc" },
     });
@@ -41,7 +41,7 @@ export async function GET(
     }> = [];
 
     labBookings.forEach((booking) => {
-      const analysis = booking.reportAnalysis as any;
+      const analysis = booking.reportAnalyses as any;
       const criticalList: any[] = Array.isArray(analysis?.criticalValues) ? analysis.criticalValues : [];
       const allList: any[] = Array.isArray(analysis?.allValues) ? analysis.allValues : [];
 

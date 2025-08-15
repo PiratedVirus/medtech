@@ -123,7 +123,7 @@ export async function POST(request: Request) {
       // Create the lab booking
       const booking = await tx.labBooking.create({
         data: {
-          patientId,
+          patientId: parseInt(patientId, 10),
           labPackageId: packageId,
           appointmentFor,
           fullName,

@@ -316,7 +316,7 @@ model LabBooking {
   labPackage      LabPackage          @relation(fields: [labPackageId], references: [id])
   labTech         User?               @relation("LabTech", fields: [labTechId], references: [id])
   patient         User                @relation("LabPatient", fields: [patientId], references: [id])
-  reportAnalysis  LabReportAnalysis?
+  reportAnalyses  LabReportAnalysis[] @relation("LabBookingAnalyses")
   payment         Payment?            @relation("LabBookingPayment")
   trendData       ReportTrendData[]
 
@@ -735,7 +735,8 @@ model AppointmentReport {
 
 model LabReportAnalysis {
   id               Int               @id @default(autoincrement())
-  labBookingId     Int               @unique
+  labBookingId     Int
+  labResultIndex   Int               @default(0)  // Index of the specific lab result being analyzed
   reportUrl        String?
   extractedText    String?
   llmSummary       String?
@@ -749,9 +750,10 @@ model LabReportAnalysis {
   updatedAt        DateTime          @updatedAt
   deletedAt        DateTime?
   allValues        Json?
-  labBooking       LabBooking        @relation(fields: [labBookingId], references: [id])
+  labBooking       LabBooking        @relation("LabBookingAnalyses", fields: [labBookingId], references: [id])
   trendDataEntries ReportTrendData[] @relation("SourceReportTrend")
 
+  @@unique([labBookingId, labResultIndex])  // Allow multiple analyses per booking, but unique per result index
   @@index([labBookingId])
   @@index([processingStatus])
   @@index([deletedAt])

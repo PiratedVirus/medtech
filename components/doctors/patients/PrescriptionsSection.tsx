@@ -27,10 +27,10 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
   return (
     <div className="relative h-full">
       {/* <div aria-hidden="true" className="absolute -inset-0.5 rounded-[14px] bg-[conic-gradient(at_70%_20%,#84cc16_0deg,#10b981_120deg,#065f46_240deg,#84cc16_360deg)] opacity-80 blur" /> */}
-      <Card className="relative overflow-hidden rounded-xl border border-emerald-300 bg-white p-4 shadow-md h-full min-h-[220px]">
+      <Card className="relative overflow-hidden rounded-xl border border-emerald-300 bg-white p-4 shadow-md h-[296px]">
         <div className="absolute inset-0 -skew-y-2 bg-gradient-to-tr from-emerald-100 via-emerald-50 to-lime-100 opacity-60" />
 
-        <div className="relative z-10 h-full flex flex-col">
+        <div className="relative z-10 h-full flex flex-col overflow-y-auto">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-bold text-gray-900">Prescriptions</h3>
             <Button

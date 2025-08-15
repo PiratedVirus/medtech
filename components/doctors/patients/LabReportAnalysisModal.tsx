@@ -15,6 +15,7 @@ interface LabReport {
   date: string;
   status: string;
   reportLink?: string[] | null;
+  labResult?: string[] | null;
 }
 
 interface LabValue {
@@ -65,6 +66,7 @@ export default function LabReportAnalysisModal({
   labReports
 }: LabReportAnalysisModalProps) {
   const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
+  const [selectedLabResultIndex, setSelectedLabResultIndex] = useState<number | null>(null);
   const [analysis, setAnalysis] = useState<LabReportAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false); // Prevent multiple simultaneous calls
@@ -108,36 +110,39 @@ export default function LabReportAnalysisModal({
     if (isOpen) {
       setAnalysis(null);
       setSelectedReportId(null);
+      setSelectedLabResultIndex(null);
       setLoading(false);
       setIsProcessing(false);
     } else {
       // Clean up when modal closes
       setAnalysis(null);
       setSelectedReportId(null);
+      setSelectedLabResultIndex(null);
       setLoading(false);
       setIsProcessing(false);
     }
   }, [isOpen]);
 
-  const handleReportSelect = async (reportId: number) => {
+  const handleReportSelect = async (reportId: number, labResultIndex?: number) => {
     if (isProcessing) {
       console.log('[UI][SELECT] Already processing, ignoring selection');
       return;
     }
     
-    // If selecting the same report that's already loaded, do nothing
-    if (selectedReportId === reportId && analysis) {
-      console.log('[UI][SELECT] Same report already loaded, ignoring selection');
+    // If selecting the same report and lab result that's already loaded, do nothing
+    if (selectedReportId === reportId && selectedLabResultIndex === labResultIndex && analysis) {
+      console.log('[UI][SELECT] Same report and lab result already loaded, ignoring selection');
       return;
     }
     
     setSelectedReportId(reportId);
+    setSelectedLabResultIndex(labResultIndex || null);
     setAnalysis(null);
     setLoading(true);
     setIsProcessing(true);
 
     try {
-      await processReport(reportId);
+      await processReport(reportId, labResultIndex || 0);
       return;
     } catch (error) {
       console.error('Error in report selection:', error);
@@ -148,63 +153,66 @@ export default function LabReportAnalysisModal({
     }
   };
 
-  const processReport = async (reportId: number) => {
+  const processReport = async (reportId: number, labResultIndex: number = 0) => {
     try {
       const selected = labReports.find(r => r.id === reportId);
-      const pdfUrl = selected?.reportLink?.[0];
+      const results = selected?.labResult || selected?.reportLink || [];
+      
+      if (!results || results.length === 0) {
+        throw new Error('No PDF URLs found for this report');
+      }
+
+      // Check if the requested lab result index exists
+      if (labResultIndex >= results.length) {
+        throw new Error(`Lab result index ${labResultIndex} not found. Available indices: 0-${results.length - 1}`);
+      }
+
+      const pdfUrl = results[labResultIndex];
       if (!pdfUrl) {
-        throw new Error('No PDF URL found for this report');
+        throw new Error('No PDF URL found for this lab result');
       }
 
       // FIRST: Check if analysis already exists in database
       try {
-        console.log('[UI][DB_CHECK] Checking for existing analysis for report:', reportId);
-        const existingAnalysisRes = await fetch(`/api/llm-process/generate-summary`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: 'check-existing-analysis-in-database', reportId, force: false })
-        });
+        console.log('[UI][DB_CHECK] Checking for existing analysis for report:', reportId, 'lab result index:', labResultIndex);
+        
+        // Use the dedicated database check endpoint
+        const existingAnalysisRes = await fetch(`/api/lab-analysis/check?reportId=${reportId}&labResultIndex=${labResultIndex}`);
         
         if (existingAnalysisRes.ok) {
           const existingData = await existingAnalysisRes.json();
           console.log('[UI][DB_CHECK] Response:', existingData);
-          if (existingData.cached && existingData.success) {
+          
+          if (existingData.exists && existingData.success) {
             console.log('[UI][DB_CHECK] Found cached analysis, using from database');
+            console.log('[UI][DB_CHECK] Cached data details:', {
+              hasSummary: !!existingData.summary,
+              hasValues: existingData.hasValues,
+              allValuesLength: existingData.allValues ? existingData.allValues.length : 'null',
+              criticalValuesLength: existingData.criticalValues ? existingData.criticalValues.length : 'null',
+              extractedTextLength: existingData.extractedText ? existingData.extractedText.length : 'null'
+            });
+            
             // Use existing analysis from database
             const existingAnalysis: LabReportAnalysis = {
               id: reportId,
               llmSummary: existingData.summary || '',
-              criticalValues: [],
-              allValues: [],
+              criticalValues: existingData.criticalValues || [],
+              allValues: existingData.allValues || [],
               trendAnalysis: [],
-              processingStatus: 'COMPLETED',
-              llmModel: 'cached-from-db',
-              processedAt: new Date().toISOString(),
+              processingStatus: existingData.processingStatus || 'COMPLETED',
+              llmModel: existingData.llmModel || 'cached-from-db',
+              processedAt: existingData.processedAt || new Date().toISOString(),
               keyFindings: existingData.keyFindings || [],
               recommendations: existingData.recommendations || [],
               urgency: existingData.urgency || 'ROUTINE'
             };
             
-            // Get values if they exist
-            try {
-              console.log('[UI][DB_CHECK] Fetching cached values...');
-              const valuesRes = await fetch(`/api/llm-process/extract-values`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: 'check-existing-values-in-database', reportId, force: false })
-              });
-              
-              if (valuesRes.ok) {
-                const valuesData = await valuesRes.json();
-                console.log('[UI][DB_CHECK] Values response:', valuesData);
-                if (valuesData.cached && valuesData.success) {
-                  existingAnalysis.criticalValues = valuesData.criticalValues || [];
-                  existingAnalysis.allValues = valuesData.allValues || [];
-                }
-              }
-            } catch (valuesError) {
-              console.warn('Could not fetch cached values:', valuesError);
-            }
+            console.log('[UI][DB_CHECK] Created analysis object:', {
+              summaryLength: existingAnalysis.llmSummary.length,
+              criticalValuesLength: existingAnalysis.criticalValues.length,
+              allValuesLength: existingAnalysis.allValues.length
+            });
             
             setAnalysis(existingAnalysis);
             setLoading(false);
@@ -221,7 +229,7 @@ export default function LabReportAnalysisModal({
       }
 
       console.log('[UI][PROCESSING] Starting new analysis processing...');
-      // ONLY if no existing analysis found, proceed with new processing
+      // Only if no existing analysis found, proceed with new processing
       // 1) Parse text once
       const parseRes = await fetch(`/api/llm-process/parse-text`, {
         method: 'POST',
@@ -253,65 +261,78 @@ export default function LabReportAnalysisModal({
       setAnalysis(partial);
 
       // Run summary and values independently
-      const runSummary = (async () => {
+      const runSummary = async () => {
         try {
+          console.log('[UI][SUMMARY] Starting summary generation for report:', reportId, 'lab result index:', labResultIndex);
           const summaryRes = await fetch(`/api/llm-process/generate-summary`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, reportId })
+            body: JSON.stringify({ text, reportId, labResultIndex })
           });
           const summaryJson = await summaryRes.json();
+          console.log('[UI][SUMMARY] Response status:', summaryRes.status, 'Response:', summaryJson);
           if (summaryRes.ok && summaryJson.success) {
-            partial = {
+            const updatedPartial = {
               ...partial,
               llmSummary: summaryJson.summary,
               keyFindings: Array.isArray(summaryJson.keyFindings) ? summaryJson.keyFindings : [],
               recommendations: Array.isArray(summaryJson.recommendations) ? summaryJson.recommendations : [],
               urgency: summaryJson.urgency,
-              processingStatus: 'COMPLETED',
+              processingStatus: 'COMPLETED' as const,
               processedAt: new Date().toISOString(),
             };
-            setAnalysis(prev => ({ ...(prev || partial), ...partial }));
+            partial = updatedPartial;
+            setAnalysis(updatedPartial);
+            console.log('[UI][SUMMARY] Successfully updated analysis with summary');
           } else {
             console.warn('[UI][SUMMARY] failed:', summaryJson.error);
           }
         } catch (e) {
           console.warn('[UI][SUMMARY] error:', e);
         }
-      })();
+      };
 
-      const runValues = (async () => {
+      const runValues = async () => {
         try {
+          console.log('[UI][VALUES] Starting values extraction for report:', reportId, 'lab result index:', labResultIndex);
           // Optional small delay to mitigate free-tier 429s
           await new Promise(r => setTimeout(r, 900));
           const valuesRes = await fetch(`/api/llm-process/extract-values`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, reportId })
+            body: JSON.stringify({ text, reportId, labResultIndex })
           });
           const valuesJson = await valuesRes.json();
+          console.log('[UI][VALUES] Response status:', valuesRes.status, 'Response:', valuesJson);
           if (valuesRes.ok && valuesJson.success) {
-            partial = {
+            const updatedPartial = {
               ...partial,
               criticalValues: Array.isArray(valuesJson.criticalValues) ? valuesJson.criticalValues : [],
               allValues: Array.isArray(valuesJson.allValues) ? valuesJson.allValues : [],
-              processingStatus: 'COMPLETED',
+              processingStatus: 'COMPLETED' as const,
               processedAt: new Date().toISOString(),
             };
-            setAnalysis(prev => ({ ...(prev || partial), ...partial }));
+            partial = updatedPartial;
+            setAnalysis(updatedPartial);
+            console.log('[UI][VALUES] Successfully updated analysis with values');
           } else {
             console.warn('[UI][VALUES] failed:', valuesJson.error);
           }
         } catch (e) {
           console.warn('[UI][VALUES] error:', e);
         }
-      })();
+      };
 
-      await Promise.allSettled([runSummary, runValues]);
+      // Run sequentially to avoid race conditions with database operations
+      console.log('[UI][PROCESSING] Starting summary generation...');
+      await runSummary();
+      console.log('[UI][PROCESSING] Summary completed, starting values extraction...');
+      await runValues();
+      console.log('[UI][PROCESSING] Values extraction completed');
 
       setLoading(false);
       setIsProcessing(false);
-      toast.success('AI analysis updated');
+      toast.success('AI analysis completed successfully');
     } catch (error) {
       console.error('Error processing report:', error);
       toast.error(`Error: ${(error as Error).message}`);
@@ -320,7 +341,7 @@ export default function LabReportAnalysisModal({
     }
   };
 
-  const retryAnalysis = async (reportId: number) => {
+  const retryAnalysis = async (reportId: number, labResultIndex: number = 0) => {
     if (isProcessing) {
       console.log('[UI][RETRY] Already processing, ignoring retry');
       return;
@@ -329,7 +350,7 @@ export default function LabReportAnalysisModal({
     try {
       setLoading(true);
       setIsProcessing(true);
-      await processReport(reportId);
+      await processReport(reportId, labResultIndex);
     } catch (error) {
       console.error('Error retrying analysis:', error);
       toast.error(`Retry failed: ${(error as Error).message}`);
@@ -392,37 +413,101 @@ export default function LabReportAnalysisModal({
         <div className="px-4 pb-4">
           <div className="flex flex-wrap gap-2 mb-6">
             {labReports.map((report) => {
-              const isActive = selectedReportId === report.id;
-              return (
-                <div key={report.id} className="relative">
-                  {/* Blur edge effect - blue theme */}
-                  {isActive && (
-                    <div 
-                      aria-hidden="true" 
-                      className="absolute -inset-1 rounded-[16px] bg-[conic-gradient(at_70%_20%,#3b82f6_0deg,#1d4ed8_120deg,#1e40af_240deg,#3b82f6_360deg)] opacity-50 blur" 
-                    />
-                  )}
-                  <button
-                    onClick={() => {
-                      console.log('[UI][BUTTON_CLICK] Report button clicked:', report.id, 'Current selected:', selectedReportId);
-                      handleReportSelect(report.id);
-                    }}
-                    className={`relative overflow-hidden rounded-xl border px-3 py-2 shadow-sm whitespace-nowrap transition-all ${
-                      isActive
-                        ? 'border-sky-500 bg-blue-50 text-blue-800'
-                        : 'border-gray-300 text-gray-700 hover:border-blue-300 hover:bg-blue-50/50'
-                    }`}
-                  >
-                    <span className="relative z-10 inline-flex items-center gap-2">
-                      <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
-                      <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>{report.labPackageName}</span>
-                      <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
-                        {new Date(report.date).toLocaleDateString('en-GB')}
+              // Use labResult if available, otherwise fall back to reportLink
+              const results = report.labResult || report.reportLink || [];
+              
+              if (results.length === 0) {
+                // No results available
+                return (
+                  <div key={report.id} className="relative">
+                    <button
+                      disabled
+                      className="relative overflow-hidden rounded-xl border px-3 py-2 shadow-sm whitespace-nowrap transition-all border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+                    >
+                      <span className="relative z-10 inline-flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-gray-400" />
+                        <span className="font-semibold">{report.labPackageName}</span>
+                        <span className="ml-2 text-xs rounded-full px-2 py-0.5 bg-gray-200 text-gray-500">
+                          {new Date(report.date).toLocaleDateString('en-GB')}
+                        </span>
                       </span>
-                    </span>
-                  </button>
-                </div>
-              );
+                    </button>
+                  </div>
+                );
+              }
+
+              if (results.length === 1) {
+                // Single result - show normally
+                const isActive = selectedReportId === report.id;
+                return (
+                  <div key={report.id} className="relative">
+                    {/* Blur edge effect - blue theme */}
+                    {isActive && (
+                      <div 
+                        aria-hidden="true" 
+                        className="absolute -inset-1 rounded-[16px] bg-[conic-gradient(at_70%_20%,#3b82f6_0deg,#1d4ed8_120deg,#1e40af_240deg,#3b82f6_360deg)] opacity-50 blur" 
+                      />
+                    )}
+                    <button
+                      onClick={() => {
+                        console.log('[UI][BUTTON_CLICK] Report button clicked:', report.id, 'Current selected:', selectedReportId);
+                        handleReportSelect(report.id);
+                      }}
+                      className={`relative overflow-hidden rounded-xl border px-3 py-2 shadow-sm whitespace-nowrap transition-all ${
+                        isActive
+                          ? 'border-sky-500 bg-blue-50 text-blue-800'
+                          : 'border-gray-300 text-gray-700 hover:border-blue-300 hover:bg-blue-50/50'
+                      }`}
+                    >
+                      <span className="relative z-10 inline-flex items-center gap-2">
+                        <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
+                        <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>{report.labPackageName}</span>
+                        <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
+                          {new Date(report.date).toLocaleDateString('en-GB')}
+                        </span>
+                      </span>
+                    </button>
+                  </div>
+                );
+              }
+
+              // Multiple results - show each as separate button
+              return results.map((result: string, index: number) => {
+                const resultId = `${report.id}-${index}`;
+                const isActive = selectedReportId === report.id && selectedLabResultIndex === index;
+                return (
+                  <div key={resultId} className="relative">
+                    {/* Blur edge effect - blue theme */}
+                    {isActive && (
+                      <div 
+                        aria-hidden="true" 
+                        className="absolute -inset-1 rounded-[16px] bg-[conic-gradient(at_70%_20%,#3b82f6_0deg,#1d4ed8_120deg,#1e40af_240deg,#3b82f6_360deg)] opacity-50 blur" 
+                      />
+                    )}
+                    <button
+                      onClick={() => {
+                        console.log('[UI][BUTTON_CLICK] Lab result button clicked:', resultId, 'Current selected:', selectedReportId, 'Lab result index:', index);
+                        handleReportSelect(report.id, index);
+                      }}
+                      className={`relative overflow-hidden rounded-xl border px-3 py-2 shadow-sm whitespace-nowrap transition-all ${
+                        isActive
+                          ? 'border-sky-500 bg-blue-50 text-blue-800'
+                          : 'border-gray-300 text-gray-700 hover:border-blue-300 hover:bg-blue-50/50'
+                      }`}
+                    >
+                      <span className="relative z-10 inline-flex items-center gap-2">
+                        <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
+                        <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>
+                          {report.labPackageName}-{index + 1}
+                        </span>
+                        <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
+                          {new Date(report.date).toLocaleDateString('en-GB')}
+                        </span>
+                      </span>
+                    </button>
+                  </div>
+                );
+              });
             })}
           </div>
         </div>
@@ -471,17 +556,45 @@ export default function LabReportAnalysisModal({
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="text-md font-semibold text-blue-800">Summary</h4>
-                      {selectedReport?.reportLink?.[0] && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(selectedReport.reportLink![0], '_blank')}
-                          className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View Report
-                        </Button>
-                      )}
+                      <div className="flex gap-2">
+                        {/* Show individual lab result buttons if multiple exist */}
+                        {selectedReport && (() => {
+                          const results = selectedReport.labResult || selectedReport.reportLink || [];
+                          if (results.length === 0) return null;
+                          
+                          if (results.length === 1) {
+                            return (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(results[0], '_blank')}
+                                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                View Report
+                              </Button>
+                            );
+                          }
+                          
+                          // Multiple results - show each as separate button
+                          return results.map((result: string, index: number) => (
+                            <Button
+                              key={index}
+                              variant={selectedLabResultIndex === index ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => window.open(result, '_blank')}
+                              className={`${
+                                selectedLabResultIndex === index 
+                                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                                  : 'text-blue-600 border-blue-300 hover:bg-blue-50'
+                              }`}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Report {index + 1}
+                            </Button>
+                          ));
+                        })()}
+                      </div>
                     </div>
                     {analysis.llmSummary ? (
                       <p className="text-gray-700 leading-relaxed text-justify whitespace-pre-wrap bg-white/60 rounded-lg p-4 border border-blue-100/50">

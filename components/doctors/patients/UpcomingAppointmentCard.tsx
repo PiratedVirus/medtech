@@ -35,10 +35,10 @@ export default function UpcomingAppointmentCard({ appointments, patientName, cla
         aria-hidden="true"
         className="absolute -inset-0.5 rounded-[14px] bg-[conic-gradient(at_70%_20%,#84cc16_0deg,#10b981_120deg,#065f46_240deg,#84cc16_360deg)] opacity-80 blur"
       /> */}
-      <Card className="relative overflow-hidden rounded-xl border border-emerald-300 bg-white p-4 shadow-md h-full">
+      <Card className="relative overflow-hidden rounded-xl border border-emerald-300 bg-white p-4 shadow-md h-[296px]">
         <div className="absolute inset-0 -skew-y-2 bg-gradient-to-tr from-emerald-100 via-emerald-50 to-lime-100 opacity-60" />
         
-        <div className="relative z-10">
+        <div className="relative z-10 h-full overflow-y-auto">
         {/* Header removed as requested */}
         <div className="mb-1" />
         

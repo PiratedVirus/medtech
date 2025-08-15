@@ -48,9 +48,9 @@ export default function PatientInfoCard({ patient, className }: PatientInfoCardP
   const activeSubscription = patient.subscriptions?.find(sub => sub.isActive);
 
   return (
-    <Card className={`relative overflow-hidden rounded-xl border border-emerald-400/40 bg-emerald-600 p-4 shadow-lg h-full ${className ?? ''}`}>
+    <Card className={`relative overflow-hidden rounded-xl border border-emerald-400/40 bg-emerald-600 p-4 shadow-lg h-[296px] ${className ?? ''}`}>
       <div className="absolute inset-0 bg-gradient-to-b to-[#1e5636] from-[#2e8b57]" />
-      <div className="relative z-10 h-full flex flex-col">
+      <div className="relative z-10 h-full flex flex-col overflow-y-auto">
         {/* Top: Identity row */}
         <div className="flex items-start gap-3">
           <div className="h-12 w-12 shrink-0 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
