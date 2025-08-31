@@ -1,7 +1,8 @@
 'use client'
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Eye } from "lucide-react";
+import { FileText, Eye, Upload } from "lucide-react";
+import ReportUploadButton from "@/components/common/ReportUploadButton";
 
 interface LabReportsSectionProps {
   labBookings: Array<{
@@ -14,9 +15,10 @@ interface LabReportsSectionProps {
   }>;
   patientId?: string;
   onViewMore?: () => void;
+  onUploadSuccess?: () => void;
 }
 
-export default function LabReportsSection({ labBookings, onViewMore }: LabReportsSectionProps) {
+export default function LabReportsSection({ labBookings, patientId, onViewMore, onUploadSuccess }: LabReportsSectionProps) {
   const recentReports = labBookings.slice(0, 3);
 
   // Function to render individual lab results for a package
@@ -152,6 +154,22 @@ export default function LabReportsSection({ labBookings, onViewMore }: LabReport
               </div>
             )}
           </div>
+
+          {/* Upload Button */}
+          {patientId && (
+            <div className="border-t pt-3 mt-auto">
+              <ReportUploadButton
+                patientId={Number(patientId)}
+                onUploadSuccess={onUploadSuccess}
+                variant="outline"
+                size="sm"
+                className="w-full"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Report
+              </ReportUploadButton>
+            </div>
+          )}
         </div>
       </Card>
     </div>

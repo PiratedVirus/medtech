@@ -82,6 +82,8 @@ model User {
   dietPlansAsPatient          DietPlan[]        @relation("DietPlanPatient")
   dietPlansAsDietician        DietPlan[]        @relation("DietPlanDietician")
   dietMealTimingTemplates    DietMealTimingTemplate[] @relation("DietMealTimingTemplateDietician")
+  standaloneReportsAsPatient  StandaloneReport[] @relation("StandaloneReportPatient")
+  standaloneReportsUploaded   StandaloneReport[] @relation("StandaloneReportUploader")
 
   @@unique([phoneNumber, deletedAt])
   @@index([deletedAt])
@@ -999,4 +1001,65 @@ enum TrendSeverity {
   NORMAL
   HIGH
   CRITICAL
+}
+
+// Standalone reports uploaded by doctors/patients (not tied to lab bookings)
+model StandaloneReport {
+  id               Int               @id @default(autoincrement())
+  patientId        Int
+  uploadedByUserId Int               // Who uploaded the report (doctor or patient)
+  reportType       String            // 'lab_report', 'prescription', 'medical_document'
+  fileName         String
+  fileUrl          String
+  fileSize         Int               // in bytes
+  mimeType         String
+  status           ReportStatus      @default(PENDING)
+  processingError  String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+
+  patient          User              @relation("StandaloneReportPatient", fields: [patientId], references: [id])
+  uploadedBy       User              @relation("StandaloneReportUploader", fields: [uploadedByUserId], references: [id])
+  reportAnalyses   StandaloneReportAnalysis[]
+
+  @@index([patientId, deletedAt])
+  @@index([uploadedByUserId, deletedAt])
+  @@index([status, deletedAt])
+  @@index([deletedAt])
+}
+
+// Analysis results for standalone reports
+model StandaloneReportAnalysis {
+  id               Int               @id @default(autoincrement())
+  reportId         Int
+  analysisType     String            // 'lab_analysis', 'prescription_analysis', 'document_summary'
+  extractedText    String?
+  llmSummary       String?
+  allValues        Json?             // For lab reports
+  criticalValues   Json?             // For lab reports
+  keyFindings      Json?             // For medical documents
+  recommendations  Json?             // For medical documents
+  urgency          String?           // For medical documents
+  trendAnalysis    Json?
+  llmModel         String?
+  processingStatus ProcessingStatus  @default(PENDING)
+  processingError  String?
+  processedAt      DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+
+  report           StandaloneReport  @relation(fields: [reportId], references: [id])
+
+  @@index([reportId, deletedAt])
+  @@index([processingStatus, deletedAt])
+  @@index([deletedAt])
+}
+
+enum ReportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }

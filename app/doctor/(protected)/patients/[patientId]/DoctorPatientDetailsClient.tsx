@@ -16,7 +16,7 @@ import DietPlanRequestCard from "@/components/doctors/patients/DietPlanRequestCa
 import PrescriptionsSection from "@/components/doctors/patients/PrescriptionsSection";
 import LabReportsSection from "@/components/doctors/patients/LabReportsSection";
 import PastAppointmentRow from "@/components/doctors/patients/PastAppointmentRow";
-import LabReportAnalysisModal from "@/components/doctors/patients/LabReportAnalysisModal";
+import UnifiedAnalysisModal from "@/components/common/UnifiedAnalysisModal";
 import HealthToolsRow from "@/components/doctors/patients/HealthToolsRow";
 import PatientInsightsModal from "@/components/doctors/patients/PatientInsightsModal";
 import PatientSummarySection from "@/components/doctors/patients/PatientSummarySection";
@@ -100,6 +100,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
   const [savingNotes, setSavingNotes] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [insightsOpen, setInsightsOpen] = useState(false);
+  const [standaloneReports, setStandaloneReports] = useState<any[]>([]);
   const { profile } = useDecryptedProfile();
   const isDietician = profile?.role === 'DIETICIAN' || profile?.role === 'DIETICIAN_ADMIN' || profile?.role === 'NUTRITIONIST';
 
@@ -108,6 +109,27 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
   useEffect(() => {
     fetchPatientDetails();
   }, [patientId]);
+
+  // Fetch standalone reports for the patient
+  useEffect(() => {
+    if (patientId) {
+      fetchStandaloneReports();
+    }
+  }, [patientId]);
+
+  const fetchStandaloneReports = async () => {
+    try {
+      const response = await fetch(`/api/reports/upload?patientId=${patientId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setStandaloneReports(data.reports);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch standalone reports:', error);
+    }
+  };
 
   const fetchPatientDetails = async () => {
     try {
@@ -240,11 +262,12 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
         </div> */}
         
         {/* Lab Report Analysis Modal */}
-        <LabReportAnalysisModal
+        <UnifiedAnalysisModal
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
           patientId={patientId}
           labReports={patientDetails.labBookings}
+          standaloneReports={standaloneReports}
         />
 
         {/* Patient Insights Modal (Full insights reused from dashboard) */}

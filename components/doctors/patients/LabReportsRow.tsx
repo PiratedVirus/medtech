@@ -1,9 +1,9 @@
 'use client'
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Eye, FileText, Maximize2 } from "lucide-react";
-import LabReportAnalysisModal from "./LabReportAnalysisModal";
+import UnifiedAnalysisModal from "@/components/common/UnifiedAnalysisModal";
 
 interface LabReportsRowProps {
   labBookings: Array<{
@@ -19,6 +19,29 @@ interface LabReportsRowProps {
 
 export default function LabReportsRow({ labBookings, patientId }: LabReportsRowProps) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [standaloneReports, setStandaloneReports] = useState<any[]>([]);
+
+  // Fetch standalone reports for the patient
+  useEffect(() => {
+    if (patientId) {
+      fetchStandaloneReports();
+    }
+  }, [patientId]);
+
+  const fetchStandaloneReports = async () => {
+    try {
+      const response = await fetch(`/api/reports/upload?patientId=${patientId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setStandaloneReports(data.reports);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch standalone reports:', error);
+    }
+  };
+
   const recentReports = labBookings.slice(0, 3);
 
   return (
@@ -110,11 +133,12 @@ export default function LabReportsRow({ labBookings, patientId }: LabReportsRowP
         </div>
       </div>
       
-      <LabReportAnalysisModal
+      <UnifiedAnalysisModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         patientId={patientId}
         labReports={labBookings}
+        standaloneReports={standaloneReports}
       />
     </Card>
   );

@@ -12,6 +12,7 @@ import LabCard from "@/components/patients/labs/view/LabCard";
 // Removed labResult import, using live data from API
 import LabResultCard from "@/components/patients/labs/view/LabResultCard";
 import { useState } from "react";
+import ReportUploadButton from "@/components/common/ReportUploadButton";
 
 export default function LabsPage() {
   const router = useRouter();
@@ -19,7 +20,7 @@ export default function LabsPage() {
   const { profile, isLoading: profileLoading } = useDecryptedProfile();
   const patientId = profile?.id;
   const clinicId = profile?.clinicId;
-  const { data: labData = { scheduled: [], completed: [] }, isLoading: loadingResults } = useQuery({
+  const { data: labData = { scheduled: [], completed: [] }, isLoading: loadingResults, refetch: fetchLabData } = useQuery({
     queryKey: ["labResults", patientId],
     queryFn: async () => {
       const response = await axios.get(`/api/labs?patientId=${patientId}`);
@@ -195,6 +196,19 @@ export default function LabsPage() {
                   Here you can view your current bookings
                 </p>
               </div>
+            </div>
+            <div className="mt-4 md:mt-0">
+              <ReportUploadButton
+                patientId={Number(profile?.id)}
+                onUploadSuccess={() => {
+                  // Refresh lab data after upload
+                  fetchLabData();
+                }}
+                variant="default"
+                size="sm"
+              >
+                Upload Report
+              </ReportUploadButton>
             </div>
           </div>
 

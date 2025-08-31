@@ -8,7 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
-import { Eye, FileText, TrendingUp, AlertTriangle, Loader2, RefreshCw, Trash2, X, Copy, Search } from 'lucide-react';
+import { Eye, FileText, TrendingUp, AlertTriangle, Loader2, RefreshCw, Trash2, X, Copy, Search, Upload } from 'lucide-react';
+import ProcessingProgressNotification from '@/components/common/ProcessingProgressNotification';
+import UnifiedAnalysisModal from '@/components/common/UnifiedAnalysisModal';
+
 
 interface Row {
   id: number;
@@ -58,12 +61,72 @@ interface LabBooking {
   analyses: LabAnalysis[];
 }
 
+interface StandaloneReport {
+  id: number;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  mimeType: string;
+  reportType: string;
+  status: string;
+  processingError?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  patient: {
+    id: number;
+    name: string;
+    phone: string | null;
+  };
+  uploadedBy: {
+    id: number;
+    name: string;
+    role: string;
+  };
+  analyses: StandaloneReportAnalysis[];
+}
+
+interface StandaloneReportAnalysis {
+  id: number;
+  analysisType: string;
+  processingStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  processingError?: string; // Changed from 'string | null' to match unified modal
+  extractedText?: string; // Changed from 'string | null' to match unified modal
+  llmSummary?: string; // Changed from 'string | null' to match unified modal
+  allValues?: any; // Json type from Prisma
+  criticalValues?: any; // Json type from Prisma
+  keyFindings?: any; // Json type from Prisma
+  recommendations?: any; // Json type from Prisma
+  urgency?: 'ROUTINE' | 'SOON' | 'URGENT';
+  llmModel?: string;
+  processedAt?: string; // Changed from 'string | null' to match unified modal
+  createdAt: string;
+}
+
+interface ProcessingStage {
+  stage: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  message: string;
+  timestamp: Date;
+}
+
+interface ProcessingNotification {
+  id: string;
+  title: string;
+  type: 'lab-analysis' | 'standalone-report' | 'prescription';
+  stages: ProcessingStage[];
+  overallStatus: 'processing' | 'completed' | 'failed';
+  reportId?: number;
+  analysisType?: string;
+  labResultIndex?: number;
+}
+
 export default function PatientsAnalysisPage() {
   useAdminAuth();
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
   const [labBookings, setLabBookings] = useState<LabBooking[]>([]);
+  const [standaloneReports, setStandaloneReports] = useState<StandaloneReport[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('prescriptions');
   
@@ -76,6 +139,15 @@ export default function PatientsAnalysisPage() {
   const [extractedText, setExtractedText] = useState<string>('');
   const [loadingText, setLoadingText] = useState(false);
   const [activeModalTab, setActiveModalTab] = useState('analysis');
+  
+  // Standalone report modal state
+  const [selectedStandaloneReport, setSelectedStandaloneReport] = useState<StandaloneReport | null>(null);
+  const [selectedStandaloneAnalysis, setSelectedStandaloneAnalysis] = useState<StandaloneReportAnalysis | null>(null);
+  const [standaloneModalOpen, setStandaloneModalOpen] = useState(false);
+  const [standaloneSearchTerm, setStandaloneSearchTerm] = useState('');
+  
+  // Progress notification state
+  const [processingNotifications, setProcessingNotifications] = useState<ProcessingNotification[]>([]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -118,6 +190,14 @@ export default function PatientsAnalysisPage() {
         
         setLabBookings(bookingsWithAnalyses);
       }
+
+      // Fetch standalone reports data
+      const standaloneRes = await fetch('/api/admin/standalone-reports?pageSize=100');
+      const standaloneData = await standaloneRes.json();
+      
+      if (standaloneData.success) {
+        setStandaloneReports(standaloneData.data);
+      }
     } catch (e: any) {
       setError(e?.message || 'Failed to load');
     } finally {
@@ -130,16 +210,93 @@ export default function PatientsAnalysisPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Poll for processing updates
+  useEffect(() => {
+    if (processingNotifications.length === 0) return;
+
+    const interval = setInterval(async () => {
+      const activeNotifications = processingNotifications.filter(n => n.overallStatus === 'processing');
+      
+      for (const notification of activeNotifications) {
+        try {
+          if (notification.type === 'lab-analysis' && notification.reportId && notification.labResultIndex !== undefined) {
+            // Check lab analysis status
+            const response = await fetch(`/api/lab-analysis/check?reportId=${notification.reportId}&labResultIndex=${notification.labResultIndex}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.exists) {
+                updateLabAnalysisNotification(notification.id, data);
+              }
+            }
+          } else if (notification.type === 'standalone-report' && notification.reportId) {
+            // Check standalone report status
+            const response = await fetch(`/api/admin/standalone-reports?pageSize=100`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.success) {
+                const report = data.data.find((r: any) => r.id === notification.reportId);
+                if (report) {
+                  const analysis = report.analyses.find((a: any) => a.analysisType === notification.analysisType);
+                  if (analysis) {
+                    updateStandaloneReportNotification(notification.id, analysis);
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch processing status:', error);
+        }
+      }
+    }, 2000); // Poll every 2 seconds
+
+    return () => clearInterval(interval);
+  }, [processingNotifications]);
+
   const handleProcessAll = async (patientId: number) => {
     setLoading(true);
     setError(null);
+    
+    // Add progress notification
+    const notificationId = addProcessingNotification({
+      title: `Prescription Processing - Patient ${patientId}`,
+      type: 'prescription',
+      stages: [],
+      overallStatus: 'processing',
+      reportId: patientId
+    });
+
     try {
       const res = await fetch(`/api/prescription/process-all/${patientId}`, { method: 'POST' });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to process');
+      
+      // Update notification to show processing started
+      updateNotificationStages(notificationId, [
+        { stage: 'Initializing', status: 'completed', message: 'Processing started', timestamp: new Date() },
+        { stage: 'Processing', status: 'processing', message: 'Processing prescriptions...', timestamp: new Date() }
+      ]);
+      
       await fetchData();
+      
+      // Update notification to show completion
+      updateProcessingNotification(notificationId, {
+        overallStatus: 'completed',
+        stages: [
+          { stage: 'Initializing', status: 'completed', message: 'Processing started', timestamp: new Date() },
+          { stage: 'Processing', status: 'completed', message: 'Prescriptions processed successfully', timestamp: new Date() }
+        ]
+      });
     } catch (e: any) {
       setError(e?.message || 'Failed to process');
+      // Update notification to show failure
+      updateProcessingNotification(notificationId, {
+        overallStatus: 'failed',
+        stages: [
+          { stage: 'Initializing', status: 'completed', message: 'Processing started', timestamp: new Date() },
+          { stage: 'Processing', status: 'failed', message: e?.message || 'Failed to process', timestamp: new Date() }
+        ]
+      });
     } finally {
       setLoading(false);
     }
@@ -148,6 +305,17 @@ export default function PatientsAnalysisPage() {
   const handleRegenerateLabAnalysis = async (labBookingId: number, labResultIndex: number) => {
     setLoading(true);
     setError(null);
+    
+    // Add progress notification
+    const notificationId = addProcessingNotification({
+      title: `Lab Analysis - Result ${labResultIndex + 1}`,
+      type: 'lab-analysis',
+      stages: [],
+      overallStatus: 'processing',
+      reportId: labBookingId,
+      labResultIndex
+    });
+
     try {
       const res = await fetch('/api/admin/lab-analysis/regenerate', {
         method: 'POST',
@@ -157,9 +325,23 @@ export default function PatientsAnalysisPage() {
       
       if (!res.ok) throw new Error('Failed to regenerate lab analysis');
       
+      // Update notification to show processing started
+      updateNotificationStages(notificationId, [
+        { stage: 'Initializing', status: 'completed', message: 'Regeneration started', timestamp: new Date() },
+        { stage: 'Processing', status: 'processing', message: 'Analysis in progress...', timestamp: new Date() }
+      ]);
+      
       await fetchData(); // Refresh the data
     } catch (e: any) {
       setError(e?.message || 'Failed to regenerate');
+      // Update notification to show failure
+      updateProcessingNotification(notificationId, {
+        overallStatus: 'failed',
+        stages: [
+          { stage: 'Initializing', status: 'completed', message: 'Regeneration started', timestamp: new Date() },
+          { stage: 'Processing', status: 'failed', message: e?.message || 'Failed to regenerate', timestamp: new Date() }
+        ]
+      });
     } finally {
       setLoading(false);
     }
@@ -193,6 +375,8 @@ export default function PatientsAnalysisPage() {
     setSelectedAnalysis(analysis);
     setAnalysisModalOpen(true);
     setActiveModalTab('analysis');
+    setSearchTerm(''); // Reset search term
+    setShowAllValues(false); // Reset to show critical values by default
     
     // Fetch extracted text if available
     if (analysis.processingStatus === 'COMPLETED') {
@@ -213,6 +397,86 @@ export default function PatientsAnalysisPage() {
     }
   };
 
+  const handleViewStandaloneReport = async (report: StandaloneReport) => {
+    setSelectedStandaloneReport(report);
+    // Get the most recent completed analysis, or the first one if none completed
+    const completedAnalysis = report.analyses.find(a => a.processingStatus === 'COMPLETED');
+    const analysis = completedAnalysis || report.analyses[0] || null;
+    console.log('Viewing standalone report analysis:', analysis);
+    console.log('Report analyses:', report.analyses);
+    console.log('Selected analysis allValues:', analysis?.allValues);
+    console.log('Selected analysis criticalValues:', analysis?.criticalValues);
+    setSelectedStandaloneAnalysis(analysis);
+    setStandaloneModalOpen(true);
+    setStandaloneSearchTerm(''); // Reset search term
+    setShowAllValues(false); // Reset to show critical values by default
+  };
+
+  const handleRegenerateStandaloneAnalysis = async (reportId: number, analysisType: string) => {
+    setLoading(true);
+    setError(null);
+    
+    // Add progress notification
+    const notificationId = addProcessingNotification({
+      title: `Standalone Report - ${analysisType.replace('_', ' ')}`,
+      type: 'standalone-report',
+      stages: [],
+      overallStatus: 'processing',
+      reportId,
+      analysisType
+    });
+
+    try {
+      const res = await fetch('/api/reports/upload/regenerate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId, analysisType })
+      });
+      
+      if (!res.ok) throw new Error('Failed to regenerate analysis');
+      
+      // Update notification to show processing started
+      updateNotificationStages(notificationId, [
+        { stage: 'Initializing', status: 'completed', message: 'Regeneration started', timestamp: new Date() },
+        { stage: 'Processing', status: 'processing', message: 'Analysis in progress...', timestamp: new Date() }
+      ]);
+      
+      await fetchData(); // Refresh the data
+    } catch (e: any) {
+      setError(e?.message || 'Failed to regenerate');
+      // Update notification to show failure
+      updateProcessingNotification(notificationId, {
+        overallStatus: 'failed',
+        stages: [
+          { stage: 'Initializing', status: 'completed', message: 'Regeneration started', timestamp: new Date() },
+          { stage: 'Processing', status: 'failed', message: e?.message || 'Failed to regenerate', timestamp: new Date() }
+        ]
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteStandaloneReport = async (reportId: number) => {
+    if (!confirm('Are you sure you want to delete this report?')) return;
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/standalone-reports/${reportId}`, {
+        method: 'DELETE'
+      });
+      
+      if (!res.ok) throw new Error('Failed to delete report');
+      
+      await fetchData(); // Refresh the data
+    } catch (e: any) {
+      setError(e?.message || 'Failed to delete');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const copyText = async (text: string) => {
     try { 
       await navigator.clipboard.writeText(text); 
@@ -229,6 +493,19 @@ export default function PatientsAnalysisPage() {
       value.parameter.toLowerCase().includes(searchTerm.toLowerCase()) ||
       value.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       value.value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  // Filter standalone report values based on search term and toggle
+  const getFilteredStandaloneValues = () => {
+    if (!selectedStandaloneAnalysis) return [];
+    const values = showAllValues ? (selectedStandaloneAnalysis.allValues || []) : (selectedStandaloneAnalysis.criticalValues || []);
+    if (!standaloneSearchTerm) return values;
+
+    return values.filter((value: any) =>
+      value.parameter.toLowerCase().includes(standaloneSearchTerm.toLowerCase()) ||
+      value.category?.toLowerCase().includes(standaloneSearchTerm.toLowerCase()) ||
+      value.value.toString().toLowerCase().includes(standaloneSearchTerm.toLowerCase())
     );
   };
 
@@ -277,6 +554,175 @@ export default function PatientsAnalysisPage() {
     }
   };
 
+  const standaloneStatusBadge = (status: string) => {
+    switch (status) {
+      case 'COMPLETED':
+        return <Badge variant="default" className="bg-green-100 text-green-800">Completed</Badge>;
+      case 'PROCESSING':
+        return <Badge variant="outline" className="text-blue-600">Processing</Badge>;
+      case 'FAILED':
+        return <Badge variant="destructive">Failed</Badge>;
+      case 'PENDING':
+      default:
+        return <Badge variant="outline" className="text-gray-600">Pending</Badge>;
+    }
+  };
+
+  const standaloneAnalysisStatusBadge = (analysis: StandaloneReportAnalysis) => {
+    switch (analysis.processingStatus) {
+      case 'COMPLETED':
+        return <Badge variant="default" className="bg-green-100 text-green-800">Completed</Badge>;
+      case 'PROCESSING':
+        return <Badge variant="outline" className="text-blue-600">Processing</Badge>;
+      case 'FAILED':
+        return <Badge variant="destructive">Failed</Badge>;
+      case 'PENDING':
+      default:
+        return <Badge variant="outline" className="text-gray-600">Pending</Badge>;
+    }
+  };
+
+  // Progress notification helpers
+  const addProcessingNotification = (notification: Omit<ProcessingNotification, 'id'>) => {
+    const id = `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const newNotification: ProcessingNotification = {
+      ...notification,
+      id,
+      stages: [
+        {
+          stage: 'Initializing',
+          status: 'processing',
+          message: 'Starting regeneration process...',
+          timestamp: new Date()
+        }
+      ]
+    };
+    setProcessingNotifications(prev => [...prev, newNotification]);
+    return id;
+  };
+
+  const updateProcessingNotification = (notificationId: string, updates: Partial<ProcessingNotification>) => {
+    setProcessingNotifications(prev => prev.map(notification => 
+      notification.id === notificationId 
+        ? { ...notification, ...updates }
+        : notification
+    ));
+  };
+
+  const removeProcessingNotification = (notificationId: string) => {
+    setProcessingNotifications(prev => prev.filter(n => n.id !== notificationId));
+  };
+
+  const updateNotificationStages = (notificationId: string, stages: ProcessingStage[]) => {
+    setProcessingNotifications(prev => prev.map(notification => 
+      notification.id === notificationId 
+        ? { ...notification, stages }
+        : notification
+    ));
+  };
+
+  const updateLabAnalysisNotification = (notificationId: string, analysisData: any) => {
+    const stages: ProcessingStage[] = [];
+    let overallStatus: 'processing' | 'completed' | 'failed' = 'processing';
+
+    if (analysisData.processingStatus === 'COMPLETED') {
+      stages.push(
+        { stage: 'Text Extraction', status: 'completed', message: 'Text extracted successfully', timestamp: new Date() },
+        { stage: 'LLM Processing', status: 'completed', message: 'Analysis completed successfully', timestamp: new Date() }
+      );
+      overallStatus = 'completed';
+      
+      // Auto-remove completed notification after 5 seconds
+      setTimeout(() => {
+        removeProcessingNotification(notificationId);
+      }, 5000);
+    } else if (analysisData.processingStatus === 'FAILED') {
+      stages.push(
+        { stage: 'Processing', status: 'failed', message: analysisData.processingError || 'Failed', timestamp: new Date() }
+      );
+      overallStatus = 'failed';
+      
+      // Auto-remove failed notification after 10 seconds
+      setTimeout(() => {
+        removeProcessingNotification(notificationId);
+      }, 10000);
+    } else if (analysisData.processingStatus === 'PROCESSING') {
+      stages.push(
+        { stage: 'Text Extraction', status: 'completed', message: 'Text extracted successfully', timestamp: new Date() },
+        { stage: 'LLM Processing', status: 'processing', message: 'Generating analysis...', timestamp: new Date() }
+      );
+    } else {
+      stages.push(
+        { stage: 'Initializing', status: 'processing', message: 'Starting analysis...', timestamp: new Date() }
+      );
+    }
+
+    updateProcessingNotification(notificationId, { stages, overallStatus });
+  };
+
+  const updateStandaloneReportNotification = (notificationId: string, analysis: any) => {
+    const stages: ProcessingStage[] = [];
+    let overallStatus: 'processing' | 'completed' | 'failed' = 'processing';
+
+    if (analysis.processingStatus === 'COMPLETED') {
+      stages.push(
+        { stage: 'Text Extraction', status: 'completed', message: 'Text extracted successfully', timestamp: new Date() },
+        { stage: 'Summary Generation', status: 'completed', message: 'Summary generated successfully', timestamp: new Date() },
+        { stage: 'Value Extraction', status: 'completed', message: 'Lab values extracted successfully', timestamp: new Date() }
+      );
+      overallStatus = 'completed';
+      
+      // Auto-remove completed notification after 5 seconds
+      setTimeout(() => {
+        removeProcessingNotification(notificationId);
+      }, 5000);
+    } else if (analysis.processingStatus === 'FAILED') {
+      // Only show actual errors, not progress tracking messages
+      const errorMsg = analysis.processingError || '';
+      if (errorMsg.includes('Stage') || errorMsg.includes('failed')) {
+        // This is a progress tracking message, not a real error
+        stages.push(
+          { stage: 'Processing', status: 'processing', message: 'Processing in progress...', timestamp: new Date() }
+        );
+      } else {
+        // This is a real error
+        stages.push(
+          { stage: 'Processing', status: 'failed', message: errorMsg || 'Failed', timestamp: new Date() }
+        );
+        overallStatus = 'failed';
+      }
+    } else if (analysis.processingStatus === 'PROCESSING') {
+      // Parse processing error to determine current stage
+      const errorMsg = analysis.processingError || '';
+      if (errorMsg.includes('Stage 1')) {
+        stages.push(
+          { stage: 'Text Extraction', status: 'processing', message: 'Extracting text from file...', timestamp: new Date() }
+        );
+      } else if (errorMsg.includes('Stage 2')) {
+        stages.push(
+          { stage: 'Text Extraction', status: 'completed', message: 'Text extracted successfully', timestamp: new Date() },
+          { stage: 'Summary Generation', status: 'processing', message: 'Generating summary...', timestamp: new Date() }
+        );
+      } else if (errorMsg.includes('Stage 3')) {
+        stages.push(
+          { stage: 'Text Extraction', status: 'completed', message: 'Text extracted successfully', timestamp: new Date() },
+          { stage: 'Summary Generation', status: 'completed', message: 'Summary generated successfully', timestamp: new Date() },
+          { stage: 'Value Extraction', status: 'processing', message: 'Extracting lab values...', timestamp: new Date() }
+        );
+      } else {
+        stages.push(
+          { stage: 'Processing', status: 'processing', message: 'Processing in progress...', timestamp: new Date() }
+        );
+      }
+    } else {
+      stages.push(
+        { stage: 'Initializing', status: 'processing', message: 'Starting analysis...', timestamp: new Date() }
+      );
+    }
+
+    updateProcessingNotification(notificationId, { stages, overallStatus });
+  };
+
   return (
     <div className="p-4 space-y-4">
       <Card>
@@ -302,7 +748,7 @@ export default function PatientsAnalysisPage() {
           )}
           
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="prescriptions" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 Prescriptions ({rows.length})
@@ -310,6 +756,10 @@ export default function PatientsAnalysisPage() {
               <TabsTrigger value="lab-analysis" className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" />
                 Lab Analysis ({labBookings.length})
+              </TabsTrigger>
+              <TabsTrigger value="standalone-reports" className="flex items-center gap-2">
+                <Upload className="h-4 w-4" />
+                Standalone Reports ({standaloneReports.length})
               </TabsTrigger>
             </TabsList>
 
@@ -503,287 +953,151 @@ export default function PatientsAnalysisPage() {
                 </table>
               </div>
             </TabsContent>
+
+            <TabsContent value="standalone-reports" className="space-y-4">
+              <div className="overflow-auto border rounded-md">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left px-3 py-2">File</th>
+                      <th className="text-left px-3 py-2">Patient</th>
+                      <th className="text-left px-3 py-2">Type</th>
+                      <th className="text-left px-3 py-2">Status</th>
+                      <th className="text-left px-3 py-2">Analyses</th>
+                      <th className="text-left px-3 py-2">Uploaded By</th>
+                      <th className="text-left px-3 py-2">Created</th>
+                      <th className="text-left px-3 py-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {standaloneReports.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
+                          {loading ? 'Loading...' : 'No standalone reports found'}
+                        </td>
+                      </tr>
+                    )}
+                    {standaloneReports.map(report => (
+                      <tr key={report.id} className="border-t">
+                        <td className="px-3 py-2">
+                          <div className="font-medium">{report.fileName}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {(report.fileSize / 1024 / 1024).toFixed(2)} MB
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="font-medium">{report.patient.name}</div>
+                          <div className="text-xs text-muted-foreground">{report.patient.phone || 'No phone'}</div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {report.reportType.replace('_', ' ')}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2">
+                          {standaloneStatusBadge(report.status)}
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="space-y-1">
+                            {report.analyses.map((analysis, index) => (
+                              <div key={index} className="flex items-center gap-2">
+                                {standaloneAnalysisStatusBadge(analysis)}
+                                <span className="text-xs text-muted-foreground">
+                                  {analysis.analysisType.replace('_', ' ')}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="text-xs">
+                            <div className="font-medium">{report.uploadedBy.name}</div>
+                            <div className="text-muted-foreground capitalize">{report.uploadedBy.role.toLowerCase()}</div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(report.createdAt).toLocaleString()}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleViewStandaloneReport(report)}
+                              className="text-xs h-7"
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              View
+                            </Button>
+                            {report.analyses.map((analysis, index) => (
+                              <Button
+                                key={index}
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRegenerateStandaloneAnalysis(report.id, analysis.analysisType)}
+                                disabled={loading}
+                                className="text-xs h-7"
+                              >
+                                <RefreshCw className="h-3 w-3 mr-1" />
+                                Regen
+                              </Button>
+                            ))}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteStandaloneReport(report.id)}
+                              disabled={loading}
+                              className="text-xs h-7 text-red-600 border-red-300 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
 
-      {/* Lab Analysis Detail Modal */}
-      <Dialog open={analysisModalOpen} onOpenChange={setAnalysisModalOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="flex flex-row items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Lab Analysis Details
-            </DialogTitle>
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={() => setAnalysisModalOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogHeader>
+      {/* Lab Analysis Detail Modal - Now using Unified Modal */}
+      <UnifiedAnalysisModal
+        isOpen={analysisModalOpen}
+        onClose={() => setAnalysisModalOpen(false)}
+        patientId="admin" // Admin view doesn't have specific patient ID
+        labReports={labBookings.map(booking => ({
+          id: booking.id,
+          labPackageName: booking.labPackageName,
+          date: new Date().toISOString(), // Use current date as fallback
+          status: "COMPLETED", // Default status
+          labResult: booking.labResult
+        }))}
+        standaloneReports={[]}
+      />
 
-          {selectedAnalysis && selectedLabBooking && (
-            <div className="space-y-6">
-              {/* Header Info */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground">Lab Package</div>
-                  <div className="font-medium">{selectedLabBooking.labPackageName}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground">Result Index</div>
-                  <div className="font-medium">Result {selectedAnalysis.labResultIndex + 1}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground">Status</div>
-                  <div>{labStatusBadge(selectedAnalysis.processingStatus)}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground">Model</div>
-                  <div className="font-medium">{selectedAnalysis.llmModel || 'Unknown'}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground">Processed At</div>
-                  <div className="font-medium">
-                    {selectedAnalysis.processedAt ? new Date(selectedAnalysis.processedAt).toLocaleString() : 'Never'}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground">Created At</div>
-                  <div className="font-medium">
-                    {new Date(selectedAnalysis.createdAt).toLocaleString()}
-                  </div>
-                </div>
-              </div>
+      {/* Standalone Report Detail Modal - Now using Unified Modal */}
+      <UnifiedAnalysisModal
+        isOpen={standaloneModalOpen}
+        onClose={() => setStandaloneModalOpen(false)}
+        patientId="admin" // Admin view doesn't have specific patient ID
+        labReports={[]}
+        standaloneReports={standaloneReports.map(report => ({
+          ...report,
+          reportAnalyses: report.analyses || []
+        }))}
+      />
 
-              {/* Modal Tabs */}
-              <Tabs value={activeModalTab} onValueChange={setActiveModalTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="analysis">Analysis Results</TabsTrigger>
-                  <TabsTrigger value="raw-text">Raw Text</TabsTrigger>
-                  <TabsTrigger value="json-data">JSON Data</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="analysis" className="space-y-6">
-                  {/* Summary Section */}
-                  {selectedAnalysis.llmSummary && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">Clinical Summary</h3>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => copyText(selectedAnalysis.llmSummary || '')}
-                        >
-                          <Copy className="h-4 w-4 mr-2" />
-                          Copy
-                        </Button>
-                      </div>
-                      <div className="p-4 bg-blue-50 rounded-lg border">
-                        <p className="text-sm text-blue-900 whitespace-pre-wrap">{selectedAnalysis.llmSummary}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Key Findings */}
-                  {selectedAnalysis.keyFindings && selectedAnalysis.keyFindings.length > 0 && (
-                    <div className="space-y-3">
-                      <h3 className="text-lg font-semibold">Key Findings</h3>
-                      <div className="space-y-2">
-                        {selectedAnalysis.keyFindings.map((finding, index) => (
-                          <div key={index} className="flex items-start gap-2 p-3 bg-yellow-50 rounded-lg border">
-                            <span className="text-yellow-600 text-lg">•</span>
-                            <span className="text-sm text-yellow-900">{finding}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Recommendations */}
-                  {selectedAnalysis.recommendations && selectedAnalysis.recommendations.length > 0 && (
-                    <div className="space-y-3">
-                      <h3 className="text-lg font-semibold">Recommendations</h3>
-                      <div className="space-y-2">
-                        {selectedAnalysis.recommendations.map((rec, index) => (
-                          <div key={index} className="flex items-start gap-2 p-3 bg-green-50 rounded-lg border">
-                            <span className="text-green-600 text-lg">•</span>
-                            <span className="text-sm text-green-900">{rec}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Urgency */}
-                  {selectedAnalysis.urgency && (
-                    <div className="space-y-3">
-                      <h3 className="text-lg font-semibold">Urgency Level</h3>
-                      <div className="flex items-center gap-3">
-                        <span className={`inline-block px-3 py-2 rounded-lg text-sm font-medium ${
-                          selectedAnalysis.urgency === 'URGENT' ? 'bg-red-100 text-red-800' :
-                          selectedAnalysis.urgency === 'SOON' ? 'bg-orange-100 text-orange-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                          {selectedAnalysis.urgency}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Lab Values */}
-                  {(selectedAnalysis.allValues && selectedAnalysis.allValues.length > 0) && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <h3 className="text-lg font-semibold">Lab Values</h3>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant={showAllValues ? "default" : "outline"}
-                              onClick={() => setShowAllValues(true)}
-                            >
-                              All Values ({selectedAnalysis.allValues?.length || 0})
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant={!showAllValues ? "default" : "outline"}
-                              onClick={() => setShowAllValues(false)}
-                            >
-                              Critical ({selectedAnalysis.criticalValues?.length || 0})
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Search className="h-4 w-4 text-muted-foreground" />
-                          <Input
-                            placeholder="Search values..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-48"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        {groupValuesByCategory(getFilteredValues()).map(([category, values]) => (
-                          <div key={category} className="space-y-2">
-                            <h4 className="font-medium text-muted-foreground border-b pb-1">{category}</h4>
-                            <div className="grid gap-2">
-                              {values.map((value, index) => (
-                                <div
-                                  key={index}
-                                  className={`p-3 rounded-lg border ${
-                                    value.isAbnormal
-                                      ? value.severity === 'CRITICAL'
-                                        ? 'bg-red-50 border-red-200'
-                                        : value.severity === 'HIGH'
-                                        ? 'bg-orange-50 border-orange-200'
-                                        : 'bg-yellow-50 border-yellow-200'
-                                      : 'bg-green-50 border-green-200'
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                      <div className="font-medium text-sm">{value.parameter}</div>
-                                      <div className="text-xs text-muted-foreground">
-                                        {value.value} {value.unit} (Normal: {value.normalRange})
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      {value.isAbnormal && (
-                                        <Badge
-                                          variant={
-                                            value.severity === 'CRITICAL' ? 'destructive' :
-                                            value.severity === 'HIGH' ? 'default' :
-                                            'secondary'
-                                          }
-                                          className="text-xs"
-                                        >
-                                          {value.severity}
-                                        </Badge>
-                                      )}
-                                      {!value.isAbnormal && (
-                                        <Badge variant="outline" className="text-xs">Normal</Badge>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="raw-text" className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">Extracted Text</h3>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => copyText(extractedText)}
-                        disabled={!extractedText}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy Text
-                      </Button>
-                    </div>
-                    
-                    {loadingText ? (
-                      <div className="flex items-center justify-center p-8">
-                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                        Loading extracted text...
-                      </div>
-                    ) : extractedText ? (
-                      <div className="p-4 bg-muted/30 rounded-lg border">
-                        <pre className="text-xs whitespace-pre-wrap overflow-auto max-h-96">
-                          {extractedText}
-                        </pre>
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          Length: {extractedText.length} characters
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-8 text-center text-muted-foreground">
-                        <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>No extracted text available</p>
-                        <p className="text-sm">This analysis may not have extracted text or the text is not available.</p>
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="json-data" className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">Raw Analysis Data</h3>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => copyText(JSON.stringify(selectedAnalysis, null, 2))}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy JSON
-                      </Button>
-                    </div>
-                    <div className="p-4 bg-muted/30 rounded-lg border">
-                      <pre className="text-xs overflow-auto max-h-96">
-                        {JSON.stringify(selectedAnalysis, null, 2)}
-                      </pre>
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Progress Notifications */}
+      <ProcessingProgressNotification
+        notifications={processingNotifications}
+        onRemove={removeProcessingNotification}
+      />
     </div>
   );
 }

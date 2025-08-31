@@ -1,6 +1,7 @@
 import { AllPatientsCard } from "@/components/admin/AllPatientsCard";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 
+// Add to any page to test
 export default function PatientCardsPage() {
   return (
     <Card>
@@ -10,7 +11,9 @@ export default function PatientCardsPage() {
     </CardHeader>
     <CardContent>
       <AllPatientsCard />
+
     </CardContent>
+
   </Card>
   );
 }

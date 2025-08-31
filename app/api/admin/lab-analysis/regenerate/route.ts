@@ -73,8 +73,22 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Trigger the LLM processing (this would typically be done via a queue)
-    // For now, we'll return success and the admin can manually trigger processing
+    // Trigger actual LLM processing
+    try {
+      // Import and call the LLM processing function
+      const { processWithOpenRouter } = await import('@/app/api/llm-process/route');
+      
+      // Start processing in background (don't await to avoid blocking the response)
+      processWithOpenRouter(newAnalysis.id, pdfUrl, labBooking.patientId, labBookingId).catch((error: any) => {
+        console.error(`[REGENERATE] Background processing failed for lab analysis ${newAnalysis.id}:`, error);
+      });
+      
+      console.log(`[REGENERATE] Started LLM processing for lab analysis ${newAnalysis.id}`);
+    } catch (importError) {
+      console.error('[REGENERATE] Failed to import processWithOpenRouter:', importError);
+      // Fallback: just return success
+    }
+
     return NextResponse.json({
       success: true,
       message: `Analysis regeneration initiated for lab booking ${labBookingId}, result index ${labResultIndexNum}`,
@@ -84,7 +98,7 @@ export async function POST(request: NextRequest) {
         labResultIndex: newAnalysis.labResultIndex,
         status: newAnalysis.processingStatus
       },
-      nextSteps: 'Use the LLM processing endpoint to complete the analysis'
+      nextSteps: 'LLM processing has been started automatically'
     });
 
   } catch (error) {
