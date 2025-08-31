@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { llmGenerateValuesFromText } from '@/lib/llm/processing';
+import { extractValues } from '@/lib/llm/unified-service';
 
 export const runtime = 'nodejs';
 
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     // Call Groq to extract values
     try {
       console.log('[EXTRACT-STANDALONE-VALUES] Calling Groq');
-      const { allValues, criticalValues } = await llmGenerateValuesFromText(text, apiKey, '');
+      const { allValues, criticalValues } = await extractValues(text, apiKey);
       
       console.log('[EXTRACT-STANDALONE-VALUES] Successfully extracted values:', { 
         allValuesCount: allValues?.length || 0, 

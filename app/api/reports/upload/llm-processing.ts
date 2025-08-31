@@ -1,70 +1,6 @@
 import prisma from '../../../../lib/prisma';
 
-// Function to generate summary for standalone reports
-async function generateStandaloneSummary(text: string): Promise<{ 
-  summary: string; 
-  keyFindings: any[]; 
-  recommendations: any[]; 
-  urgency: string; 
-}> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    throw new Error('GROQ_API_KEY not configured');
-  }
-
-  try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a medical lab report analyzer. Analyze the provided lab report and return a JSON response with the following structure: { "summary": "clinical summary in 200-250 words", "keyFindings": ["finding1", "finding2"], "recommendations": ["recommendation1", "recommendation2"], "urgency": "ROUTINE|SOON|URGENT" }',
-          },
-          {
-            role: 'user',
-            content: `Analyze this lab report and return JSON only:\n\n${text}`,
-          },
-        ],
-        max_tokens: 1000,
-        temperature: 0.1,
-        response_format: { type: 'json_object' },
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Groq API error: ${response.status} ${errorText}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
-    
-    if (!content) {
-      throw new Error('No content received from Groq API');
-    }
-
-    try {
-      const parsed = JSON.parse(content);
-      return {
-        summary: parsed.summary || 'Analysis completed successfully.',
-        keyFindings: Array.isArray(parsed.keyFindings) ? parsed.keyFindings : [],
-        recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
-        urgency: parsed.urgency || 'ROUTINE',
-      };
-    } catch (parseError) {
-      throw new Error('Failed to parse LLM response');
-    }
-  } catch (error) {
-    console.error('Summary generation error:', error);
-    throw error;
-  }
-}
+import { generateSummary } from '@/lib/llm/unified-service';
 
 
 
@@ -158,7 +94,7 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
       // Stage 2: Generate Summary
       console.log(`[LLM-PROCESSING][${reportId}] Stage 2: Generating summary`);
       try {
-        const summaryResult = await generateStandaloneSummary(extractedText);
+        const summaryResult = await generateSummary(extractedText, process.env.GROQ_API_KEY || '');
         llmSummary = summaryResult.summary;
         keyFindings = summaryResult.keyFindings;
         recommendations = summaryResult.recommendations;
@@ -293,7 +229,7 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
       // For other document types, generate summary
       console.log(`[LLM-PROCESSING][${reportId}] Stage 2: Generating document summary`);
       try {
-        const summaryResult = await generateStandaloneSummary(extractedText);
+        const summaryResult = await generateSummary(extractedText, process.env.GROQ_API_KEY || '');
         llmSummary = summaryResult.summary;
         keyFindings = summaryResult.keyFindings;
         recommendations = summaryResult.recommendations;

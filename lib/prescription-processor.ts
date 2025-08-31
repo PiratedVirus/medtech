@@ -1,5 +1,5 @@
 import 'server-only';
-import { extractPdfText, llmGenerateSummaryFromText } from './llm/processing';
+import { extractPdfText, generateSummary } from './llm/unified-service';
 
 export interface PrescriptionProcessingResult {
   success: boolean;
@@ -28,7 +28,7 @@ export class PrescriptionProcessor {
       console.log('[PRESCRIPTION-PROC] Text extracted successfully, length:', extractedText.length);
       
       // Generate AI summary from extracted text
-      const summaryResult = await llmGenerateSummaryFromText(extractedText, apiKey, siteUrl);
+      const summaryResult = await generateSummary(extractedText, apiKey);
       console.log('[PRESCRIPTION-PROC] AI summary generated successfully');
       
       return {
@@ -72,7 +72,7 @@ export class PrescriptionProcessor {
         .join('\n\n---\n\n');
       
       // Generate comprehensive summary
-      const summaryResult = await llmGenerateSummaryFromText(combinedText, apiKey, siteUrl);
+      const summaryResult = await generateSummary(combinedText, apiKey);
       
       return {
         success: true,

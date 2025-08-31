@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { llmGenerateValuesFromText } from '@/lib/llm/processing';
+import { extractValues } from '@/lib/llm/unified-service';
 
 export const runtime = 'nodejs';
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     // Call Groq
     try {
       console.log('[EXTRACT-VALUES] Calling Groq');
-      const { allValues, criticalValues } = await llmGenerateValuesFromText(text, apiKey, '');
+      const { allValues, criticalValues } = await extractValues(text, apiKey);
       
       // Upsert values in DB
       await prisma.labReportAnalysis.upsert({
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
         // Try to process with a shorter text (first 20000 characters)
         const truncatedText = text.slice(0, 20000);
         try {
-          const { allValues, criticalValues } = await llmGenerateValuesFromText(truncatedText, apiKey, '');
+          const { allValues, criticalValues } = await extractValues(truncatedText, apiKey);
           
           // Save with truncated text and note the truncation
           await prisma.labReportAnalysis.upsert({

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { extractPdfText } from '@/lib/llm/processing';
+import { extractPdfText } from '@/lib/llm/unified-service';
 import { ocrExtractPdfTextFromUrl } from '@/lib/ocr/google-vision';
 
 export const runtime = 'nodejs';

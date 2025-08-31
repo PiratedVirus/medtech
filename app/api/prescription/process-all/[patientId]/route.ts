@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient, ProcessingStatus } from '@prisma/client';
-import { extractPdfText } from '@/lib/llm/processing';
+import { extractPdfText } from '@/lib/llm/unified-service';
 import { PrescriptionProcessor } from '@/lib/prescription-processor';
 
 export const runtime = 'nodejs';

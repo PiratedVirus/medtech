@@ -1,8 +1,8 @@
 import 'server-only';
 import { appendStageLog, completeRun, getProfileById } from './profile-service';
-import { extractPdfText } from './processing';
+import { extractPdfText } from './unified-service';
 import { ocrExtractPdfTextFromUrl } from '../ocr/google-vision';
-import { llmGenerateSummaryFromText, llmGenerateValuesFromText } from './processing';
+import { generateSummary, extractValues } from './unified-service';
 
 type RunInput = {
   runId: number;
@@ -65,7 +65,7 @@ export async function executePlaygroundRun(input: RunInput) {
   let allValues: any[] = [];
   let criticalValues: any[] = [];
   try {
-    const values = await llmGenerateValuesFromText(combinedText, apiKey, '');
+          const values = await extractValues(combinedText, apiKey);
     allValues = values.allValues || [];
     criticalValues = values.criticalValues || [];
     const valuesPromptTemplate = profile?.valuesPrompt || '';
@@ -116,7 +116,7 @@ export async function executePlaygroundRun(input: RunInput) {
   // Stage 3: generate-summary
   const summaryStart = Date.now();
   try {
-    const summaryRes = await llmGenerateSummaryFromText(combinedText, apiKey, '');
+          const summaryRes = await generateSummary(combinedText, apiKey);
     const summaryPromptTemplate = profile?.summaryPrompt || '';
     const resolvedSummaryPromptPreview = summaryPromptTemplate
       ? summaryPromptTemplate

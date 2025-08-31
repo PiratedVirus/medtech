@@ -136,13 +136,13 @@ export async function POST(
       }, { status: 404 });
     }
 
-    // Import the processor dynamically to avoid circular dependencies
-    const { PrescriptionProcessor } = await import('@/lib/prescription-processor');
+    // Import the unified LLM service
+    const { generatePrescriptionSummary } = await import('@/lib/llm/unified-service');
     
     const texts = validPrescriptionTexts.map(pt => pt.extractedText!);
     
     // Generate comprehensive patient summary
-    const summaryResult = await PrescriptionProcessor.generatePatientSummary(texts, apiKey, siteUrl);
+    const summaryResult = await generatePrescriptionSummary(texts, apiKey);
 
     if (!summaryResult.success) {
       return NextResponse.json({

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { llmGenerateSummaryFromText } from '@/lib/llm/processing';
+import { generateSummary } from '@/lib/llm/unified-service';
 
 export const runtime = 'nodejs';
 
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate via Groq
-    const { summary, keyFindings, recommendations, urgency } = await llmGenerateSummaryFromText(text, apiKey, '');
+    const { summary, keyFindings, recommendations, urgency } = await generateSummary(text, apiKey);
 
     // Upsert DB record with summary and summaryMeta
     const trendAnalysis = {
