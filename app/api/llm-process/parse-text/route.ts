@@ -14,20 +14,13 @@ export async function POST(request: NextRequest) {
     try { new URL(pdfUrl); } catch { return NextResponse.json({ success: false, error: 'Invalid pdfUrl' }, { status: 400 }); }
 
     let text = '';
-    let method: 'pdf-parse' | 'ocr' = 'pdf-parse';
+    let method: 'pdf-parse' | 'ocr' = 'ocr';
     try {
-      text = await extractPdfText(pdfUrl);
-    } catch (e) {
-      // proceed to OCR fallback
-    }
-    if (!text || text.trim().length < 50) {
-      try {
-        console.warn('[PARSE-TEXT] Fallback to OCR via Google Vision');
-        text = await ocrExtractPdfTextFromUrl(pdfUrl);
-        method = 'ocr';
-      } catch (ocrErr) {
-        return NextResponse.json({ success: true, text: '', warning: 'No extractable text found (OCR failed).', method });
-      }
+      console.log('[PARSE-TEXT] Using OCR (Google Vision) for PDF text extraction');
+      text = await ocrExtractPdfTextFromUrl(pdfUrl);
+    } catch (ocrErr) {
+      console.error('[PARSE-TEXT] OCR failed:', ocrErr);
+      return NextResponse.json({ success: true, text: '', warning: 'No extractable text found (OCR failed).', method });
     }
     // Log only a preview to avoid flooding logs
     try {

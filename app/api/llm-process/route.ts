@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getActiveProductionProfile } from "@/lib/llm/profile-service";
 // Enhanced PDF processor - using dynamic import to avoid build issues
 // import { EnhancedPDFProcessor } from "@/lib/llm/enhanced-pdf-processor";
 
@@ -302,37 +303,16 @@ async function processWithWorkingStrategy(pdfUrl: string, apiKey: string, siteUr
   }
 }
 
-// Strategy 1: Extract text from PDF and send to LLM
+// Strategy 1: Extract text from PDF using OCR and send to LLM
 async function extractAndProcessText(pdfUrl: string, apiKey: string, siteUrl: string): Promise<string> {
-  console.log('[LLM-PROC][PDF] Downloading PDF from URL');
-  const response = await fetch(pdfUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to download PDF: ${response.statusText}`);
-  }
-
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  if (!buffer || buffer.length === 0) {
-    throw new Error('Downloaded PDF buffer is empty');
-  }
-
-  const fileSizeMB = buffer.length / (1024 * 1024);
-  console.log(`[LLM-PROC][PDF] Size: ${fileSizeMB.toFixed(2)}MB (max ${MAX_PDF_MB}MB)`);
-  if (fileSizeMB > MAX_PDF_MB) {
-    throw new Error(`PDF too large: ${fileSizeMB.toFixed(2)}MB (max: ${MAX_PDF_MB}MB)`);
-  }
-
-  let pdfParse: any;
-  try {
-    pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
-  } catch {
-    pdfParse = (await import('pdf-parse')).default;
-  }
-  const pdfData = await pdfParse(buffer);
-  let extractedText = pdfData.text;
+  console.log('[LLM-PROC][PDF] Using OCR (Google Vision) for PDF text extraction');
+  
+  // Always use OCR for PDF text extraction
+  const { ocrExtractPdfTextFromUrl } = await import('@/lib/ocr/google-vision');
+  let extractedText = await ocrExtractPdfTextFromUrl(pdfUrl);
 
   if (!extractedText || extractedText.trim().length < 50) {
-    throw new Error('PDF text extraction failed or insufficient content');
+    throw new Error('OCR text extraction failed or insufficient content');
   }
 
   extractedText = extractedText
@@ -341,7 +321,7 @@ async function extractAndProcessText(pdfUrl: string, apiKey: string, siteUrl: st
     .trim()
     .substring(0, MAX_TEXT_TOKENS);
 
-  console.log(`[LLM-PROC][PDF] Extracted ${extractedText.length} characters from PDF`);
+  console.log(`[LLM-PROC][PDF] Extracted ${extractedText.length} characters from PDF using OCR`);
   return await sendTextToLLM(extractedText, apiKey, siteUrl);
 }
 
@@ -745,37 +725,16 @@ async function createNoDataAnalysis(labBookingId: number, patientId: number) {
   return analysis;
 }
 
-// Extract PDF text once (download + parse) and return cleaned text
+// Extract PDF text using OCR and return cleaned text
 async function extractPdfText(pdfUrl: string): Promise<string> {
-  console.log('[LLM-PROC][PDF] Downloading PDF from URL');
-  const response = await fetch(pdfUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to download PDF: ${response.statusText}`);
-  }
-
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  if (!buffer || buffer.length === 0) {
-    throw new Error('Downloaded PDF buffer is empty');
-  }
-
-  const fileSizeMB = buffer.length / (1024 * 1024);
-  console.log(`[LLM-PROC][PDF] Size: ${fileSizeMB.toFixed(2)}MB (max ${MAX_PDF_MB}MB)`);
-  if (fileSizeMB > MAX_PDF_MB) {
-    throw new Error(`PDF too large: ${fileSizeMB.toFixed(2)}MB (max: ${MAX_PDF_MB}MB)`);
-  }
-
-  let pdfParse: any;
-  try {
-    pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
-  } catch {
-    pdfParse = (await import('pdf-parse')).default;
-  }
-
-  const pdfData = await pdfParse(buffer);
-  let extractedText = pdfData.text;
+  console.log('[LLM-PROC][PDF] Using OCR (Google Vision) for PDF text extraction');
+  
+  // Always use OCR for PDF text extraction
+  const { ocrExtractPdfTextFromUrl } = await import('@/lib/ocr/google-vision');
+  let extractedText = await ocrExtractPdfTextFromUrl(pdfUrl);
+  
   if (!extractedText || extractedText.trim().length < 50) {
-    throw new Error('PDF text extraction failed or insufficient content');
+    throw new Error('OCR text extraction failed or insufficient content');
   }
 
   extractedText = extractedText
@@ -784,28 +743,44 @@ async function extractPdfText(pdfUrl: string): Promise<string> {
     .trim()
     .substring(0, MAX_TEXT_TOKENS);
 
-  console.log(`[LLM-PROC][PDF] Extracted ${extractedText.length} characters from PDF`);
+  console.log(`[LLM-PROC][PDF] Extracted ${extractedText.length} characters from PDF using OCR`);
   return extractedText;
 }
 
 // Call LLM to generate summary only from text; returns a plain string summary
 async function llmGenerateSummaryFromText(text: string, apiKey: string, siteUrl: string): Promise<string> {
-  const chatPayload = {
-    model: OR_MODEL,
-    messages: [
-      { role: 'system', content: 'You are a strict JSON generator. Always respond with a single valid JSON object matching the requested schema. Do not include any prose, code fences, or explanations.' },
-      {
-        role: 'user',
-        content: `Return STRICT JSON ONLY with this schema:
+  // Try to get production profile
+  let productionProfile = null;
+  try {
+    productionProfile = await getActiveProductionProfile();
+  } catch (error) {
+    console.warn('[LLM-PROC][SUMMARY] Failed to get production profile, using defaults:', error);
+  }
+
+  // Use production profile settings if available, otherwise use defaults
+  const model = productionProfile?.model || OR_MODEL;
+  const temperature = productionProfile?.temperature || 0.1;
+  const maxTokens = productionProfile?.maxTokens || 1200;
+  
+  const systemPrompt = productionProfile?.systemPrompt || 'You are a strict JSON generator. Always respond with a single valid JSON object matching the requested schema. Do not include any prose, code fences, or explanations.';
+  
+  const userPrompt = productionProfile?.summaryPrompt || `Return STRICT JSON ONLY with this schema:
 {
   "summary": "Clinical summary in 200-250 words focusing on key findings, health implications, and recommendations"
 }
 Do not include any other keys. Use double quotes and valid JSON. No trailing commas.
-\n\nLab Report Text:\n${text}`
-      }
+\n\nLab Report Text:\n${text}`;
+
+  console.log(`[LLM-PROC][SUMMARY] Using ${productionProfile ? 'production profile' : 'default settings'}: ${model}`);
+
+  const chatPayload = {
+    model,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
     ],
-    max_tokens: 1200,
-    temperature: 0.1,
+    max_tokens: maxTokens,
+    temperature,
     response_format: { type: 'json_object' }
   };
 
@@ -845,13 +820,26 @@ Do not include any other keys. Use double quotes and valid JSON. No trailing com
 
 // Call LLM to generate values (allValues and criticalValues) from text; returns arrays
 async function llmGenerateValuesFromText(text: string, apiKey: string, siteUrl: string): Promise<{ allValues: any[]; criticalValues: any[]; }> {
-  const chatPayload = {
-    model: OR_MODEL,
-    messages: [
-      { role: 'system', content: 'You are a strict JSON generator. Always respond with a single valid JSON object matching the requested schema. Do not include any prose, code fences, or explanations.' },
-      {
-        role: 'user',
-        content: `Return STRICT JSON ONLY with this schema:
+  // Try to get production profile
+  let productionProfile = null;
+  try {
+    productionProfile = await getActiveProductionProfile();
+  } catch (error) {
+    console.warn('[LLM-PROC][VALUES] Failed to get production profile, using defaults:', error);
+  }
+
+  // Use production profile settings if available, otherwise use defaults
+  const model = productionProfile?.model || OR_MODEL;
+  const temperature = productionProfile?.temperature || 0.1;
+  const maxTokens = productionProfile?.maxTokens || 2500;
+  
+  const systemPrompt = productionProfile?.systemPrompt || 'You are a medical lab report analyzer. Extract ONLY the test parameters and values that are explicitly mentioned in the provided lab report text. DO NOT generate, invent, or hallucinate any values not present in the text. Always respond with a single valid JSON object matching the requested schema. Do not include any prose, code fences, or explanations.';
+  
+  const userPrompt = productionProfile?.valuesPrompt || `Extract ONLY the test parameters and values that are explicitly mentioned in the provided lab report text.
+
+CRITICAL: DO NOT generate, invent, or hallucinate any values not present in the text. Only extract values that are explicitly shown in the report.
+
+Return STRICT JSON ONLY with this schema:
 {
   "allValues": [
     {"parameter": "", "value": "", "unit": "", "normalRange": "", "isAbnormal": false, "severity": "LOW|NORMAL|HIGH|CRITICAL", "category": "CBC|LFT|KFT|Lipid Profile|..."}
@@ -860,12 +848,25 @@ async function llmGenerateValuesFromText(text: string, apiKey: string, siteUrl: 
     {"parameter": "", "value": "", "unit": "", "normalRange": "", "isAbnormal": true, "severity": "LOW|NORMAL|HIGH|CRITICAL", "category": "CBC|LFT|KFT|Lipid Profile|..."}
   ]
 }
-Rules: use double quotes and valid JSON, no trailing commas, no additional keys. If a section has no data, return an empty array for it.
-\n\nLab Report Text:\n${text}`
-      }
+Rules: 
+- Extract ONLY values explicitly present in the report
+- DO NOT add any tests not mentioned in the original report
+- Use double quotes and valid JSON, no trailing commas, no additional keys
+- If a section has no data, return an empty array for it
+
+Lab Report Text:
+${text}`;
+
+  console.log(`[LLM-PROC][VALUES] Using ${productionProfile ? 'production profile' : 'default settings'}: ${model}`);
+
+  const chatPayload = {
+    model,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
     ],
-    max_tokens: 2500,
-    temperature: 0.1,
+    max_tokens: maxTokens,
+    temperature,
     response_format: { type: 'json_object' }
   };
 
@@ -890,16 +891,28 @@ Rules: use double quotes and valid JSON, no trailing commas, no additional keys.
   const content = extractOpenRouterContent(data);
   console.log('[LLM-PROC][RAW][VALUES] Extracted content:', content);
 
-  const parsed = tryParseLooseJson(content) || {};
-  const allValues = Array.isArray(parsed.allValues) ? parsed.allValues : [];
-  const criticalValues = Array.isArray(parsed.criticalValues) ? parsed.criticalValues : [];
-  return { allValues, criticalValues };
+      const parsed = tryParseLooseJson(content) || {};
+    const allValues = Array.isArray(parsed.allValues) ? parsed.allValues : [];
+    const criticalValues = Array.isArray(parsed.criticalValues) ? parsed.criticalValues : [];
+    
+    // Log warning if too many values are extracted (potential hallucination)
+    const totalValues = allValues.length + criticalValues.length;
+    if (totalValues > 20) {
+      console.warn(`[LLM-PROC][VALUES] Warning: Extracted ${totalValues} values, which seems high. Please verify against original report.`);
+    }
+    
+    console.log(`[LLM-PROC][VALUES] Extracted ${allValues.length} all values and ${criticalValues.length} critical values`);
+    
+    return { allValues, criticalValues };
 }
 
 // Orchestrate: extract text once, then call two LLMs; fallback to URL strategy if needed
 async function processUsingTextThenLLMs(pdfUrl: string, apiKey: string, siteUrl: string): Promise<{ summary: string; allValues: any[]; criticalValues: any[]; }> {
   try {
-    const text = await extractPdfText(pdfUrl);
+    // Always use OCR for PDF text extraction
+    const { ocrExtractPdfTextFromUrl } = await import('@/lib/ocr/google-vision');
+    console.log('[LLM-PROC] Using OCR (Google Vision) for PDF text extraction');
+    const text = await ocrExtractPdfTextFromUrl(pdfUrl);
     const [summary, values] = await Promise.all([
       llmGenerateSummaryFromText(text, apiKey, siteUrl),
       llmGenerateValuesFromText(text, apiKey, siteUrl)

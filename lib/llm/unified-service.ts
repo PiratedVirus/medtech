@@ -1,5 +1,6 @@
 import 'server-only';
 import { groqLimiter } from './limiter';
+import { getActiveProductionProfile } from './profile-service';
 
 // Configuration
 const GROQ_SUMMARY_MODEL = process.env.GROQ_SUMMARY_MODEL || 'llama-3.3-70b-versatile';
@@ -93,33 +94,14 @@ function tryParseLooseJson(jsonLike: string): any | null {
 
 // PDF Text Extraction
 export async function extractPdfText(pdfUrl: string): Promise<string> {
-  console.log('[LLM-PROC][PDF] Downloading PDF from URL');
-  const response = await fetch(pdfUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to download PDF: ${response.statusText}`);
-  }
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  if (!buffer || buffer.length === 0) {
-    throw new Error('Downloaded PDF buffer is empty');
-  }
-  const fileSizeMB = buffer.length / (1024 * 1024);
-  console.log(`[LLM-PROC][PDF] Size: ${fileSizeMB.toFixed(2)}MB (max ${MAX_PDF_MB}MB)`);
-  if (fileSizeMB > MAX_PDF_MB) {
-    throw new Error(`PDF too large: ${fileSizeMB.toFixed(2)}MB (max: ${MAX_PDF_MB}MB)`);
-  }
+  console.log('[LLM-PROC][PDF] Using OCR (Google Vision) for PDF text extraction');
   
-  let pdfParse: any;
-  try {
-    pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
-  } catch {
-    pdfParse = (await import('pdf-parse')).default;
-  }
+  // Always use OCR for PDF text extraction
+  const { ocrExtractPdfTextFromUrl } = await import('@/lib/ocr/google-vision');
+  let extractedText = await ocrExtractPdfTextFromUrl(pdfUrl);
   
-  const pdfData = await pdfParse(buffer);
-  let extractedText = pdfData.text;
   if (!extractedText || extractedText.trim().length < 50) {
-    throw new Error('PDF text extraction failed or insufficient content');
+    throw new Error('OCR text extraction failed or insufficient content');
   }
   
   extractedText = extractedText
@@ -128,7 +110,7 @@ export async function extractPdfText(pdfUrl: string): Promise<string> {
     .trim()
     .substring(0, MAX_TEXT_TOKENS);
     
-  console.log(`[LLM-PROC][PDF] Extracted ${extractedText.length} characters from PDF`);
+  console.log(`[LLM-PROC][PDF] Extracted ${extractedText.length} characters from PDF using OCR`);
   return extractedText;
 }
 
@@ -140,17 +122,37 @@ async function callGroqAPI(
   maxTokens: number = 1000,
   temperature: number = 0.1
 ): Promise<string> {
+  return callGroqAPIWithProfile(prompt, apiKey, model, maxTokens, temperature);
+}
+
+// Enhanced LLM API Call with system prompt support
+async function callGroqAPIWithProfile(
+  userPrompt: string, 
+  apiKey: string, 
+  model: string, 
+  maxTokens: number = 1000,
+  temperature: number = 0.1,
+  systemPrompt?: string
+): Promise<string> {
   assertValidGroqKey(apiKey);
+  
+  const messages: Array<{ role: string; content: string }> = [];
+  
+  if (systemPrompt) {
+    messages.push({ role: 'system', content: systemPrompt });
+  }
+  
+  messages.push({ role: 'user', content: userPrompt });
   
   const payload = {
     model,
-    messages: [{ role: 'user', content: prompt }],
+    messages,
     max_tokens: maxTokens,
     temperature,
     response_format: { type: 'json_object' }
   };
 
-  const inputTokens = estimateTokensFromText(prompt);
+  const inputTokens = estimateTokensFromText(systemPrompt ? `${systemPrompt}\n${userPrompt}` : userPrompt);
   const outputTokens = maxTokens;
   const tokensCost = inputTokens + outputTokens;
   
@@ -199,7 +201,16 @@ export async function generateSummary(
     console.warn(`[LLM-PROC][SUMMARY] Text truncated from ${processedText.length} to ${finalText.length} chars`);
   }
 
-  const prompt = `You are a medical lab report analyzer. Create a clinical summary of the lab report.
+  // Try to get production profile
+  let productionProfile = null;
+  try {
+    productionProfile = await getActiveProductionProfile();
+  } catch (error) {
+    console.warn('[LLM-PROC][SUMMARY] Failed to get production profile, using defaults:', error);
+  }
+
+  // Use production profile prompts if available, otherwise use defaults
+  const systemPrompt = productionProfile?.systemPrompt || `You are a medical lab report analyzer. Create a clinical summary of the lab report.
 
 IMPORTANT: Return ONLY valid JSON in this exact format (no extra text, no markdown):
 {
@@ -216,13 +227,19 @@ Rules:
 4. NO extra text, comments, or markdown formatting
 5. Use double quotes for all strings
 6. NO trailing commas
-7. Return empty arrays if no data found
+7. Return empty arrays if no data found`;
 
-Lab Report Text:
+  const userPrompt = productionProfile?.summaryPrompt || `Lab Report Text:
 ${finalText}`;
 
+  const finalModel = productionProfile?.model || model;
+  const temperature = productionProfile?.temperature || 0.1;
+  const maxTokens = productionProfile?.maxTokens || 1200;
+
+  console.log(`[LLM-PROC][SUMMARY] Using ${productionProfile ? 'production profile' : 'default settings'}: ${finalModel}`);
+
   try {
-    const content = await callGroqAPI(prompt, apiKey, model, 1200);
+    const content = await callGroqAPIWithProfile(userPrompt, apiKey, finalModel, maxTokens, temperature, systemPrompt);
     const parsed = tryParseLooseJson(content);
     
     if (parsed && typeof parsed.summary === 'string') {
@@ -277,9 +294,24 @@ export async function extractValues(
     console.warn(`[LLM-PROC][VALUES] Text truncated from ${processedText.length} to ${finalText.length} chars`);
   }
 
-  const prompt = `You are a medical lab report analyzer. Extract all test parameters and their values from the lab report text.
+  // Try to get production profile
+  let productionProfile = null;
+  try {
+    productionProfile = await getActiveProductionProfile();
+  } catch (error) {
+    console.warn('[LLM-PROC][VALUES] Failed to get production profile, using defaults:', error);
+  }
 
-IMPORTANT: Return ONLY valid JSON in this exact format (no extra text, no markdown):
+  // Use production profile prompts if available, otherwise use defaults
+  const systemPrompt = productionProfile?.systemPrompt || `You are a medical lab report analyzer. Extract ONLY the test parameters and values that are explicitly mentioned in the provided lab report text.
+
+CRITICAL RULES:
+- Extract ONLY values that are explicitly present in the report text
+- DO NOT generate, invent, or hallucinate any values not present in the text
+- DO NOT add common lab tests that might be expected but are not in the report
+- If a test is not mentioned in the report, DO NOT include it in the results
+
+Return ONLY valid JSON in this exact format (no extra text, no markdown):
 {
   "allValues": [
     {
@@ -306,25 +338,43 @@ IMPORTANT: Return ONLY valid JSON in this exact format (no extra text, no markdo
 }
 
 Rules:
-1. Extract EVERY test parameter you can find
+1. Extract ONLY test parameters explicitly mentioned in the report
 2. Put abnormal values in criticalValues array
 3. Use exact values from the report
 4. Return empty arrays if no data found
 5. NO extra text, comments, or markdown formatting
 6. Use double quotes for all strings
 7. NO trailing commas
+8. DO NOT add any tests not present in the original report`;
 
-Lab Report Text:
+  const userPrompt = productionProfile?.valuesPrompt || `Lab Report Text:
 ${finalText}`;
 
+  const finalModel = productionProfile?.model || model;
+  const temperature = productionProfile?.temperature || 0.1;
+  const maxTokens = productionProfile?.maxTokens || 2500;
+
+  console.log(`[LLM-PROC][VALUES] Using ${productionProfile ? 'production profile' : 'default settings'}: ${finalModel}`);
+
   try {
-    const content = await callGroqAPI(prompt, apiKey, model, 2500);
+    const content = await callGroqAPIWithProfile(userPrompt, apiKey, finalModel, maxTokens, temperature, systemPrompt);
     const parsed = tryParseLooseJson(content);
     
     if (parsed && (Array.isArray(parsed.allValues) || Array.isArray(parsed.criticalValues))) {
+      const allValues = Array.isArray(parsed.allValues) ? parsed.allValues : [];
+      const criticalValues = Array.isArray(parsed.criticalValues) ? parsed.criticalValues : [];
+      
+      // Log warning if too many values are extracted (potential hallucination)
+      const totalValues = allValues.length + criticalValues.length;
+      if (totalValues > 20) {
+        console.warn(`[LLM-PROC][VALUES] Warning: Extracted ${totalValues} values, which seems high. Please verify against original report.`);
+      }
+      
+      console.log(`[LLM-PROC][VALUES] Extracted ${allValues.length} all values and ${criticalValues.length} critical values`);
+      
       return {
-        allValues: Array.isArray(parsed.allValues) ? parsed.allValues : [],
-        criticalValues: Array.isArray(parsed.criticalValues) ? parsed.criticalValues : []
+        allValues,
+        criticalValues
       };
     }
     

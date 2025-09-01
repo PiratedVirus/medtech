@@ -127,11 +127,11 @@ async function extractStandaloneValues(text: string): Promise<{ allValues: any[]
         messages: [
           {
             role: 'system',
-            content: 'You are a medical lab report analyzer. Extract lab values and return ONLY valid JSON with this exact structure: {"allValues": [{"parameter": "name", "value": "value", "unit": "unit", "normalRange": "range", "isAbnormal": true/false, "severity": "LOW|NORMAL|HIGH|CRITICAL", "category": "CBC|LFT|KFT|LIPID|DIABETES"}], "criticalValues": [same structure for abnormal values only]}. Use only double quotes, no trailing commas, and ensure all values are properly formatted.'
+            content: 'You are a medical lab report analyzer. Extract ONLY the test parameters and values that are explicitly mentioned in the provided lab report text. DO NOT generate, invent, or hallucinate any values not present in the text. Return ONLY valid JSON with this exact structure: {"allValues": [{"parameter": "name", "value": "value", "unit": "unit", "normalRange": "range", "isAbnormal": true/false, "severity": "LOW|NORMAL|HIGH|CRITICAL", "category": "CBC|LFT|KFT|LIPID|DIABETES"}], "criticalValues": [same structure for abnormal values only]}. Use only double quotes, no trailing commas, and ensure all values are properly formatted.'
           },
           {
             role: 'user',
-            content: `Extract lab values from this report and return ONLY the JSON object:\n\n${text}`
+            content: `Extract ONLY the test parameters and values that are explicitly mentioned in this lab report. DO NOT generate, invent, or hallucinate any values not present in the text. Return ONLY the JSON object:\n\n${text}`
           }
         ],
         max_tokens: 2000,
