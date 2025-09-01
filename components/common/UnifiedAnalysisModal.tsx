@@ -197,19 +197,19 @@ export default function UnifiedAnalysisModal({
         const data = await response.json();
         console.log('[UI][FETCH] Analysis response:', data);
 
-        if (data.success && data.analysis) {
+        if (data.success && data.exists) {
           const fetchedAnalysis: LabReportAnalysis = {
-            id: data.analysis.id,
-            llmSummary: data.analysis.summary || '',
-            criticalValues: data.analysis.criticalValues || [],
-            allValues: data.analysis.allValues || [],
+            id: 0, // API doesn't return analysis ID, using 0 as placeholder
+            llmSummary: data.summary || '',
+            criticalValues: data.criticalValues || [],
+            allValues: data.allValues || [],
             trendAnalysis: [],
-            processingStatus: data.analysis.processingStatus || 'COMPLETED',
-            llmModel: data.analysis.llmModel || 'cached-from-db',
-            processedAt: data.analysis.processedAt || new Date().toISOString(),
-            keyFindings: data.analysis.keyFindings || [],
-            recommendations: data.analysis.recommendations || [],
-            urgency: data.analysis.urgency || 'ROUTINE'
+            processingStatus: data.processingStatus || 'COMPLETED',
+            llmModel: data.llmModel || 'cached-from-db',
+            processedAt: data.processedAt || new Date().toISOString(),
+            keyFindings: data.keyFindings || [],
+            recommendations: data.recommendations || [],
+            urgency: data.urgency || 'ROUTINE'
           };
           
           setAnalysis(fetchedAnalysis);

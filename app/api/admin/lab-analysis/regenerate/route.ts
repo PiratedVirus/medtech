@@ -46,25 +46,23 @@ export async function POST(request: NextRequest) {
 
     const pdfUrl = labBooking.labResult[labResultIndexNum];
 
-    // Delete existing analysis if it exists
-    const existingAnalysis = await prisma.labReportAnalysis.findFirst({
+    // Use upsert to either update existing analysis or create new one
+    const newAnalysis = await prisma.labReportAnalysis.upsert({
       where: {
-        labBookingId: labBookingIdNum,
-        labResultIndex: labResultIndexNum,
+        labBookingId_labResultIndex: {
+          labBookingId: labBookingIdNum,
+          labResultIndex: labResultIndexNum
+        }
+      },
+      update: {
+        reportUrl: pdfUrl,
+        processingStatus: 'PENDING',
+        llmModel: 'admin-regenerated',
+        processingError: null,
+        processedAt: null,
         deletedAt: null
-      }
-    });
-
-    if (existingAnalysis) {
-      await prisma.labReportAnalysis.update({
-        where: { id: existingAnalysis.id },
-        data: { deletedAt: new Date() }
-      });
-    }
-
-    // Create a new analysis record
-    const newAnalysis = await prisma.labReportAnalysis.create({
-      data: {
+      },
+      create: {
         labBookingId: labBookingIdNum,
         labResultIndex: labResultIndexNum,
         reportUrl: pdfUrl,

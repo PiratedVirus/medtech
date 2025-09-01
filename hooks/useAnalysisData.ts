@@ -13,11 +13,11 @@ export function useAnalysisData() {
     setLoading(true);
     setError(null);
     try {
-      // Fetch prescription data
-      const res = await fetch(`/api/prescription/analysis-status?q=${encodeURIComponent(query)}&take=50`);
+      // Fetch individual prescription data
+      const res = await fetch(`/api/prescription/individual?q=${encodeURIComponent(query)}&take=50`);
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to load prescriptions');
-      setRows(data.rows as Row[]);
+      setRows(data.rows as any[]);
 
       // Fetch lab analysis data
       const labRes = await fetch('/api/admin/dashboard/lab-bookings?pageSize=100');
@@ -35,14 +35,20 @@ export function useAnalysisData() {
                 id: booking.id,
                 labPackageName: booking.labPackage?.name || 'Unknown Package',
                 labResult: booking.labResult || [],
-                analyses: analysesData.analyses || []
+                analyses: analysesData.analyses || [],
+                patient: booking.patient,
+                createdAt: booking.createdAt,
+                status: booking.status
               };
             } catch (error) {
               return {
                 id: booking.id,
                 labPackageName: booking.labPackage?.name || 'Unknown Package',
                 labResult: booking.labResult || [],
-                analyses: []
+                analyses: [],
+                patient: booking.patient,
+                createdAt: booking.createdAt,
+                status: booking.status
               };
             }
           })

@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { useProcessingNotifications } from './useProcessingNotifications';
 
-export function useAnalysisActions(fetchData: () => void) {
+export function useAnalysisActions(
+  fetchData: () => void,
+  addProcessingNotification: (notification: any) => string,
+  updateNotificationStages: (notificationId: string, stages: any[]) => void,
+  updateProcessingNotification: (notificationId: string, updates: any) => void
+) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { addProcessingNotification, updateNotificationStages, updateProcessingNotification } = useProcessingNotifications();
 
   const handleProcessAll = async (patientId: number) => {
     setLoading(true);
@@ -185,6 +188,78 @@ export function useAnalysisActions(fetchData: () => void) {
     }
   };
 
+  const handleRegeneratePrescriptionAnalysis = async (patientId: number) => {
+    setLoading(true);
+    setError(null);
+    
+    // Add progress notification
+    const notificationId = addProcessingNotification({
+      title: `Prescription Analysis - Patient ${patientId}`,
+      type: 'prescription',
+      stages: [],
+      overallStatus: 'processing',
+      reportId: patientId
+    });
+
+    try {
+      // Update notification to show processing started
+      updateNotificationStages(notificationId, [
+        { stage: 'Initializing', status: 'completed', message: 'Regeneration started', timestamp: new Date() },
+        { stage: 'Processing', status: 'processing', message: 'Starting prescription processing...', timestamp: new Date() }
+      ]);
+
+      const res = await fetch('/api/prescription/regenerate-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patientId, force: true })
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to regenerate prescription analysis');
+      }
+
+      const result = await res.json();
+      
+      // The notification will be updated automatically by the polling mechanism
+      // which checks individual prescription statuses
+      
+      await fetchData(); // Refresh the data
+    } catch (e: any) {
+      setError(e?.message || 'Failed to regenerate');
+      // Update notification to show failure
+      updateProcessingNotification(notificationId, {
+        overallStatus: 'failed',
+        stages: [
+          { stage: 'Initializing', status: 'completed', message: 'Regeneration started', timestamp: new Date() },
+          { stage: 'Processing', status: 'failed', message: e?.message || 'Failed to regenerate', timestamp: new Date() }
+        ]
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeletePrescriptionAnalysis = async (prescriptionId: number) => {
+    if (!confirm('Are you sure you want to delete this prescription analysis?')) return;
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/prescription/delete?prescriptionId=${prescriptionId}`, {
+        method: 'DELETE'
+      });
+      
+      if (!res.ok) throw new Error('Failed to delete prescription analysis');
+      
+      await fetchData(); // Refresh the data
+    } catch (e: any) {
+      setError(e?.message || 'Failed to delete');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     loading,
     error,
@@ -192,6 +267,8 @@ export function useAnalysisActions(fetchData: () => void) {
     handleRegenerateLabAnalysis,
     handleDeleteLabAnalysis,
     handleRegenerateStandaloneAnalysis,
-    handleDeleteStandaloneReport
+    handleDeleteStandaloneReport,
+    handleRegeneratePrescriptionAnalysis,
+    handleDeletePrescriptionAnalysis
   };
 }

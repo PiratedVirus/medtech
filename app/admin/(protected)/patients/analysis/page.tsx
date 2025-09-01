@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
-import { Eye, FileText, TrendingUp, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { Eye, FileText, TrendingUp, RefreshCw, Trash2, Upload, Calendar, User, File, ChevronDown, ChevronRight } from 'lucide-react';
 import ProcessingProgressNotification from '@/components/common/ProcessingProgressNotification';
 import UnifiedAnalysisModal from '@/components/common/UnifiedAnalysisModal';
 import SearchHeader from '@/components/analysis/SearchHeader';
@@ -14,6 +14,7 @@ import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useProcessingNotifications } from '@/hooks/useProcessingNotifications';
 import { useAnalysisActions } from '@/hooks/useAnalysisActions';
 import { useAnalysisModals } from '@/hooks/useAnalysisModals';
+import PrescriptionAnalysisModal from '@/components/common/PrescriptionAnalysisModal';
 import { statusBadge, urgencyBadge, labStatusBadge, standaloneStatusBadge, standaloneAnalysisStatusBadge } from '@/utils/analysisHelpers';
 import { Row, LabValue, LabAnalysis, LabBooking, StandaloneReport, StandaloneReportAnalysis } from '@/types/analysis';
 
@@ -23,8 +24,8 @@ export default function PatientsAnalysisPage() {
   
   // Use custom hooks
   const { query, setQuery, loading, rows, labBookings, standaloneReports, error, fetchData } = useAnalysisData();
-  const { processingNotifications, removeProcessingNotification } = useProcessingNotifications();
-  const { loading: actionLoading, error: actionError, handleProcessAll, handleRegenerateLabAnalysis, handleDeleteLabAnalysis, handleRegenerateStandaloneAnalysis, handleDeleteStandaloneReport } = useAnalysisActions(fetchData);
+  const { processingNotifications, removeProcessingNotification, addProcessingNotification, updateNotificationStages, updateProcessingNotification } = useProcessingNotifications();
+  const { loading: actionLoading, error: actionError, handleProcessAll, handleRegenerateLabAnalysis, handleDeleteLabAnalysis, handleRegenerateStandaloneAnalysis, handleDeleteStandaloneReport, handleRegeneratePrescriptionAnalysis, handleDeletePrescriptionAnalysis } = useAnalysisActions(fetchData, addProcessingNotification, updateNotificationStages, updateProcessingNotification);
   const { 
     analysisModalOpen, 
     standaloneModalOpen, 
@@ -33,6 +34,36 @@ export default function PatientsAnalysisPage() {
     closeAnalysisModal, 
     closeStandaloneModal 
   } = useAnalysisModals();
+
+  // Prescription modal state
+  const [prescriptionModalOpen, setPrescriptionModalOpen] = useState(false);
+  const [selectedPrescription, setSelectedPrescription] = useState<any>(null);
+
+  // Prescription modal handlers
+  const handleViewPrescription = (prescription: any) => {
+    setSelectedPrescription(prescription);
+    setPrescriptionModalOpen(true);
+  };
+
+  const closePrescriptionModal = () => {
+    setPrescriptionModalOpen(false);
+    setSelectedPrescription(null);
+  };
+
+  // Prescription row expansion state
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+  const toggleRowExpansion = (rowId: number) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (newExpandedRows.has(rowId)) {
+      newExpandedRows.delete(rowId);
+    } else {
+      newExpandedRows.add(rowId);
+    }
+    setExpandedRows(newExpandedRows);
+  };
+
+
 
   // Filter values based on search term and toggle
   const getFilteredValues = () => {
@@ -64,6 +95,20 @@ export default function PatientsAnalysisPage() {
     } catch {}
   };
 
+  // Helper function to format date
+  const formatDate = (dateString: string | Date) => {
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch {
+      return 'Invalid Date';
+    }
+  };
+
+  // Helper function to get document type display name
+  const getDocumentTypeDisplay = (type: string) => {
+    return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
   return (
     <div className="p-4 space-y-4">
       <Card>
@@ -79,81 +124,184 @@ export default function PatientsAnalysisPage() {
           )}
           
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="prescriptions" className="flex items-center gap-2">
+            {/* Center-aligned tabs that don't stretch full width */}
+            <div className="flex justify-center mb-6">
+              <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+                <TabsTrigger value="prescriptions" className="flex items-center gap-2 px-6">
                 <FileText className="h-4 w-4" />
                 Prescriptions ({rows.length})
               </TabsTrigger>
-              <TabsTrigger value="lab-analysis" className="flex items-center gap-2">
+                <TabsTrigger value="lab-analysis" className="flex items-center gap-2 px-6">
                 <TrendingUp className="h-4 w-4" />
                 Lab Analysis ({labBookings.length})
               </TabsTrigger>
-              <TabsTrigger value="standalone-reports" className="flex items-center gap-2">
-                <Upload className="h-4 w-4" />
-                Standalone Reports ({standaloneReports.length})
-              </TabsTrigger>
+                <TabsTrigger value="standalone-reports" className="flex items-center gap-2 px-6">
+                  <Upload className="h-4 w-4" />
+                  Standalone Reports ({standaloneReports.length})
+                </TabsTrigger>
             </TabsList>
+            </div>
 
+            {/* Unified Table Structure for All Tabs */}
             <TabsContent value="prescriptions" className="space-y-4">
               <div className="overflow-auto border rounded-md">
                 <table className="min-w-full text-sm">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left px-3 py-2">Patient</th>
-                      <th className="text-left px-3 py-2">Phone</th>
-                      <th className="text-left px-3 py-2">Prescriptions</th>
-                      <th className="text-left px-3 py-2">Processed</th>
-                      <th className="text-left px-3 py-2">Failed</th>
-                      <th className="text-left px-3 py-2">Status</th>
-                      <th className="text-left px-3 py-2">Urgency</th>
-                      <th className="text-left px-3 py-2">Summary</th>
-                      <th className="text-left px-3 py-2">Actions</th>
+                      <th className="text-left px-3 py-2 font-medium w-8"></th>
+                      <th className="text-left px-3 py-2 font-medium">Date</th>
+                      <th className="text-left px-3 py-2 font-medium">Patient</th>
+                      <th className="text-left px-3 py-2 font-medium">File Name</th>
+                      <th className="text-left px-3 py-2 font-medium">Uploaded By</th>
+                      <th className="text-left px-3 py-2 font-medium">Document Type</th>
+                      <th className="text-left px-3 py-2 font-medium">Status</th>
+                      <th className="text-left px-3 py-2 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">
-                          {loading ? 'Loading...' : 'No patients found'}
+                        <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
+                          {loading ? 'Loading...' : 'No prescriptions found'}
                         </td>
                       </tr>
                     )}
                     {rows.map(row => (
-                      <tr key={row.id} className="border-t">
+                      <>
+                        <tr key={row.id} className="border-t hover:bg-muted/30">
+                          <td className="px-3 py-2">
+                            {row.prescriptionDetails && row.prescriptionDetails.length > 0 && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => toggleRowExpansion(row.id)}
+                                className="h-6 w-6 p-0"
+                              >
+                                {expandedRows.has(row.id) ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                              </Button>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs">{row.lastUpdated ? formatDate(row.lastUpdated) : 'N/A'}</span>
+                            </div>
+                          </td>
                         <td className="px-3 py-2">
                           <div className="font-medium">{row.name}</div>
                           <div className="text-xs text-muted-foreground">ID: {row.id}</div>
                         </td>
-                        <td className="px-3 py-2">{row.phone || '-'}</td>
-                        <td className="px-3 py-2">{row.totalPrescriptions}</td>
-                        <td className="px-3 py-2">{row.processed}</td>
-                        <td className="px-3 py-2">{row.failed}</td>
-                        <td className="px-3 py-2">{statusBadge(row)}</td>
-                        <td className="px-3 py-2">{urgencyBadge(row.urgency)}</td>
-                        <td className="px-3 py-2">
-                          {row.hasSummary ? (
-                            <div className="text-xs text-muted-foreground">
-                              Updated: {row.lastUpdated ? new Date(row.lastUpdated).toLocaleString() : '-'}
-                              <br />
-                              Count: {row.prescriptionCountInSummary}
-                              <br />
-                              Model: {row.llmModel || '-'}
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-1">
+                              <File className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs">Prescription Summary</span>
                             </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">No summary</span>
+                          </td>
+                        <td className="px-3 py-2">
+                            <div className="flex items-center gap-1">
+                              <User className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs">System</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2">
+                            <Badge variant="outline" className="text-xs">
+                              Prescription Summary
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2">
+                            {row.overallStatus === 'COMPLETED' ? (
+                              <Badge variant="secondary" className="text-xs">Completed</Badge>
+                            ) : row.overallStatus === 'PARTIAL' ? (
+                              <Badge variant="default" className="text-xs">Partial</Badge>
+                            ) : row.overallStatus === 'NO_PRESCRIPTIONS' ? (
+                              <Badge variant="outline" className="text-xs">No Prescriptions</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs">Pending</Badge>
                           )}
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex gap-2">
-                            <Button size="sm" variant="default" onClick={() => handleProcessAll(row.id)} disabled={actionLoading}>
-                              Process All
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleViewPrescription(row)} 
+                                className="text-xs h-7"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                View
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleRegeneratePrescriptionAnalysis(row.id)} 
+                                disabled={actionLoading}
+                                className="text-xs h-7"
+                              >
+                                <RefreshCw className="h-3 w-3 mr-1" />
+                                Regen
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleDeletePrescriptionAnalysis(row.id)} 
+                                disabled={actionLoading}
+                                className="text-xs h-7 text-red-600 border-red-300 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Delete
                             </Button>
-                            <Link href={`/dashboard/patient-profile?patientId=${row.id}`}>
-                              <Button size="sm" variant="outline">View Profile</Button>
-                            </Link>
                           </div>
                         </td>
                       </tr>
+                        {/* Expandable row showing prescription details */}
+                        {expandedRows.has(row.id) && row.prescriptionDetails && row.prescriptionDetails.length > 0 && (
+                          <>
+                            {row.prescriptionDetails.map((prescription) => (
+                              <tr key={`${row.id}-${prescription.id}`} className="bg-muted/10 border-t">
+                                <td className="px-3 py-2"></td>
+                                <td className="px-3 py-2">
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                </td>
+                                <td className="px-3 py-2">
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                </td>
+                                <td className="px-3 py-2">
+                                  <div className="flex items-center gap-1">
+                                    <File className="h-3 w-3 text-muted-foreground" />
+                                    <span className="text-xs">{prescription.fileName}</span>
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2">
+                                  <div className="flex items-center gap-1">
+                                    <User className="h-3 w-3 text-muted-foreground" />
+                                    <span className="text-xs">Dr. {prescription.uploadedBy.name}</span>
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    Prescription
+                                  </Badge>
+                                </td>
+                                <td className="px-3 py-2">
+                                  <Badge 
+                                    variant={prescription.status === 'COMPLETED' ? 'secondary' : prescription.status === 'FAILED' ? 'destructive' : 'outline'}
+                                    className="text-xs"
+                                  >
+                                    {prescription.status}
+                                  </Badge>
+                                </td>
+                                <td className="px-3 py-2">
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                </td>
+                              </tr>
+                            ))}
+                          </>
+                        )}
+                      </>
                     ))}
                   </tbody>
                 </table>
@@ -165,81 +313,59 @@ export default function PatientsAnalysisPage() {
                 <table className="min-w-full text-sm">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left px-3 py-2">Lab Package</th>
-                      <th className="text-left px-3 py-2">Results</th>
-                      <th className="text-left px-3 py-2">Analyses</th>
-                      <th className="text-left px-3 py-2">Status</th>
-                      <th className="text-left px-3 py-2">Last Updated</th>
-                      <th className="text-left px-3 py-2">Actions</th>
+                      <th className="text-left px-3 py-2 font-medium">Date</th>
+                      <th className="text-left px-3 py-2 font-medium">Patient</th>
+                      <th className="text-left px-3 py-2 font-medium">File Name</th>
+                      <th className="text-left px-3 py-2 font-medium">Uploaded By</th>
+                      <th className="text-left px-3 py-2 font-medium">Document Type</th>
+                      <th className="text-left px-3 py-2 font-medium">Status</th>
+                      <th className="text-left px-3 py-2 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {labBookings.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
+                        <td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">
                           {loading ? 'Loading...' : 'No lab bookings found'}
                         </td>
                       </tr>
                     )}
                     {labBookings.map(booking => (
-                      <tr key={booking.id} className="border-t">
+                      <tr key={booking.id} className="border-t hover:bg-muted/30">
                         <td className="px-3 py-2">
-                          <div className="font-medium">{booking.labPackageName}</div>
-                          <div className="text-xs text-muted-foreground">ID: {booking.id}</div>
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="text-xs">
-                            {booking.labResult.length} result(s)
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs">{formatDate(booking.createdAt || new Date())}</span>
                           </div>
                         </td>
                         <td className="px-3 py-2">
-                          <div className="space-y-1">
-                            {booking.labResult.map((result, index) => {
-                              const analysis = booking.analyses.find(a => a.labResultIndex === index);
-                              return (
-                                <div key={index} className="flex items-center gap-2 text-xs">
-                                  <span className="text-muted-foreground">Result {index + 1}:</span>
-                                  {analysis ? (
-                                    <Badge variant="outline" className="text-xs">
-                                      {analysis.processingStatus}
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="outline" className="text-xs">
-                                      No Analysis
-                                    </Badge>
-                                  )}
-                                </div>
-                              );
-                            })}
+                          <div className="font-medium">{booking.patient?.name || 'Unknown Patient'}</div>
+                          <div className="text-xs text-muted-foreground">ID: {booking.patient?.id || 'N/A'}</div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            <File className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs">{booking.labPackageName || 'Lab Report'}</span>
                           </div>
                         </td>
                         <td className="px-3 py-2">
-                          <div className="space-y-1">
-                            {booking.analyses.map((analysis, index) => (
-                              <div key={index} className="flex items-center gap-2">
-                                {labStatusBadge(analysis.processingStatus)}
-                                {analysis.llmSummary && (
-                                  <Eye className="h-3 w-3 text-muted-foreground" />
-                                )}
-                              </div>
-                            ))}
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs">Lab System</span>
                           </div>
                         </td>
                         <td className="px-3 py-2">
-                          <div className="text-xs text-muted-foreground">
-                            {booking.analyses.length > 0 ? (
-                              new Date(Math.max(...booking.analyses.map(a => new Date(a.processedAt || a.createdAt).getTime()))).toLocaleString()
-                            ) : (
-                              'Never'
-                            )}
-                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            Lab Report
+                          </Badge>
                         </td>
+
                         <td className="px-3 py-2">
                           <div className="flex gap-2">
                             {booking.labResult.map((result, index) => {
                               const analysis = booking.analyses.find(a => a.labResultIndex === index);
                               return (
-                                <div key={index} className="flex flex-col gap-1">
+                                <div key={index} className="flex gap-1">
                                   <Button
                                     size="sm"
                                     variant="outline"
@@ -290,30 +416,29 @@ export default function PatientsAnalysisPage() {
                 <table className="min-w-full text-sm">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left px-3 py-2">File</th>
-                      <th className="text-left px-3 py-2">Patient</th>
-                      <th className="text-left px-3 py-2">Type</th>
-                      <th className="text-left px-3 py-2">Status</th>
-                      <th className="text-left px-3 py-2">Analyses</th>
-                      <th className="text-left px-3 py-2">Uploaded By</th>
-                      <th className="text-left px-3 py-2">Created</th>
-                      <th className="text-left px-3 py-2">Actions</th>
+                      <th className="text-left px-3 py-2 font-medium">Date</th>
+                      <th className="text-left px-3 py-2 font-medium">Patient</th>
+                      <th className="text-left px-3 py-2 font-medium">File Name</th>
+                      <th className="text-left px-3 py-2 font-medium">Uploaded By</th>
+                      <th className="text-left px-3 py-2 font-medium">Document Type</th>
+                      <th className="text-left px-3 py-2 font-medium">Status</th>
+                      <th className="text-left px-3 py-2 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {standaloneReports.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
+                        <td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">
                           {loading ? 'Loading...' : 'No standalone reports found'}
                         </td>
                       </tr>
                     )}
                     {standaloneReports.map(report => (
-                      <tr key={report.id} className="border-t">
+                      <tr key={report.id} className="border-t hover:bg-muted/30">
                         <td className="px-3 py-2">
-                          <div className="font-medium">{report.fileName}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {(report.fileSize / 1024 / 1024).toFixed(2)} MB
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs">{formatDate(report.createdAt)}</span>
                           </div>
                         </td>
                         <td className="px-3 py-2">
@@ -321,35 +446,40 @@ export default function PatientsAnalysisPage() {
                           <div className="text-xs text-muted-foreground">{report.patient.phone || 'No phone'}</div>
                         </td>
                         <td className="px-3 py-2">
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {report.reportType.replace('_', ' ')}
-                          </Badge>
+                          <div className="flex items-center gap-1">
+                            <File className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs">{report.fileName}</span>
+                            <div className="text-xs text-muted-foreground">
+                              ({(report.fileSize / 1024 / 1024).toFixed(2)} MB)
+                    </div>
+                          </div>
                         </td>
                         <td className="px-3 py-2">
-                          {standaloneStatusBadge(report.status)}
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3 text-muted-foreground" />
+                            <div className="text-xs">
+                              <div className="font-medium">{report.uploadedBy.name}</div>
+                              <div className="text-muted-foreground capitalize">{report.uploadedBy.role.toLowerCase()}</div>
+                      </div>
+                    </div>
                         </td>
+                        <td className="px-3 py-2">
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {getDocumentTypeDisplay(report.reportType)}
+                          </Badge>
+                        </td>
+
                         <td className="px-3 py-2">
                           <div className="space-y-1">
                             {report.analyses.map((analysis, index) => (
                               <div key={index} className="flex items-center gap-2">
                                 {standaloneAnalysisStatusBadge(analysis)}
                                 <span className="text-xs text-muted-foreground">
-                                  {analysis.analysisType.replace('_', ' ')}
-                                </span>
-                              </div>
+                                  {getDocumentTypeDisplay(analysis.analysisType)}
+                        </span>
+                      </div>
                             ))}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="text-xs">
-                            <div className="font-medium">{report.uploadedBy.name}</div>
-                            <div className="text-muted-foreground capitalize">{report.uploadedBy.role.toLowerCase()}</div>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(report.createdAt).toLocaleString()}
-                          </div>
+                    </div>
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex gap-2">
@@ -391,9 +521,9 @@ export default function PatientsAnalysisPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-            </TabsContent>
-          </Tabs>
+                  </div>
+                </TabsContent>
+              </Tabs>
         </CardContent>
       </Card>
 
@@ -428,6 +558,16 @@ export default function PatientsAnalysisPage() {
       <ProcessingProgressNotification
         notifications={processingNotifications}
         onRemove={removeProcessingNotification}
+      />
+
+      {/* Prescription Analysis Modal */}
+      <PrescriptionAnalysisModal
+        isOpen={prescriptionModalOpen}
+        onClose={closePrescriptionModal}
+        prescription={selectedPrescription}
+        onRegenerate={handleRegeneratePrescriptionAnalysis}
+        onDelete={handleDeletePrescriptionAnalysis}
+        loading={actionLoading}
       />
     </div>
   );

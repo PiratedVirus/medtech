@@ -37,6 +37,16 @@ export function useProcessingNotifications() {
                 }
               }
             }
+          } else if (notification.type === 'prescription' && notification.reportId) {
+            // Check prescription processing status
+            const response = await fetch(`/api/prescription/check-status?patientId=${notification.reportId}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.success) {
+                console.log(`[NOTIFICATION-POLL] Patient ${notification.reportId} status:`, data.data);
+                updatePrescriptionNotification(notification.id, data.data);
+              }
+            }
           }
         } catch (error) {
           console.error('Failed to fetch processing status:', error);
@@ -187,6 +197,75 @@ export function useProcessingNotifications() {
     updateProcessingNotification(notificationId, { stages, overallStatus });
   };
 
+  const updatePrescriptionNotification = (notificationId: string, prescriptionData: any) => {
+    const stages: ProcessingStage[] = [];
+    let overallStatus: 'processing' | 'completed' | 'failed' = 'processing';
+
+    // Add individual prescription processing stages
+    if (prescriptionData.prescriptionStatuses && prescriptionData.prescriptionStatuses.length > 0) {
+      prescriptionData.prescriptionStatuses.forEach((prescription: any, index: number) => {
+        const fileName = prescription.fileName || `Prescription ${prescription.id}`;
+        
+        if (prescription.status === 'COMPLETED') {
+          stages.push({
+            stage: `Processing ${fileName}`,
+            status: 'completed',
+            message: 'Extracted and analyzed successfully',
+            timestamp: new Date()
+          });
+        } else if (prescription.status === 'FAILED') {
+          stages.push({
+            stage: `Processing ${fileName}`,
+            status: 'failed',
+            message: prescription.processingError || 'Processing failed',
+            timestamp: new Date()
+          });
+        } else if (prescription.status === 'PROCESSING') {
+          stages.push({
+            stage: `Processing ${fileName}`,
+            status: 'processing',
+            message: 'Extracting text and generating analysis...',
+            timestamp: new Date()
+          });
+        }
+      });
+    }
+
+    // Determine overall status
+    if (prescriptionData.completed === prescriptionData.totalPrescriptions && prescriptionData.totalPrescriptions > 0) {
+      overallStatus = 'completed';
+      stages.push({
+        stage: 'Patient Summary',
+        status: 'completed',
+        message: 'Generated comprehensive patient summary',
+        timestamp: new Date()
+      });
+      
+      // Auto-remove completed notification after 5 seconds
+      setTimeout(() => {
+        removeProcessingNotification(notificationId);
+      }, 5000);
+    } else if (prescriptionData.failed > 0) {
+      overallStatus = 'failed';
+      stages.push({
+        stage: 'Patient Summary',
+        status: 'failed',
+        message: 'Some prescriptions failed to process',
+        timestamp: new Date()
+      });
+    } else if (prescriptionData.processing > 0 || prescriptionData.pending > 0) {
+      overallStatus = 'processing';
+      stages.push({
+        stage: 'Patient Summary',
+        status: 'processing',
+        message: `Processing ${prescriptionData.completed}/${prescriptionData.totalPrescriptions} prescriptions...`,
+        timestamp: new Date()
+      });
+    }
+
+    updateProcessingNotification(notificationId, { stages, overallStatus });
+  };
+
   return {
     processingNotifications,
     addProcessingNotification,
@@ -194,6 +273,7 @@ export function useProcessingNotifications() {
     removeProcessingNotification,
     updateNotificationStages,
     updateLabAnalysisNotification,
-    updateStandaloneReportNotification
+    updateStandaloneReportNotification,
+    updatePrescriptionNotification
   };
 }

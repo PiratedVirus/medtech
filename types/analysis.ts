@@ -11,6 +11,18 @@ export interface Row {
   prescriptionCountInSummary: number;
   llmModel: string | null;
   hasSummary: boolean;
+  overallStatus?: string;
+  prescriptionDetails?: Array<{
+    id: number;
+    fileName: string;
+    uploadedBy: {
+      name: string;
+      role: string;
+    };
+    status: string;
+    processedAt?: string | Date;
+    hasAnalysis: boolean;
+  }>;
 }
 
 export interface LabValue {
@@ -44,6 +56,16 @@ export interface LabBooking {
   labPackageName: string;
   labResult: string[];
   analyses: LabAnalysis[];
+  createdAt?: string;
+  patient?: {
+    id: number;
+    name: string;
+  };
+  labPackage?: {
+    id: number;
+    name: string;
+  };
+  status?: string;
 }
 
 export interface StandaloneReport {
