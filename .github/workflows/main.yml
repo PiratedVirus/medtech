@@ -18,19 +18,22 @@ jobs:
       branch: ${{ steps.set.outputs.branch }}
     steps:
       - id: set
-        # Priority: manual input → repo variable → fallback 'dev'
         env:
           BRANCH: ${{ inputs.target_branch != '' && inputs.target_branch || (vars.QA_DEPLOY_BRANCH != '' && vars.QA_DEPLOY_BRANCH || 'dev') }}
         run: echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
   deploy:
     needs: resolve
-    # Run on pushes to the resolved branch OR on manual runs
     if: ${{ github.event_name == 'workflow_dispatch' || github.ref_name == needs.resolve.outputs.branch }}
     runs-on: ubuntu-latest
     concurrency:
       group: qa-deploy-${{ needs.resolve.outputs.branch }}
       cancel-in-progress: false
+    env:
+      # Set these once; CLI will pick them up automatically.
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID_QA: ${{ secrets.VERCEL_PROJECT_ID_QA }}
 
     steps:
       - uses: actions/checkout@v4
@@ -45,21 +48,35 @@ jobs:
 
       - run: npm ci
 
-      - name: Link Vercel project (ephemeral)
-        run: npx vercel link --project care-diabetics-qa --yes --token ${{ secrets.VERCEL_TOKEN }}
+      # Optional: ephemeral link; helps generate .vercel/project.json for this job
+      - name: Link Vercel project
+        run: npx vercel link --project "$VERCEL_PROJECT_ID_QA" --yes --token "$VERCEL_TOKEN"
 
       - name: Pull Vercel project settings
-        run: npx vercel pull --yes --environment=production --token ${{ secrets.VERCEL_TOKEN }}
+        run: npx vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
 
       - name: Pull env vars → .env.production
-        run: npx vercel env pull .env.production --environment=production --token ${{ secrets.VERCEL_TOKEN }}
+        run: npx vercel env pull .env.production --environment=production --token "$VERCEL_TOKEN"
 
       - name: Build (Vercel)
-        run: npx vercel build --prod --token ${{ secrets.VERCEL_TOKEN }}
+        run: npx vercel build --prod --token "$VERCEL_TOKEN"
 
       - name: Deploy (prebuilt) to QA
-        run: >
-          npx vercel deploy --prebuilt --prod
-          --project ${{ secrets.VERCEL_PROJECT_ID_QA }}
-          --scope   ${{ secrets.VERCEL_ORG_ID }}
-          --token   ${{ secrets.VERCEL_TOKEN }}
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_URL=$(npx vercel deploy --prebuilt --prod \
+            --project "$VERCEL_PROJECT_ID_QA" \
+            --scope   "$VERCEL_ORG_ID" \
+            --token   "$VERCEL_TOKEN" | tail -n1 | tr -d '\r\n[:space:]')
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        run: |
+          {
+            echo "### QA Deployment ✅"
+            echo ""
+            echo "- **Branch:** \`${{ needs.resolve.outputs.branch }}\`"
+            echo "- **Deployment URL:** ${{ steps.deploy.outputs.url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
