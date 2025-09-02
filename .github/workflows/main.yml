@@ -1,4 +1,4 @@
-name: Deploy to QA (Vercel, unlinked)
+name: Deploy to QA (Vercel, unlinked) - Debug Version
 on:
   push:
     branches: ['**']
@@ -47,40 +47,79 @@ jobs:
 
       - run: npm ci
 
-      # Verify token is available
-      - name: Verify Vercel token
+      # Debug: Check package.json and next.config
+      - name: Debug - Check project configuration
         run: |
-          if [ -z "$VERCEL_TOKEN" ]; then
-            echo "Error: VERCEL_TOKEN is not set"
-            exit 1
+          echo "=== Package.json scripts ==="
+          cat package.json | jq '.scripts'
+          echo ""
+          echo "=== Next.js config (if exists) ==="
+          if [ -f "next.config.js" ]; then
+            cat next.config.js
+          elif [ -f "next.config.mjs" ]; then
+            cat next.config.mjs
+          else
+            echo "No next.config found"
           fi
 
-      # Link project with explicit token
       - name: Link Vercel project
         run: npx vercel link --project "$VERCEL_PROJECT_ID" --yes --token "$VERCEL_TOKEN"
 
-      # Pull settings with explicit token
       - name: Pull Vercel project settings
         run: npx vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
 
-      # Pull env vars with explicit token
+      # Debug: Check what Vercel pulled
+      - name: Debug - Check Vercel config
+        run: |
+          echo "=== .vercel/project.json ==="
+          cat .vercel/project.json || echo "No project.json found"
+          echo ""
+          echo "=== .env.production (first 5 lines) ==="
+          head -n 5 .env.production 2>/dev/null || echo "No .env.production found"
+
       - name: Pull env vars → .env.production
         run: npx vercel env pull .env.production --environment=production --token "$VERCEL_TOKEN"
 
-      # Build with explicit token
-      - name: Build (Vercel)
-        run: npx vercel build --prod --token "$VERCEL_TOKEN"
+      # Try regular build first to see what gets created
+      - name: Debug - Try regular npm build
+        run: |
+          echo "=== Running npm run build ==="
+          npm run build
+          echo ""
+          echo "=== Files created after build ==="
+          ls -la
+          echo ""
+          echo "=== .next directory contents ==="
+          ls -la .next/ || echo "No .next directory found"
+          echo ""
+          echo "=== out directory contents (if exists) ==="
+          ls -la out/ || echo "No out directory found"
 
-      # Deploy with explicit token and better error handling
+      # Now try Vercel build
+      - name: Build (Vercel)
+        run: |
+          echo "=== Running vercel build ==="
+          npx vercel build --prod --token "$VERCEL_TOKEN"
+          echo ""
+          echo "=== Files after Vercel build ==="
+          ls -la
+          echo ""
+          echo "=== .vercel/output contents ==="
+          find .vercel/output -type f | head -20 || echo "No .vercel/output found"
+
       - name: Deploy (prebuilt) to QA
         id: deploy
         shell: bash
         run: |
           set -euo pipefail
-          echo "Deploying with token..."
+          echo "=== Vercel deploy output ==="
           DEPLOY_OUTPUT=$(npx vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN" 2>&1)
-          echo "Deploy output: $DEPLOY_OUTPUT"
-          DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | tail -n1 | tr -d '\r\n[:space:]')
+          echo "$DEPLOY_OUTPUT"
+          DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep -E 'https://.*\.vercel\.app' | tail -n1 | tr -d '\r\n[:space:]')
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "Could not extract deployment URL from output"
+            exit 1
+          fi
           echo "Extracted URL: $DEPLOY_URL"
           echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
 
