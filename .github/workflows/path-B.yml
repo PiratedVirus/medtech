@@ -47,12 +47,31 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install dependencies (if needed for build)
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm i --no-fund --no-audit; fi
+      - name: Install dependencies
+        run: npm ci
 
       - name: Install Vercel CLI
         run: npm i -g vercel@latest
+
+      - name: Create vercel.json for deployment
+        run: |
+          cat > vercel.json << 'EOF'
+          {
+            "framework": "nextjs",
+            "buildCommand": "npm run build",
+            "devCommand": "npm run dev",
+            "installCommand": "npm install",
+            "outputDirectory": ".next",
+            "functions": {
+              "app/api/**/*.ts": {
+                "maxDuration": 60
+              }
+            },
+            "env": {
+              "NODE_ENV": "production"
+            }
+          }
+          EOF
 
       - name: Link Vercel project (Project B)
         run: |
