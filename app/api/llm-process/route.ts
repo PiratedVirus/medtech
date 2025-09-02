@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Process PDF with OpenRouter - Enhanced with multiple strategies
-export async function processWithOpenRouter(analysisId: number, pdfUrl: string, patientId: number, labBookingId: number) {
+async function processWithOpenRouter(analysisId: number, pdfUrl: string, patientId: number, labBookingId: number) {
   try {
     const apiKey = process.env.OPENROUTER_API_KEY;
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";

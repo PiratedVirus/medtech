@@ -102,7 +102,8 @@ export default function DoctorActivePatients() {
   // Group appointments by date
   const grouped: { [date: string]: Appointment[] } = {};
   appointments.forEach((appt) => {
-    const jsDate = new Date(appt.date ?? appt.doctorAvailability?.date);
+    const dateStr = appt.doctorAvailability?.date;
+    const jsDate = new Date(dateStr);
     const key = jsDate.toISOString().split('T')[0];
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(appt);

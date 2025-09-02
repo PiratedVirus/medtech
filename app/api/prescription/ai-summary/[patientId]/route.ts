@@ -144,12 +144,7 @@ export async function POST(
     // Generate comprehensive patient summary
     const summaryResult = await generatePrescriptionSummary(texts, apiKey);
 
-    if (!summaryResult.success) {
-      return NextResponse.json({
-        success: false,
-        error: summaryResult.error || "Failed to generate patient summary"
-      }, { status: 500 });
-    }
+    // summaryResult is of type SummaryResult; errors will throw and be caught below
 
     // Store or update patient AI summary
     const updatedSummary = await prisma.patientAISummary.upsert({

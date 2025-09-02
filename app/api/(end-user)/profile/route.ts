@@ -84,7 +84,6 @@ export async function PUT(request: Request) {
                     : undefined,
                 },
                 create: {
-                  userId: Number(userId),
                   age: patientProfile.age ?? 0,
                   weight: patientProfile.weight,
                   height: patientProfile.height,

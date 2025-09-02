@@ -3,8 +3,9 @@ import { promoteProfileToProduction } from '@/lib/llm/profile-service';
 
 export const runtime = 'nodejs';
 
-export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
-  const id = Number(params.id);
+export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id: idParam } = await params;
+  const id = Number(idParam);
   try {
     const profile = await promoteProfileToProduction(id);
     return NextResponse.json({ success: true, data: profile });

@@ -299,10 +299,6 @@ export default function LlmPlaygroundPage() {
               {/* Lab Values with Toggle (same as unified modal) */}
               {((s.response.allValues && s.response.allValues.length > 0) || (s.response.criticalValues && s.response.criticalValues.length > 0)) && (
                 <div className="relative w-full">
-                  {/* Debug info */}
-                  <div className="text-xs text-gray-500 mb-1">
-                    Debug: AllValues={s.response.allValues?.length || 0}, CriticalValues={s.response.criticalValues?.length || 0}, ShowAll={showAllValues.toString()}
-                  </div>
                   <div className="flex items-center justify-between mb-2">
                     <div className="text-xs text-gray-600">
                       {showAllValues 
@@ -351,12 +347,6 @@ export default function LlmPlaygroundPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {/* Debug: Current data source */}
-                          <tr className="bg-yellow-50">
-                            <td colSpan={4} className="p-2 text-xs text-yellow-800">
-                              Debug: Showing {showAllValues ? 'allValues' : 'criticalValues'} - Count: {(showAllValues ? s.response.allValues : s.response.criticalValues)?.length || 0}
-                            </td>
-                          </tr>
                           {(showAllValues ? s.response.allValues : s.response.criticalValues)?.map((val: any, i: number) => (
                             <tr key={i} className={`border-b ${
                               val.isAbnormal 
@@ -822,10 +812,6 @@ export default function LlmPlaygroundPage() {
               {/* Lab Values Summary with Toggle */}
               {((run.finalOutput.allValues && run.finalOutput.allValues.length > 0) || (run.finalOutput.criticalValues && run.finalOutput.criticalValues.length > 0)) && (
                 <div className="bg-gray-50 p-3 rounded border">
-                  {/* Debug info */}
-                  <div className="text-xs text-gray-500 mb-2">
-                    Debug: AllValues={run.finalOutput.allValues?.length || 0}, CriticalValues={run.finalOutput.criticalValues?.length || 0}, ShowAll={showAllValues.toString()}
-                  </div>
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="font-medium text-gray-900">Lab Values Summary</h4>
                     <div className="flex items-center gap-2">
@@ -877,12 +863,6 @@ export default function LlmPlaygroundPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {/* Debug: Current data source */}
-                          <tr className="bg-yellow-50">
-                            <td colSpan={4} className="p-2 text-xs text-yellow-800">
-                              Debug: Showing {showAllValues ? 'allValues' : 'criticalValues'} - Count: {(showAllValues ? run.finalOutput.allValues : run.finalOutput.criticalValues)?.length || 0}
-                            </td>
-                          </tr>
                           {(showAllValues ? run.finalOutput.allValues : run.finalOutput.criticalValues)?.map((val: any, i: number) => (
                             <tr key={i} className={`border-b ${
                               val.isAbnormal 

@@ -63,7 +63,7 @@ export default function PackageInfo({ labPackage, onBack }: PackageInfoProps) {
                 <ViewParametersDialog
                   open={open}
                   onOpenChange={setOpen}
-                  parameters={parametersArray}
+                  parameters={{ Parameters: parametersArray }}
                 />
               </>
             )}
