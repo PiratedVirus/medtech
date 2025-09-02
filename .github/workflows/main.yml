@@ -1,5 +1,4 @@
 name: Deploy to QA (Vercel, unlinked)
-
 on:
   push:
     branches: ['**']
@@ -30,13 +29,11 @@ jobs:
       group: qa-deploy-${{ needs.resolve.outputs.branch }}
       cancel-in-progress: false
     env:
-      # Set these once; CLI will pick them up automatically.
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       NODE_OPTIONS: --max-old-space-size=6144
       NEXT_DISABLE_SOURCEMAPS: 1
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,25 +47,41 @@ jobs:
 
       - run: npm ci
 
-      # Optional: ephemeral link; helps generate .vercel/project.json for this job
+      # Verify token is available
+      - name: Verify Vercel token
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "Error: VERCEL_TOKEN is not set"
+            exit 1
+          fi
+
+      # Link project with explicit token
       - name: Link Vercel project
         run: npx vercel link --project "$VERCEL_PROJECT_ID" --yes --token "$VERCEL_TOKEN"
 
+      # Pull settings with explicit token
       - name: Pull Vercel project settings
         run: npx vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
 
+      # Pull env vars with explicit token
       - name: Pull env vars → .env.production
         run: npx vercel env pull .env.production --environment=production --token "$VERCEL_TOKEN"
 
+      # Build with explicit token
       - name: Build (Vercel)
         run: npx vercel build --prod --token "$VERCEL_TOKEN"
 
+      # Deploy with explicit token and better error handling
       - name: Deploy (prebuilt) to QA
         id: deploy
         shell: bash
         run: |
           set -euo pipefail
-          DEPLOY_URL=$(npx vercel deploy --prebuilt --prod | tail -n1 | tr -d '\r\n[:space:]')
+          echo "Deploying with token..."
+          DEPLOY_OUTPUT=$(npx vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN" 2>&1)
+          echo "Deploy output: $DEPLOY_OUTPUT"
+          DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | tail -n1 | tr -d '\r\n[:space:]')
+          echo "Extracted URL: $DEPLOY_URL"
           echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
 
       - name: Summary
