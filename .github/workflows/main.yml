@@ -34,6 +34,8 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      NODE_OPTIONS: --max-old-space-size=6144
+      NEXT_DISABLE_SOURCEMAPS: 1
 
     steps:
       - uses: actions/checkout@v4
