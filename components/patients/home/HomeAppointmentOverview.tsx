@@ -8,7 +8,7 @@ import ArrowButton from "@/components/ui/custom/cd-arrow-button"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
 import { useDecryptedProfile } from "@/hooks/use-profile"
-import AppointmentSkeleton from "@/components/ui/custom/cd-appointment-skeleton"
+import { PatientUpcomingSkeleton } from "@/components/ui/custom/cd-appointment-skeleton"
 
 export default function HomeAppointmentOverview() {
   const [isHovered, setIsHovered] = useState(false)
@@ -33,7 +33,7 @@ export default function HomeAppointmentOverview() {
     enabled: !!clinicId && !!profile?.id,
   })
 
-  if (isLoading || profileLoading) return <AppointmentSkeleton />
+  if (isLoading || profileLoading) return <PatientUpcomingSkeleton />
 
   if (isError || !appointment) {
     return (

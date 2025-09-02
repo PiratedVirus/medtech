@@ -44,6 +44,7 @@ export async function GET(request: Request) {
         patient: { select: { name: true, id: true } },
         payment: { select: { paymentMethod: true } },
         doctorAvailability: { select: { date: true, startTime: true, endTime: true } },
+        prescription: { select: { id: true } },
       },
       orderBy: [
         { appointmentDate: "asc" },
@@ -64,6 +65,7 @@ export async function GET(request: Request) {
         patient: { select: { name: true, id: true } },
         payment: { select: { paymentMethod: true } },
         doctorAvailability: { select: { date: true, startTime: true, endTime: true } },
+        prescription: { select: { id: true } },
       },
       orderBy: [
         { appointmentDate: "desc" },
@@ -82,7 +84,7 @@ export async function GET(request: Request) {
           deletedAt: null,
         },
       });
-      console.log("count", count);
+      // console.log("count", count);
       return count === 1;
     }
 
@@ -105,6 +107,7 @@ export async function GET(request: Request) {
             consultationType: appt.consultationType,
             isFirst: first,
             prescriptionLink: isPast ? appt.prescriptionLink : undefined,
+            prescriptionId: appt.prescription?.id || null, // Add prescription ID
             meetingRoomLink: user?.doctorProfile?.meetingRoomLink || null, // Add meetingRoomLink
             ownerToken1: user?.doctorProfile?.ownerToken1 || null, // Add ownerToken1
           };

@@ -24,7 +24,17 @@ import {
   Leaf,
   IndianRupee,
   LogOut,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Brain,
+  Bot,
+  Cpu,
+  Sparkles,
+  Activity,
+  TrendingUp,
+  Zap,
+  Code,
+  Layers,
+  Workflow
 } from "lucide-react"
 import { useState } from "react"
 
@@ -56,6 +66,11 @@ export function SidebarNav({ className, logout, ...props }: SidebarNavProps) {
       href: "/admin/patients",
       icon: HeartPulse,
       title: "Patients",
+    },
+    {
+      href: "/admin/patients/analysis",
+      icon: Brain,
+      title: "AI Analysis",
     },
 
     {
@@ -107,6 +122,11 @@ export function SidebarNav({ className, logout, ...props }: SidebarNavProps) {
       href: "/admin/plans",
       icon: Settings,
       title: "Plans",
+    },
+    {
+      href: "/admin/llm-playground",
+      icon: Bot,
+      title: "LLM Playground",
     },
   ]
   return (

@@ -15,7 +15,31 @@ export default function PackageInfo({ labPackage, onBack }: PackageInfoProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   if (!labPackage) return <CdLoader />;
-  const parametersArray = labPackage?.parameters ? labPackage.parameters.split(",") : [];
+  // Normalize parameters: can be object (grouped), array, or string
+  let parametersArray: string[] = [];
+  try {
+    const raw = labPackage?.parameters;
+    if (Array.isArray(raw)) {
+      parametersArray = raw.map((p: any) => String(p).trim()).filter(Boolean);
+    } else if (raw && typeof raw === 'object') {
+      const values = Object.values(raw as Record<string, any>).flat();
+      parametersArray = (values as any[]).map((p: any) => String(p).trim()).filter(Boolean);
+    } else if (typeof raw === 'string') {
+      const trimmed = raw.trim();
+      if (trimmed.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          parametersArray = Array.isArray(parsed) ? parsed.map((p: any) => String(p).trim()) : [String(parsed).trim()];
+        } catch {
+          parametersArray = trimmed.split(',').map((p: string) => p.trim()).filter(Boolean);
+        }
+      } else {
+        parametersArray = trimmed.split(',').map((p: string) => p.trim()).filter(Boolean);
+      }
+    }
+  } catch {
+    parametersArray = [];
+  }
   return (
     <div className="space-y-8 px-5 sm:px-20">
       {/* Back Button */}
@@ -39,7 +63,7 @@ export default function PackageInfo({ labPackage, onBack }: PackageInfoProps) {
                 <ViewParametersDialog
                   open={open}
                   onOpenChange={setOpen}
-                  parameters={parametersArray}
+                  parameters={{ Parameters: parametersArray }}
                 />
               </>
             )}

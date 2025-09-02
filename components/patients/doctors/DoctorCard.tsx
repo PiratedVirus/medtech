@@ -10,6 +10,8 @@ interface DoctorProfile {
   rating?: number;
   patientStories?: number;
   availability: string[];
+  supportsVideo?: boolean;
+  supportsClinic?: boolean;
 }
 
 interface Doctor {
@@ -59,18 +61,22 @@ export default function DoctorCard({ doctor, onBookAppointment }: DoctorCardProp
 
               <div className="space-y-2">
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Video className="text-purple-500 h-4 w-4" />
-                    <span className="text-purple-500 text-sm">
-                      Video Consultation
-                    </span>
-                  </div>
-                  {/* <div className="flex items-center gap-2">
-                    <Calendar className="text-pink-500 h-4 w-4" />
-                    <span className="text-pink-500 text-sm">
-                      Physical Consultation
-                    </span>
-                  </div> */}
+                  {doctor.doctorProfile?.supportsVideo !== false && (
+                    <div className="flex items-center gap-2">
+                      <Video className="text-purple-500 h-4 w-4" />
+                      <span className="text-purple-500 text-sm">
+                        Video Consultation
+                      </span>
+                    </div>
+                  )}
+                  {doctor.doctorProfile?.supportsClinic !== false && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="text-pink-500 h-4 w-4" />
+                      <span className="text-pink-500 text-sm">
+                        Physical Consultation
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -85,12 +91,12 @@ export default function DoctorCard({ doctor, onBookAppointment }: DoctorCardProp
                 </span>
               </div> */}
 
-              <div className="flex items-center gap-2 text-[#56a67c]">
+              {/* <div className="flex items-center gap-2 text-[#56a67c]">
                 <Calendar className="text-green-500 h-4 w-4" />
                 <span >
                   {doctor?.doctorProfile?.availability?.length > 0 ? <span className="text-green-500 text-sm">Available Today</span> : <span className="text-red-500 text-sm">Not Available Today</span>}
                 </span>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
@@ -98,21 +104,25 @@ export default function DoctorCard({ doctor, onBookAppointment }: DoctorCardProp
         {/* Booking Section - Separated and centered */}
         <div className="mt-2 pb-4 text-center">
           <div className="flex flex-col sm:flex-row gap-3 justify-center px-4">
-            <Button
-              size="lg"
-              onClick={() => onBookAppointment(doctor, "video")}
-              className="bg-[#f28a2e] hover:bg-[#f28a2e]/90 text-white rounded-full px-6"
-            >
-              Book video visit
-            </Button>
-            {/* <Button
-              size="lg"
-              variant="outline"
-              onClick={() => onBookAppointment(doctor, 'clinic')}
-              className="border-[#f28a2e] text-[#f28a2e] hover:bg-[#f28a2e]/10 rounded-full px-6"
-            >
-              Book clinic visit
-            </Button> */}
+            {doctor.doctorProfile?.supportsVideo !== false && (
+              <Button
+                size="lg"
+                onClick={() => onBookAppointment(doctor, "video")}
+                className="bg-[#f28a2e] hover:bg-[#f28a2e]/90 text-white rounded-full px-6"
+              >
+                Book video visit
+              </Button>
+            )}
+            {doctor.doctorProfile?.supportsClinic !== false && (
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => onBookAppointment(doctor, 'clinic')}
+                className="border-[#f28a2e] text-[#f28a2e] hover:bg-[#f28a2e]/10 rounded-full px-6"
+              >
+                Book clinic visit
+              </Button>
+            )}
           </div>
         </div>
       </CardContent>

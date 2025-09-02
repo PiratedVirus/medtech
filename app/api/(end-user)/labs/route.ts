@@ -123,7 +123,7 @@ export async function POST(request: Request) {
       // Create the lab booking
       const booking = await tx.labBooking.create({
         data: {
-          patientId,
+          patientId: parseInt(patientId, 10),
           labPackageId: packageId,
           appointmentFor,
           fullName,
@@ -138,59 +138,9 @@ export async function POST(request: Request) {
 
       console.log("LabBooking created:", booking);
 
-      // Check if there's already an active assignment for this patient
-      const existingAssignment = await tx.labAssignment.findFirst({
-        where: {
-          patientId,
-          status: {
-            in: ["PENDING", "ASSIGNED", "PHLEBOTOMIST_LEFT", "SAMPLE_COLLECTED", "IN_LAB", "ANALYZING"],
-          },
-          deletedAt: null,
-        },
-      });
-
-      // Only create lab assignment if no existing assignment
-      if (!existingAssignment) {
-        // Get default lab and phlebotomist for assignment
-        const defaultLab = await tx.pathologyLab.findFirst({
-          where: { isActive: true, deletedAt: null }
-        });
-
-        const availablePhlebotomist = await tx.phlebotomist.findFirst({
-          where: { isAvailable: true, deletedAt: null }
-        });
-
-        // Create lab assignment automatically
-        if (defaultLab && availablePhlebotomist) {
-          const labAssignment = await tx.labAssignment.create({
-            data: {
-              patientId,
-              phlebotomistId: availablePhlebotomist.id,
-              labId: defaultLab.id,
-              labBookingId: booking.id,
-              assignedDate: new Date(date),
-              assignedTime: "09:00", // Default time
-              status: "PENDING",
-              sampleCollected: false,
-            },
-          });
-
-          console.log("LabAssignment created:", labAssignment);
-
-          // Update lab booking with assignment ID
-          await tx.labBooking.update({
-            where: { id: booking.id },
-            data: { labAssignmentId: labAssignment.id },
-          });
-        }
-      } else {
-        // Link existing assignment to this booking
-        await tx.labBooking.update({
-          where: { id: booking.id },
-          data: { labAssignmentId: existingAssignment.id },
-        });
-        console.log("Linked existing assignment to booking:", existingAssignment.id);
-      }
+      // Manual assignment policy: do not auto-create or link any LabAssignment here.
+      // Pathology staff will assign phlebotomists from the pathology panel.
+      console.log("Manual assignment policy active: no auto-creation/linking of LabAssignment for booking:", booking.id);
 
       // Update subscription tracker if using plan
       if (paymentOption === "plan") {

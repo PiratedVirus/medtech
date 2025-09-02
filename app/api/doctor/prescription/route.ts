@@ -183,6 +183,27 @@ export async function POST(request: Request) {
       return newPrescription;
     });
 
+    // Trigger background LLM processing for the structured prescription
+    try {
+      fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/prescription/process-structured`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prescriptionId: prescription.id
+        }),
+      }).catch(error => {
+        console.error("Background structured prescription processing trigger failed:", error);
+        // Don't fail the prescription creation if background processing fails
+      });
+      
+      console.log("Background structured prescription processing triggered for prescription:", prescription.id);
+    } catch (processingError) {
+      console.error("Failed to trigger background structured prescription processing:", processingError);
+      // Don't fail the prescription creation if background processing setup fails
+    }
+
     return NextResponse.json({
       success: true,
       data: prescription,
@@ -399,6 +420,27 @@ export async function PUT(request: Request) {
 
       return updatedPrescription;
     });
+
+    // Trigger background LLM processing for the updated structured prescription
+    try {
+      fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/prescription/process-structured`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prescriptionId: prescriptionIdNum
+        }),
+      }).catch(error => {
+        console.error("Background structured prescription processing trigger failed:", error);
+        // Don't fail the prescription update if background processing fails
+      });
+      
+      console.log("Background structured prescription processing triggered for updated prescription:", prescriptionIdNum);
+    } catch (processingError) {
+      console.error("Failed to trigger background structured prescription processing:", processingError);
+      // Don't fail the prescription update if background processing setup fails
+    }
 
     return NextResponse.json({
       success: true,

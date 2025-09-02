@@ -1,8 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import UpcomingAppointment from "@/appointment-view/UpcomingACardAView";
-import ArrowButton from "@/components/ui/custom/cd-arrow-button";
 import AppointmentListCard from "@/appointment-view/ListCardAView";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
@@ -40,7 +38,7 @@ export default function PrescriptionViewHome() {
     return <p className="text-red-500 text-center py-5">Something went wrong. Failed to load appointments.</p>;
   }
 
-  const pastAppointments = appointments?.past ?? [];
+  const pastAppointments = (appointments?.past ?? []).filter((a: any) => a.prescriptionLink);
   const futureAppointments = appointments?.upcoming ?? [];
   const upcoming = futureAppointments.length > 0 ? futureAppointments[0] : null;
 

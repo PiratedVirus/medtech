@@ -44,6 +44,15 @@ export default function AssignmentModal({
   useEffect(() => {
     if (isOpen) {
       fetchPhlebotomists();
+      // Prefill date from lab booking date if present; editable by user
+      const prefillDate = appointment?.labBooking?.labDate || appointment?.assignedDate || appointment?.appointmentDate;
+      try {
+        if (prefillDate) {
+          const d = new Date(prefillDate);
+          setAssignedDate(format(d, "yyyy-MM-dd"));
+        }
+      } catch {}
+      setAssignedTime(appointment?.assignedTime || "");
     }
   }, [isOpen]);
 

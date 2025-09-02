@@ -61,7 +61,7 @@ export default function AppointmentListCard({ appointment }: { appointment: Appo
         {/* Prescription Button */}
         {appointment?.prescriptionLink ? (
           <div className="text-right">
-            <Link href={appointment?.prescriptionLink || "/#"}>
+            <Link href={appointment.prescriptionLink} target="_blank">
               <p className="text-secondary font-medium cursor-pointer hover:underline">
                 Prescription
               </p>

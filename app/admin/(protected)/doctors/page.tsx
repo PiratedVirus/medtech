@@ -88,6 +88,8 @@ type DoctorsPageFormData = {
   clinicId: number;
   isDietician: boolean;
   doctorCode: string;
+  supportsVideo?: boolean;
+  supportsClinic?: boolean;
 };
 
 export default function DoctorsPage() {
@@ -345,6 +347,8 @@ export default function DoctorsPage() {
         consultationFee: Number(formData.consultationFee),
         isDietician: formData.isDietician || false,
         doctorCode: formData.doctorCode.toUpperCase(),
+        supportsVideo: formData.supportsVideo ?? true,
+        supportsClinic: formData.supportsClinic ?? true,
       };
 
       if (selectedDoctor) {
@@ -775,6 +779,39 @@ export default function DoctorsPage() {
                 </div>
               )}
             />
+            {/* Consultation types */}
+            <div className="space-y-2">
+              <div className="font-medium">Consultation Availability</div>
+              <div className="flex items-center gap-6">
+                <Controller
+                  control={control}
+                  name="supportsVideo"
+                  defaultValue={true}
+                  rules={{ validate: () => (watch('supportsVideo') || watch('supportsClinic')) || 'Select at least one' }}
+                  render={({ field }) => (
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={!!field.value} onChange={(e)=> field.onChange(e.target.checked)} className="w-4 h-4" />
+                      Video / Online consultation
+                    </label>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="supportsClinic"
+                  defaultValue={true}
+                  rules={{ validate: () => (watch('supportsVideo') || watch('supportsClinic')) || 'Select at least one' }}
+                  render={({ field }) => (
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={!!field.value} onChange={(e)=> field.onChange(e.target.checked)} className="w-4 h-4" />
+                      Physical / Clinic consultation
+                    </label>
+                  )}
+                />
+              </div>
+              {!(watch('supportsVideo') || watch('supportsClinic')) && (
+                <div className="text-xs text-red-600">Select at least one consultation mode</div>
+              )}
+            </div>
             <Input
               {...register("doctorCode", {
                 required: true,

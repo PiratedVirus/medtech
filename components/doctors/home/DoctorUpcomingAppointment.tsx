@@ -2,6 +2,7 @@ import UpcomingAppointment from '@/components/patients/appointments/view/Upcomin
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useDecryptedProfile } from '@/hooks/use-profile';
+import { DoctorUpcomingSkeleton } from '@/components/ui/custom/cd-appointment-skeleton';
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -23,7 +24,11 @@ export default function DoctorUpcomingAppointment() {
         setIsLoading(true);
         const res = await axios.get('/api/doctor/appointments/upcoming');
         if (res.data.appointments && res.data.appointments.length > 0) {
-          setUpcomingAppointment(res.data.appointments[0]); // Get the first upcoming appointment
+          // Defensive sort by the transformed date to avoid server/client drift
+          const sorted = [...res.data.appointments].sort(
+            (a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime()
+          );
+          setUpcomingAppointment(sorted[0]);
         }
       } catch (error) {
         console.error('Error fetching upcoming appointment:', error);
@@ -43,11 +48,19 @@ export default function DoctorUpcomingAppointment() {
     <div className="flex flex-col justify-between">
       <div className="mb-2">
         {isLoading ? (
-          <div className="text-gray-600">Loading upcoming appointments...</div>
+          <DoctorUpcomingSkeleton />
         ) : upcomingAppointment ? (
           <UpcomingAppointment appointment={upcomingAppointment} mode="doctor" />
         ) : (
-          <div className="text-gray-600">No upcoming appointments</div>
+          <div className="relative rounded-3xl px-8 py-7 bg-gradient-to-tr from-[#1e5636] to-[#2e8b57] overflow-hidden shadow-none">
+            <div className="absolute left-0 right-0 bottom-0 top-0 z-0" style={{background: 'radial-gradient(ellipse at 60% 70%, #56A67C55 40%, transparent 80%)'}} />
+            <div className="relative z-10 flex items-center justify-between">
+              <div>
+                <div className="text-white text-2xl font-semibold leading-tight">No upcoming appointments</div>
+                <div className="text-[#e6ffe6] text-sm mt-2">You're all caught up. New appointments will appear here.</div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -79,7 +79,7 @@ export default function DoctorEarningsWidget( {isDropdownVisible, earningType}: 
   const totalEarnings = data.reduce((sum, item) => sum + item.earnings, 0);
 
   return (
-    <div className="relative col-span-3 rounded-3xl flex flex-col justify-between px-8 py-7 bg-gradient-to-tr from-[#1e5636] to-[#2e8b57] overflow-hidden shadow-none">
+    <a href="/doctor/earnings" className="relative col-span-3 rounded-3xl flex flex-col justify-between px-8 py-7 bg-gradient-to-tr from-[#1e5636] to-[#2e8b57] overflow-hidden shadow-none">
       {/* Glow effect */}
       <div className="absolute left-0 right-0 bottom-0 top-0 z-0" style={{background: 'radial-gradient(ellipse at 60% 70%, #56A67C55 40%, transparent 80%)'}} />
       <div className="relative z-10 flex flex-col h-full">
@@ -143,6 +143,6 @@ export default function DoctorEarningsWidget( {isDropdownVisible, earningType}: 
           </ResponsiveContainer>
         </div>
       </div>
-    </div>
+    </a>
   );
 } 

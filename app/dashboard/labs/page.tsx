@@ -12,6 +12,7 @@ import LabCard from "@/components/patients/labs/view/LabCard";
 // Removed labResult import, using live data from API
 import LabResultCard from "@/components/patients/labs/view/LabResultCard";
 import { useState } from "react";
+import ReportUploadButton from "@/components/common/ReportUploadButton";
 
 export default function LabsPage() {
   const router = useRouter();
@@ -19,7 +20,7 @@ export default function LabsPage() {
   const { profile, isLoading: profileLoading } = useDecryptedProfile();
   const patientId = profile?.id;
   const clinicId = profile?.clinicId;
-  const { data: labData = { scheduled: [], completed: [] }, isLoading: loadingResults } = useQuery({
+  const { data: labData = { scheduled: [], completed: [] }, isLoading: loadingResults, refetch: fetchLabData } = useQuery({
     queryKey: ["labResults", patientId],
     queryFn: async () => {
       const response = await axios.get(`/api/labs?patientId=${patientId}`);
@@ -55,6 +56,7 @@ export default function LabsPage() {
 
   const [searchPackages, setSearchPackages] = useState("");
   const [searchTests, setSearchTests] = useState("");
+  const [tab, setTab] = useState<'catalog' | 'bookings'>("catalog");
 
   const labPackages = (labs || [])
     .filter((lab: any) => lab.isLabPackage === true)
@@ -71,8 +73,29 @@ export default function LabsPage() {
   if (isError) {
     return <p className="text-red-500 text-center py-5">Something went wrong. Failed to load labs.</p>;
   }
+
   return (
     <>
+      {/* Toggle Tabs */}
+      <div className="bg-muted px-4 sm:px-8 md:px-12 lg:px-20 py-4 flex items-center justify-center">
+        <div className="inline-flex border rounded-full overflow-hidden">
+          <button
+            className={`px-4 py-2 text-sm font-medium ${tab === 'catalog' ? 'bg-primary text-white' : 'bg-white text-gray-700'}`}
+            onClick={() => setTab('catalog')}
+          >
+            Tests & Packages
+          </button>
+          <button
+            className={`px-4 py-2 text-sm font-medium border-l ${tab === 'bookings' ? 'bg-primary text-white' : 'bg-white text-gray-700'}`}
+            onClick={() => setTab('bookings')}
+          >
+            My Bookings
+          </button>
+        </div>
+      </div>
+
+      {tab === 'catalog' && (
+      <>
       {/* Lab Booking Section */}
       <div className="bookPackages">
         <div className="bg-muted h-fit px-4 sm:px-8 md:px-12 lg:px-20 pb-4">
@@ -156,6 +179,11 @@ export default function LabsPage() {
       </div>
 
       {/* Past Lab Bookings Section */}
+      </>
+      )}
+
+      {tab === 'bookings' && (
+      <>
       <div className="currentPackages">
         <div className="bg-muted h-fit px-4 sm:px-8 md:px-12 lg:px-20 pb-10">
           <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
@@ -168,6 +196,19 @@ export default function LabsPage() {
                   Here you can view your current bookings
                 </p>
               </div>
+            </div>
+            <div className="mt-4 md:mt-0">
+              <ReportUploadButton
+                patientId={Number(profile?.id)}
+                onUploadSuccess={() => {
+                  // Refresh lab data after upload
+                  fetchLabData();
+                }}
+                variant="default"
+                size="sm"
+              >
+                Upload Report
+              </ReportUploadButton>
             </div>
           </div>
 
@@ -211,6 +252,8 @@ export default function LabsPage() {
           )}
         </div>
       </div>
+      </>
+      )}
 
     </>
   );

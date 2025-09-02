@@ -106,8 +106,13 @@ async function main() {
       const { seedPayments } = require('./payments');
       const payments = await seedPayments(tx);
       
-      // 17. Comprehensive Seed (ensure all tables are populated)
-      console.log("\n🔧 Step 17/17: Running comprehensive seed...");
+      // 17. Seed default LLM Playground profile
+      console.log("\n🤖 Step 17/18: Seeding LLM Playground default profile...");
+      const { seedLlmPlaygroundProfile } = require('./llmPlaygroundProfile');
+      await seedLlmPlaygroundProfile(tx);
+
+      // 18. Comprehensive Seed (ensure all tables are populated)
+      console.log("\n🔧 Step 18/18: Running comprehensive seed...");
       const { comprehensiveSeed } = require('./comprehensiveSeed');
       await comprehensiveSeed(tx);
       

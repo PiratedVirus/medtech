@@ -8,13 +8,26 @@ export async function GET(request: NextRequest) {
   try {
     // In a real app, you'd get the doctor ID from the session/auth
     const doctorId = 1; // Replace with actual auth logic - should be a number
+    const { searchParams } = new URL(request.url);
+    const type = (searchParams.get('type') || 'all').toLowerCase(); // 'complaints' | 'medicines' | 'all'
     
+    const whereBase: any = {
+      doctorId: doctorId,
+      deletedAt: null,
+      isActive: true,
+    };
+
+    // Filter by type if requested
+    if (type === 'complaints') {
+      // Only complaints templates based on scope
+      whereBase.templateScope = 'COMPLAINTS';
+    } else if (type === 'medicines') {
+      // Only medicines templates based on scope
+      whereBase.templateScope = 'MEDICINES';
+    }
+
     const templates = await prisma.prescriptionTemplate.findMany({
-      where: {
-        doctorId: doctorId,
-        deletedAt: null,
-        isActive: true,
-      },
+      where: whereBase,
       include: {
         complaints: true,
         medicines: true,
@@ -63,11 +76,17 @@ export async function POST(request: NextRequest) {
     // In a real app, you'd get the doctor ID from the session/auth
     const doctorId = 1; // TODO: Replace with auth context
 
+    // Determine scope based on which arrays are present
+    const hasComplaints = complaintsArr.length > 0;
+    const hasMedicines = medicinesArr.length > 0;
+    const templateScope = hasComplaints && hasMedicines ? 'FULL' : hasComplaints ? 'COMPLAINTS' : hasMedicines ? 'MEDICINES' : 'FULL';
+
     const template = await prisma.prescriptionTemplate.create({
       data: {
         templateName: name,
         templateDescription: `Template created on ${new Date().toLocaleDateString()}`,
         doctorId,
+        templateScope: templateScope as any,
         advice: templateData.advice || "",
         testsRequested: templateData.testsRequested || "",
         complaints: {

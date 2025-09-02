@@ -28,9 +28,12 @@ export async function GET(request: Request) {
     }
 
     const currentTime = new Date();
+    const startOfToday = new Date(currentTime);
+    startOfToday.setHours(0,0,0,0);
 
     // Fetch ongoing lab assignments (started workflow)
     // These are assignments that have moved beyond the "ready to start" phase
+    console.log('[PATHO][ONGOING] fetching ongoing assignments');
     const ongoingAssignments = await prisma.labAssignment.findMany({
       where: {
         status: {
@@ -96,6 +99,7 @@ export async function GET(request: Request) {
     });
 
     // Transform the data to match frontend expectations
+    console.log('[PATHO][ONGOING] found:', ongoingAssignments.length);
     const transformedAssignments = ongoingAssignments.map((assignment) => ({
       id: assignment.id,
       patient: {

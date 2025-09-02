@@ -30,6 +30,8 @@ const SOFT_DELETE_MODELS = new Set<string>([
   'HealthMetric',
   'PrescriptionTemplate',
   'CommonValue',
+  'LabReportAnalysis',
+  'ReportTrendData',
 ] as const)
 
 // Optional: models where you also flip a status on soft delete

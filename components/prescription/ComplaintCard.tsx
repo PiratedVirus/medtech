@@ -3,6 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { X, FileText, Flag } from "lucide-react";
@@ -35,6 +36,8 @@ export default function ComplaintCard({
 }: ComplaintCardProps) {
   const { toast } = useToast();
   const [isSplitScreen, setIsSplitScreen] = useState(false);
+  const [durationUnit, setDurationUnit] = useState<'days' | 'weeks' | 'months' | 'years'>('days');
+  const [durationValue, setDurationValue] = useState<number>(1);
 
   useEffect(() => {
     const detectSplitScreen = () => {
@@ -98,6 +101,57 @@ export default function ComplaintCard({
     return severityMap[value as keyof typeof severityMap] || "MODERATE";
   };
 
+  const unitMultiplier = (unit: 'days' | 'weeks' | 'months' | 'years'): number => {
+    switch (unit) {
+      case 'weeks':
+        return 7;
+      case 'months':
+        return 30; // approximate month
+      case 'years':
+        return 365; // approximate year
+      default:
+        return 1;
+    }
+  };
+
+  const pickBestUnit = (days: number): { unit: 'days' | 'weeks' | 'months' | 'years'; value: number } => {
+    if (days % 365 === 0 && days >= 365) {
+      return { unit: 'years', value: Math.max(days / 365, 1) };
+    }
+    if (days % 30 === 0 && days >= 30) {
+      return { unit: 'months', value: Math.max(days / 30, 1) };
+    }
+    if (days % 7 === 0 && days >= 7) {
+      return { unit: 'weeks', value: Math.max(days / 7, 1) };
+    }
+    return { unit: 'days', value: Math.max(days, 1) };
+  };
+
+  // Keep local duration value in sync if parent updates daysSince
+  useEffect(() => {
+    const days = Math.max(complaint.daysSince || 1, 1);
+    const best = pickBestUnit(days);
+    setDurationUnit(best.unit);
+    setDurationValue(best.value);
+  }, [complaint.daysSince]);
+
+  const handleDurationValueChange = (v: string) => {
+    const num = Math.max(parseInt(v || '1', 10) || 1, 1);
+    setDurationValue(num);
+    const days = num * unitMultiplier(durationUnit);
+    onUpdate({ daysSince: days });
+  };
+
+  const handleDurationUnitChange = (unit: string) => {
+    const u = (unit as 'days' | 'weeks' | 'months' | 'years');
+    const sourceDays = Math.max(complaint.daysSince || (durationValue * unitMultiplier(durationUnit)), 1);
+    const newValue = Math.max(Math.round(sourceDays / unitMultiplier(u)), 1);
+    setDurationUnit(u);
+    setDurationValue(newValue);
+    const days = newValue * unitMultiplier(u);
+    onUpdate({ daysSince: days });
+  };
+
   return (
     <Card className="p-4 bg-custom-mutedgreen">
       {isSplitScreen ? (
@@ -114,22 +168,25 @@ export default function ComplaintCard({
               </div>
             </div>
             
-            {/* Days selector */}
+            {/* Duration input with unit selector */}
             <div className="flex items-center gap-2 ml-4">
-              <span className="text-xs text-gray-500">Days:</span>
-              <Select
-                value={complaint.daysSince?.toString() || "1"}
-                onValueChange={(value) => onUpdate({ daysSince: parseInt(value) })}
-              >
-                <SelectTrigger className="w-16 h-8 bg-white rounded-lg">
+              <span className="text-xs text-gray-500">Duration:</span>
+              <Input
+                type="number"
+                min={1}
+                value={durationValue}
+                onChange={(e) => handleDurationValueChange(e.target.value)}
+                className="w-20 h-8 bg-white rounded-lg"
+              />
+              <Select value={durationUnit} onValueChange={(value) => handleDurationUnitChange(value)}>
+                <SelectTrigger className="w-24 h-8 bg-white rounded-lg">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white text-black">
-                  {[1, 2, 3, 4, 5, 6, 7, 14, 21, 30].map((day) => (
-                    <SelectItem key={day} value={day.toString()}>
-                      {day}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="days">Days</SelectItem>
+                  <SelectItem value="weeks">Weeks</SelectItem>
+                  <SelectItem value="months">Months</SelectItem>
+                  <SelectItem value="years">Years</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -201,22 +258,25 @@ export default function ComplaintCard({
           {/* Right side - Controls (6 cols) */}
           <div className="col-span-6">
             <div className="flex items-center justify-between gap-3">
-              {/* Days selector */}
+              {/* Duration input with unit selector */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">Days:</span>
-                <Select
-                  value={complaint.daysSince?.toString() || "1"}
-                  onValueChange={(value) => onUpdate({ daysSince: parseInt(value) })}
-                >
-                  <SelectTrigger className="w-16 h-8 bg-white rounded-lg">
+                <span className="text-xs text-gray-500">Duration:</span>
+                <Input
+                  type="number"
+                  min={1}
+                  value={durationValue}
+                  onChange={(e) => handleDurationValueChange(e.target.value)}
+                  className="w-20 h-8 bg-white rounded-lg"
+                />
+                <Select value={durationUnit} onValueChange={(value) => handleDurationUnitChange(value)}>
+                  <SelectTrigger className="w-24 h-8 bg-white rounded-lg">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-white text-black">
-                    {[1, 2, 3, 4, 5, 6, 7, 14, 21, 30].map((day) => (
-                      <SelectItem key={day} value={day.toString()}>
-                        {day}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="days">Days</SelectItem>
+                    <SelectItem value="weeks">Weeks</SelectItem>
+                    <SelectItem value="months">Months</SelectItem>
+                    <SelectItem value="years">Years</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
