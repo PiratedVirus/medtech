@@ -19,6 +19,10 @@ on:
         options:
           - cloud
           - prebuilt
+      ref:
+        description: "Git branch to deploy"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -35,6 +39,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref != '' && inputs.ref || github.ref_name }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
