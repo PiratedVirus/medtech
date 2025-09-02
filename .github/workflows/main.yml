@@ -1,65 +1,62 @@
 name: Deploy to QA (Vercel, unlinked)
 
 on:
-  # Build on any push, but we'll gate the job by the selected branch.
   push:
     branches: ['**']
-  # Manual trigger lets you pick a branch per run.
   workflow_dispatch:
     inputs:
       target_branch:
         description: 'Branch to deploy'
-        required: true
+        required: false
         default: 'dev'
         type: string
 
-# Decide the branch to deploy, in this order:
-# 1) manual input, 2) repo variable QA_DEPLOY_BRANCH, 3) fallback "dev"
-env:
-  DEPLOY_BRANCH: ${{ inputs.target_branch || vars.QA_DEPLOY_BRANCH || 'dev' }}
-
 jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.set.outputs.branch }}
+    steps:
+      - id: set
+        # Priority: manual input → repo variable → fallback 'dev'
+        env:
+          BRANCH: ${{ inputs.target_branch != '' && inputs.target_branch || (vars.QA_DEPLOY_BRANCH != '' && vars.QA_DEPLOY_BRANCH || 'dev') }}
+        run: echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
   deploy:
-    # Only run when the pushed branch (or manual input) matches DEPLOY_BRANCH.
-    if: ${{ github.event_name == 'workflow_dispatch' || github.ref_name == env.DEPLOY_BRANCH }}
+    needs: resolve
+    # Run on pushes to the resolved branch OR on manual runs
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref_name == needs.resolve.outputs.branch }}
     runs-on: ubuntu-latest
     concurrency:
-      group: qa-deploy-${{ env.DEPLOY_BRANCH }}
+      group: qa-deploy-${{ needs.resolve.outputs.branch }}
       cancel-in-progress: false
 
     steps:
-      - name: Checkout selected branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          # For pushes, this is already the right ref; for manual runs we need to fetch the chosen branch.
-          ref: ${{ env.DEPLOY_BRANCH }}
+          ref: ${{ needs.resolve.outputs.branch }}
           fetch-depth: 0
 
-      - name: Use Node 20
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
       - run: npm ci
 
-      # Ephemeral link of this workspace to the unlinked QA project
-      - name: Link Vercel project
+      - name: Link Vercel project (ephemeral)
         run: npx vercel link --project care-diabetics-qa --yes --token ${{ secrets.VERCEL_TOKEN }}
 
-      # Pull Vercel config (.vercel/*) for this project/env
       - name: Pull Vercel project settings
         run: npx vercel pull --yes --environment=production --token ${{ secrets.VERCEL_TOKEN }}
 
-      # Pull env vars to a file many frameworks expect at build time
       - name: Pull env vars → .env.production
         run: npx vercel env pull .env.production --environment=production --token ${{ secrets.VERCEL_TOKEN }}
 
-      # Build locally in CI (creates .vercel/output)
       - name: Build (Vercel)
         run: npx vercel build --prod --token ${{ secrets.VERCEL_TOKEN }}
 
-      # Deploy prebuilt artifacts to the unlinked QA project
       - name: Deploy (prebuilt) to QA
         run: >
           npx vercel deploy --prebuilt --prod
