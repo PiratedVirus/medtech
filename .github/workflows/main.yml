@@ -68,10 +68,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          DEPLOY_URL=$(npx vercel deploy --prebuilt --prod \
-            --project "$VERCEL_PROJECT_ID" \
-            --scope   "$VERCEL_ORG_ID" \
-            --token   "$VERCEL_TOKEN" | tail -n1 | tr -d '\r\n[:space:]')
+          DEPLOY_URL=$(npx vercel deploy --prebuilt --prod | tail -n1 | tr -d '\r\n[:space:]')
           echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
 
       - name: Summary
