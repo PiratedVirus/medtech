@@ -1,0 +1,44 @@
+name: Deploy dev → QA (Vercel, unlinked)
+on:
+  push:
+    branches: [ dev ]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      # Link this workspace to the unlinked QA project (no repo->Vercel integration)
+      - name: Link Vercel project (ephemeral)
+        run: npx vercel link --project care-diabetics-qa --yes --token ${{ secrets.VERCEL_TOKEN }}
+
+      # Pull env + write .vercel/*.json for build context
+      - name: Pull env (production slot of QA project)
+        run: npx vercel pull --yes --environment=production --token ${{ secrets.VERCEL_TOKEN }}
+
+      # Optional: also write an .env.production for frameworks like Next.js
+      - name: Export env to file for build tools
+        run: npx vercel env pull .env.production --environment=production --token ${{ secrets.VERCEL_TOKEN }}
+
+      # Build on CI (creates .vercel/output)
+      - name: Vercel build (prod)
+        run: npx vercel build --prod --token ${{ secrets.VERCEL_TOKEN }}
+
+      # Ship prebuilt output to the QA project (no source upload)
+      - name: Deploy prebuilt to QA
+        run: >
+          npx vercel deploy --prebuilt --prod
+          --project ${{ secrets.VERCEL_PROJECT_ID_QA }}
+          --scope   ${{ secrets.VERCEL_ORG_ID }}
+          --token   ${{ secrets.VERCEL_TOKEN }}
