@@ -1,15 +1,39 @@
-name: Deploy dev → QA (Vercel, unlinked)
+name: Deploy to QA (Vercel, unlinked)
+
 on:
+  # Build on any push, but we'll gate the job by the selected branch.
   push:
-    branches: [ dev ]
-  workflow_dispatch: {}
+    branches: ['**']
+  # Manual trigger lets you pick a branch per run.
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Branch to deploy'
+        required: true
+        default: 'dev'
+        type: string
+
+# Decide the branch to deploy, in this order:
+# 1) manual input, 2) repo variable QA_DEPLOY_BRANCH, 3) fallback "dev"
+env:
+  DEPLOY_BRANCH: ${{ inputs.target_branch || vars.QA_DEPLOY_BRANCH || 'dev' }}
 
 jobs:
   deploy:
+    # Only run when the pushed branch (or manual input) matches DEPLOY_BRANCH.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref_name == env.DEPLOY_BRANCH }}
     runs-on: ubuntu-latest
+    concurrency:
+      group: qa-deploy-${{ env.DEPLOY_BRANCH }}
+      cancel-in-progress: false
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout selected branch
+        uses: actions/checkout@v4
+        with:
+          # For pushes, this is already the right ref; for manual runs we need to fetch the chosen branch.
+          ref: ${{ env.DEPLOY_BRANCH }}
+          fetch-depth: 0
 
       - name: Use Node 20
         uses: actions/setup-node@v4
@@ -19,24 +43,24 @@ jobs:
 
       - run: npm ci
 
-      # Link this workspace to the unlinked QA project (no repo->Vercel integration)
-      - name: Link Vercel project (ephemeral)
+      # Ephemeral link of this workspace to the unlinked QA project
+      - name: Link Vercel project
         run: npx vercel link --project care-diabetics-qa --yes --token ${{ secrets.VERCEL_TOKEN }}
 
-      # Pull env + write .vercel/*.json for build context
-      - name: Pull env (production slot of QA project)
+      # Pull Vercel config (.vercel/*) for this project/env
+      - name: Pull Vercel project settings
         run: npx vercel pull --yes --environment=production --token ${{ secrets.VERCEL_TOKEN }}
 
-      # Optional: also write an .env.production for frameworks like Next.js
-      - name: Export env to file for build tools
+      # Pull env vars to a file many frameworks expect at build time
+      - name: Pull env vars → .env.production
         run: npx vercel env pull .env.production --environment=production --token ${{ secrets.VERCEL_TOKEN }}
 
-      # Build on CI (creates .vercel/output)
-      - name: Vercel build (prod)
+      # Build locally in CI (creates .vercel/output)
+      - name: Build (Vercel)
         run: npx vercel build --prod --token ${{ secrets.VERCEL_TOKEN }}
 
-      # Ship prebuilt output to the QA project (no source upload)
-      - name: Deploy prebuilt to QA
+      # Deploy prebuilt artifacts to the unlinked QA project
+      - name: Deploy (prebuilt) to QA
         run: >
           npx vercel deploy --prebuilt --prod
           --project ${{ secrets.VERCEL_PROJECT_ID_QA }}
