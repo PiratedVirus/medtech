@@ -33,7 +33,7 @@ jobs:
       # Set these once; CLI will pick them up automatically.
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID_QA: ${{ secrets.VERCEL_PROJECT_ID_QA }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +50,7 @@ jobs:
 
       # Optional: ephemeral link; helps generate .vercel/project.json for this job
       - name: Link Vercel project
-        run: npx vercel link --project "$VERCEL_PROJECT_ID_QA" --yes --token "$VERCEL_TOKEN"
+        run: npx vercel link --project "$VERCEL_PROJECT_ID" --yes --token "$VERCEL_TOKEN"
 
       - name: Pull Vercel project settings
         run: npx vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
@@ -67,7 +67,7 @@ jobs:
         run: |
           set -euo pipefail
           DEPLOY_URL=$(npx vercel deploy --prebuilt --prod \
-            --project "$VERCEL_PROJECT_ID_QA" \
+            --project "$VERCEL_PROJECT_ID" \
             --scope   "$VERCEL_ORG_ID" \
             --token   "$VERCEL_TOKEN" | tail -n1 | tr -d '\r\n[:space:]')
           echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
