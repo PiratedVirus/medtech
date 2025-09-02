@@ -1,0 +1,72 @@
+name: Deploy to QA (Vercel, cloud build)
+
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Branch to deploy'
+        required: false
+        default: 'dev'
+        type: string
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.set.outputs.branch }}
+    steps:
+      - id: set
+        env:
+          BRANCH: ${{ inputs.target_branch != '' && inputs.target_branch || (vars.QA_DEPLOY_BRANCH != '' && vars.QA_DEPLOY_BRANCH || 'dev') }}
+        run: echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: resolve
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref_name == needs.resolve.outputs.branch }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: qa-deploy-${{ needs.resolve.outputs.branch }}
+      cancel-in-progress: false
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.branch }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verify Vercel creds
+        run: |
+          test -n "$VERCEL_TOKEN"
+          test -n "$VERCEL_ORG_ID"
+          test -n "$VERCEL_PROJECT_ID"
+
+      # Let Vercel build in the cloud (Preview/QA). Do NOT pass --prod.
+      - name: Deploy (cloud build) to QA
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_OUTPUT=$(npx vercel --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --confirm --project "$VERCEL_PROJECT_ID" 2>&1)
+          echo "Deploy output:"
+          echo "$DEPLOY_OUTPUT"
+          DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | tail -n1 | tr -d '\r\n[:space:]')
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        run: |
+          {
+            echo "### QA Deployment ✅"
+            echo ""
+            echo "- **Branch:** \`${{ needs.resolve.outputs.branch }}\`"
+            echo "- **Deployment URL:** ${{ steps.deploy.outputs.url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+```
