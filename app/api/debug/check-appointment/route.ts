@@ -18,7 +18,7 @@ export async function GET(request: Request) {
           patientId: appointment.patientId,
           userId: appointment.userId,
           appointmentFor: appointment.appointmentFor,
-          appointmentDate: appointment.appointmentDate,
+          doctorAvailability: { date: appointment.doctorAvailability.date },
           status: appointment.status,
         } : null,
         exists: !!appointment
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
           id: true,
           patientId: true,
           appointmentFor: true,
-          appointmentDate: true,
+          doctorAvailability: { date: true },
           status: true,
         }
       });

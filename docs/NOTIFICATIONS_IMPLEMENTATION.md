@@ -208,7 +208,7 @@ console.log("Fetching notifications:", { upcomingAppointments, pendingLabCollect
 For optimal performance, ensure these indexes exist:
 ```sql
 -- Appointments
-CREATE INDEX idx_appointment_date_status ON Appointment(appointmentDate, status);
+CREATE INDEX idx_appointment_date_status ON DoctorAvailability(date);
 CREATE INDEX idx_doctor_availability_date ON DoctorAvailability(date);
 
 -- Lab Bookings

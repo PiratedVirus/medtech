@@ -69,7 +69,7 @@ export async function GET(request: Request) {
         take: pageSize,
         include: {
           doctor: true,
-          doctorAvailability: { select: { startTime: true, endTime: true } }
+          doctorAvailability: { select: { date: true, startTime: true, endTime: true } }
         },
         orderBy: { createdAt: "desc" },
       }),
@@ -109,6 +109,11 @@ export async function GET(request: Request) {
         doctorName: doctor.name,
         startTime: doctorAvailability.startTime,
         endTime: doctorAvailability.endTime,
+        doctorAvailability: {
+          date: doctorAvailability.date,
+          startTime: doctorAvailability.startTime,
+          endTime: doctorAvailability.endTime,
+        },
         ...additionalData,
       };
     });

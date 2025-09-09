@@ -1,9 +1,9 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import UpcomingAppointment from "@/appointment-view/UpcomingACardAView";
+import UpcomingAppointment from "@/components/patients/appointments/view/UpcomingACardAView";
 import ArrowButton from "@/components/ui/custom/cd-arrow-button";
-import AppointmentListCard from "@/appointment-view/ListCardAView";
+import AppointmentListCard from "@/components/patients/appointments/view/ListCardAView";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { useSelector } from "react-redux";

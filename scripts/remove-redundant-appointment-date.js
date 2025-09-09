@@ -10,7 +10,7 @@ async function removeRedundantAppointmentDate() {
     const allAppointments = await prisma.appointment.findMany({
       select: {
         id: true,
-        appointmentDate: true,
+        doctorAvailability: { date: true },
         doctorAvailabilityId: true,
         doctorAvailability: {
           select: {
@@ -33,13 +33,13 @@ async function removeRedundantAppointmentDate() {
       return;
     }
 
-    // Check for appointments with both appointmentDate and doctorAvailability.date
-    const appointmentsWithBoth = allAppointments.filter(apt => apt.appointmentDate && apt.doctorAvailability?.date);
+    // Use doctorAvailability.date instead
+    const appointmentsWithBoth = allAppointments.filter(apt => apt.doctorAvailability.date && apt.doctorAvailability?.date);
     console.log(`📊 Found ${appointmentsWithBoth.length} appointments with both appointmentDate and doctorAvailability.date`);
     
     // Check for inconsistencies
     const inconsistencies = appointmentsWithBoth.filter(apt => {
-      const appointmentDate = apt.appointmentDate?.toISOString().split('T')[0];
+      const appointmentDate = apt.doctorAvailability.date?.toISOString().split('T')[0];
       const availabilityDate = apt.doctorAvailability?.date?.toISOString().split('T')[0];
       return appointmentDate !== availabilityDate;
     });
@@ -47,18 +47,18 @@ async function removeRedundantAppointmentDate() {
     if (inconsistencies.length > 0) {
       console.log(`⚠️  Found ${inconsistencies.length} appointments with inconsistent dates:`);
       inconsistencies.forEach(apt => {
-        console.log(`  - Appointment ${apt.id}: appointmentDate=${apt.appointmentDate?.toISOString().split('T')[0]}, doctorAvailability.date=${apt.doctorAvailability?.date?.toISOString().split('T')[0]}`);
+        console.log(`  - Appointment ${apt.id}: appointmentDate=${apt.doctorAvailability.date?.toISOString().split('T')[0]}, doctorAvailability.date=${apt.doctorAvailability?.date?.toISOString().split('T')[0]}`);
       });
       console.log('❌ Cannot proceed - data inconsistencies need to be resolved first');
       return;
     }
 
-    // Check appointments with only appointmentDate (no doctorAvailability.date)
-    const appointmentsWithOnlyAppointmentDate = allAppointments.filter(apt => apt.appointmentDate && !apt.doctorAvailability?.date);
+    // Use doctorAvailability.date instead
+    const appointmentsWithOnlyAppointmentDate = allAppointments.filter(apt => apt.doctorAvailability.date && !apt.doctorAvailability?.date);
     if (appointmentsWithOnlyAppointmentDate.length > 0) {
       console.log(`⚠️  Found ${appointmentsWithOnlyAppointmentDate.length} appointments with only appointmentDate (no doctorAvailability.date):`);
       appointmentsWithOnlyAppointmentDate.forEach(apt => {
-        console.log(`  - Appointment ${apt.id}: appointmentDate=${apt.appointmentDate?.toISOString().split('T')[0]}`);
+        console.log(`  - Appointment ${apt.id}: appointmentDate=${apt.doctorAvailability.date?.toISOString().split('T')[0]}`);
       });
     }
 
@@ -78,7 +78,7 @@ The redundant appointmentDate field should be removed from:
     `);
 
   } catch (error) {
-    console.error('❌ Error analyzing appointmentDate:', error);
+    console.error('❌ Error analyzing doctorAvailability: { date: ' }, error);
   } finally {
     await prisma.$disconnect();
   }

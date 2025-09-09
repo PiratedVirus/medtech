@@ -23,7 +23,7 @@ export async function POST(
       const latest = await prisma.appointment.findFirst({
         where: { patientId: pid, status: { in: ["COMPLETED", "DONE", "FINISHED"] } },
         orderBy: [
-          { appointmentDate: "desc" },
+          { doctorAvailability: { date: "desc" } },
           { updatedAt: "desc" },
           { createdAt: "desc" },
         ],

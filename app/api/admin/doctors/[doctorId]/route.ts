@@ -69,7 +69,7 @@ export async function GET(
                 }
               },
               orderBy: {
-                appointmentDate: 'desc'
+                doctorAvailability: { date: 'desc' }
               }
             }
           }
@@ -143,7 +143,7 @@ export async function GET(
       createdAt: doctorWithRelations.createdAt,
       appointments: appointments.map(appointment => ({
         id: appointment.id,
-        date: appointment.appointmentDate,
+        date: appointment.doctorAvailability.date,
         status: appointment.status,
         consultationType: appointment.consultationType,
         patient: appointment.patient,

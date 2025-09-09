@@ -52,7 +52,7 @@ export async function GET(request: Request) {
           patientAppointments: {
             select: {
               id: true,
-              appointmentDate: true,
+              doctorAvailability: { date: true },
               consultationType: true,
               status: true,
               isDietician: true,

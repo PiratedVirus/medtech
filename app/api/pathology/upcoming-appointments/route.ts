@@ -69,7 +69,7 @@ export async function GET(request: Request) {
           select: {
             id: true,
             appointmentFor: true,
-            appointmentDate: true,
+            doctorAvailability: { date: true },
           },
         },
         labBooking: {
@@ -158,7 +158,7 @@ export async function GET(request: Request) {
       patientName: assignment.patient.name,
       doctorName: "Lab Assignment", // Lab assignments don't have doctors
       appointmentFor: assignment.labBooking?.labPackage?.name || assignment.appointment?.appointmentFor || "Lab Test",
-      appointmentDate: assignment.assignedDate.toLocaleDateString(),
+      doctorAvailability: { date: assignment.assignedDate.toLocaleDateString() },
       startTime: assignment.assignedTime,
       endTime: null,
       consultationType: "lab",
@@ -194,7 +194,7 @@ export async function GET(request: Request) {
       patientName: booking.patient.name,
       doctorName: "Lab Booking", // Lab bookings don't have doctors
       appointmentFor: booking.labPackage.name,
-      appointmentDate: booking.labDate.toLocaleDateString(),
+      doctorAvailability: { date: booking.labDate.toLocaleDateString() },
       startTime: "09:00", // Default time
       endTime: null,
       consultationType: "lab",

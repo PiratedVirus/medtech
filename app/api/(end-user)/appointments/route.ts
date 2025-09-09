@@ -66,6 +66,9 @@ export async function GET(request: NextRequest) {
     const upcomingAppointments = upcomingAppointmentsWithoutMeetRoomLink.map((appointment) => ({
       ...appointment,
       appointmentLink: appointment.doctor.doctorProfile?.meetingRoomLink || null, // Use meetingRoomLink
+      // Add top-level date and startTime for compatibility
+      date: appointment.doctorAvailability.date.toISOString(),
+      startTime: appointment.doctorAvailability.startTime,
     }));
 
 
@@ -104,14 +107,14 @@ export async function GET(request: NextRequest) {
 
     // Fetch past appointments
     const pastAppointmentsWithoutMeetRoomLink = await prisma.appointment.findMany({
-      where: { ...baseWhere, appointmentDate: { lt: new Date() } }, // Past appointments
+      where: { ...baseWhere, doctorAvailability: { date: { lt: new Date() } } }, // Past appointments
       select: {
         id: true,
         appointmentFor: true,
         fullName: true,
         mobile: true,
         email: true,
-        appointmentDate: true,
+        doctorAvailability: { date: true },
         prescriptionLink: true,
         status: true,
         consultationType: true, // Use consultationType directly
@@ -133,12 +136,15 @@ export async function GET(request: NextRequest) {
           select: { id: true, userId: true, date: true, startTime: true, endTime: true },
         },
       },
-      orderBy: [{ appointmentDate: "desc" }], // Most recent past appointment first
+      orderBy: [{ doctorAvailability: { date: "desc" } }], // Most recent past appointment first
     });
 
     const pastAppointments = pastAppointmentsWithoutMeetRoomLink.map((appointment) => ({
       ...appointment,
       appointmentLink: appointment.doctor.doctorProfile?.meetingRoomLink || null, // Use meetingRoomLink
+      // Add top-level date and startTime for compatibility
+      date: appointment.doctorAvailability.date.toISOString(),
+      startTime: appointment.doctorAvailability.startTime,
     }));
 
     return NextResponse.json({
@@ -224,7 +230,6 @@ export async function POST(request: Request) {
           fullName,
           mobile,
           email,
-          appointmentDate: slot.date ? new Date(slot.date) : null,
           consultationType,
           status: "Scheduled",
           isDietician,

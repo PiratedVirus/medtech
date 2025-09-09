@@ -64,7 +64,7 @@ type Appointment = {
   doctorName: string;
   startTime: string;
   endTime: string;
-  appointmentDate: string;
+  doctorAvailability: { date: string; }
   fullName: string;
   consultationType: string;
   appointmentLink: string;
@@ -109,7 +109,7 @@ type AppointmentsFormData = {
   consultationType: string;
   startTime: string;
   endTime: string;
-  appointmentDate: string;
+  doctorAvailability: { date: string; }
   patinetName: string;
   patientEmail: string;
   patientPhone: string;
@@ -223,7 +223,7 @@ export default function AppointmentsPage() {
       ...data,
       startTime: slot.startTime,
       endTime: slot.endTime,
-      appointmentDate: slot.date,
+      doctorAvailability: { date: slot.date },
       doctorId: Number(data.doctorId),
       patientId: Number(data.patientId),
       doctorAvailabilityId: Number(data.doctorAvailabilityId),
@@ -251,7 +251,7 @@ export default function AppointmentsPage() {
   } = useForm<AppointmentsFormData>({
     defaultValues: { status: "Scheduled" },
   });
-  const [sorting, setSorting] = useState<SortingState>([{ id: "appointmentDate", desc: true }]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "doctorAvailability.date", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
@@ -458,14 +458,14 @@ export default function AppointmentsPage() {
       enableSorting: true,
     },
     {
-      accessorKey: "appointmentDate",
+      accessorKey: "doctorAvailability.date",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Date & Time <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       cell: ({ row }) => {
-        const date = new Date(row.original.appointmentDate);
+        const date = new Date(row.original.doctorAvailability.date);
         // const options = { day: '2-digit', month: 'short', year: 'numeric' };
         const options: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric" };
         return (

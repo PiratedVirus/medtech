@@ -13,10 +13,10 @@ export async function GET(request: Request) {
 
     const todaysAppointments = await prisma.appointment.count({
       where: {
-        appointmentDate: {
+        doctorAvailability: { date: {
           gte: new Date(new Date().setHours(0, 0, 0, 0)),
           lt: new Date(new Date().setHours(23, 59, 59, 999)),
-        },
+        } },
       },
     });
 

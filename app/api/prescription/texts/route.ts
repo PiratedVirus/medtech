@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
             id: true,
             appointment: {
               select: {
-                appointmentDate: true
+                doctorAvailability: { date: true }
               }
             }
           }

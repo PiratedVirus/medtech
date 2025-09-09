@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
           },
           appointment: {
             select: {
-              appointmentDate: true,
+              doctorAvailability: { date: true },
             },
           },
         },
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
           },
           appointment: {
             select: {
-              appointmentDate: true,
+              doctorAvailability: { date: true },
             },
           },
         },

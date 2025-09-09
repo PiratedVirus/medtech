@@ -89,7 +89,7 @@ export async function GET(
           },
           select: {
             id: true,
-            appointmentDate: true,
+            doctorAvailability: { date: true },
             consultationType: true,
             status: true,
             prescriptionLink: true,
@@ -115,7 +115,7 @@ export async function GET(
             }
           },
           orderBy: {
-            appointmentDate: 'desc'
+            doctorAvailability: { date: 'desc' }
           }
         },
         labPatientBookings: {

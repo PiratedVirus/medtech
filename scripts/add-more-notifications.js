@@ -83,7 +83,7 @@ async function addMoreNotifications() {
         await tx.appointment.update({
           where: { id: appointment.id },
           data: {
-            appointmentDate: tomorrow
+            doctorAvailability: { date: tomorrow }
           }
         });
         console.log('✅ Added upcoming appointment for tomorrow');

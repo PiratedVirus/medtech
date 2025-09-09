@@ -45,7 +45,10 @@ interface AppointmentCardProps {
     assignedPhlebotomist?: string;
     status: string;
     assignmentStatus?: string;
-    appointmentDate?: string;
+    doctorAvailability?: {
+      date: string;
+      startTime: string;
+    };
     startTime?: string;
     assignedDate?: string;
     assignedTime?: string;

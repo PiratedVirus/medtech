@@ -8,7 +8,6 @@ import { useState } from "react";
 interface PrescriptionsSectionProps {
   appointments: Array<{
     id: number;
-    appointmentDate?: string;
     date?: string;
     prescriptionLink?: string | null;
     doctorName?: string;
@@ -119,7 +118,7 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
                   const viewHref = apt.prescriptionLink || `/doctor/appointments/${apt.id}/prescription`;
                   return (
                     <li key={apt.id} className="py-2 flex items-center">
-                      <div className="text-sm text-gray-800">Appointment #{apt.id} · {new Date(apt.date || apt.appointmentDate || '').toLocaleString()}</div>
+                      <div className="text-sm text-gray-800">Appointment #{apt.id} · {new Date(apt.date || apt.doctorAvailability.date || '').toLocaleString()}</div>
                       <div className="flex items-center gap-2 ml-auto">
                         {hasPrescription && (
                           <Button

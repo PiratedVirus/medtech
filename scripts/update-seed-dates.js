@@ -55,7 +55,7 @@ async function updateSeedDates() {
             tx.appointment.update({
               where: { id: appointment.id },
               data: {
-                appointmentDate: newDate
+                doctorAvailability: { date: newDate }
               }
             })
           ]);

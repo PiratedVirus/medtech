@@ -63,7 +63,7 @@ export async function GET(request: Request) {
           select: {
             id: true,
             appointmentFor: true,
-            appointmentDate: true,
+            doctorAvailability: { date: true },
           },
         },
         labBooking: {
