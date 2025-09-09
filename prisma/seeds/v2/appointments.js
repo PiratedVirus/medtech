@@ -175,10 +175,6 @@ async function seedAppointments(prisma = require("@prisma/client").PrismaClient)
       
       const slot = availableSlots[0];
       
-      // Calculate appointment date based on scenario
-      const appointmentDate = new Date(today);
-      appointmentDate.setDate(today.getDate() + scenario.daysOffset + (i % 7));
-      
       // Create appointment
       const appointment = await prisma.appointment.create({
         data: {
@@ -190,7 +186,6 @@ async function seedAppointments(prisma = require("@prisma/client").PrismaClient)
           mobile: patient.phoneNumber,
           email: patient.email,
           isDietician: false,
-          appointmentDate: appointmentDate,
           status: scenario.status,
           doctorNotes: `Notes for ${scenario.description} - Patient ${patient.name}`,
           doctorAvailabilityId: slot.id,
@@ -215,7 +210,7 @@ async function seedAppointments(prisma = require("@prisma/client").PrismaClient)
             prescriptionNumber: `PRES-${Date.now()}-${appointmentIndex}`,
             advice: "Continue current medication and lifestyle modifications",
             testsRequested: "FBS, HbA1C",
-            nextVisitDate: new Date(appointmentDate.getTime() + 30 * 24 * 60 * 60 * 1000),
+            nextVisitDate: new Date(slot.date.getTime() + 30 * 24 * 60 * 60 * 1000),
             nextVisitType: "days",
             nextVisitValue: 30,
           },
@@ -285,8 +280,8 @@ async function seedAppointments(prisma = require("@prisma/client").PrismaClient)
             currency: "INR",
             paymentStatus: paymentStatus,
             paymentMethod: paymentMethod,
-            createdAt: appointmentDate,
-            updatedAt: appointmentDate,
+            createdAt: slot.date,
+            updatedAt: slot.date,
           },
         });
         

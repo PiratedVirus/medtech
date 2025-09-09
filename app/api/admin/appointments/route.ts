@@ -141,7 +141,7 @@ export async function POST(request: Request) {
     const slot = {
       startTime: data.startTime,
       endTime: data.endTime,
-      date: data.appointmentDate, // Changed to use correct field
+      date: data.doctorAvailability?.date, // Use doctorAvailability date
     }
 
 
@@ -168,7 +168,6 @@ export async function POST(request: Request) {
       doctorAvailabilityId: data.doctorAvailabilityId,
       consultationType: data.consultationType, // Set consultationType from data
       patientId: data.patientId,
-      appointmentDate: data.appointmentDate,
       fullName: data.patinetName,
       email: data.patientEmail,
       mobile: data.patientPhone,

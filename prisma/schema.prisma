@@ -209,7 +209,6 @@ model Appointment {
   mobile               String?
   email                String?
   isDietician          Boolean?
-  appointmentDate      DateTime?            @db.Date
   appointmentLink      String?
   subscriptionId       Int?
   status               String

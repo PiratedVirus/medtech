@@ -28,14 +28,18 @@ export async function GET(request: NextRequest) {
 
     // Fetch upcoming appointments
     const upcomingAppointmentsWithoutMeetRoomLink = await prisma.appointment.findMany({
-      where: { ...baseWhere, appointmentDate: { gte: new Date() } },
+      where: { 
+        ...baseWhere, 
+        doctorAvailability: {
+          date: { gte: new Date() }
+        }
+      },
       select: {
         id: true,
         appointmentFor: true,
         fullName: true,
         mobile: true,
         email: true,
-        appointmentDate: true,
         status: true,
         consultationType: true, // Use consultationType directly
         appointmentLink: true,
@@ -56,7 +60,7 @@ export async function GET(request: NextRequest) {
           select: { id: true, userId: true, date: true, startTime: true, endTime: true },
         },
       },
-      orderBy: [{ appointmentDate: "asc" }, { doctorAvailability: { date: "asc" } }],
+      orderBy: [{ doctorAvailability: { date: "asc" } }],
     });
 
     const upcomingAppointments = upcomingAppointmentsWithoutMeetRoomLink.map((appointment) => ({
@@ -67,8 +71,8 @@ export async function GET(request: NextRequest) {
 
     // Convert and sort upcoming appointments by time correctly
     const sortedUpcoming = upcomingAppointments.sort((a, b) => {
-      const dateA = a.appointmentDate ? new Date(a.appointmentDate) : new Date();
-      const dateB = b.appointmentDate ? new Date(b.appointmentDate) : new Date();
+      const dateA = a.doctorAvailability.date ? new Date(a.doctorAvailability.date) : new Date();
+      const dateB = b.doctorAvailability.date ? new Date(b.doctorAvailability.date) : new Date();
 
       // If dates are different, sort by date
       if (dateA.getTime() !== dateB.getTime()) {

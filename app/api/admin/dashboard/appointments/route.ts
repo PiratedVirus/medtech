@@ -3,16 +3,16 @@ import prisma from "@/lib/prisma";
 
 export async function GET(request: Request) {
   try {
-    // Get current date (yesterday to include today's appointments)
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
+    // Get current date and time for filtering truly upcoming appointments
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    today.setHours(0, 0, 0, 0);
 
     const appointments = await prisma.appointment.findMany({
       where: {
         doctorAvailability: {
           date: {
-            gte: yesterday
+            gte: today
           }
         },
         status: {
@@ -21,7 +21,6 @@ export async function GET(request: Request) {
       },
       select: {
         id: true,
-        appointmentDate: true,
         status: true,
         isDietician: true,
         consultationType: true,
@@ -60,7 +59,22 @@ export async function GET(request: Request) {
       take: 10
     });
 
-    return NextResponse.json(appointments);
+    // Additional filter to ensure we only show truly upcoming appointments
+    const filteredAppointments = appointments.filter(apt => {
+      if (!apt.doctorAvailability?.date) return false;
+      
+      const appointmentDate = new Date(apt.doctorAvailability.date);
+      const appointmentTime = apt.doctorAvailability?.startTime || "00:00";
+      
+      // Parse the time
+      const [hours, minutes] = appointmentTime.split(':').map(Number);
+      appointmentDate.setHours(hours, minutes, 0, 0);
+      
+      // Only include if appointment is in the future (including today's future appointments)
+      return appointmentDate >= now;
+    });
+
+    return NextResponse.json(filteredAppointments);
   } catch (error) {
     console.error("Failed to fetch appointments:", error);
     return NextResponse.json({ error: "Failed to fetch appointments" }, { status: 500 });

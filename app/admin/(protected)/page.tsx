@@ -42,7 +42,6 @@ export default function DashboardPage() {
     <div className="flex flex-col">
       <div className="flex items-center justify-between space-y-2 px-2 pt-6 md:px-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted-foreground">Overview of your clinic's performance and activities</p>
         </div>
         <div className="flex items-center space-x-2">
@@ -78,7 +77,7 @@ export default function DashboardPage() {
         <SummaryCard
           title="Today's Appointments"
           value={summaryData.todaysAppointments.toString()}
-          trend="6 more than yesterday"
+          trend=""
           PrimaryIcon={Clock}
           OutlineIcon={Clock}
           accentColor="#F28A2E"

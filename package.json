@@ -14,7 +14,7 @@
     "migrate:prod": "prisma migrate deploy",
     "generate:prisma": "prisma generate",
     "deploy": "npm run migrate:prod && npm run generate:prisma && npm run build && npm run start",
-    "seed": "node prisma/seeds/main.js",
+    "seed": "node prisma/seeds/v2/main.js",
     "seed:fresh": "node prisma/seeds/main.js --start-fresh",
     "seed:v2": "node prisma/seeds/v2/main.js",
     "seed:v2:fresh": "node prisma/seeds/v2/main.js --start-fresh",
@@ -22,7 +22,15 @@
     "fix:missing-data": "node prisma/seeds/v2/fixMissingData.js",
     "fix:robust": "node prisma/seeds/v2/runRobustFix.js",
     "ensure:complete-data": "node prisma/seeds/v2/ensureCompleteData.js",
-    "fix:appointments-status": "node scripts/backfill-mark-completed.js"
+    "fix:appointments-status": "node scripts/backfill-mark-completed.js",
+    "refresh-seed": "node scripts/refresh-seed-data.js",
+    "update-seed-dates": "node scripts/update-seed-dates.js",
+    "fix-time-formats": "node scripts/fix-time-formats.js",
+    "add-notifications": "node scripts/add-more-notifications.js",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:reset": "prisma migrate reset",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.77.0",

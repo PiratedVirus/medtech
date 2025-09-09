@@ -8,6 +8,7 @@ import "@/app/globals.css";
 import { useDecryptedProfile } from "@/hooks/use-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { SidebarNav } from "@/components/admin/AdminSidebarNav";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { useRouter } from 'next/navigation';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 
@@ -50,12 +51,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   return (
     <div className="flex min-h-screen">
-        <SidebarNav logout={logout}/>
-        <div className="flex-1 md:ml-16">
-          <main className="flex-1 bg-white">{children}</main>
-        </div>
+      <SidebarNav logout={logout}/>
+      <div className="flex-1 md:ml-16">
+        <AdminHeader />
+        <main className="flex-1 bg-white">{children}</main>
       </div>
-);
+    </div>
+  );
 };
 
 export default AdminLayout;

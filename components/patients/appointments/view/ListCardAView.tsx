@@ -6,16 +6,15 @@ import Link from "next/link";
 
 interface Appointment {
   id: number;
-  appointmentDate: string;
   status: string;
   consultationType: string;
   doctor: { name: string; doctorProfile: { specialty: string } };
-  doctorAvailability: { startTime: string };
+  doctorAvailability: { date: string; startTime: string };
   prescriptionLink: string;
 }
 
 export default function AppointmentListCard({ appointment }: { appointment: Appointment }) {
-  const appointmentDate = new Date(appointment.appointmentDate);
+  const appointmentDate = new Date(appointment.doctorAvailability.date);
   const formattedDate = appointmentDate.toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "2-digit",

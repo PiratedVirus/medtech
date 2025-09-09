@@ -41,7 +41,9 @@ export async function GET(request: Request) {
       const appointments = await prisma.appointment.findMany({
         where: {
           userId: doctorId,
-          appointmentDate: date,
+          doctorAvailability: {
+            date: date
+          },
           deletedAt: null,
         },
         include: {
@@ -62,7 +64,13 @@ export async function GET(request: Request) {
 
     const [todayAppointments, tomorrowAppointments] = await prisma.$transaction([
       prisma.appointment.findMany({
-        where: { userId: doctorId, appointmentDate: { gte: today, lt: tomorrow }, deletedAt: null },
+        where: { 
+          userId: doctorId, 
+          doctorAvailability: { 
+            date: { gte: today, lt: tomorrow } 
+          }, 
+          deletedAt: null 
+        },
         include: {
           patient: { select: { name: true } },
           doctorAvailability: { select: { startTime: true, endTime: true, date: true } },
@@ -70,7 +78,13 @@ export async function GET(request: Request) {
         orderBy: { doctorAvailability: { startTime: "asc" } },
       }),
       prisma.appointment.findMany({
-        where: { userId: doctorId, appointmentDate: { gte: tomorrow, lt: dayAfter }, deletedAt: null },
+        where: { 
+          userId: doctorId, 
+          doctorAvailability: { 
+            date: { gte: tomorrow, lt: dayAfter } 
+          }, 
+          deletedAt: null 
+        },
         include: {
           patient: { select: { name: true } },
           doctorAvailability: { select: { startTime: true, endTime: true, date: true } },
