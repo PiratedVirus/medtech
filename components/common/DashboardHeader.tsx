@@ -26,6 +26,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useDecryptedProfile } from "@/hooks/use-profile";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 const fullNavigation = [
   { name: "Home", href: "/dashboard", current: true, icon: Home },
@@ -101,8 +102,10 @@ export function DashboardHeader() {
               ))}
             </nav>
           </div>
-          {/* Profile Dropdown */}
-          <DropdownMenu>
+          {/* Notifications and Profile */}
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <div className="flex items-center gap-3 px-4 py-2 w-32 rounded-xl border border-border cursor-pointer">
                 <User className="h-6 w-6" />
@@ -122,7 +125,8 @@ export function DashboardHeader() {
                 <span className="text-red-500">Logout</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
 

@@ -12,6 +12,7 @@ import { LabBookingsTable } from "@/components/admin/LabBookingsTable"
 import { PatientViewCard } from "@/components/admin/PatientViewCard"
 import { NotificationsList } from "@/components/admin/NotificationsList"
 import { SummaryCard } from "@/components/admin/SummaryCard"
+import NotificationTestPanel from "@/components/admin/NotificationTestPanel"
 
 
 
@@ -24,6 +25,7 @@ export default function DashboardPage() {
     monthlyRevenue: 0,
     newSignupsThisWeek: 0,
   });
+  const [patients, setPatients] = useState<Array<{ id: number; name: string; phoneNumber: string }>>([]);
 
   useEffect(() => {
     const fetchSummaryData = async () => {
@@ -35,7 +37,17 @@ export default function DashboardPage() {
       }
     };
 
+    const fetchPatients = async () => {
+      try {
+        const response = await axios.get("/api/admin/patients");
+        setPatients(response.data.data || []);
+      } catch (error) {
+        console.error("Failed to fetch patients:", error);
+      }
+    };
+
     fetchSummaryData();
+    fetchPatients();
   }, []);
 
   return (
@@ -134,6 +146,19 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <NotificationsList />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Notification Test Panel */}
+      <div className="mt-4 px-2 md:px-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Push Notification Testing</CardTitle>
+            <CardDescription>Test push notifications for patients</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <NotificationTestPanel patients={patients} />
           </CardContent>
         </Card>
       </div>

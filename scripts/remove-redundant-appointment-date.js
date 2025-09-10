@@ -78,7 +78,7 @@ The redundant appointmentDate field should be removed from:
     `);
 
   } catch (error) {
-    console.error('❌ Error analyzing doctorAvailability: { date: ' }, error);
+    console.error('❌ Error analyzing doctorAvailability:', error);
   } finally {
     await prisma.$disconnect();
   }

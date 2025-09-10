@@ -84,6 +84,9 @@ model User {
   dietMealTimingTemplates    DietMealTimingTemplate[] @relation("DietMealTimingTemplateDietician")
   standaloneReportsAsPatient  StandaloneReport[] @relation("StandaloneReportPatient")
   standaloneReportsUploaded   StandaloneReport[] @relation("StandaloneReportUploader")
+  // Notifications
+  notifications              PatientNotification[]
+  deviceTokens              PatientDeviceToken[]
 
   @@unique([phoneNumber, deletedAt])
   @@index([deletedAt])
@@ -1061,4 +1064,61 @@ enum ReportStatus {
   PROCESSING
   COMPLETED
   FAILED
+}
+
+// Push Notifications System
+model PatientNotification {
+  id          Int               @id @default(autoincrement())
+  patientId   Int
+  type        NotificationType
+  title       String
+  message     String
+  data        Json?             // Additional payload data
+  isRead      Boolean           @default(false)
+  sentAt      DateTime          @default(now())
+  readAt      DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?
+  
+  patient     User              @relation(fields: [patientId], references: [id])
+  
+  @@index([patientId, isRead])
+  @@index([type, sentAt])
+  @@index([deletedAt])
+}
+
+model PatientDeviceToken {
+  id          Int       @id @default(autoincrement())
+  patientId   Int
+  deviceToken String
+  platform    String    // 'ios', 'android', 'web'
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  patient     User      @relation(fields: [patientId], references: [id])
+  
+  @@unique([patientId, deviceToken])
+  @@index([patientId, isActive])
+}
+
+enum NotificationType {
+  APPOINTMENT_REMINDER
+  APPOINTMENT_CONFIRMED
+  APPOINTMENT_CANCELLED
+  DIET_PLAN_READY
+  DIET_PLAN_REQUEST_STATUS
+  LAB_RESULTS_READY
+  LAB_SAMPLE_COLLECTION
+  PRESCRIPTION_READY
+  MEDICINE_REMINDER
+  PLAN_EXPIRY_WARNING
+  PLAN_RENEWED
+  HEALTH_ALERT
+  AI_SUMMARY_READY
+  CONSULTATION_REMINDER
+  LAB_BOOKING_CONFIRMED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
 }
