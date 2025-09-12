@@ -231,7 +231,8 @@ export default function UsersPage() {
         axios.get("/api/admin/clinics/clinics-list"),
       ]);
       setData({ users: usersRes.data.data, total: usersRes.data.total });
-      setClinics(clinicsRes.data);
+      // clinics endpoint returns { success, clinics }
+      setClinics(Array.isArray(clinicsRes.data?.clinics) ? clinicsRes.data.clinics : []);
       // Extract roleCounts from the GET response
       setRoleCounts(usersRes.data.roleCounts || {});
     } catch (error) {

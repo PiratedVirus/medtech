@@ -268,6 +268,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
           patientId={patientId}
           labReports={patientDetails.labBookings}
           standaloneReports={standaloneReports}
+          preSelectedStandaloneReportId={null}
         />
 
         {/* Patient Insights Modal (Full insights reused from dashboard) */}

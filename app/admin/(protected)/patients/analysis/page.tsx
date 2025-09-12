@@ -540,6 +540,7 @@ export default function PatientsAnalysisPage() {
           labResult: booking.labResult
         }))}
         standaloneReports={[]}
+        preSelectedStandaloneReportId={null}
       />
 
       {/* Standalone Report Detail Modal - Now using Unified Modal */}
@@ -552,6 +553,7 @@ export default function PatientsAnalysisPage() {
           ...report,
           reportAnalyses: report.analyses || []
         }))}
+        preSelectedStandaloneReportId={null}
       />
 
       {/* Progress Notifications */}

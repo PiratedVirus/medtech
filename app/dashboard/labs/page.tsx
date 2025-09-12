@@ -13,6 +13,8 @@ import LabCard from "@/components/patients/labs/view/LabCard";
 import LabResultCard from "@/components/patients/labs/view/LabResultCard";
 import { useState } from "react";
 import ReportUploadButton from "@/components/common/ReportUploadButton";
+import StandaloneReportCard from "@/components/patients/labs/view/StandaloneReportCard";
+import UnifiedAnalysisModal from "@/components/common/UnifiedAnalysisModal";
 
 export default function LabsPage() {
   const router = useRouter();
@@ -29,9 +31,30 @@ export default function LabsPage() {
     enabled: !!patientId,
   });
 
+  // Fetch standalone reports (manually uploaded)
+  const { data: standaloneReports = [], isLoading: loadingStandaloneReports, refetch: fetchStandaloneReports } = useQuery({
+    queryKey: ["standaloneReports", patientId],
+    queryFn: async () => {
+      const response = await axios.get(`/api/reports/upload?patientId=${patientId}`);
+      return response.data?.reports || [];
+    },
+    enabled: !!patientId,
+  });
+
   const handleBookAppointment = (lab: any) => {
     dispatch(setLabBookingData(lab));
     router.push(`/dashboard/labs/${lab.id}`);
+  };
+
+  const handleViewStandaloneAnalysis = (report: any) => {
+    setSelectedStandaloneReport(report);
+    setAnalysisModalOpen(true);
+  };
+
+  const handleUploadSuccess = () => {
+    // Refresh both lab data and standalone reports after upload
+    fetchLabData();
+    fetchStandaloneReports();
   };
 
 
@@ -57,6 +80,9 @@ export default function LabsPage() {
   const [searchPackages, setSearchPackages] = useState("");
   const [searchTests, setSearchTests] = useState("");
   const [tab, setTab] = useState<'catalog' | 'bookings'>("catalog");
+  const [reportTab, setReportTab] = useState<'lab-generated' | 'manually-uploaded'>("lab-generated");
+  const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
+  const [selectedStandaloneReport, setSelectedStandaloneReport] = useState<any>(null);
 
   const labPackages = (labs || [])
     .filter((lab: any) => lab.isLabPackage === true)
@@ -197,19 +223,7 @@ export default function LabsPage() {
                 </p>
               </div>
             </div>
-            <div className="mt-4 md:mt-0">
-              <ReportUploadButton
-                patientId={Number(profile?.id)}
-                onUploadSuccess={() => {
-                  // Refresh lab data after upload
-                  fetchLabData();
-                }}
-                variant="default"
-                size="sm"
-              >
-                Upload Report
-              </ReportUploadButton>
-            </div>
+
           </div>
 
 
@@ -230,30 +244,108 @@ export default function LabsPage() {
           <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
             <div>
               <p className="text-4xl font-bold text-gray-800">
-                {labData.completed.length} reports available from past bookings
+                Reports & Analysis
               </p>
               <div className="flex items-center gap-2 mt-5">
                 <p className="text-lg">
-                  Here you can view your past bookings
+                  View your lab reports and AI-powered analysis
                 </p>
               </div>
             </div>
+            <div className="mt-4 md:mt-0">
+              <ReportUploadButton
+                patientId={Number(profile?.id)}
+                onUploadSuccess={handleUploadSuccess}
+                variant="default"
+                size="sm"
+              >
+                Upload Report
+              </ReportUploadButton>
+            </div>
           </div>
 
-
-          {labData.completed.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {labData.completed.map((result: any) => (
-                <LabResultCard key={result.id} result={result} />
-              ))}
+          {/* Report Type Tabs */}
+          <div className="mb-6">
+            <div className="inline-flex border rounded-full overflow-hidden">
+              <button
+                className={`px-6 py-3 text-sm font-medium ${
+                  reportTab === 'lab-generated' 
+                    ? 'bg-primary text-white' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={() => setReportTab('lab-generated')}
+              >
+                Lab Generated Reports ({labData.completed.length})
+              </button>
+              <button
+                className={`px-6 py-3 text-sm font-medium border-l ${
+                  reportTab === 'manually-uploaded' 
+                    ? 'bg-primary text-white' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={() => setReportTab('manually-uploaded')}
+              >
+                Manually Uploaded ({standaloneReports.length})
+              </button>
             </div>
-          ) : (
-            <p className="text-gray-500 text-center">No past reports available yet.</p>
+          </div>
+
+          {/* Lab Generated Reports Tab */}
+          {reportTab === 'lab-generated' && (
+            <>
+              {labData.completed.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {labData.completed.map((result: any) => (
+                    <LabResultCard key={result.id} result={result} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-lg">No lab-generated reports available yet.</p>
+                  <p className="text-gray-400 text-sm mt-2">Book lab tests to see your reports here.</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Manually Uploaded Reports Tab */}
+          {reportTab === 'manually-uploaded' && (
+            <>
+              {standaloneReports.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {standaloneReports.map((report: any) => (
+                    <StandaloneReportCard 
+                      key={report.id} 
+                      report={report} 
+                      onViewAnalysis={handleViewStandaloneAnalysis}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-lg">No manually uploaded reports yet.</p>
+                  <p className="text-gray-400 text-sm mt-2">Upload your lab reports to see AI analysis here.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
       </>
       )}
+
+      {/* Analysis Modal */}
+      <UnifiedAnalysisModal
+        isOpen={analysisModalOpen}
+        onClose={() => {
+          setAnalysisModalOpen(false);
+          setSelectedStandaloneReport(null);
+        }}
+        patientId={Number(profile?.id)}
+        labReports={labData.completed}
+        standaloneReports={standaloneReports}
+        preSelectedStandaloneReportId={selectedStandaloneReport?.id || null}
+      />
 
     </>
   );

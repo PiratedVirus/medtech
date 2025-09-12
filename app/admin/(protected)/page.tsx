@@ -150,18 +150,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Notification Test Panel */}
-      <div className="mt-4 px-2 md:px-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Push Notification Testing</CardTitle>
-            <CardDescription>Test push notifications for patients</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <NotificationTestPanel patients={patients} />
-          </CardContent>
-        </Card>
-      </div>
+
 
       {/* Tables Section */}
       <div className="mt-4 grid gap-4 px-2 md:px-4">

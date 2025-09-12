@@ -5,7 +5,7 @@ import { generateSummary } from '@/lib/llm/unified-service';
 
 
 // Function to trigger LLM processing for standalone reports
-export async function triggerLLMProcessing(reportId: number, analysisType: string) {
+export async function triggerLLMProcessing(reportId: number, analysisType: string, forceRegeneration: boolean = false) {
   try {
     console.log(`[LLM-PROCESSING] Triggering LLM processing for report ${reportId}, type: ${analysisType}`);
     
@@ -134,7 +134,7 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
           body: JSON.stringify({ 
             text: extractedText, 
             reportId: reportId, 
-            force: true 
+            force: forceRegeneration 
           })
         });
 

@@ -1,7 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Bell, X, Check, Trash2, Filter, MoreVertical } from 'lucide-react';
+import { 
+  Bell, X, Check, Trash2, Filter, MoreVertical, 
+  Calendar, Utensils, FlaskConical, Pill, FileText, 
+  AlertTriangle, Bot, Stethoscope, CreditCard, Clock 
+} from 'lucide-react';
 import { useNotifications, useMarkNotifications, useDeleteNotifications } from '@/hooks/use-notifications';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -104,31 +108,35 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
       case 'APPOINTMENT_REMINDER':
       case 'APPOINTMENT_CONFIRMED':
       case 'APPOINTMENT_CANCELLED':
-        return '📅';
+      case 'FOLLOW_UP_APPOINTMENT':
+        return Calendar;
       case 'DIET_PLAN_READY':
       case 'DIET_PLAN_REQUEST_STATUS':
-        return '🥗';
+      case 'DIET_PLAN_FOLLOW_UP':
+        return Utensils;
       case 'LAB_RESULTS_READY':
       case 'LAB_SAMPLE_COLLECTION':
       case 'LAB_BOOKING_CONFIRMED':
-        return '🧪';
+      case 'FOLLOW_UP_LAB_TEST':
+        return FlaskConical;
       case 'PRESCRIPTION_READY':
       case 'MEDICINE_REMINDER':
-        return '💊';
+        return Pill;
       case 'PLAN_EXPIRY_WARNING':
       case 'PLAN_RENEWED':
-        return '📋';
+      case 'PLAN_SUBSCRIBED':
+        return FileText;
       case 'HEALTH_ALERT':
-        return '⚠️';
+        return AlertTriangle;
       case 'AI_SUMMARY_READY':
-        return '🤖';
+        return Bot;
       case 'CONSULTATION_REMINDER':
-        return '👨‍⚕️';
+        return Stethoscope;
       case 'PAYMENT_SUCCESS':
       case 'PAYMENT_FAILED':
-        return '💳';
+        return CreditCard;
       default:
-        return '🔔';
+        return Bell;
     }
   };
 
@@ -140,40 +148,54 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
         return 'bg-red-500';
       case 'PLAN_EXPIRY_WARNING':
       case 'APPOINTMENT_REMINDER':
-        return 'bg-orange-500';
+      case 'FOLLOW_UP_APPOINTMENT':
+      case 'FOLLOW_UP_LAB_TEST':
+        return 'bg-[#F28A2E]';
       case 'LAB_RESULTS_READY':
         return 'bg-yellow-500';
-      default:
+      case 'PLAN_SUBSCRIBED':
+      case 'DIET_PLAN_FOLLOW_UP':
         return 'bg-green-500';
+      default:
+        return 'bg-[#134F30]';
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            <h2 className="text-lg font-semibold">Notifications</h2>
+        <div className="flex items-center justify-between p-6 border-b border-[#134F30]/20 bg-gradient-to-r from-[#134F30] to-[#F28A2E] rounded-t-2xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-full">
+              <Bell className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-white">Notifications</h2>
+              <p className="text-sm text-white/90">Stay updated with your health journey</p>
+            </div>
             {data?.unreadCount && data.unreadCount > 0 && (
-              <Badge variant="destructive" className="ml-2">
+              <Badge variant="destructive" className="ml-2 animate-pulse bg-white text-[#134F30]">
                 {data.unreadCount}
               </Badge>
             )}
           </div>
           <div className="flex items-center gap-2">
             {selectedNotifications.length > 0 && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2 bg-white/20 px-3 py-2 rounded-lg">
+                <span className="text-sm text-white font-medium">
+                  {selectedNotifications.length} selected
+                </span>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={handleMarkAsRead}
                   disabled={markAsRead.isPending}
+                  className="h-8 px-3 text-xs border-white text-white hover:bg-white hover:text-[#134F30]"
                 >
-                  <Check className="h-4 w-4 mr-1" />
+                  <Check className="h-3 w-3 mr-1" />
                   Mark Read
                 </Button>
                 <Button
@@ -181,27 +203,45 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
                   variant="outline"
                   onClick={handleDelete}
                   disabled={deleteNotifications.isPending}
+                  className="h-8 px-3 text-xs text-white hover:text-white hover:bg-red-500 border-white"
                 >
-                  <Trash2 className="h-4 w-4 mr-1" />
+                  <Trash2 className="h-3 w-3 mr-1" />
                   Delete
                 </Button>
               </div>
             )}
-            <Button size="sm" variant="ghost" onClick={onClose}>
-              <X className="h-4 w-4" />
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={onClose}
+              className="h-10 w-10 rounded-full hover:bg-white/20 text-white"
+            >
+              <X className="h-5 w-5" />
             </Button>
           </div>
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'all' | 'unread')}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="unread">Unread</TabsTrigger>
-          </TabsList>
+          <div className="px-6 pt-4">
+            <TabsList className="grid w-full grid-cols-2 bg-gray-100 h-10">
+              <TabsTrigger 
+                value="all" 
+                className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#134F30] data-[state=active]:font-medium"
+              >
+                All Notifications
+              </TabsTrigger>
+              <TabsTrigger 
+                value="unread" 
+                className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#134F30] data-[state=active]:font-medium"
+              >
+                Unread Only
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          <TabsContent value={activeTab} className="flex-1">
-            <div className="p-4">
+          <TabsContent value={activeTab} className="flex-1 mt-0">
+            <div className="px-6 py-4">
               {/* Select All */}
               {data?.notifications && data.notifications.length > 0 && (
                 <div className="flex items-center justify-between mb-4">
@@ -209,79 +249,107 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
                     size="sm"
                     variant="outline"
                     onClick={handleSelectAll}
+                    className="text-sm h-8"
                   >
                     {selectedNotifications.length === data.notifications.length ? 'Deselect All' : 'Select All'}
                   </Button>
-                  <span className="text-sm text-gray-500">
-                    {selectedNotifications.length} selected
-                  </span>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span>{data.notifications.length} total</span>
+                    {data.unreadCount > 0 && (
+                      <>
+                        <span>•</span>
+                        <span className="text-[#134F30] font-medium">{data.unreadCount} unread</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
 
               {/* Notifications List */}
-              <ScrollArea className="h-96">
+              <ScrollArea className="h-[400px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-32">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <span className="text-sm text-gray-500">Loading notifications...</span>
+                    </div>
                   </div>
                 ) : error ? (
-                  <div className="text-center text-red-500 py-8">
-                    Failed to load notifications
+                  <div className="text-center py-12">
+                    <div className="text-red-500 mb-2">⚠️</div>
+                    <p className="text-red-600 font-medium">Failed to load notifications</p>
+                    <p className="text-sm text-gray-500 mt-1">Please try refreshing the page</p>
                   </div>
                 ) : !data?.notifications || data.notifications.length === 0 ? (
-                  <div className="text-center text-gray-500 py-8">
-                    No notifications found
+                  <div className="text-center py-12">
+                    <div className="text-gray-400 mb-3">
+                      <Bell className="h-12 w-12 mx-auto" />
+                    </div>
+                    <p className="text-gray-700 font-medium">No notifications yet</p>
+                    <p className="text-sm text-gray-600 mt-1">We'll notify you when something important happens</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {data.notifications.map((notification) => (
+                    {data.notifications.map((notification, index) => (
                       <div
                         key={notification.id}
-                        className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                        className={`group pl-2 pr-3 py-3 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-sm ${
                           notification.isRead 
-                            ? 'bg-gray-50 border-gray-200' 
-                            : 'bg-blue-50 border-blue-200'
+                            ? 'bg-white border-gray-200 hover:border-gray-300' 
+                            : 'bg-gradient-to-r from-[#134F30]/5 to-[#F28A2E]/5 border-[#134F30]/20 hover:border-[#134F30]/30'
                         } ${
                           selectedNotifications.includes(notification.id)
-                            ? 'ring-2 ring-blue-500'
+                            ? 'ring-2 ring-[#134F30] shadow-md'
                             : ''
                         }`}
                         onClick={() => handleNotificationClick(notification)}
+                        style={{ animationDelay: `${index * 30}ms` }}
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-2">
                           {/* Priority indicator */}
-                          <div className={`w-1 h-full rounded-full ${getPriorityColor(notification.type)}`} />
+                          <div className={`w-1 h-full rounded-full ${getPriorityColor(notification.type)} flex-shrink-0`} />
                           
                           {/* Icon */}
-                          <div className="text-2xl">
-                            {getNotificationIcon(notification.type)}
+                          <div className="flex-shrink-0 p-1.5 bg-gray-100 rounded-md">
+                            {React.createElement(getNotificationIcon(notification.type), { 
+                              className: "h-4 w-4 text-gray-600" 
+                            })}
                           </div>
                           
                           {/* Content */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between">
-                              <h3 className={`font-medium ${notification.isRead ? 'text-gray-700' : 'text-gray-900'}`}>
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 className={`font-medium text-sm leading-tight ${
+                                notification.isRead ? 'text-gray-700' : 'text-gray-900'
+                              }`}>
                                 {notification.title}
                               </h3>
-                              <input
-                                type="checkbox"
-                                checked={selectedNotifications.includes(notification.id)}
-                                onChange={(e) => {
-                                  e.stopPropagation();
-                                  handleSelectNotification(notification.id);
-                                }}
-                                className="ml-2"
-                              />
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                {!notification.isRead && (
+                                  <div className="w-1.5 h-1.5 bg-[#134F30] rounded-full animate-pulse"></div>
+                                )}
+                                <input
+                                  type="checkbox"
+                                  checked={selectedNotifications.includes(notification.id)}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    handleSelectNotification(notification.id);
+                                  }}
+                                  className="w-3.5 h-3.5 text-[#134F30] border-gray-300 rounded focus:ring-[#134F30]"
+                                />
+                              </div>
                             </div>
-                            <p className={`text-sm mt-1 ${notification.isRead ? 'text-gray-600' : 'text-gray-800'}`}>
+                            <p className={`text-xs mt-1 leading-relaxed ${
+                              notification.isRead ? 'text-gray-600' : 'text-gray-800'
+                            }`}>
                               {notification.message}
                             </p>
                             <div className="flex items-center justify-between mt-2">
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
                                 {formatDistanceToNow(new Date(notification.sentAt), { addSuffix: true })}
                               </span>
                               {!notification.isRead && (
-                                <Badge variant="secondary" className="text-xs">
+                                <Badge variant="secondary" className="text-xs bg-[#134F30]/10 text-[#134F30] px-1.5 py-0.5">
                                   New
                                 </Badge>
                               )}

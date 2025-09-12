@@ -64,20 +64,22 @@ const NotificationBell: React.FC = () => {
     <>
       {/* Permission Banner */}
       {showPermissionBanner && (
-        <div className="fixed top-4 right-4 z-50 bg-blue-600 text-white p-4 rounded-lg shadow-lg max-w-sm">
-          <div className="flex items-start gap-3">
-            <Bell className="h-5 w-5 mt-0.5 flex-shrink-0" />
+        <div className="fixed top-4 right-4 z-50 bg-gradient-to-r from-[#134F30] to-[#F28A2E] text-white p-5 rounded-2xl shadow-2xl max-w-sm animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-white/20 rounded-full flex-shrink-0">
+              <Bell className="h-5 w-5" />
+            </div>
             <div className="flex-1">
-              <h3 className="font-medium text-sm">Enable Notifications</h3>
-              <p className="text-xs text-blue-100 mt-1">
+              <h3 className="font-semibold text-sm mb-1">Enable Notifications</h3>
+              <p className="text-xs text-white/90 leading-relaxed mb-4">
                 Get real-time updates about your appointments, test results, and health insights.
               </p>
-              <div className="flex gap-2 mt-3">
+              <div className="flex gap-2">
                 <Button
                   size="sm"
                   variant="secondary"
                   onClick={handleRequestPermission}
-                  className="text-xs"
+                  className="text-xs bg-white text-[#134F30] hover:bg-gray-50 font-medium"
                 >
                   Enable
                 </Button>
@@ -85,7 +87,7 @@ const NotificationBell: React.FC = () => {
                   size="sm"
                   variant="ghost"
                   onClick={handleDismissBanner}
-                  className="text-xs text-blue-100 hover:text-white"
+                  className="text-xs text-white/90 hover:text-white hover:bg-white/10 p-2"
                 >
                   <X className="h-3 w-3" />
                 </Button>
@@ -125,23 +127,6 @@ const NotificationBell: React.FC = () => {
             Enable Notifications
           </Button>
         )}
-        
-        {/* Debug Button - Always Visible */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={async () => {
-            console.log('🔍 Debug: Manual registration test');
-            try {
-              await handleRequestPermission();
-            } catch (error) {
-              console.error('Debug registration error:', error);
-            }
-          }}
-          className="ml-2 text-xs bg-yellow-100"
-        >
-          Debug Register
-        </Button>
       </div>
 
       {/* Notification Center */}

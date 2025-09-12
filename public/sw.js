@@ -46,8 +46,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body || data.message,
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-72x72.png',
+    icon: '/placeholder.svg',
+    badge: '/placeholder.svg',
     data: data.data || {},
     actions: [
       {

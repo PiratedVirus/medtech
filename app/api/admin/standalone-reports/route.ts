@@ -56,14 +56,6 @@ export async function GET(request: NextRequest) {
 
     // Transform data for frontend
     const transformedReports = reports.map(report => {
-      console.log(`[STANDALONE-REPORTS] Report ${report.id} analyses:`, report.reportAnalyses.map(a => ({
-        id: a.id,
-        status: a.processingStatus,
-        allValues: a.allValues,
-        criticalValues: a.criticalValues,
-        hasSummary: !!a.llmSummary
-      })));
-      
       return {
         id: report.id,
         fileName: report.fileName,

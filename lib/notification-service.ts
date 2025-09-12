@@ -199,17 +199,59 @@ export class NotificationService {
     );
   }
 
+  static async sendDietPlanFollowUp(patientId: number, dieticianName: string) {
+    await this.sendAndSave(
+      patientId,
+      'DIET_PLAN_FOLLOW_UP',
+      'How\'s Your Diet Journey Going?',
+      `Hi! Are you following your diet plan? How's your journey going? Any doubts about your diet? Feel free to reach out!`,
+      {
+        dieticianName,
+        action: 'CONTACT_DIETICIAN',
+        priority: 'medium',
+      }
+    );
+  }
+
   // Lab test notifications
   static async sendLabBookingConfirmed(patientId: number, labPackageName: string, labDate: string) {
     await this.sendAndSave(
       patientId,
       'LAB_BOOKING_CONFIRMED',
       'Lab Test Booked',
-      `Your ${labPackageName} test has been booked for ${new Date(labDate).toLocaleDateString()}`,
+      `Your ${labPackageName} test has been booked for ${new Date(labDate).toLocaleDateString()}. Our phlebotomist will reach your location at the specified time - sit back and relax!`,
       {
         labPackageName,
         labDate,
         action: 'VIEW_LAB_BOOKING',
+      }
+    );
+  }
+
+  static async sendFollowUpAppointment(patientId: number, doctorName: string) {
+    await this.sendAndSave(
+      patientId,
+      'FOLLOW_UP_APPOINTMENT',
+      'Appointment Reminder',
+      `Your appointment with Dr. ${doctorName} is to be scheduled. Please book your appointment to continue your treatment.`,
+      {
+        doctorName,
+        action: 'BOOK_APPOINTMENT',
+        priority: 'medium',
+      }
+    );
+  }
+
+  static async sendFollowUpLabTest(patientId: number, labPackageName: string) {
+    await this.sendAndSave(
+      patientId,
+      'FOLLOW_UP_LAB_TEST',
+      'Lab Test Reminder',
+      `Your ${labPackageName} test is remaining to be scheduled. Please book your lab test to complete your health checkup.`,
+      {
+        labPackageName,
+        action: 'BOOK_LAB_TEST',
+        priority: 'medium',
       }
     );
   }
@@ -303,6 +345,20 @@ export class NotificationService {
         planName,
         newEndDate,
         action: 'VIEW_PLAN',
+      }
+    );
+  }
+
+  static async sendPlanSubscribed(patientId: number, planName: string) {
+    await this.sendAndSave(
+      patientId,
+      'PLAN_SUBSCRIBED',
+      'Welcome to Your Health Journey! 🎉',
+      `Congratulations! Your ${planName} subscription is active. Your healthy journey begins now - get ready for a "NEW YOU"!`,
+      {
+        planName,
+        action: 'VIEW_PLAN',
+        priority: 'high',
       }
     );
   }

@@ -139,6 +139,7 @@ export default function LabReportsRow({ labBookings, patientId }: LabReportsRowP
         patientId={patientId}
         labReports={labBookings}
         standaloneReports={standaloneReports}
+        preSelectedStandaloneReportId={null}
       />
     </Card>
   );
