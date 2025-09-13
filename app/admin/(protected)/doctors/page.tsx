@@ -127,7 +127,7 @@ export default function DoctorsPage() {
   const fetchAvailableUsers = async (clinicId: number) => {
     try {
       // This endpoint should return users for the specified clinic
-      const res = await axios.get(`/api/admin/users?role=DOCTOR`);
+      const res = await axios.get(`/api/admin/optimized/users?role=DOCTOR`);
       console.log("Available users for clinic:", res.data.data);
       setAvailableUsers(res.data.data);
     } catch (error) {

@@ -26,10 +26,13 @@ export function AppointmentsTable() {
     const fetchAppointments = async () => {
       try {
         setIsLoading(true);
-        const response = await axios.get("/api/admin/dashboard/appointments");
-        setAppointments(response.data);
+        const response = await axios.get("/api/admin/optimized/appointments");
+        // API returns { data: appointments[], total, page, pageSize, totalPages }
+        // We need the appointments array from response.data.data
+        setAppointments(response.data.data || []);
       } catch (error) {
         console.error("Failed to fetch appointments:", error);
+        setAppointments([]); // Set empty array on error to prevent undefined issues
       } finally {
         setIsLoading(false);
       }
@@ -119,15 +122,15 @@ export function AppointmentsTable() {
           ) : (
             appointments.map((appointment) => (
               <TableRow key={appointment.id} className="hover:bg-[rgba(242,138,46,0.05)]">
-                <TableCell className="font-medium">{appointment.patient.name}</TableCell>
-                <TableCell>{appointment.doctor.name}</TableCell>
+                <TableCell className="font-medium">{appointment.patient?.name || 'N/A'}</TableCell>
+                <TableCell>{appointment.doctor?.name || 'N/A'}</TableCell>
                 <TableCell>
-                  {formatDateTime(
+                  {appointment.doctorAvailability ? formatDateTime(
                     appointment.doctorAvailability.date,
                     appointment.doctorAvailability.startTime
-                  )}
+                  ) : 'N/A'}
                 </TableCell>
-                <TableCell>{appointment.consultationType}</TableCell>
+                <TableCell>{appointment.consultationType || 'N/A'}</TableCell>
                 <TableCell>
                   <Badge
                     variant={
@@ -147,7 +150,7 @@ export function AppointmentsTable() {
                         : ""
                     }
                   >
-                    {appointment.status}
+                    {appointment.status || 'Unknown'}
                   </Badge>
                 </TableCell>
               </TableRow>

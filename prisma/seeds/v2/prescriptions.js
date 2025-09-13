@@ -4,8 +4,11 @@ const prisma = new PrismaClient();
 async function seedPrescriptionData(tx = prisma) {
   console.log("📋 Seeding prescription data...");
 
-  // Get appointments, doctors, and patients
+  // Get appointments that don't already have prescriptions
   const appointments = await tx.appointment.findMany({
+    where: {
+      prescription: null // Only get appointments without prescriptions
+    },
     include: {
       doctor: true,
       patient: true,
@@ -13,14 +16,16 @@ async function seedPrescriptionData(tx = prisma) {
   });
 
   if (appointments.length === 0) {
-    console.log("⚠️ No appointments found, skipping prescription seeding");
+    console.log("⚠️ No appointments without prescriptions found, skipping prescription seeding");
     return [];
   }
+
+  console.log(`📋 Found ${appointments.length} appointments without prescriptions`);
 
   const prescriptions = [];
 
   for (const appointment of appointments) {
-    // Create prescription for each appointment
+    // Create prescription for each appointment that doesn't have one
     const prescription = await tx.prescription.create({
       data: {
         appointmentId: appointment.id,

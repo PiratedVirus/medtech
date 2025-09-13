@@ -124,7 +124,7 @@ const updateAppointment = async (id: number, data: AppointmentsFormData) => {
       ...data,
       id: Number(id),
     }
-    const response = await axios.put(`/api/admin/appointments`, dataWIthId);
+    const response = await axios.put(`/api/admin/optimized/appointments`, dataWIthId);
     return response.data;
   } catch (error) {
     console.error("Failed to update appointment:", error);
@@ -232,7 +232,7 @@ export default function AppointmentsPage() {
     console.log("Entire payload", payload);
 
     try {
-      const response = await axios.post("/api/admin/appointments", payload);
+      const response = await axios.post("/api/admin/optimized/appointments", payload);
       return response.data;
     } catch (error) {
       console.error("Failed to create appointment:", error);
@@ -262,7 +262,7 @@ export default function AppointmentsPage() {
   const fetchAppointments = async (pageIndex: number, pageSize: number) => {
     try {
       const response = await axios.get(
-        `/api/admin/appointments?page=${pageIndex + 1}&pageSize=${pageSize}`
+        `/api/admin/optimized/appointments?page=${pageIndex + 1}&pageSize=${pageSize}`
       );
       setDataState({ appointments: response.data.data, total: response.data.total });
 
@@ -290,7 +290,7 @@ export default function AppointmentsPage() {
 
   const fetchPatients = async () => {
     try {
-      const response = await axios.get("/api/admin/users?role=PATIENT");
+      const response = await axios.get("/api/admin/optimized/users?role=PATIENT");
       return response.data.data;
     } catch (error) {
       console.error("Failed to fetch patients:", error);
@@ -407,7 +407,7 @@ export default function AppointmentsPage() {
       (index) => dataState.appointments[parseInt(index)].id
     );
     try {
-      await axios.delete("/api/admin/appointments", { data: { ids: selectedIds } });
+      await axios.delete("/api/admin/optimized/appointments", { data: { ids: selectedIds } });
       toast.success("Selected appointments deleted successfully");
       await fetchData();
       setRowSelection({});

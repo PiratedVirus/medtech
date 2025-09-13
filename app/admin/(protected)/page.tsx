@@ -30,7 +30,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchSummaryData = async () => {
       try {
-        const response = await axios.get("/api/admin/dashboard/summary");
+        const response = await axios.get("/api/admin/optimized/dashboard-summary");
         setSummaryData(response.data);
       } catch (error) {
         console.error("Failed to fetch summary data:", error);

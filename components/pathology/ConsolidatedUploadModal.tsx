@@ -133,7 +133,7 @@ export default function ConsolidatedUploadModal({
       }
 
       // Update lab booking with uploaded reports
-      const response = await axios.put(`/api/admin/dashboard/patients-details`, {
+      const response = await axios.put(`/api/admin/optimized/dashboard/patients-details`, {
         labBookingId: booking?.id,
         links: uploadedLinks,
         status: "COMPLETED"
@@ -205,7 +205,7 @@ export default function ConsolidatedUploadModal({
           .filter(file => file.id !== fileId)
           .map(file => file.url);
         
-        const response = await axios.put(`/api/admin/dashboard/patients-details`, {
+        const response = await axios.put(`/api/admin/optimized/dashboard/patients-details`, {
           labBookingId: booking?.id,
           links: updatedUrls,
           status: "COMPLETED"

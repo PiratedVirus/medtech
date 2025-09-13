@@ -16,8 +16,6 @@
     "deploy": "npm run migrate:prod && npm run generate:prisma && npm run build && npm run start",
     "seed": "node prisma/seeds/v2/main.js",
     "seed:fresh": "node prisma/seeds/main.js --start-fresh",
-    "seed:v2": "node prisma/seeds/v2/main.js",
-    "seed:v2:fresh": "node prisma/seeds/v2/main.js --start-fresh",
     "seed:llm": "node prisma/seeds/v2/seed-llm-playground-profile.js",
     "fix:missing-data": "node prisma/seeds/v2/fixMissingData.js",
     "fix:robust": "node prisma/seeds/v2/runRobustFix.js",
