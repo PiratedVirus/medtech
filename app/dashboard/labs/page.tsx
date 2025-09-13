@@ -341,7 +341,7 @@ export default function LabsPage() {
           setAnalysisModalOpen(false);
           setSelectedStandaloneReport(null);
         }}
-        patientId={Number(profile?.id)}
+        patientId={String(profile?.id)}
         labReports={labData.completed}
         standaloneReports={standaloneReports}
         preSelectedStandaloneReportId={selectedStandaloneReport?.id || null}

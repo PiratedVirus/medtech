@@ -156,7 +156,7 @@ export default function UnifiedAnalysisModal({
       
       // Find and set the analysis for the pre-selected report
       const preSelectedReport = allStandaloneReports.find(r => r.id === preSelectedStandaloneReportId);
-      if (preSelectedReport?.reportAnalyses?.length > 0) {
+      if (preSelectedReport?.reportAnalyses?.length && preSelectedReport.reportAnalyses.length > 0) {
         const completedAnalysis = preSelectedReport.reportAnalyses.find(a => a.processingStatus === 'COMPLETED');
         const analysis = completedAnalysis || preSelectedReport.reportAnalyses[0];
         setStandaloneAnalysis(analysis);

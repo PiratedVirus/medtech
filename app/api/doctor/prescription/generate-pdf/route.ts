@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import prisma from "@/lib/prisma";
-import QRCode from "qrcode";
 import React from "react";
 import { pdf } from "@react-pdf/renderer";
 import PrescriptionPDF from "@/components/prescription/PrescriptionPDF";
@@ -9,7 +8,7 @@ import PrescriptionPDF from "@/components/prescription/PrescriptionPDF";
 
 export async function POST(request: NextRequest) {
   try {
-    const { appointmentId, prescriptionData, patientInfo, doctorInfo, clinicInfo } = await request.json();
+    const { appointmentId, prescriptionData, patientInfo, doctorInfo, clinicInfo, visibleSections } = await request.json();
 
     if (!appointmentId || !prescriptionData || !patientInfo || !doctorInfo || !clinicInfo) {
       return NextResponse.json(
@@ -18,17 +17,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate QR code with redirect URL
-    const qrRedirectUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/prescription/qr/${appointmentId}`;
-    const qrCodeDataURL = await QRCode.toDataURL(qrRedirectUrl);
-
     // Render PDF using react-pdf
     const docElement = React.createElement(PrescriptionPDF, {
       prescriptionData,
       patientInfo,
       doctorInfo,
       clinicInfo,
-      qrCodeDataURL,
+      visibleSections,
     });
 
     const pdfBlob = await pdf(docElement).toBlob();

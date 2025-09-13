@@ -52,7 +52,11 @@ export async function GET(request: Request) {
           patientAppointments: {
             select: {
               id: true,
-              doctorAvailability: { date: true },
+              doctorAvailability: { 
+                select: { 
+                  date: true 
+                } 
+              },
               consultationType: true,
               status: true,
               isDietician: true,
@@ -113,9 +117,9 @@ export async function GET(request: Request) {
       }
       // Split appointments by doctor vs dietician
       const doctorAppointments = patient.patientAppointments.filter(a => a.isDietician === false)
-        .sort((a, b) => new Date(b.appointmentDate || 0).getTime() - new Date(a.appointmentDate || 0).getTime());
+        .sort((a, b) => new Date(b.doctorAvailability?.date || 0).getTime() - new Date(a.doctorAvailability?.date || 0).getTime());
       const dieticianAppointments = patient.patientAppointments.filter(a => a.isDietician)
-        .sort((a, b) => new Date(b.appointmentDate || 0).getTime() - new Date(a.appointmentDate || 0).getTime());
+        .sort((a, b) => new Date(b.doctorAvailability?.date || 0).getTime() - new Date(a.doctorAvailability?.date || 0).getTime());
       const sortedLabBookings = patient.labPatientBookings
         .sort((a, b) => new Date(b.labDate).getTime() - new Date(a.labDate).getTime());
       const formatted = {
@@ -140,7 +144,7 @@ export async function GET(request: Request) {
         })) || [],
         doctorAppointments: doctorAppointments.map(a => ({
           id: a.id,
-          date: a.appointmentDate,
+          date: a.doctorAvailability?.date,
           type: a.consultationType,
           status: a.status,
           prescriptionLink: a.prescriptionLink,
@@ -149,7 +153,7 @@ export async function GET(request: Request) {
         })),
         dieticianAppointments: dieticianAppointments.map(a => ({
           id: a.id,
-          date: a.appointmentDate,
+          date: a.doctorAvailability?.date,
           type: a.consultationType,
           status: a.status,
           dietPlanLink: a.prescriptionLink,

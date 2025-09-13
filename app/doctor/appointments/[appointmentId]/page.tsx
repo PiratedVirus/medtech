@@ -116,6 +116,17 @@ export default function PrescriptionPage() {
     subtitle: "",
   });
 
+  const [visibleSections, setVisibleSections] = useState({
+    complaints: true,
+    vitals: true,
+    history: true,
+    systemicExamination: true,
+    medicines: true,
+    advice: true,
+    testsRequested: true,
+    nextVisit: true,
+  });
+
   useEffect(() => {
     // Auto-scroll to vitals section after a short delay
     const scrollToVitals = () => {
@@ -523,7 +534,8 @@ export default function PrescriptionPage() {
           patientInfo,
           doctorInfo,
           clinicInfo,
-          appointmentId
+          appointmentId,
+          visibleSections
         );
         
         if (pdfResult.success) {

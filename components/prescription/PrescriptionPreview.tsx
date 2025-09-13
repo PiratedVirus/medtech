@@ -3,7 +3,6 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
-import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 
 interface PrescriptionPreviewProps {
@@ -30,35 +29,6 @@ export default function PrescriptionPreview({
   clinicInfo,
   visibleSections,
 }: PrescriptionPreviewProps) {
-  const [qrCodeDataURL, setQrCodeDataURL] = useState<string>("");
-
-  useEffect(() => {
-    // Generate QR code for the prescription
-    const generateQRCode = async () => {
-      try {
-        const qrCodeData = JSON.stringify({
-          appointmentId: patientInfo.appointmentId,
-          patientName: patientInfo.name,
-          prescriptionId: patientInfo.prescriptionId,
-          timestamp: new Date().toISOString(),
-        });
-
-        const dataURL = await QRCode.toDataURL(qrCodeData, {
-          width: 200,
-          margin: 2,
-          color: {
-            dark: '#1F2937', // Dark gray
-            light: '#FFFFFF' // White
-          }
-        });
-        setQrCodeDataURL(dataURL);
-      } catch (error) {
-        console.error("Error generating QR code:", error);
-      }
-    };
-
-    generateQRCode();
-  }, [patientInfo]);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-GB", {
@@ -105,11 +75,32 @@ export default function PrescriptionPreview({
           </div>
         )}
 
-        {/* Complaints */}
+        {/* Complaints with Timeline */}
         {visibleSections.complaints && prescriptionData.complaints?.length > 0 && (
-          <p className="mb-2">
-            <span className="font-semibold">Complaints:</span> {prescriptionData.complaints.map((c: any) => c.text).join(', ')}
-          </p>
+          <div className="mb-3">
+            <p className="font-semibold mb-2">Chief Complaints:</p>
+            <div className="ml-4">
+              {prescriptionData.complaints.map((complaint: any, index: number) => {
+                const getTimeAgo = (daysSince?: number) => {
+                  if (!daysSince || daysSince === 0) return "recent";
+                  if (daysSince === 1) return "1 day";
+                  if (daysSince < 7) return `${daysSince} days`;
+                  if (daysSince < 30) {
+                    const weeks = Math.floor(daysSince / 7);
+                    return `${weeks} week${weeks > 1 ? 's' : ''}`;
+                  }
+                  const months = Math.floor(daysSince / 30);
+                  return `${months} month${months > 1 ? 's' : ''}`;
+                };
+                
+                return (
+                  <p key={index} className="text-sm mb-1">
+                    • {complaint.text} (since {getTimeAgo(complaint.daysSince)})
+                  </p>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Diagnosis */}
@@ -118,8 +109,11 @@ export default function PrescriptionPreview({
         </p>
       </section>
 
-      {/* Rx Section */}
-      <div className="text-2xl font-bold text-gray-900 mb-4">Rx</div>
+      {/* Rx Section - Medical Style */}
+      <div className="text-left mb-6">
+        <div className="text-3xl font-bold text-[#0C7C59] mb-2">Rx</div>
+        <div className="w-12 h-0.5 bg-[#0C7C59]"></div>
+      </div>
 
       {/* Medicines Table */}
       {visibleSections.medicines && prescriptionData.medicines?.length > 0 && (
@@ -172,20 +166,13 @@ export default function PrescriptionPreview({
       </div>
 
       {/* Footer */}
-      <footer className="flex justify-between items-end mt-8">
-        <div>
-          {/* QR Code */}
-          {qrCodeDataURL && (
-            <div className="w-16 h-16 mb-2">
-              <img src={qrCodeDataURL} alt="QR Code" className="w-full h-full" />
-            </div>
-          )}
-          <p className="text-xs text-gray-500">Scan QR Code to<br />download the prescription</p>
-        </div>
+      <footer className="flex justify-end items-end mt-8">
         <div className="text-right">
           {/* Signature Line */}
           <div className="w-32 border-b border-gray-900 mb-2"></div>
           <p className="font-semibold text-gray-900">Dr. {doctorInfo?.name || "Abhinav"}</p>
+          <p className="text-xs text-gray-600">{doctorInfo?.qualification || "MBBS, MD"}</p>
+          <p className="text-xs text-gray-600">Reg. No: {doctorInfo?.regNumber || "12345"}</p>
         </div>
       </footer>
       

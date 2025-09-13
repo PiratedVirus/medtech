@@ -1,6 +1,5 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Image, pdf } from '@react-pdf/renderer';
-import QRCode from 'qrcode';
+import { Page, Text, View, Document, StyleSheet, pdf } from '@react-pdf/renderer';
 import jsPDF from 'jspdf';
 
 const formatDate = (date: Date) => {
@@ -13,7 +12,7 @@ const formatDate = (date: Date) => {
   });
 };
 
-const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo, qrCodeDataURL }: any) => (
+const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo, visibleSections }: any) => (
   <Document>
     <Page style={styles.body}>
       {/* Header */}
@@ -44,79 +43,102 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
         <Text style={styles.patientInfo}>
           <Text style={styles.bold}>Random Blood Sugar:</Text> 150 mg/dL
         </Text>
-        <Text style={styles.patientInfo}>
-          <Text style={styles.bold}>Complaints:</Text> {prescriptionData.complaints?.map((c: any) => c.text).join(', ') || 'None'}
-        </Text>
+        {/* Complaints with Timeline */}
+        {visibleSections?.complaints !== false && prescriptionData.complaints?.length > 0 && (
+          <View style={styles.complaintsSection}>
+            <Text style={[styles.patientInfo, styles.bold]}>Chief Complaints:</Text>
+            {prescriptionData.complaints.map((complaint: any, index: number) => {
+              const getTimeAgo = (daysSince?: number) => {
+                if (!daysSince || daysSince === 0) return "recent";
+                if (daysSince === 1) return "1 day";
+                if (daysSince < 7) return `${daysSince} days`;
+                if (daysSince < 30) {
+                  const weeks = Math.floor(daysSince / 7);
+                  return `${weeks} week${weeks > 1 ? 's' : ''}`;
+                }
+                const months = Math.floor(daysSince / 30);
+                return `${months} month${months > 1 ? 's' : ''}`;
+              };
+              
+              return (
+                <Text key={index} style={styles.complaintItem}>
+                  • {complaint.text} (since {getTimeAgo(complaint.daysSince)})
+                </Text>
+              );
+            })}
+          </View>
+        )}
         <Text style={styles.patientInfo}>
           <Text style={styles.bold}>Diagnosis:</Text> {prescriptionData.diagnosis || 'Chronic Pulpitis'}
         </Text>
       </View>
 
-      {/* Prescription Symbol */}
+      {/* Prescription Symbol - Medical Style */}
       <View style={styles.rxSection}>
-        <Text style={styles.rx}>℞</Text>
+        <Text style={styles.rx}>Rx</Text>
+        <View style={styles.rxUnderline} />
       </View>
 
       {/* Medicine Table */}
-      <View style={styles.tableContainer}>
-        <View style={styles.tableHeader}>
-          <Text style={styles.tableHeaderCell}>Medicine</Text>
-          <Text style={styles.tableHeaderCell}>Frequency</Text>
-          <Text style={styles.tableHeaderCell}>Time</Text>
-          <Text style={styles.tableHeaderCell}>Duration</Text>
-          <Text style={styles.tableHeaderCell}>Qty</Text>
-        </View>
-        {prescriptionData.medicines?.map((med: any, index: number) => (
-          <View key={index} style={styles.tableRow}>
-            <Text style={styles.tableCell}>{med.name}</Text>
-            <Text style={styles.tableCell}>{med.frequency}</Text>
-            <Text style={styles.tableCell}>{med.medicineTime}</Text>
-            <Text style={styles.tableCell}>{med.duration}</Text>
-            <Text style={styles.tableCell}>{med.quantity}</Text>
+      {visibleSections?.medicines !== false && prescriptionData.medicines?.length > 0 && (
+        <View style={styles.tableContainer}>
+          <View style={styles.tableHeader}>
+            <Text style={styles.tableHeaderCell}>Medicine</Text>
+            <Text style={styles.tableHeaderCell}>Frequency</Text>
+            <Text style={styles.tableHeaderCell}>Time</Text>
+            <Text style={styles.tableHeaderCell}>Duration</Text>
+            <Text style={styles.tableHeaderCell}>Qty</Text>
           </View>
-        ))}
-      </View>
+          {prescriptionData.medicines?.map((med: any, index: number) => (
+            <View key={index} style={styles.tableRow}>
+              <Text style={styles.tableCell}>{med.name}</Text>
+              <Text style={styles.tableCell}>{med.frequency}</Text>
+              <Text style={styles.tableCell}>{med.medicineTime}</Text>
+              <Text style={styles.tableCell}>{med.duration}</Text>
+              <Text style={styles.tableCell}>{med.quantity}</Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Advice */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Advice:</Text>
-        {prescriptionData.advice?.split('\n').map((line: string, index: number) => (
-          line.trim() && (
-            <Text key={index} style={styles.bulletPoint}>
-              • {line.trim()}
-            </Text>
-          )
-        ))}
-      </View>
+      {visibleSections?.advice !== false && prescriptionData.advice && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Advice:</Text>
+          {prescriptionData.advice?.split('\n').map((line: string, index: number) => (
+            line.trim() && (
+              <Text key={index} style={styles.bulletPoint}>
+                • {line.trim()}
+              </Text>
+            )
+          ))}
+        </View>
+      )}
 
       {/* Tests & Visit */}
       <View style={styles.testVisitSection}>
-        <View style={styles.testVisitColumn}>
-          <Text style={styles.sectionTitle}>Tests Requested:</Text>
-          <Text style={styles.bulletPoint}>• {prescriptionData.testsRequested || 'None'}</Text>
-        </View>
-        <View style={styles.testVisitColumn}>
-          <Text style={styles.sectionTitle}>Next Visit:</Text>
-          <Text style={styles.testVisitText}>
-            {prescriptionData.nextVisit?.value || 45} Days ({prescriptionData.nextVisit?.date ? formatDate(prescriptionData.nextVisit.date) : '14th Feb 2025'})
-          </Text>
-        </View>
+        {visibleSections?.testsRequested !== false && (
+          <View style={styles.testVisitColumn}>
+            <Text style={styles.sectionTitle}>Tests Requested:</Text>
+            <Text style={styles.bulletPoint}>• {prescriptionData.testsRequested || 'None'}</Text>
+          </View>
+        )}
+        {visibleSections?.nextVisit !== false && (
+          <View style={styles.testVisitColumn}>
+            <Text style={styles.sectionTitle}>Next Visit:</Text>
+            <Text style={styles.testVisitText}>
+              {prescriptionData.nextVisit?.value || 45} Days ({prescriptionData.nextVisit?.date ? formatDate(prescriptionData.nextVisit.date) : '14th Feb 2025'})
+            </Text>
+          </View>
+        )}
       </View>
 
-      {/* QR + Signature */}
-      <View style={styles.qrSignatureSection}>
-        <View style={styles.qrSection}>
-          {qrCodeDataURL ? (
-            <Image src={qrCodeDataURL} style={styles.qrCode} />
-          ) : (
-            <Text style={styles.qrPlaceholder}>[ QR CODE ]</Text>
-          )}
-          <Text style={styles.qrText}>Scan QR to download prescription</Text>
-        </View>
-        <View style={styles.signatureSection}>
-          <Text style={styles.signatureLine}>__________________________</Text>
-          <Text style={styles.doctorName}>Dr. {doctorInfo?.name || "Abhinav"}</Text>
-        </View>
+      {/* Signature Section */}
+      <View style={styles.signatureSection}>
+        <Text style={styles.signatureLine}>__________________________</Text>
+        <Text style={styles.doctorName}>Dr. {doctorInfo?.name || "Abhinav"}</Text>
+        <Text style={styles.doctorCredentials}>{doctorInfo?.qualification || "MBBS, MD"}</Text>
+        <Text style={styles.registrationNumber}>Reg. No: {doctorInfo?.regNumber || "12345"}</Text>
       </View>
 
       {/* Footer */}
@@ -190,16 +212,33 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     lineHeight: 1.4,
   },
+  complaintsSection: {
+    marginBottom: 8,
+  },
+  complaintItem: {
+    fontSize: 10,
+    marginBottom: 3,
+    marginLeft: 10,
+    lineHeight: 1.3,
+  },
   bold: {
     fontWeight: "bold",
   },
   rxSection: {
-    textAlign: "center",
-    marginVertical: 8,
+    alignItems: "flex-start",
+    marginVertical: 12,
+    paddingLeft: 0,
   },
   rx: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "bold",
+    color: "#0C7C59",
+    marginBottom: 4,
+  },
+  rxUnderline: {
+    width: 40,
+    height: 2,
+    backgroundColor: "#0C7C59",
   },
   tableContainer: {
     marginBottom: 12,
@@ -251,41 +290,28 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginTop: 4,
   },
-  qrSignatureSection: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    marginTop: 20,
-    marginBottom: 15,
-  },
-  qrSection: {
-    alignItems: "center",
-  },
-  qrCode: {
-    width: 50,
-    height: 50,
-    marginBottom: 5,
-  },
-  qrPlaceholder: {
-    fontSize: 10,
-    color: "#999",
-    marginBottom: 5,
-  },
-  qrText: {
-    fontSize: 8,
-    color: "#666",
-    textAlign: "center",
-  },
   signatureSection: {
     alignItems: "flex-end",
+    marginTop: 30,
+    marginBottom: 15,
   },
   signatureLine: {
     fontSize: 10,
     marginBottom: 5,
   },
   doctorName: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "bold",
+    marginBottom: 2,
+  },
+  doctorCredentials: {
+    fontSize: 9,
+    color: "#666",
+    marginBottom: 1,
+  },
+  registrationNumber: {
+    fontSize: 8,
+    color: "#666",
   },
   footer: {
     flexDirection: "row",
@@ -315,12 +341,10 @@ export const generatePDFWithJsPDF = async (
   patientInfo: any,
   doctorInfo: any,
   clinicInfo: any,
-  appointmentId: string
+  appointmentId: string,
+  visibleSections?: any
 ) => {
   try {
-    // Generate QR code
-    const qrRedirectUrl = `${window.location.origin}/api/prescription/qr/${appointmentId}`;
-    const qrCodeDataURL = await QRCode.toDataURL(qrRedirectUrl);
 
     // Create new PDF document
     const doc = new jsPDF();
@@ -361,68 +385,112 @@ export const generatePDFWithJsPDF = async (
     doc.text(`BP: ${prescriptionData.vitals?.bloodPressure || '120/80'} mmHg | Pulse: ${prescriptionData.vitals?.pulse || '72'} bpm`, 20, 70);
     doc.text(`Height: ${prescriptionData.vitals?.height || '185'} cm | Weight: ${prescriptionData.vitals?.weight || '90'} kgs`, 20, 80);
     doc.text(`Random Blood Sugar: 150 mg/dL`, 20, 90);
-    doc.text(`Complaints: ${prescriptionData.complaints?.map((c: any) => c.text).join(', ') || 'None'}`, 20, 100);
-    doc.text(`Diagnosis: ${prescriptionData.diagnosis || 'Chronic Pulpitis'}`, 20, 110);
+    // Complaints with timeline
+    if (visibleSections?.complaints !== false && prescriptionData.complaints?.length > 0) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Chief Complaints:", 20, 100);
+      doc.setFont("helvetica", "normal");
+      
+      prescriptionData.complaints.forEach((complaint: any, index: number) => {
+        const getTimeAgo = (daysSince?: number) => {
+          if (!daysSince || daysSince === 0) return "recent";
+          if (daysSince === 1) return "1 day";
+          if (daysSince < 7) return `${daysSince} days`;
+          if (daysSince < 30) {
+            const weeks = Math.floor(daysSince / 7);
+            return `${weeks} week${weeks > 1 ? 's' : ''}`;
+          }
+          const months = Math.floor(daysSince / 30);
+          return `${months} month${months > 1 ? 's' : ''}`;
+        };
+        
+        doc.text(`• ${complaint.text} (since ${getTimeAgo(complaint.daysSince)})`, 20, 110 + (index * 5));
+      });
+    } else {
+      doc.text("Complaints: None", 20, 100);
+    }
+    const diagnosisY = prescriptionData.complaints?.length > 0 ? 110 + (prescriptionData.complaints.length * 5) + 5 : 110;
+    doc.text(`Diagnosis: ${prescriptionData.diagnosis || 'Chronic Pulpitis'}`, 20, diagnosisY);
     
-    // Prescription symbol
-    doc.setFontSize(20);
-    doc.text("℞", 20, 125);
+    // Prescription symbol - Medical Style
+    const rxY = diagnosisY + 15;
+    doc.setFontSize(24);
+    doc.setTextColor(12, 124, 89); // Green color
+    doc.text("Rx", 20, rxY);
+    doc.line(20, rxY + 2, 40, rxY + 2); // Underline
     
     // Medicines table
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    const tableHeaders = ["Medicine", "Frequency", "Time", "Duration", "Qty"];
-    const tableX = 20;
-    const tableY = 135;
-    const colWidth = 34;
-    
-    tableHeaders.forEach((header, index) => {
-      doc.text(header, tableX + (index * colWidth), tableY);
-    });
-    
-    // Medicine rows
-    doc.setFont("helvetica", "normal");
-    prescriptionData.medicines?.forEach((med: any, index: number) => {
-      const rowY = tableY + 10 + (index * 8);
-      doc.text(med.name, tableX, rowY);
-      doc.text(med.frequency, tableX + colWidth, rowY);
-      doc.text(med.medicineTime, tableX + (colWidth * 2), rowY);
-      doc.text(med.duration, tableX + (colWidth * 3), rowY);
-      doc.text(med.quantity, tableX + (colWidth * 4), rowY);
-    });
+    let adviceY = rxY + 15;
+    if (visibleSections?.medicines !== false && prescriptionData.medicines?.length > 0) {
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0); // Reset to black
+      const tableHeaders = ["Medicine", "Frequency", "Time", "Duration", "Qty"];
+      const tableX = 20;
+      const tableY = rxY + 15;
+      const colWidth = 34;
+      
+      tableHeaders.forEach((header, index) => {
+        doc.text(header, tableX + (index * colWidth), tableY);
+      });
+      
+      // Medicine rows
+      doc.setFont("helvetica", "normal");
+      prescriptionData.medicines?.forEach((med: any, index: number) => {
+        const rowY = tableY + 10 + (index * 8);
+        doc.text(med.name, tableX, rowY);
+        doc.text(med.frequency, tableX + colWidth, rowY);
+        doc.text(med.medicineTime, tableX + (colWidth * 2), rowY);
+        doc.text(med.duration, tableX + (colWidth * 3), rowY);
+        doc.text(med.quantity, tableX + (colWidth * 4), rowY);
+      });
+      
+      adviceY = tableY + 10 + (prescriptionData.medicines?.length || 0) * 8 + 20;
+    }
     
     // Advice
-    const adviceY = tableY + 10 + (prescriptionData.medicines?.length || 0) * 8 + 20;
-    doc.setFont("helvetica", "bold");
-    doc.text("Advice:", 20, adviceY);
-    doc.setFont("helvetica", "normal");
-    
-    const adviceLines = prescriptionData.advice?.split('\n') || [];
-    adviceLines.forEach((line: string, index: number) => {
-      if (line.trim()) {
-        doc.text(`• ${line.trim()}`, 20, adviceY + 10 + (index * 5));
-      }
-    });
+    if (visibleSections?.advice !== false && prescriptionData.advice) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Advice:", 20, adviceY);
+      doc.setFont("helvetica", "normal");
+      
+      const adviceLines = prescriptionData.advice?.split('\n') || [];
+      adviceLines.forEach((line: string, index: number) => {
+        if (line.trim()) {
+          doc.text(`• ${line.trim()}`, 20, adviceY + 10 + (index * 5));
+        }
+      });
+      
+      adviceY = adviceY + 10 + (adviceLines.length * 5) + 15;
+    }
     
     // Tests and Next Visit
-    const testsY = adviceY + 10 + (adviceLines.length * 5) + 15;
+    let testsY = adviceY;
     doc.setFont("helvetica", "bold");
-    doc.text("Tests Requested:", 20, testsY);
-    doc.text("Next Visit:", 100, testsY);
+    if (visibleSections?.testsRequested !== false) {
+      doc.text("Tests Requested:", 20, testsY);
+      doc.setFont("helvetica", "normal");
+      doc.text(`• ${prescriptionData.testsRequested || 'None'}`, 20, testsY + 8);
+    }
     
+    if (visibleSections?.nextVisit !== false) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Next Visit:", 100, testsY);
+      doc.setFont("helvetica", "normal");
+      doc.text(`${prescriptionData.nextVisit?.value || 45} Days`, 100, testsY + 8);
+    }
+    
+    testsY = testsY + 20;
+    
+    // Signature Section
+    const signatureY = testsY;
+    doc.text("__________________________", 140, signatureY);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Dr. ${doctorInfo?.name || "Abhinav"}`, 140, signatureY + 8);
     doc.setFont("helvetica", "normal");
-    doc.text(`• ${prescriptionData.testsRequested || 'None'}`, 20, testsY + 8);
-    doc.text(`${prescriptionData.nextVisit?.value || 45} Days`, 100, testsY + 8);
-    
-    // QR Code and Signature
-    const qrY = testsY + 20;
-    doc.addImage(qrCodeDataURL, 'PNG', 20, qrY, 20, 20);
-    doc.text("Scan QR to download prescription", 45, qrY + 10);
-    
-    // Signature
-    doc.text("__________________________", 120, qrY);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Dr. ${doctorInfo?.name || "Abhinav"}`, 120, qrY + 10);
+    doc.setFontSize(8);
+    doc.text(`${doctorInfo?.qualification || "MBBS, MD"}`, 140, signatureY + 14);
+    doc.text(`Reg. No: ${doctorInfo?.regNumber || "12345"}`, 140, signatureY + 18);
     
     // Footer
     const footerY = 270;
@@ -442,13 +510,13 @@ export const generatePDFWithJsPDF = async (
 };
 
 // Create a wrapper component for PDF generation
-const PDFDocument = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo, qrCodeDataURL }: any) => (
+const PDFDocument = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo, visibleSections }: any) => (
   <PrescriptionPDF
     prescriptionData={prescriptionData}
     patientInfo={patientInfo}
     doctorInfo={doctorInfo}
     clinicInfo={clinicInfo}
-    qrCodeDataURL={qrCodeDataURL}
+    visibleSections={visibleSections}
   />
 );
 
@@ -458,7 +526,8 @@ export const generatePDFBase64 = async (
   patientInfo: any,
   doctorInfo: any,
   clinicInfo: any,
-  appointmentId: string
+  appointmentId: string,
+  visibleSections?: any
 ) => {
   try {
     // Debug logging to help identify data structure issues
@@ -467,7 +536,8 @@ export const generatePDFBase64 = async (
       patientInfo: patientInfo ? 'Present' : 'Missing',
       doctorInfo: doctorInfo ? 'Present' : 'Missing',
       clinicInfo: clinicInfo ? 'Present' : 'Missing',
-      appointmentId
+      appointmentId,
+      visibleSections: visibleSections || 'All sections visible'
     });
 
     // Validate required data
@@ -484,10 +554,6 @@ export const generatePDFBase64 = async (
       throw new Error('Clinic info is required');
     }
 
-    // Generate QR code
-    const qrRedirectUrl = `${window.location.origin}/api/prescription/qr/${appointmentId}`;
-    const qrCodeDataURL = await QRCode.toDataURL(qrRedirectUrl);
-
     // Generate PDF blob using react-pdf with wrapper component
     const pdfBlob = await pdf(
       <PDFDocument
@@ -495,7 +561,7 @@ export const generatePDFBase64 = async (
         patientInfo={patientInfo}
         doctorInfo={doctorInfo}
         clinicInfo={clinicInfo}
-        qrCodeDataURL={qrCodeDataURL}
+        visibleSections={visibleSections}
       />
     ).toBlob();
     
@@ -517,7 +583,7 @@ export const generatePDFBase64 = async (
     
     // Fallback to jsPDF
     console.log('Falling back to jsPDF...');
-    return await generatePDFWithJsPDF(prescriptionData, patientInfo, doctorInfo, clinicInfo, appointmentId);
+    return await generatePDFWithJsPDF(prescriptionData, patientInfo, doctorInfo, clinicInfo, appointmentId, visibleSections);
   }
 };
 
@@ -527,7 +593,8 @@ export const generateAndDownloadPDF = async (
   patientInfo: any,
   doctorInfo: any,
   clinicInfo: any,
-  appointmentId: string
+  appointmentId: string,
+  visibleSections?: any
 ) => {
   try {
     // Debug logging to help identify data structure issues
@@ -536,7 +603,8 @@ export const generateAndDownloadPDF = async (
       patientInfo: patientInfo ? 'Present' : 'Missing',
       doctorInfo: doctorInfo ? 'Present' : 'Missing',
       clinicInfo: clinicInfo ? 'Present' : 'Missing',
-      appointmentId
+      appointmentId,
+      visibleSections: visibleSections || 'All sections visible'
     });
 
     // Validate required data
@@ -553,10 +621,6 @@ export const generateAndDownloadPDF = async (
       throw new Error('Clinic info is required');
     }
 
-    // Generate QR code
-    const qrRedirectUrl = `${window.location.origin}/api/prescription/qr/${appointmentId}`;
-    const qrCodeDataURL = await QRCode.toDataURL(qrRedirectUrl);
-
     // Generate PDF blob using react-pdf with wrapper component
     const pdfBlob = await pdf(
       <PDFDocument
@@ -564,7 +628,7 @@ export const generateAndDownloadPDF = async (
         patientInfo={patientInfo}
         doctorInfo={doctorInfo}
         clinicInfo={clinicInfo}
-        qrCodeDataURL={qrCodeDataURL}
+        visibleSections={visibleSections}
       />
     ).toBlob();
     
@@ -588,7 +652,7 @@ export const generateAndDownloadPDF = async (
     
     // Fallback to jsPDF
     console.log('Falling back to jsPDF...');
-    return await generatePDFWithJsPDF(prescriptionData, patientInfo, doctorInfo, clinicInfo, appointmentId);
+    return await generatePDFWithJsPDF(prescriptionData, patientInfo, doctorInfo, clinicInfo, appointmentId, visibleSections);
   }
 };
 
@@ -684,10 +748,6 @@ export const testReactPDFOnly = async () => {
   };
 
   try {
-    // Generate QR code
-    const qrRedirectUrl = `${window.location.origin}/api/prescription/qr/${sampleData.appointmentId}`;
-    const qrCodeDataURL = await QRCode.toDataURL(qrRedirectUrl);
-
     // Generate PDF blob using react-pdf with wrapper component
     const pdfBlob = await pdf(
       <PDFDocument
@@ -695,7 +755,6 @@ export const testReactPDFOnly = async () => {
         patientInfo={sampleData.patientInfo}
         doctorInfo={sampleData.doctorInfo}
         clinicInfo={sampleData.clinicInfo}
-        qrCodeDataURL={qrCodeDataURL}
       />
     ).toBlob();
     
