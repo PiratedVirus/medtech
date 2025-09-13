@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import type { NextConfig } from "next";
+import path from "path";
 
 dotenv.config({
   path: `.env.${process.env.NODE_ENV || "dev"}`,
@@ -21,32 +22,47 @@ const nextConfig: NextConfig = {
   
   // Webpack optimizations
   webpack: (config, { dev, isServer }) => {
+    // Fix webpack cache issues with minimal configuration
+    if (dev) {
+      config.cache = {
+        type: 'filesystem',
+        cacheDirectory: path.resolve('.next/cache/webpack'),
+        compression: 'gzip',
+      };
+    }
+
+    // Ensure proper module resolution for caching
+    config.resolve = {
+      ...config.resolve,
+      symlinks: false,
+      cacheWithContext: false,
+    };
+
     // Optimize bundle splitting for faster compilation
     if (dev && !isServer) {
       config.watchOptions = {
         poll: 1000,
         aggregateTimeout: 300,
-        ignored: ['**/node_modules/**', '**/.git/**'],
+        ignored: ['**/node_modules/**', '**/.git/**', '**/.next/**'],
       };
       
-      // Reduce bundle size for faster compilation
+      // Simplified splitChunks to avoid cache conflicts
       config.optimization.splitChunks = {
         chunks: 'all',
+        minSize: 20000,
+        maxSize: 244000,
         cacheGroups: {
+          default: {
+            minChunks: 2,
+            priority: -20,
+            reuseExistingChunk: true,
+          },
           vendor: {
             test: /[\\/]node_modules[\\/]/,
             name: 'vendors',
+            priority: -10,
             chunks: 'all',
-          },
-          lucide: {
-            test: /[\\/]node_modules[\\/]lucide-react[\\/]/,
-            name: 'lucide',
-            chunks: 'all',
-          },
-          prisma: {
-            test: /[\\/]node_modules[\\/]@prisma[\\/]/,
-            name: 'prisma',
-            chunks: 'all',
+            reuseExistingChunk: true,
           },
         },
       };
@@ -61,6 +77,8 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', '@tanstack/react-query'],
     // Disable ISR cache for large files
     // isrMemoryCacheSize: 0,
+    // Fix webpack cache issues
+    webpackBuildWorker: true,
   },
 
 };
