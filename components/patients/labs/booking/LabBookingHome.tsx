@@ -6,7 +6,7 @@ import axios from "axios";
 import { LabBookingForm } from "@/patients/labs/booking/LabBookingForm";
 import PaymentSelection from "@/appointment-book/PaymentABooking";
 import PackageInfo from "@/patients/labs/booking/PackageInfo";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import SuccessModal from "@/components/ui/custom/cd-success-modal";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";

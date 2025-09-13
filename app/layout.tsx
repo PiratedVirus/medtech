@@ -21,7 +21,29 @@ const lato = Lato({
 
 // Client-side only component to wrap children once localStorage is available
 function ClientSideWrapper({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 5 * 60 * 1000,        // 5 minutes - data stays fresh longer
+        gcTime: 15 * 60 * 1000,          // 15 minutes - keep in cache longer
+        refetchOnWindowFocus: false,     // Prevent unnecessary refetches on tab focus
+        refetchOnMount: false,           // Use cached data when component mounts
+        refetchOnReconnect: 'always',    // Only refetch when internet reconnects
+        retry: (failureCount, error: any) => {
+          // Smart retry logic - don't retry auth errors
+          if (error?.response?.status === 401 || error?.response?.status === 403) {
+            return false;
+          }
+          return failureCount < 2;
+        },
+        retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+      },
+      mutations: {
+        retry: 1, // Retry mutations only once
+        retryDelay: 1000,
+      },
+    },
+  }));
   const [persister, setPersister] = useState<any>(null);
   const [isReady, setIsReady] = useState(false);
 
@@ -31,15 +53,6 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
       storage: window.localStorage 
     }));
     setIsReady(true);
-    
-    // Initialize user profile from sessionStorage if available
-    const initializeProfile = async () => {
-      const storedProfile = await store.dispatch(initializeUserProfile());
-      if (!storedProfile) {
-        // Only fetch if not in storage
-        await store.dispatch(fetchUserProfile());
-      }
-    };
     
     // Register service worker for push notifications
     if ('serviceWorker' in navigator) {
@@ -52,7 +65,7 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
       });
     }
     
-    initializeProfile();
+    // Profile initialization is now handled by React Query in useCentralizedProfile
   }, []);
 
   if (!isReady) {

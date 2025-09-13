@@ -4,7 +4,7 @@ import axios from "axios";
 import UpcomingAppointment from "@/components/patients/appointments/view/UpcomingACardAView";
 import ArrowButton from "@/components/ui/custom/cd-arrow-button";
 import AppointmentListCard from "@/components/patients/appointments/view/ListCardAView";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";

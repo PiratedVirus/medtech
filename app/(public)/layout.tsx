@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect } from "react";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import { useRouter } from 'next/navigation';
 import CdLoader from "@/components/ui/custom/cd-loader";
 

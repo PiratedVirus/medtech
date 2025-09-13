@@ -3,7 +3,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, File } from "lucide-react";
 import axios from "axios";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 
 export interface DietPlan {
   id: string;

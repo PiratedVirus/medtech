@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useProfile } from "@/hooks/context/ProfileContext";
 import HomeAppointmentOverview from "@/patients/home/HomeAppointmentOverview";
 import { PlanUsageMinimal } from "@/components/patients/plans/PlanUsage";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import ArrowButton from "@/components/ui/custom/cd-arrow-button";
 import { useDispatch } from "react-redux";
 import { setSubscriptionData } from "@/store/subscriptionSlice";

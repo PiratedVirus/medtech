@@ -25,11 +25,7 @@ export default function AppointmentPage() {
       const response = await axios.get(`/api/doctors/${doctorId}/availability`, { withCredentials: true });
       return response.data.success ? response.data.doctor : null;
     },
-    staleTime: 2 * 60 * 1000, // ✅ Cache remains fresh for 10 minutes
-    gcTime: 10 * 60 * 1000, // ✅ Keeps cache for 1 hour
-    refetchOnWindowFocus: false, // ✅ Prevents refetch on tab switch
-    refetchOnMount: false, // ✅ Prevents re-fetching on mount
-    refetchOnReconnect: true, // ✅ Fetches only if internet reconnects
+    // Using global defaults for consistent caching behavior
     enabled: !!doctorId, // ✅ Runs only when doctorId exists
   });
 

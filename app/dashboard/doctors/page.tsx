@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { setBookingData } from "@/store/appointmentSlice";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import axios from "axios";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { CircleCheckBig, CalendarIcon } from "lucide-react";
@@ -16,7 +16,8 @@ export default function DoctorsPage() {
 
   const router = useRouter();
   const dispatch = useDispatch();
-  const { clinicId, isLoading: profileLoading } = useDecryptedProfile();
+  const { clinicId, isLoading: profileLoading, profile } = useDecryptedProfile();
+
 
   const handleBookAppointment = (doctor: any, type: "video" | "clinic") => {
     console.log("Booking appointment with doctor and type as ", type);
@@ -35,12 +36,8 @@ export default function DoctorsPage() {
       );
       return response.data.success ? response.data.doctors : [];
     },
-    staleTime: 1 * 1 * 1, // Keeps cache valid for 10 minutes
-    gcTime: 1 * 1 * 1, // Keeps cache for 1 hour
-    refetchOnWindowFocus: false, // Prevents re-fetching on tab switch
-    refetchOnMount: false, // Prevents re-fetching when navigating back
-    refetchOnReconnect: true, // Fetches only if internet reconnects
-    enabled: !!clinicId, // Runs only when clinicId exists
+    // Using global defaults for cache settings
+    enabled: !!clinicId && !!profile?.id, // Only run when clinicId and profile.id exist
   });
 
   if (profileLoading || isLoading) {

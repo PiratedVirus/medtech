@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import AppointmentListCard from "@/components/patients/appointments/view/ListCardAView";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";

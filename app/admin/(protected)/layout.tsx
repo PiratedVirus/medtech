@@ -5,7 +5,7 @@ import { fetchUserProfile } from "@/store/userSlice";
 import { ProfileProvider } from "@/hooks/context/ProfileContext";
 import type { AppDispatch, RootState } from "@/store";
 import "@/app/globals.css";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { SidebarNav } from "@/components/admin/AdminSidebarNav";
 import { AdminHeader } from "@/components/admin/AdminHeader";

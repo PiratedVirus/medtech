@@ -7,7 +7,7 @@ import { useState } from "react"
 import ArrowButton from "@/components/ui/custom/cd-arrow-button"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
-import { useDecryptedProfile } from "@/hooks/use-profile"
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile"
 import { PatientUpcomingSkeleton } from "@/components/ui/custom/cd-appointment-skeleton"
 
 export default function HomeAppointmentOverview() {
