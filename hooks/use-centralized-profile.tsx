@@ -110,10 +110,10 @@ export const useCentralizedProfile = () => {
     queryKey: ['userProfile'],
     queryFn: fetchUserProfile,
     initialData: getCachedProfile,
-    staleTime: 0, // Temporarily disable stale time for debugging
+    staleTime: 10 * 60 * 1000,     // 10 minutes - profile data doesn't change often
     gcTime: 60 * 60 * 1000,       // 1 hour - keep in memory longer
     refetchOnWindowFocus: false,   // Don't refetch on tab focus
-    refetchOnMount: true,         // Force refetch on mount for debugging
+    refetchOnMount: false,         // Use cached data when component mounts
     retry: (failureCount, error: any) => {
       // Don't retry auth errors
       if (error?.response?.status === 401 || error?.response?.status === 403) {

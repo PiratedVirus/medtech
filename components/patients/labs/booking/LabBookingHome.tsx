@@ -17,10 +17,12 @@ import { setSubscriptionData } from "@/store/subscriptionSlice";
 import { useDispatch } from "react-redux";
 import { EyeIcon } from "lucide-react";
 import ViewParametersDialog from "@/components/common/ViewParametersDialog";
+import { useSmartMutations } from "@/hooks/use-query-mutations";
 
 export default function LabBookingHome({ packageInfo, onBack }: any) {
   const router = useRouter();
   const [paymentOption, setPaymentOption] = useState("online");
+  const { useLabBooking } = useSmartMutations();
   const { profile } = useDecryptedProfile();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState(""); // Status messages
@@ -176,6 +178,8 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
     }
   };
 
+  const labBookingMutation = useLabBooking();
+
   const handleConfirmBooking = async (data: any, razorpayResponse?: any, labPackageFees?: number) => {
     if (!data) {
       alert("Please fill out the form.");
@@ -196,7 +200,6 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
       subscriptionId: subscriptionTracker?.subscriptionId || null, 
       labTestsDates: filteredlabTestsDatesDates,
       labPackageFees
-
     };
 
     if (paymentOption === "online" && (!razorpayResponse || !razorpayResponse.success)) {
@@ -206,16 +209,16 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
     }
 
     try {
-      const response = await axios.post("/api/labs", bookingData);
-      if (response.data.success) {
+      const result = await labBookingMutation.mutateAsync(bookingData);
+      if (result.success) {
         setStatusMessage("Booking confirmed!");
         setShowSuccessModal(true);
+        // Cache invalidation now handled automatically by useLabBooking
         setTimeout(() => {
           setShowSuccessModal(false);
           setStatusMessage(""); // Reset status
           router.replace("/dashboard/labs");
         }, 3000);
-
       } else {
         alert("Failed to book lab package.");
       }

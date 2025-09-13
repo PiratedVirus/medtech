@@ -15,10 +15,12 @@ import { useRouter } from "next/navigation";
 import { set } from "date-fns";
 import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSmartMutations } from "@/hooks/use-query-mutations";
 
 export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { useAppointmentBooking } = useSmartMutations();
 
   const [paymentMethod, setPaymentMethod] = useState("online");
   const { profile } = useDecryptedProfile();
@@ -126,6 +128,8 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
     }
   };
 
+  const appointmentMutation = useAppointmentBooking();
+
   const handleConfirmAppointment = async (data: any, razorpayResponse?: any, doctorConsultationFee?: number) => {
     if (!data) {
       alert("Please fill out the form.");
@@ -157,18 +161,16 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
     }
 
     try {
-      const response = await axios.post("/api/appointments", appointmentData);
-      if (response.data.success) {
+      const result = await appointmentMutation.mutateAsync(appointmentData);
+      if (result.success) {
         setStatusMessage("Appointment confirmed!");
         setShowSuccessModal(true);
-        queryClient.invalidateQueries({ queryKey: ["appointments"] });
+        // Cache invalidation now handled automatically by useAppointmentBooking
         setTimeout(() => {
           setShowSuccessModal(false);
           setStatusMessage(""); // Reset status
           router.replace("/dashboard/appointments");
-
         }, 3000);
-
       } else {
         alert("Failed to book appointment.");
       }

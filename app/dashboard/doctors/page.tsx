@@ -10,6 +10,7 @@ import { CircleCheckBig, CalendarIcon } from "lucide-react";
 import DoctorCard from "@/components/patients/doctors/DoctorCard";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
+import { useDoctors } from "@/hooks/use-smart-queries";
 
 export default function DoctorsPage() {
   const activeTab: 'doctors' | 'dieticians' = 'doctors';
