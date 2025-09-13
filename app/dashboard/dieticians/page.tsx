@@ -17,15 +17,15 @@ export default function DoctorsPage() {
   const dispatch = useDispatch();
   const { clinicId, isLoading: profileLoading, profile } = useDecryptedProfile();
 
-  // Debug logging to see what's happening
-  console.log('[DieticiansPage] Debug Info:', {
-    profileLoading,
-    clinicId,
-    profileId: profile?.id,
-    hasProfile: !!profile,
-    enabledCondition: !!clinicId && !!profile?.id,
-    profileKeys: profile ? Object.keys(profile) : [],
-  });
+  // Debug logging (only in development with debug flag)
+  if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && window.location.search.includes('debug=dieticians')) {
+    console.log('[DieticiansPage] Debug Info:', {
+      profileLoading,
+      clinicId,
+      profileId: profile?.id,
+      hasProfile: !!profile,
+    });
+  }
 
   const { toast } = useToast();
 
@@ -40,28 +40,28 @@ export default function DoctorsPage() {
   const { data: dieticians, isLoading, isError, error } = useQuery({
     queryKey: ["dieticians", clinicId], // Unique cache key
     queryFn: async () => {
-      console.log('[DieticiansQuery] API call triggered!', { clinicId });
       if (!clinicId) return [];
       const response = await axios.get(
         `/api/dieticians/get-dieticians?clinicId=${clinicId}`,
         { withCredentials: true }
       );
-      console.log("Dieticians response", response.data);
       return response.data.success ? response.data.dieticians : [];
     },
-    // Temporarily override global defaults to force initial fetch
+    // Use optimized cache settings for better performance
     enabled: !!clinicId && !!profile?.id, // Only run when clinicId and profile.id exist
-    refetchOnMount: true, // Override global default to ensure initial fetch
-    staleTime: 0, // Temporarily disable stale time to force fresh fetch
+    staleTime: 5 * 60 * 1000, // 5 minutes - dieticians data doesn't change frequently
+    refetchOnMount: false, // Use cached data when available
   });
 
-  console.log('[DieticiansQuery] Query state:', {
-    isLoading,
-    isError,
-    error: error?.message,
-    hasData: !!dieticians,
-    dataLength: dieticians?.length || 0,
-  });
+  // Debug query state only in development
+  if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && window.location.search.includes('debug=dieticians')) {
+    console.log('[DieticiansQuery] Query state:', {
+      isLoading,
+      isError,
+      hasData: !!dieticians,
+      dataLength: dieticians?.length || 0,
+    });
+  }
 
   if (profileLoading || isLoading) {
     return <CdLoader />;

@@ -126,6 +126,8 @@ export default function DetailedHealthInsights() {
       return res.json();
     },
     enabled: !!profile?.id,
+    staleTime: 15 * 60 * 1000, // 15 minutes - insights rarely change
+    refetchOnMount: false,     // Use cached data when available
   });
 
   if (isLoading) {

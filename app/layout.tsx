@@ -12,6 +12,9 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { useState, useEffect } from "react";
 import { initializeUserProfile, fetchUserProfile } from "@/store/userSlice";
 import CdLoader from '@/components/ui/custom/cd-loader';
+import ProgressProvider from '@/components/common/ProgressProvider';
+import NavigationProgress from '@/components/common/NavigationProgress';
+import MiddlewareProgressHandler from '@/components/common/MiddlewareProgressHandler';
 
 const lato = Lato({
   subsets: ['latin'],
@@ -24,19 +27,21 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 5 * 60 * 1000,        // 5 minutes - data stays fresh longer
-        gcTime: 15 * 60 * 1000,          // 15 minutes - keep in cache longer
+        staleTime: 10 * 60 * 1000,       // 10 minutes - keep data fresh longer
+        gcTime: 30 * 60 * 1000,          // 30 minutes - keep in cache much longer
         refetchOnWindowFocus: false,     // Prevent unnecessary refetches on tab focus
         refetchOnMount: false,           // Use cached data when component mounts
-        refetchOnReconnect: 'always',    // Only refetch when internet reconnects
+        refetchOnReconnect: false,       // Don't refetch on network reconnect for better UX
+        refetchInterval: false,          // No automatic refetching
+        networkMode: 'offlineFirst',     // Prioritize cache over network
         retry: (failureCount, error: any) => {
           // Smart retry logic - don't retry auth errors
           if (error?.response?.status === 401 || error?.response?.status === 403) {
             return false;
           }
-          return failureCount < 2;
+          return failureCount < 1; // Reduce retry attempts for faster response
         },
-        retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+        retryDelay: 1000, // Fixed 1 second delay instead of exponential backoff
       },
       mutations: {
         retry: 1, // Retry mutations only once
@@ -77,7 +82,11 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
       client={queryClient} 
       persistOptions={{ persister }}
     >
-      {children}
+      <ProgressProvider>
+        <NavigationProgress />
+        <MiddlewareProgressHandler />
+        {children}
+      </ProgressProvider>
     </PersistQueryClientProvider>
   );
 }

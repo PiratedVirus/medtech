@@ -98,18 +98,24 @@ export async function middleware(request: NextRequest) {
     const adminToken = request.cookies.get("admin_token")?.value;
 
     if (!adminToken) {
-      return NextResponse.redirect(new URL("/admin/login", request.url));
+      const redirectUrl = new URL("/admin/login", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
     }
 
     // Fast structural validation first
     if (!isTokenStructurallyValid(adminToken)) {
-      return NextResponse.redirect(new URL("/admin/login", request.url));
+      const redirectUrl = new URL("/admin/login", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
     }
 
     const decodedAdmin = await verifyUserToken(adminToken);
     if (!decodedAdmin || decodedAdmin.role !== "ADMIN") {
       console.log("Invalid admin token as role not matching");
-      return NextResponse.redirect(new URL("/admin/login", request.url));
+      const redirectUrl = new URL("/admin/login", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
     }
 
     return NextResponse.next();
@@ -124,27 +130,37 @@ export async function middleware(request: NextRequest) {
 
     const userToken = request.cookies.get("token")?.value;
     if (!userToken) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
     }
 
     // Fast structural validation first
     if (!isTokenStructurallyValid(userToken)) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
     }
 
     const decodedUser = await verifyUserToken(userToken);
     if (!decodedUser) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
     }
     
     // Role-based redirects with caching
     if (decodedUser.userRole === "DOCTOR") {
       console.log("Redirecting to doctor home");
-      return NextResponse.redirect(new URL("/doctor/home", request.url));
+      const redirectUrl = new URL("/doctor/home", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
     }
     if (decodedUser.userRole === "PATHOLOGY") {
       console.log("Redirecting to pathology dashboard");
-      return NextResponse.redirect(new URL("/pathology", request.url));
+      const redirectUrl = new URL("/pathology", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
     }
 
     return NextResponse.next();
@@ -154,17 +170,23 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/doctor")) {
     const userToken = request.cookies.get("token")?.value;
     if (!userToken) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
     }
 
     // Fast structural validation first
     if (!isTokenStructurallyValid(userToken)) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
     }
 
     const decodedUser = await verifyUserToken(userToken);
     if (!decodedUser || decodedUser.userRole !== "DOCTOR") {
-      return NextResponse.redirect(new URL("/login", request.url));
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
     }
 
     return NextResponse.next();
@@ -174,17 +196,23 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/pathology")) {
     const userToken = request.cookies.get("token")?.value;
     if (!userToken) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
     }
 
     // Fast structural validation first
     if (!isTokenStructurallyValid(userToken)) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
     }
 
     const decodedUser = await verifyUserToken(userToken);
     if (!decodedUser || decodedUser.userRole !== "PATHOLOGY") {
-      return NextResponse.redirect(new URL("/login", request.url));
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
     }
 
     // Verify that user exists (token should only be created for existing users)

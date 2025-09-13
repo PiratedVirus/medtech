@@ -12,10 +12,8 @@ import LabBookingHome from "@/components/patients/labs/booking/LabBookingHome";
 export default function LabBookingHomePage () {
     const labBbookingData = useSelector((state: RootState) => state.labBooking.labBookingData);
     if(labBbookingData) {
-        console.log("serving from if")
         return <LabBookingHome packageInfo={labBbookingData} />
     } else {
-        console.log("serving from else")
 
         const { clinicId, isLoading: profileLoading, profile } = useDecryptedProfile();
         const { data: labs, isLoading, isError } = useQuery({
@@ -28,8 +26,9 @@ export default function LabBookingHomePage () {
               );
               return response.data.success ? response.data.packages : [];
             },
-            // Using global defaults for cache settings
             enabled: !!clinicId && !!profile?.id, // Only run when clinicId and profile.id exist
+            staleTime: 15 * 60 * 1000,  // 15 minutes - lab packages rarely change
+            refetchOnMount: false,      // Use cached data when available
           });
 
           if (profileLoading || isLoading) {

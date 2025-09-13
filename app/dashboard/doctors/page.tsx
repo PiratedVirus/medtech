@@ -21,7 +21,6 @@ export default function DoctorsPage() {
 
 
   const handleBookAppointment = (doctor: any, type: "video" | "clinic") => {
-    console.log("Booking appointment with doctor and type as ", type);
     dispatch(setBookingData({ doctor, type }));
     router.push(`/dashboard/appointments/${doctor.id}`);
   };
@@ -37,8 +36,9 @@ export default function DoctorsPage() {
       );
       return response.data.success ? response.data.doctors : [];
     },
-    // Using global defaults for cache settings
     enabled: !!clinicId && !!profile?.id, // Only run when clinicId and profile.id exist
+    staleTime: 15 * 60 * 1000,  // 15 minutes - doctor list rarely changes
+    refetchOnMount: false,      // Use cached data when available
   });
 
   if (profileLoading || isLoading) {

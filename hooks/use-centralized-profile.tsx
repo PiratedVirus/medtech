@@ -69,16 +69,17 @@ const setCachedProfile = (profile: DecryptedProfile) => {
 // Centralized profile fetcher function
 const fetchUserProfile = async (): Promise<DecryptedProfile | null> => {
   try {
-    console.log('[fetchUserProfile] Starting API call...');
+    // Only log in development with debug flag
+    if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && window.location.search.includes('debug=profile')) {
+      console.log('[fetchUserProfile] Starting API call...');
+    }
+    
     const response = await axios.get("/api/auth/get-user-profile", {
       withCredentials: true,
     });
     
-    console.log('[fetchUserProfile] API response:', response.data);
-    
     const userProfile = response.data.user;
     if (!userProfile) {
-      console.log('[fetchUserProfile] No user profile in response');
       return null;
     }
     
@@ -89,14 +90,15 @@ const fetchUserProfile = async (): Promise<DecryptedProfile | null> => {
       userProfile.doctorProfile = { ...doctorProfile, meetingRoomLink };
     }
     
-    console.log('[fetchUserProfile] Normalized profile:', userProfile);
-    
     // Cache the profile
     setCachedProfile(userProfile);
     
     return userProfile;
   } catch (error) {
-    console.error('[fetchUserProfile] Error fetching user profile:', error);
+    // Only log errors in development or when debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[fetchUserProfile] Error fetching user profile:', error);
+    }
     throw error;
   }
 };
@@ -106,14 +108,18 @@ const fetchUserProfile = async (): Promise<DecryptedProfile | null> => {
  * This replaces both useDecryptedProfile and Redux profile management
  */
 export const useCentralizedProfile = () => {
+  const cachedProfile = getCachedProfile();
+  
   const queryResult = useQuery({
     queryKey: ['userProfile'],
     queryFn: fetchUserProfile,
-    initialData: getCachedProfile,
-    staleTime: 10 * 60 * 1000,     // 10 minutes - profile data doesn't change often
+    initialData: cachedProfile,
+    staleTime: cachedProfile ? 15 * 60 * 1000 : 0,  // If no cache, fetch immediately
     gcTime: 60 * 60 * 1000,       // 1 hour - keep in memory longer
     refetchOnWindowFocus: false,   // Don't refetch on tab focus
-    refetchOnMount: false,         // Use cached data when component mounts
+    refetchOnMount: !cachedProfile, // If no cached data, fetch on mount
+    refetchOnReconnect: false,     // Don't refetch on network reconnect
+    refetchInterval: false,        // No automatic refetching
     retry: (failureCount, error: any) => {
       // Don't retry auth errors
       if (error?.response?.status === 401 || error?.response?.status === 403) {
@@ -125,24 +131,24 @@ export const useCentralizedProfile = () => {
 
   const profile = queryResult.data;
   
-  // If we have cached data but query is still loading, prioritize cached data
-  const cachedProfile = getCachedProfile();
+  // Use the cached profile we already retrieved
   const effectiveProfile = profile || cachedProfile;
 
-  // Debug logging to understand what's happening
-  console.log('[useCentralizedProfile] Debug:', {
-    queryIsLoading: queryResult.isLoading,
-    queryIsError: queryResult.isError,
-    queryIsFetching: queryResult.isFetching,
-    queryStatus: queryResult.status,
-    queryData: profile,
-    cachedProfileExists: !!cachedProfile,
-    effectiveProfileExists: !!effectiveProfile,
-    effectiveProfileId: effectiveProfile?.id,
-    effectiveProfileClinicId: effectiveProfile?.clinicId,
-    queryError: queryResult.error?.message,
-    queryErrorStatus: queryResult.error?.response?.status,
-  });
+  // Debug logging (temporarily enabled for debugging login issue)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[useCentralizedProfile] Debug:', {
+      queryIsLoading: queryResult.isLoading,
+      queryIsError: queryResult.isError,
+      queryIsFetching: queryResult.isFetching,
+      queryStatus: queryResult.status,
+      queryData: profile,
+      cachedProfileExists: !!cachedProfile,
+      effectiveProfileExists: !!effectiveProfile,
+      effectiveProfileName: effectiveProfile?.name,
+      queryError: queryResult.error?.message,
+      queryErrorStatus: queryResult.error?.response?.status,
+    });
+  }
 
   
   return {

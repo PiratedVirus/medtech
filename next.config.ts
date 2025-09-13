@@ -15,18 +15,54 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  
+  // Performance optimizations for faster compilation
+  transpilePackages: ['lucide-react'], // Pre-transpile heavy packages
+  
+  // Webpack optimizations
+  webpack: (config, { dev, isServer }) => {
+    // Optimize bundle splitting for faster compilation
+    if (dev && !isServer) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: ['**/node_modules/**', '**/.git/**'],
+      };
+      
+      // Reduce bundle size for faster compilation
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            chunks: 'all',
+          },
+          lucide: {
+            test: /[\\/]node_modules[\\/]lucide-react[\\/]/,
+            name: 'lucide',
+            chunks: 'all',
+          },
+          prisma: {
+            test: /[\\/]node_modules[\\/]@prisma[\\/]/,
+            name: 'prisma',
+            chunks: 'all',
+          },
+        },
+      };
+    }
+    
+    return config;
+  },
+  
   // Enhanced configuration for PDF processing
   experimental: {
+    // Improve compilation speed
+    optimizePackageImports: ['lucide-react', '@tanstack/react-query'],
     // Disable ISR cache for large files
     // isrMemoryCacheSize: 0,
   },
-  // API route configuration
-  api: {
-    bodyParser: {
-      sizeLimit: '50mb', // Allow larger payloads (adjust based on Vercel plan)
-    },
-    responseLimit: '50mb',
-  },
+
 };
 
 export default nextConfig;
