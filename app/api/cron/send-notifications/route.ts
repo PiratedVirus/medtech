@@ -124,7 +124,7 @@ export async function GET() {
       where: {
         status: 'COMPLETED',
         labResult: {
-          not: []
+          isEmpty: false
         },
         deletedAt: null,
       },

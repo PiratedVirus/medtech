@@ -189,9 +189,9 @@ export async function GET(request: Request) {
 
     // Process results into notification format
     const notifications = {
-      highPriority: [],
-      mediumPriority: [],
-      lowPriority: []
+      highPriority: [] as any[],
+      mediumPriority: [] as any[],
+      lowPriority: [] as any[]
     };
 
     notificationData.forEach((row) => {
@@ -257,7 +257,7 @@ function getNotificationTitle(type: string): string {
     'failed_lab_analysis': 'Failed Lab Analysis',
     'diet_plan_requests': 'Pending Diet Plan Requests'
   };
-  return titles[type] || type;
+  return titles[type as keyof typeof titles] || type;
 }
 
 function getNotificationDescription(type: string, count: number, sampleData: any[]): string {
@@ -279,7 +279,7 @@ function getNotificationIcon(type: string): string {
     'failed_lab_analysis': 'AlertCircle',
     'diet_plan_requests': 'Utensils'
   };
-  return icons[type] || 'Bell';
+  return icons[type as keyof typeof icons] || 'Bell';
 }
 
 function getNotificationColor(priority: string): string {
@@ -288,7 +288,7 @@ function getNotificationColor(priority: string): string {
     'medium': '#F28A2E', 
     'low': '#56A67C'
   };
-  return colors[priority] || '#6B7280';
+  return colors[priority as keyof typeof colors] || '#6B7280';
 }
 
 function getNotificationBgColor(priority: string): string {
@@ -297,5 +297,5 @@ function getNotificationBgColor(priority: string): string {
     'medium': 'rgba(242,138,46,0.1)',
     'low': 'rgba(86,166,124,0.1)'
   };
-  return colors[priority] || 'rgba(107,114,128,0.1)';
+  return colors[priority as keyof typeof colors] || 'rgba(107,114,128,0.1)';
 }

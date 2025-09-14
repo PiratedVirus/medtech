@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 
     const [labBookings, total] = await prisma.$transaction([
       prisma.labBooking.findMany({
-        where: whereClause,
+        where: whereClause as any,
         skip: (page - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: "desc" },
@@ -82,7 +82,7 @@ export async function GET(request: Request) {
           }
         },
       }),
-      prisma.labBooking.count({ where: whereClause }),
+      prisma.labBooking.count({ where: whereClause as any }),
     ]);
 
     return NextResponse.json({

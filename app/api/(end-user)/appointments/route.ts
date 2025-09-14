@@ -127,7 +127,6 @@ export async function GET(request: NextRequest) {
         fullName: true,
         mobile: true,
         email: true,
-        doctorAvailability: { date: true },
         prescriptionLink: true,
         status: true,
         consultationType: true, // Use consultationType directly

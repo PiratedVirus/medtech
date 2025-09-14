@@ -76,7 +76,7 @@ export async function GET(request: Request) {
           select: {
             id: true,
             appointmentFor: true,
-            doctorAvailability: { date: true },
+            doctorAvailability: { select: { date: true } },
           },
         },
         labBooking: {
@@ -157,7 +157,7 @@ export async function GET(request: Request) {
     console.log("unassigned bookings ", unassignedBookings);
 
     // Transform lab assignments to match frontend expectations
-    const transformedAssignments = upcomingAssignments.map((assignment, index) => ({
+    const transformedAssignments = upcomingAssignments.map((assignment: any, index) => ({
       id: assignment.labBookingId || assignment.id, // Always show labBookingId in ID badge
       labBookingId: assignment.labBookingId, // Keep labBookingId for reference
       labAssignmentId: assignment.id, // Store the actual assignment ID

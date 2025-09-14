@@ -46,7 +46,7 @@ export function useStaticQuery(key: string[], queryFn: () => Promise<any>) {
 
 export function useAppointments(clinicId?: string, patientId?: string) {
   return useModerateQuery(
-    ['appointments', clinicId, patientId],
+    ['appointments', clinicId || '', patientId || ''],
     async () => {
       if (!clinicId || !patientId) return { past: [], upcoming: [] }
       const response = await axios.get(`/api/appointments?clinicId=${clinicId}&patientId=${patientId}`)
@@ -57,7 +57,7 @@ export function useAppointments(clinicId?: string, patientId?: string) {
 
 export function useLabResults(patientId?: string) {
   return useModerateQuery(
-    ['labResults', patientId],
+    ['labResults', patientId || ''],
     async () => {
       if (!patientId) return { scheduled: [], completed: [] }
       const response = await axios.get(`/api/labs?patientId=${patientId}`)
@@ -78,7 +78,7 @@ export function useNotifications() {
 
 export function useDoctors(clinicId?: string) {
   return useStaticQuery(
-    ['doctors', clinicId],
+    ['doctors', clinicId || ''],
     async () => {
       if (!clinicId) return []
       const response = await axios.get(`/api/doctors?clinicId=${clinicId}`)
@@ -89,7 +89,7 @@ export function useDoctors(clinicId?: string) {
 
 export function useLabPackages(clinicId?: string) {
   return useStaticQuery(
-    ['labs', clinicId],
+    ['labs', clinicId || ''],
     async () => {
       if (!clinicId) return []
       const response = await axios.get(`/api/labs/packages?clinicId=${clinicId}`)

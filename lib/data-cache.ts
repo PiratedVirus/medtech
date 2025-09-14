@@ -167,7 +167,7 @@ export async function getCachedLLMExtract(analysisId: number) {
   return await cacheUtils.getOrSet(
     cacheKey,
     async () => {
-      const existing = await prisma.labAnalysis.findFirst({
+      const existing = await prisma.labReportAnalysis.findFirst({
         where: {
           id: analysisId,
           deletedAt: null

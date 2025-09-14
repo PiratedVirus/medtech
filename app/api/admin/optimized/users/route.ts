@@ -14,13 +14,13 @@ export async function GET(request: Request) {
     if (role) {
       const usersForRole = await prisma.user.findMany({
         where: { 
-          role,
+          role: role as any,
           deletedAt: null,
           ...(search && {
             OR: [
-              { name: { contains: search, mode: 'insensitive' } },
-              { email: { contains: search, mode: 'insensitive' } },
-              { phoneNumber: { contains: search, mode: 'insensitive' } }
+              { name: { contains: search, mode: 'insensitive' as const } },
+              { email: { contains: search, mode: 'insensitive' as const } },
+              { phoneNumber: { contains: search, mode: 'insensitive' as const } }
             ]
           })
         },
@@ -39,9 +39,9 @@ export async function GET(request: Request) {
       deletedAt: null,
       ...(search && {
         OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { phoneNumber: { contains: search, mode: 'insensitive' } }
+          { name: { contains: search, mode: 'insensitive' as const } },
+          { email: { contains: search, mode: 'insensitive' as const } },
+          { phoneNumber: { contains: search, mode: 'insensitive' as const } }
         ]
       })
     };
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     // Use transaction for consistency, but optimize role counts query
     const [users, total, roleCounts] = await prisma.$transaction([
       prisma.user.findMany({
-        where: whereClause,
+        where: whereClause as any,
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: { 

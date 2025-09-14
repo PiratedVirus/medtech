@@ -59,7 +59,7 @@ export function NotificationsList() {
         {/* Summary Badge */}
         <div className="flex items-center justify-between mb-4 sticky top-0 bg-white z-10 pb-2">
           <h3 className="text-sm font-medium text-gray-700">Notifications</h3>
-          <NotificationBadge count={summary.total} priority={summary.highPriority} />
+          <NotificationBadge count={summary.total} priority={summary.highPriority > 0 ? 'high' : summary.mediumPriority > 0 ? 'medium' : 'low'} />
         </div>
 
         {/* All Notifications Combined */}

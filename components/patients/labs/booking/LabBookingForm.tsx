@@ -38,9 +38,7 @@ export const LabBookingForm = forwardRef(({ }, ref) => {
     defaultValues: {
       appointmentFor: "self",
       fullName: profile?.name || "",
-      // @ts-expect-error
       mobile: profile?.phoneNumber || "",
-      // @ts-expect-error
       email: profile?.email || "",
       date: "",
       address: "",

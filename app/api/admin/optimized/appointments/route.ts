@@ -14,7 +14,9 @@ export async function GET(request: Request) {
         take: pageSize,
         include: {
           doctor: {
-            include: {
+            select: {
+              id: true,
+              name: true,
               doctorProfile: {
                 select: { 
                   meetingRoomLink: true, 
@@ -57,7 +59,7 @@ export async function GET(request: Request) {
       // Add the fields that the frontend expects
       fullName: appointment.patient?.name || '',
       doctorName: appointment.doctor?.name || '',
-      userId: appointment.doctor?.userId || null,
+      userId: appointment.doctor?.id || null,
       doctorAvailabilityId: appointment.doctorAvailabilityId,
       startTime: appointment.doctorAvailability?.startTime || '',
       endTime: appointment.doctorAvailability?.endTime || '',
