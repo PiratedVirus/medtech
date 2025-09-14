@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import NProgress from 'nprogress'
 
 export default function NavigationProgress() {
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     // Override the default router.push to show progress
@@ -50,6 +51,43 @@ export default function NavigationProgress() {
       window.removeEventListener('popstate', handlePopState)
     }
   }, [router])
+
+  // Complete progress when route changes (pathname changes)
+  useEffect(() => {
+    // Wait for the page to actually finish loading
+    const completeProgress = () => {
+      NProgress.done()
+    }
+
+    // Check if page is already loaded
+    if (document.readyState === 'complete') {
+      // Page is already loaded, complete immediately
+      setTimeout(completeProgress, 50)
+    } else {
+      // Wait for page to finish loading
+      const handleLoad = () => {
+        setTimeout(completeProgress, 100)
+      }
+      
+      const handleDOMContentLoaded = () => {
+        // DOM is ready, but resources might still be loading
+        setTimeout(completeProgress, 200)
+      }
+
+      // Listen for page load events
+      window.addEventListener('load', handleLoad)
+      document.addEventListener('DOMContentLoaded', handleDOMContentLoaded)
+
+      // Safety timeout - complete after maximum 3 seconds regardless
+      const safetyTimer = setTimeout(completeProgress, 3000)
+
+      return () => {
+        window.removeEventListener('load', handleLoad)
+        document.removeEventListener('DOMContentLoaded', handleDOMContentLoaded)
+        clearTimeout(safetyTimer)
+      }
+    }
+  }, [pathname])
 
   return null
 }

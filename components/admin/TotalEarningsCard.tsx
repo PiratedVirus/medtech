@@ -15,11 +15,11 @@ interface Props {
     plans: {
       amount?: number;
     }[];
-  labBookings: {
-    payment?: {
-      amount: number;
-    };
-  }[];
+    labBookings: {
+      payment?: {
+        amount: number;
+      };
+    }[];
   };
 }
 

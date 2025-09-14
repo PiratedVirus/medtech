@@ -54,6 +54,13 @@ export async function GET(request: Request) {
       prescriptionLink: appointment.prescriptionLink,
       appointmentFor: appointment.appointmentFor,
       doctorAvailability: appointment.doctorAvailability,
+      // Add the fields that the frontend expects
+      fullName: appointment.patient?.name || '',
+      doctorName: appointment.doctor?.name || '',
+      userId: appointment.doctor?.userId || null,
+      doctorAvailabilityId: appointment.doctorAvailabilityId,
+      startTime: appointment.doctorAvailability?.startTime || '',
+      endTime: appointment.doctorAvailability?.endTime || '',
       // Meeting room info is now included in the initial query
       meetingRoomLink: appointment.consultationType === "Video" 
         ? appointment.doctor?.doctorProfile?.meetingRoomLink 

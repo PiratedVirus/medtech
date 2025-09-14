@@ -15,6 +15,7 @@ import CdLoader from '@/components/ui/custom/cd-loader';
 import ProgressProvider from '@/components/common/ProgressProvider';
 import NavigationProgress from '@/components/common/NavigationProgress';
 import MiddlewareProgressHandler from '@/components/common/MiddlewareProgressHandler';
+import SmartProgressBar from '@/components/common/SmartProgressBar';
 
 const lato = Lato({
   subsets: ['latin'],
@@ -85,6 +86,7 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
       <ProgressProvider>
         <NavigationProgress />
         <MiddlewareProgressHandler />
+        <SmartProgressBar />
         {children}
       </ProgressProvider>
     </PersistQueryClientProvider>

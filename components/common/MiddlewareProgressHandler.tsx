@@ -27,5 +27,17 @@ export default function MiddlewareProgressHandler() {
     }
   }, [pathname])
 
+  // Safety mechanism: Always complete progress when component unmounts or pathname changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      NProgress.done()
+    }, 1000) // Longer timeout for middleware redirects
+
+    return () => {
+      clearTimeout(timer)
+      NProgress.done() // Ensure progress is completed on cleanup
+    }
+  }, [pathname])
+
   return null
 }

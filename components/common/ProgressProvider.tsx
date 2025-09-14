@@ -66,10 +66,36 @@ export default function ProgressProvider({ children }: { children: React.ReactNo
 
     window.addEventListener('popstate', handlePopState)
 
+    // Global safety mechanism: Ensure progress bar completes after page load
+    const handleLoad = () => {
+      setTimeout(() => NProgress.done(), 200)
+    }
+
+    const handleBeforeUnload = () => {
+      NProgress.done()
+    }
+
+    // Listen for page load events
+    window.addEventListener('load', handleLoad)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    // Additional safety: Complete progress after DOM is ready
+    if (document.readyState === 'complete') {
+      setTimeout(() => NProgress.done(), 100)
+    } else {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => NProgress.done(), 100)
+      })
+    }
+
     // Cleanup
     return () => {
       window.removeEventListener('popstate', handlePopState)
+      window.removeEventListener('load', handleLoad)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
       document.head.removeChild(style)
+      // Ensure progress is completed on cleanup
+      NProgress.done()
     }
   }, [])
 

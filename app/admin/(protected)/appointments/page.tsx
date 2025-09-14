@@ -330,8 +330,13 @@ export default function AppointmentsPage() {
 
   // Fetch appointments data
   const fetchData = async () => {
-    const result = await fetchAppointments(pagination.pageIndex, pagination.pageSize);
-    setDataState({ appointments: result.data, total: result.total });
+    try {
+      const result = await fetchAppointments(pagination.pageIndex, pagination.pageSize);
+      setDataState({ appointments: result.data || [], total: result.total || 0 });
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+      setDataState({ appointments: [], total: 0 });
+    }
   };
 
   useEffect(() => {
@@ -459,6 +464,7 @@ export default function AppointmentsPage() {
     },
     {
       accessorKey: "doctorAvailability.date",
+      id: "doctorAvailability.date",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Date & Time <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -497,6 +503,7 @@ export default function AppointmentsPage() {
     },
     {
       accessorKey: "consultationType",
+      id: "consultationType",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Consultation Type <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -597,6 +604,7 @@ export default function AppointmentsPage() {
     },
     {
       accessorKey: "status",
+      id: "status",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Status <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -663,6 +671,22 @@ export default function AppointmentsPage() {
     })} • ${slot.startTime} - ${slot.endTime}`;
   };
 
+  // Safety check to ensure table is initialized and data is available
+  if (!tableInstance || !dataState.appointments) {
+    return <div className="container mx-auto p-4">Loading...</div>;
+  }
+
+  // Debug logging to help identify the issue
+  if (process.env.NODE_ENV === 'development') {
+    console.log('AppointmentsPage Debug:', {
+      tableInstance: !!tableInstance,
+      appointmentsCount: dataState.appointments?.length || 0,
+      total: dataState.total,
+      columns: tableInstance?.getAllColumns()?.map(col => col.id) || [],
+      firstAppointment: dataState.appointments?.[0] || null
+    });
+  }
+
   return (
     <div className="container mx-auto p-4 space-y-4">
       <ToastContainer />
@@ -671,9 +695,9 @@ export default function AppointmentsPage() {
         <div className="flex items-center gap-4">
           <Input
             placeholder="Search appointments..."
-            value={(tableInstance.getColumn("fullName")?.getFilterValue() as string) ?? ""}
+            value={(tableInstance?.getColumn("fullName")?.getFilterValue() as string) ?? ""}
             onChange={(event) =>
-              tableInstance.getColumn("fullName")?.setFilterValue(event.target.value)
+              tableInstance?.getColumn("fullName")?.setFilterValue(event.target.value)
             }
             className="max-w-sm"
           />
@@ -711,7 +735,7 @@ export default function AppointmentsPage() {
       <div className="rounded-md border">
         <Table>
           <TableHeader className="bg-custom-mutedgreen text-gray-950">
-            {tableInstance.getHeaderGroups().map((headerGroup) => (
+            {tableInstance?.getHeaderGroups()?.map((headerGroup) => (
               <TableRow className="text-center" key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id} className="text-black text-center">
@@ -722,7 +746,7 @@ export default function AppointmentsPage() {
             ))}
           </TableHeader>
           <TableBody>
-            {tableInstance.getRowModel().rows?.length ? (
+            {tableInstance?.getRowModel()?.rows?.length ? (
               tableInstance.getRowModel().rows.map((row) => (
                 <TableRow className="text-center" key={row.id} data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
