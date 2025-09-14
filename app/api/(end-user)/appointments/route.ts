@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { getCachedAppointments } from "@/lib/data-cache";
 
 /**
  * GET /api/appointments
@@ -26,7 +27,19 @@ export async function GET(request: NextRequest) {
     if (patientId) baseWhere.patientId = patientId;
     if (clinicId) baseWhere.doctor = { clinicId };
 
-    // Fetch upcoming appointments
+    // Use Redis cache for appointments if patientId is provided
+    if (patientId) {
+      const cachedData = await getCachedAppointments(patientId, upcomingOnly);
+      return NextResponse.json({
+        success: true,
+        upcomingAppointments: cachedData.upcomingAppointments,
+        pastAppointments: cachedData.pastAppointments,
+        totalUpcoming: cachedData.upcomingAppointments.length,
+        totalPast: cachedData.pastAppointments.length
+      });
+    }
+
+    // Fetch upcoming appointments (fallback for non-patient queries)
     const upcomingAppointmentsWithoutMeetRoomLink = await prisma.appointment.findMany({
       where: { 
         ...baseWhere, 

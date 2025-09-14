@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
+import { cacheUtils, CACHE_KEYS, CACHE_TTL } from "@/lib/redis";
 
 export async function GET(request: Request) {
   try {
@@ -27,12 +28,18 @@ export async function GET(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const today = new Date();
-    const currentTime = new Date();
+    // Use Redis cache for pathology appointments (3-minute TTL)
+    const cacheKey = CACHE_KEYS.PATHOLOGY_APPOINTMENTS;
+    
+    const result = await cacheUtils.getOrSet(
+      cacheKey,
+      async () => {
+        const today = new Date();
+        const currentTime = new Date();
 
-    // Fetch upcoming lab assignments (PENDING and ASSIGNED statuses)
-    // These are bookings that have phlebotomists assigned but haven't started yet
-    const upcomingAssignments = await prisma.labAssignment.findMany({
+        // Fetch upcoming lab assignments (PENDING and ASSIGNED statuses)
+        // These are bookings that have phlebotomists assigned but haven't started yet
+        const upcomingAssignments = await prisma.labAssignment.findMany({
       where: {
         assignedDate: {
           gte: today,
@@ -222,12 +229,17 @@ export async function GET(request: Request) {
       },
     }));
 
-    // Combine both arrays
-    const transformedAppointments = [...transformedAssignments, ...transformedUnassignedBookings];
+        // Combine both arrays
+        const transformedAppointments = [...transformedAssignments, ...transformedUnassignedBookings];
+
+        return transformedAppointments;
+      },
+      CACHE_TTL.PATHOLOGY_APPOINTMENTS
+    );
 
     return NextResponse.json({
       success: true,
-      appointments: transformedAppointments,
+      appointments: result,
     });
   } catch (error) {
     console.error("Error fetching upcoming appointments:", error);

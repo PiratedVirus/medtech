@@ -28,6 +28,9 @@ export const CACHE_KEYS = {
   PLANS_DATA: 'plans:data',
   DIET_PLAN: (patientId: number) => `diet:plan:${patientId}`,
   LLM_EXTRACT: (analysisId: number) => `llm:extract:${analysisId}`,
+  APPOINTMENTS: (patientId: number, upcomingOnly: boolean) => `appointments:${patientId}:${upcomingOnly}`,
+  INSIGHTS: (patientId: number) => `insights:${patientId}`,
+  PATHOLOGY_APPOINTMENTS: 'pathology:upcoming:appointments',
 } as const
 
 // Cache TTL (Time To Live) in seconds
@@ -39,6 +42,9 @@ export const CACHE_TTL = {
   PLANS_DATA: 30 * 60, // 30 minutes
   DIET_PLAN: 10 * 60, // 10 minutes
   LLM_EXTRACT: 60 * 60, // 1 hour
+  APPOINTMENTS: 5 * 60, // 5 minutes
+  INSIGHTS: 10 * 60, // 10 minutes
+  PATHOLOGY_APPOINTMENTS: 3 * 60, // 3 minutes
 } as const
 
 // Utility functions

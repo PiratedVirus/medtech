@@ -1,22 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getCachedDietPlan } from "@/lib/data-cache";
 import { cache } from 'react';
 
-// Cache the query for 5 minutes
+// Use Redis cache for diet plans (10-minute TTL)
 const getDietPlan = cache(async (patientId: number) => {
-  // Prefer new DietPlan records; fallback to old diet-appointment prescription links for backward compatibility
-  const latestPlan = await prisma.dietPlan.findFirst({
-    where: { patientId, deletedAt: null },
-    orderBy: { id: 'desc' },
-  });
-  if (latestPlan) return { prescriptionLink: null, dietPlan: latestPlan } as any;
-
-  const legacy = await prisma.appointment.findFirst({
-    where: { patientId, isDietician: true, deletedAt: null },
-    orderBy: { id: 'desc' },
-    select: { prescriptionLink: true },
-  });
-  return legacy as any;
+  return await getCachedDietPlan(patientId);
 });
 
 export const revalidate = 300; // Cache for 5 minutes

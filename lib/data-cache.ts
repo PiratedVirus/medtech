@@ -63,23 +63,63 @@ export async function getCachedPlansData() {
   return await cacheUtils.getOrSet(
     CACHE_KEYS.PLANS_DATA,
     async () => {
-      const plans = await prisma.plan.findMany({
+      const allPlans = await prisma.plan.findMany({
         include: {
           planFeatures: true,
         },
       });
 
-      // Build dynamic pricing structure
+      // Build dynamic pricing structure (matching the actual route logic)
       const pricingData: Record<string, any> = {};
-      for (const plan of plans) {
-        const durationKey = plan.duration.toLowerCase();
-        pricingData[durationKey] = {
-          ...plan,
-          features: plan.planFeatures.map(f => f.feature),
+
+      for (const plan of allPlans) {
+        const durationKey = plan.duration.toLowerCase(); // e.g., "6months"
+        const planKey = plan.name.toLowerCase().replace("+", "Plus"); // "carePlus"
+
+        if (!pricingData[durationKey]) {
+          pricingData[durationKey] = {};
+        }
+
+        const featureMap: Record<string, any> = {};
+
+        for (const feat of plan.planFeatures || []) {
+          const rawKey = feat.featureName
+            .replace(/\s+/g, "")
+            .replace(/[^a-zA-Z0-9]/g, "")
+            .replace(/^./, (c) => c.toLowerCase()); // e.g., doctorConsultation
+
+          const isLab = rawKey.toLowerCase().includes("lab");
+          const isMedicine = rawKey.toLowerCase().includes("medicine");
+
+          if (isMedicine) {
+            featureMap[rawKey] = {
+              discount: plan.discountPercentage ?? 0,
+            };
+          } else if (isLab) {
+            featureMap[rawKey] = {
+              totalTests: feat.occurrencesPerInterval || 0,
+              frequencyPerInterval: feat.occurrencesPerInterval || 0,
+              intervalInMonths: feat.intervalInMonths || 0,
+              parameters: feat.parameters || "",
+            };
+          } else {
+            featureMap[rawKey] = {
+              totalConsultations: feat.occurrencesPerInterval || 0,
+              frequencyPerInterval: feat.occurrencesPerInterval || 0,
+              intervalInMonths: feat.intervalInMonths || 0,
+            };
+          }
+        }
+
+        pricingData[durationKey][planKey] = {
+          planId: plan.id,
+          name: plan.name,
+          price: plan.price ?? 0,
+          ...featureMap,
         };
       }
 
-      return { plans, pricingData };
+      return { plans: allPlans, pricingData };
     },
     CACHE_TTL.PLANS_DATA
   )
@@ -150,6 +190,93 @@ export async function getCachedLLMExtract(analysisId: number) {
 }
 
 /**
+ * Appointments Cache
+ * Cache user appointments for 5 minutes
+ */
+export async function getCachedAppointments(patientId: number, upcomingOnly: boolean = false) {
+  const cacheKey = CACHE_KEYS.APPOINTMENTS(patientId, upcomingOnly)
+  
+  return await cacheUtils.getOrSet(
+    cacheKey,
+    async () => {
+      // Build where clause
+      const baseWhere: any = { patientId };
+      
+      // Fetch upcoming appointments
+      const upcomingAppointments = await prisma.appointment.findMany({
+        where: {
+          ...baseWhere,
+          deletedAt: null,
+          doctorAvailability: {
+            date: {
+              gte: new Date()
+            }
+          }
+        },
+        include: {
+          doctor: {
+            include: {
+              doctorProfile: true
+            }
+          },
+          doctorAvailability: true,
+          patient: {
+            include: {
+              patientProfile: true
+            }
+          }
+        },
+        orderBy: {
+          doctorAvailability: {
+            date: 'asc'
+          }
+        }
+      });
+
+      // Fetch past appointments if not upcoming only
+      let pastAppointments: any[] = [];
+      if (!upcomingOnly) {
+        pastAppointments = await prisma.appointment.findMany({
+          where: {
+            ...baseWhere,
+            deletedAt: null,
+            doctorAvailability: {
+              date: {
+                lt: new Date()
+              }
+            }
+          },
+          include: {
+            doctor: {
+              include: {
+                doctorProfile: true
+              }
+            },
+            doctorAvailability: true,
+            patient: {
+              include: {
+                patientProfile: true
+              }
+            }
+          },
+          orderBy: {
+            doctorAvailability: {
+              date: 'desc'
+            }
+          }
+        });
+      }
+
+      return {
+        upcomingAppointments,
+        pastAppointments
+      };
+    },
+    CACHE_TTL.APPOINTMENTS
+  )
+}
+
+/**
  * Cache invalidation functions
  */
 export async function invalidateDashboardCache(): Promise<void> {
@@ -166,5 +293,10 @@ export async function invalidateDietPlanCache(patientId: number): Promise<void> 
 
 export async function invalidateLLMExtractCache(analysisId: number): Promise<void> {
   await cacheUtils.invalidate(CACHE_KEYS.LLM_EXTRACT(analysisId))
+}
+
+export async function invalidateAppointmentsCache(patientId: number): Promise<void> {
+  await cacheUtils.invalidate(CACHE_KEYS.APPOINTMENTS(patientId, true))
+  await cacheUtils.invalidate(CACHE_KEYS.APPOINTMENTS(patientId, false))
 }
 
