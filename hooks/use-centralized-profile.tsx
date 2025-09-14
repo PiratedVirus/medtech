@@ -94,8 +94,17 @@ const fetchUserProfile = async (): Promise<DecryptedProfile | null> => {
     setCachedProfile(userProfile);
     
     return userProfile;
-  } catch (error) {
-    // Only log errors in development or when debugging
+  } catch (error: any) {
+    // Handle 401/403 errors gracefully - user is not authenticated
+    if (error?.response?.status === 401 || error?.response?.status === 403) {
+      // Clear any cached profile since user is not authenticated
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("userProfile");
+      }
+      return null; // Return null instead of throwing
+    }
+    
+    // Only log other errors in development or when debugging
     if (process.env.NODE_ENV === 'development') {
       console.error('[fetchUserProfile] Error fetching user profile:', error);
     }
@@ -121,8 +130,12 @@ export const useCentralizedProfile = () => {
     refetchOnReconnect: false,     // Don't refetch on network reconnect
     refetchInterval: false,        // No automatic refetching
     retry: (failureCount, error: any) => {
-      // Don't retry auth errors
+      // Don't retry auth errors (401/403) or network errors
       if (error?.response?.status === 401 || error?.response?.status === 403) {
+        return false;
+      }
+      // Don't retry if we have cached data
+      if (cachedProfile) {
         return false;
       }
       return failureCount < 1; // Only retry once for profile

@@ -73,6 +73,7 @@
     "@types/nprogress": "^0.2.3",
     "@types/pdf-parse": "^1.1.5",
     "@types/qrcode": "^1.5.5",
+    "@upstash/redis": "^1.35.3",
     "@vercel/blob": "^1.0.0",
     "autoprefixer": "^10.4.20",
     "axios": "^1.7.9",

@@ -1,123 +1,126 @@
-/**
- * Client-side authentication cache to reduce middleware overhead
- * This cache stores validated JWT tokens to avoid repeated server-side verification
- */
+import prisma from '@/lib/prisma'
+import redis, { CACHE_KEYS, CACHE_TTL, cacheUtils } from '@/lib/redis'
 
-interface CachedAuth {
-  token: string;
-  decodedUser: any;
-  validUntil: number;
-  role: string;
+export interface CachedUserProfile {
+  id: number
+  clinicId: number | null
+  phoneNumber: string
+  email: string | null
+  name: string
+  role: string
+  status: string
+  createdAt: Date
+  updatedAt: Date
+  deletedAt: Date | null
+  userProfilePicture: string | null
+  patientProfile: any
+  subscriptionDetails: any
 }
 
-const AUTH_CACHE_KEY = 'auth_cache';
-const AUTH_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+export interface CachedAdminProfile {
+  id: number
+  name: string
+  email: string
+  role: string
+}
 
-export class AuthCache {
-  private static cache: Map<string, CachedAuth> = new Map();
+/**
+ * Get user profile with Redis caching
+ * This will dramatically speed up authentication
+ */
+export async function getCachedUserProfile(phoneNumber: string): Promise<CachedUserProfile | null> {
+  const cacheKey = CACHE_KEYS.USER_PROFILE(phoneNumber)
+  
+  return await cacheUtils.getOrSet(
+    cacheKey,
+    async () => {
+      // Fetch from database
+      const user = await prisma.user.findFirst({
+        where: { phoneNumber, deletedAt: null },
+        select: {
+          id: true,
+          clinicId: true,
+          phoneNumber: true,
+          email: true,
+          name: true,
+          role: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+          userProfilePicture: true,
+          patientProfile: true,
+        },
+      })
 
-  /**
-   * Get cached authentication for a token
-   */
-  static getCachedAuth(token: string): CachedAuth | null {
-    if (typeof window === 'undefined') return null;
+      if (!user) return null
 
-    try {
-      // Check memory cache first
-      const memoryCache = this.cache.get(token);
-      if (memoryCache && memoryCache.validUntil > Date.now()) {
-        return memoryCache;
-      }
+      // Fetch subscription details
+      const subscriptionDetails = await prisma.subscriptionTracker.findFirst({
+        where: {
+          patientId: user.patientProfile?.id,
+          isActive: true,
+          endDate: {
+            gt: new Date(),
+          },
+        },
+      })
 
-      // Check localStorage cache
-      const stored = localStorage.getItem(`${AUTH_CACHE_KEY}_${token.slice(-10)}`);
-      if (stored) {
-        const cachedAuth: CachedAuth = JSON.parse(stored);
-        if (cachedAuth.validUntil > Date.now()) {
-          // Restore to memory cache
-          this.cache.set(token, cachedAuth);
-          return cachedAuth;
-        } else {
-          // Expired, remove it
-          localStorage.removeItem(`${AUTH_CACHE_KEY}_${token.slice(-10)}`);
-        }
-      }
-    } catch (error) {
-      console.error('Error reading auth cache:', error);
-    }
+      return {
+        ...user,
+        subscriptionDetails,
+      } as CachedUserProfile
+    },
+    CACHE_TTL.USER_PROFILE
+  )
+}
 
-    return null;
-  }
+/**
+ * Get admin profile with Redis caching
+ */
+export async function getCachedAdminProfile(userId: number): Promise<CachedAdminProfile | null> {
+  const cacheKey = CACHE_KEYS.ADMIN_PROFILE(userId)
+  
+  return await cacheUtils.getOrSet(
+    cacheKey,
+    async () => {
+      const admin = await prisma.user.findUnique({
+        where: {
+          id: userId,
+          role: "ADMIN",
+          status: "ACTIVE",
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+      })
 
-  /**
-   * Cache authentication result
-   */
-  static setCachedAuth(token: string, decodedUser: any): void {
-    if (typeof window === 'undefined') return;
+      return admin as CachedAdminProfile | null
+    },
+    CACHE_TTL.ADMIN_PROFILE
+  )
+}
 
-    try {
-      const cachedAuth: CachedAuth = {
-        token,
-        decodedUser,
-        validUntil: Date.now() + AUTH_CACHE_DURATION,
-        role: decodedUser.role || decodedUser.userRole,
-      };
+/**
+ * Invalidate user cache when profile is updated
+ */
+export async function invalidateUserCache(phoneNumber: string): Promise<void> {
+  await cacheUtils.invalidate(CACHE_KEYS.USER_PROFILE(phoneNumber))
+}
 
-      // Store in memory
-      this.cache.set(token, cachedAuth);
+/**
+ * Invalidate admin cache when profile is updated
+ */
+export async function invalidateAdminCache(userId: number): Promise<void> {
+  await cacheUtils.invalidate(CACHE_KEYS.ADMIN_PROFILE(userId))
+}
 
-      // Store in localStorage (with token suffix for key)
-      localStorage.setItem(
-        `${AUTH_CACHE_KEY}_${token.slice(-10)}`,
-        JSON.stringify(cachedAuth)
-      );
-    } catch (error) {
-      console.error('Error caching auth:', error);
-    }
-  }
-
-  /**
-   * Clear authentication cache
-   */
-  static clearCache(token?: string): void {
-    if (typeof window === 'undefined') return;
-
-    if (token) {
-      // Clear specific token
-      this.cache.delete(token);
-      localStorage.removeItem(`${AUTH_CACHE_KEY}_${token.slice(-10)}`);
-    } else {
-      // Clear all auth cache
-      this.cache.clear();
-      Object.keys(localStorage)
-        .filter(key => key.startsWith(AUTH_CACHE_KEY))
-        .forEach(key => localStorage.removeItem(key));
-    }
-  }
-
-  /**
-   * Check if token is likely valid without full verification
-   * This is a fast, client-side check
-   */
-  static isTokenLikelyValid(token: string): boolean {
-    if (!token) return false;
-
-    try {
-      // Basic JWT structure check
-      const parts = token.split('.');
-      if (parts.length !== 3) return false;
-
-      // Check if token is not obviously expired (basic payload check)
-      const payload = JSON.parse(atob(parts[1]));
-      const exp = payload.exp;
-      
-      if (exp && exp * 1000 < Date.now()) {
-        return false; // Token is expired
-      }
-
-      return true;
-    } catch (error) {
-      return false;
-    }
-  }
+/**
+ * Invalidate subscription cache when subscription changes
+ */
+export async function invalidateSubscriptionCache(patientId: number): Promise<void> {
+  await cacheUtils.invalidate(CACHE_KEYS.USER_SUBSCRIPTION(patientId))
 }
