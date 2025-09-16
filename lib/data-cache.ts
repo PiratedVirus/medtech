@@ -10,47 +10,46 @@ export async function getCachedDashboardSummary() {
   return await cacheUtils.getOrSet(
     CACHE_KEYS.DASHBOARD_SUMMARY,
     async () => {
-      // Use the existing optimized query
-      const summaryData = await prisma.$queryRaw<Array<{
-        total_patients: bigint;
-        active_subscriptions: bigint;
-        todays_appointments: bigint;
-        lab_bookings_pending: bigint;
-        monthly_revenue: bigint | null;
-        new_signups_this_week: bigint;
-      }>>`
-        WITH date_ranges AS (
-          SELECT 
-            CURRENT_DATE as today,
-            DATE_TRUNC('month', CURRENT_DATE) as month_start,
-            DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month' - INTERVAL '1 day' as month_end,
-            CURRENT_DATE - INTERVAL '7 days' as week_ago
-        )
-        SELECT 
-          COUNT(CASE WHEN u.role = 'PATIENT' AND u."deletedAt" IS NULL THEN 1 END) as total_patients,
-          COUNT(CASE WHEN st."isActive" = true AND st."deletedAt" IS NULL THEN 1 END) as active_subscriptions,
-          COUNT(CASE WHEN da.date = dr.today 
-                     AND a.status NOT IN ('${AppointmentStatus.CANCELLED}', '${AppointmentStatus.COMPLETED}') 
-                     AND a."deletedAt" IS NULL THEN 1 END) as todays_appointments,
-          COUNT(CASE WHEN lb."labDate" = dr.today 
-                     AND lb.status = '${LabBookingStatus.PENDING}' 
-                     AND lb."deletedAt" IS NULL THEN 1 END) as lab_bookings_pending,
-          COALESCE(SUM(CASE WHEN p."createdAt" >= dr.month_start 
-                           AND p."createdAt" <= dr.month_end 
-                           AND p."deletedAt" IS NULL THEN p.amount END), 0) as monthly_revenue,
-          COUNT(CASE WHEN u.role = 'PATIENT' 
-                     AND u."createdAt" >= dr.week_ago 
-                     AND u."deletedAt" IS NULL THEN 1 END) as new_signups_this_week
-        FROM date_ranges dr
-        CROSS JOIN "User" u
-        LEFT JOIN "SubscriptionTracker" st ON u.id = st."patientId"
-        LEFT JOIN "Appointment" a ON u.id = a."patientId"
-        LEFT JOIN "DoctorAvailability" da ON a."doctorAvailabilityId" = da.id
-        LEFT JOIN "LabBooking" lb ON u.id = lb."patientId"
-        LEFT JOIN "Payment" p ON (p."appointmentId" = a.id OR p."labBookingId" = lb.id OR p."subscriptionId" = st."subscriptionId")
-      `;
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-      return summaryData[0];
+      const [
+        totalPatients,
+        activeSubscriptions,
+        todaysAppointments,
+        labBookingsPending,
+        monthlyRevenueAgg,
+        newSignupsThisWeek,
+      ] = await Promise.all([
+        prisma.user.count({ where: { role: 'PATIENT', deletedAt: null } }),
+        prisma.subscriptionTracker.count({ where: { isActive: true, deletedAt: null } }),
+        prisma.appointment.count({
+          where: {
+            deletedAt: null,
+            status: { notIn: ['CANCELLED', 'COMPLETED'] },
+            doctorAvailability: { date: { gte: todayStart, lte: todayEnd } },
+          },
+        }),
+        prisma.labBooking.count({ where: { deletedAt: null, status: 'PENDING', labDate: todayStart } }),
+        prisma.payment.aggregate({
+          _sum: { amount: true },
+          where: { deletedAt: null, createdAt: { gte: monthStart, lte: monthEnd } },
+        }),
+        prisma.user.count({ where: { role: 'PATIENT', deletedAt: null, createdAt: { gte: weekAgo } } }),
+      ]);
+
+      return {
+        total_patients: BigInt(totalPatients),
+        active_subscriptions: BigInt(activeSubscriptions),
+        todays_appointments: BigInt(todaysAppointments),
+        lab_bookings_pending: BigInt(labBookingsPending),
+        monthly_revenue: BigInt(monthlyRevenueAgg._sum.amount || 0),
+        new_signups_this_week: BigInt(newSignupsThisWeek),
+      };
     },
     CACHE_TTL.DASHBOARD_SUMMARY
   )

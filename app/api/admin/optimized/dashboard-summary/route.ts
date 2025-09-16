@@ -16,8 +16,15 @@ export async function GET(request: Request) {
       monthlyRevenue: Number(result.monthly_revenue || 0),
       newSignupsThisWeek: Number(result.new_signups_this_week),
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Dashboard summary query error:", error);
-    return NextResponse.json({ error: "Failed to fetch summary data" }, { status: 500 });
+    const isDev = process.env.NODE_ENV !== 'production';
+    return NextResponse.json(
+      {
+        error: "Failed to fetch summary data",
+        details: isDev ? (error?.message || String(error)) : undefined,
+      },
+      { status: 500 }
+    );
   }
 }

@@ -145,14 +145,6 @@ const to24h = (time: string): string => {
 };
 
 const createDoctorAvailability = async (data: CreateDoctorAvailabilityData): Promise<DoctorAvailability | null> => {
-  console.log("Data for booking is ", data);
-  if (typeof data.doctorId === "string") {
-    try {
-      data.doctorId = JSON.parse(data.doctorId)?.doctorId || Number(data.doctorId);
-    } catch (error) {
-      console.error("Error parsing doctorId:", error);
-    }
-  } 
   const payload = {
     ...data,
     doctorId: Number(data.doctorId),
@@ -177,14 +169,6 @@ interface UpdateDoctorAvailabilityData {
 }
 
 const updateDoctorAvailability = async (id: number, data: UpdateDoctorAvailabilityData): Promise<DoctorAvailability | null> => {
-  // doctorId may come through as a JSON‑stringified object from the <Select>
-  if (typeof data.doctorId === "string") {
-    try {
-      data.doctorId = JSON.parse(data.doctorId)?.doctorId || Number(data.doctorId);
-    } catch (error) {
-      console.error("Error parsing doctorId:", error);
-    }
-  }
   const payload = {
     ...data,
     doctorId: Number(data.doctorId),
@@ -337,10 +321,10 @@ export default function DoctorAvailabilityPage() {
             className="bg-transparent text-primary border-0 shadow-none"
             onClick={() => {
               setSelectedAvailability(row.original);
-              setValue("doctorId", row.original.userId);
+              setValue("doctorId", String(row.original.userId));
               setValue("date", row.original.date);
-              setValue("startTime", row.original.startTime);
-              setValue("endTime", row.original.endTime);
+              setValue("startTime", to12h(row.original.startTime));
+              setValue("endTime", to12h(row.original.endTime));
               setValue("status", row.original.status);
               setDialogOpen(true);
             }}
@@ -403,22 +387,10 @@ export default function DoctorAvailabilityPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedAvailability && doctors.length > 0) {
-      console.log("Selected availability:", selectedAvailability);
-      // Find the doctor object to get the correct JSON string value
-      const doctor = doctors.find(doc => doc.userId === selectedAvailability.userId);
-      const doctorValue = doctor ? JSON.stringify({ id: doctor.id, doctorId: doctor.userId }) : selectedAvailability.userId.toString();
-      
-      setValue("doctorId", doctorValue);
-      setValue("date", selectedAvailability.date);
-      // Prefill times normalized to 12h for the picker
-      setValue("startTime", to12h(selectedAvailability.startTime));
-      setValue("endTime", to12h(selectedAvailability.endTime));
-      setValue("status", selectedAvailability.status);
-    } else if (!selectedAvailability) {
+    if (!selectedAvailability) {
       reset();
     }
-  }, [selectedAvailability, setValue, reset, doctors]);
+  }, [selectedAvailability, reset]);
 
   interface FormData {
     doctorId: string | number;
@@ -622,13 +594,13 @@ const deleteSelected = async () => {
               name="doctorId"
               rules={{ required: true }}
               render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value?.toString()}>
+                <Select onValueChange={field.onChange} value={field.value ? String(field.value) : undefined}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Doctor" />
                   </SelectTrigger>
                   <SelectContent className="bg-white text-black">
                   {doctors.map((doc) => (
-                      <SelectItem key={doc.userId} value={JSON.stringify({ id: doc.id, doctorId: doc.userId })}>
+                      <SelectItem key={doc.userId} value={String(doc.userId)}>
                         {doc.user.name}
                       </SelectItem>
                     ))}
