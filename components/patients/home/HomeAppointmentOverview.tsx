@@ -14,23 +14,62 @@ export default function HomeAppointmentOverview() {
   const [isHovered, setIsHovered] = useState(false)
   const { clinicId, profile, isLoading: profileLoading } = useDecryptedProfile()
 
+  // Debug logging
+  console.log('HomeAppointmentOverview render:', { clinicId, profileId: profile?.id, profileLoading });
+
   // Fetch and cache appointment data using React Query
   const { data: appointment, isLoading, isError } = useQuery({
     queryKey: ["upcomingAppointment", clinicId, profile?.id],
     queryFn: async () => {
-      if (!clinicId || !profile?.id) return null
-      const response = await axios.get(
-        `/api/appointments?clinicId=${clinicId}&patientId=${profile?.id}&upcomingOnly=true`,
-        { withCredentials: true }
-      )
-      return response.data.success ? response.data.data : null
+      console.log('Query function called with:', { clinicId, profileId: profile?.id });
+      try {
+        // Additional safety check
+        if (!clinicId || !profile?.id || clinicId === undefined || profile.id === undefined) {
+          console.log('Missing required parameters:', { clinicId, profileId: profile?.id });
+          return null;
+        }
+        
+        const response = await axios.get(
+          `/api/appointments?clinicId=${clinicId}&patientId=${profile?.id}&upcomingOnly=true`,
+          { withCredentials: true }
+        );
+        
+        console.log('API Response:', response.data);
+        
+        if (!response.data.success) {
+          console.warn('Appointments API returned success: false', response.data);
+          return null;
+        }
+        
+        // Handle different response structures
+        if (response.data.upcomingAppointments !== undefined) {
+          // When patientId is provided, API returns upcomingAppointments array
+          const result = response.data.upcomingAppointments.length > 0 ? response.data.upcomingAppointments[0] : null;
+          console.log('Returning first upcoming appointment:', result);
+          return result;
+        } else if (response.data.data !== undefined) {
+          // When upcomingOnly=true without patientId, API returns data directly
+          const result = response.data.data || null;
+          console.log('Returning data field:', result);
+          return result;
+        } else {
+          console.warn('Unexpected API response structure for upcoming appointment', response.data);
+          return null;
+        }
+      } catch (error) {
+        console.error('Error fetching upcoming appointment:', error);
+        return null;
+      }
     },
+    // Additional React Query options to prevent undefined returns
+    retry: 1,
+    retryDelay: 1000,
     staleTime: 2 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     refetchOnReconnect: true,
-    enabled: !!clinicId && !!profile?.id,
+    enabled: !!clinicId && !!profile?.id && !profileLoading,
   })
 
   if (isLoading || profileLoading) return <PatientUpcomingSkeleton />

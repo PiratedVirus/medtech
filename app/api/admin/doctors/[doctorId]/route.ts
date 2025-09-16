@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { AppointmentStatus } from "@/lib/constants/enums";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Appointment, DoctorProfile, Payment, User } from "@prisma/client";
 
@@ -104,8 +105,8 @@ export async function GET(
     const endOfLastMonth = endOfMonth(subMonths(now, 1));
 
     const appointments = doctorWithRelations.user.doctorAppointments;
-    const completedAppointments = appointments.filter((a) => a.status === "COMPLETED");
-    const upcomingAppointments = appointments.filter((a) => a.status === "SCHEDULED");
+    const completedAppointments = appointments.filter((a) => a.status === AppointmentStatus.COMPLETED);
+    const upcomingAppointments = appointments.filter((a) => a.status === AppointmentStatus.SCHEDULED);
     
     const totalEarnings = completedAppointments.reduce((sum: number, app) => 
       sum + (app.payment?.amount || 0), 0

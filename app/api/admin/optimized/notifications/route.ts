@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { AppointmentStatus } from "@/lib/constants/enums";
 
 // Optimized notifications API using single aggregated query instead of 10+ parallel queries
 export async function GET(request: Request) {
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
       JOIN "DoctorAvailability" da ON a."doctorAvailabilityId" = da.id
       WHERE da.date >= ${today}
         AND da.date <= ${tomorrow}
-        AND a.status IN ('SCHEDULED', 'Confirmed')
+        AND a.status IN ('${AppointmentStatus.SCHEDULED}', '${AppointmentStatus.CONFIRMED}')
         AND a."deletedAt" IS NULL
 
       UNION ALL

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useForm, Controller } from "react-hook-form";
 import {
@@ -105,6 +105,45 @@ interface CreateDoctorAvailabilityData {
   status: string;
 }
 
+// --- Time helpers (normalize 12h/24h) ---
+const to12h = (time: string): string => {
+  if (!time) return "";
+  // Already 12h?
+  const m12 = time.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i);
+  if (m12) {
+    const hh = m12[1].padStart(2, "0");
+    const mm = m12[2].padStart(2, "0");
+    const ap = m12[3].toUpperCase();
+    return `${hh}:${mm} ${ap}`;
+  }
+  // 24h?
+  const m24 = time.match(/^([01]?\d|2[0-3]):(\d{2})$/);
+  if (!m24) return time;
+  let h = parseInt(m24[1], 10);
+  const mm = m24[2];
+  const period = h >= 12 ? "PM" : "AM";
+  if (h === 0) h = 12; else if (h > 12) h = h - 12;
+  return `${String(h).padStart(2, "0")}:${mm} ${period}`;
+};
+
+const to24h = (time: string): string => {
+  if (!time) return "";
+  const m12 = time.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i);
+  if (m12) {
+    let h = parseInt(m12[1], 10);
+    const mm = m12[2];
+    const ap = m12[3].toUpperCase();
+    if (ap === "PM" && h !== 12) h += 12;
+    if (ap === "AM" && h === 12) h = 0;
+    return `${String(h).padStart(2, "0")}:${mm}`;
+  }
+  const m24 = time.match(/^([01]?\d|2[0-3]):(\d{2})$/);
+  if (m24) {
+    return `${m24[1].padStart(2, "0")}:${m24[2]}`;
+  }
+  return time;
+};
+
 const createDoctorAvailability = async (data: CreateDoctorAvailabilityData): Promise<DoctorAvailability | null> => {
   console.log("Data for booking is ", data);
   if (typeof data.doctorId === "string") {
@@ -117,6 +156,8 @@ const createDoctorAvailability = async (data: CreateDoctorAvailabilityData): Pro
   const payload = {
     ...data,
     doctorId: Number(data.doctorId),
+    startTime: to24h(data.startTime),
+    endTime: to24h(data.endTime),
   };
   try {
     const response = await axios.post("/api/admin/slots", payload);
@@ -147,6 +188,8 @@ const updateDoctorAvailability = async (id: number, data: UpdateDoctorAvailabili
   const payload = {
     ...data,
     doctorId: Number(data.doctorId),
+    startTime: to24h(data.startTime),
+    endTime: to24h(data.endTime),
   };
 
   try {
@@ -185,6 +228,16 @@ export default function DoctorAvailabilityPage() {
   const [selectedAvailability, setSelectedAvailability] = useState<DoctorAvailability | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { register, handleSubmit, reset, setValue, control } = useForm<FormData>();
+  
+  // Memoized onChange handlers for TimeInput to prevent infinite loops
+  const handleStartTimeChange = useCallback((newTime: string) => {
+    setValue("startTime", newTime);
+  }, [setValue]);
+  
+  const handleEndTimeChange = useCallback((newTime: string) => {
+    setValue("endTime", newTime);
+  }, [setValue]);
+  
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -253,6 +306,7 @@ export default function DoctorAvailabilityPage() {
           Start Time <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
+      cell: ({ row }) => to12h(row.getValue("startTime")),
       enableSorting: true,
     },
     {
@@ -262,6 +316,7 @@ export default function DoctorAvailabilityPage() {
           End Time <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
+      cell: ({ row }) => to12h(row.getValue("endTime")),
       enableSorting: true,
     },
     {
@@ -348,19 +403,25 @@ export default function DoctorAvailabilityPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedAvailability) {
-              setValue("doctorId", selectedAvailability.userId); // Use userId instead of doctorName
+    if (selectedAvailability && doctors.length > 0) {
+      console.log("Selected availability:", selectedAvailability);
+      // Find the doctor object to get the correct JSON string value
+      const doctor = doctors.find(doc => doc.userId === selectedAvailability.userId);
+      const doctorValue = doctor ? JSON.stringify({ id: doctor.id, doctorId: doctor.userId }) : selectedAvailability.userId.toString();
+      
+      setValue("doctorId", doctorValue);
       setValue("date", selectedAvailability.date);
-      setValue("startTime", selectedAvailability.startTime);
-      setValue("endTime", selectedAvailability.endTime);
+      // Prefill times normalized to 12h for the picker
+      setValue("startTime", to12h(selectedAvailability.startTime));
+      setValue("endTime", to12h(selectedAvailability.endTime));
       setValue("status", selectedAvailability.status);
-    } else {
+    } else if (!selectedAvailability) {
       reset();
     }
-  }, [selectedAvailability, setValue, reset]);
+  }, [selectedAvailability, setValue, reset, doctors]);
 
   interface FormData {
-    doctorId: number;
+    doctorId: string | number;
     date: string;
     startTime: string;
     endTime: string;
@@ -369,11 +430,20 @@ export default function DoctorAvailabilityPage() {
 
   const onSubmit = async (formData: FormData) => {
     try {
+      // Convert FormData to the expected data types
+      const data: CreateDoctorAvailabilityData = {
+        doctorId: Number(formData.doctorId),
+        date: formData.date,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        status: formData.status,
+      };
+
       if (selectedAvailability) {
-        await updateDoctorAvailability(selectedAvailability.id, formData);
+        await updateDoctorAvailability(selectedAvailability.id, data);
         toast.success("Doctor availability updated successfully");
       } else {
-        await createDoctorAvailability(formData);
+        await createDoctorAvailability(data);
         toast.success("Doctor availability created successfully");
       }
       await fetchData();
@@ -595,7 +665,7 @@ const deleteSelected = async () => {
                 </Popover>
               )}
             />
-            {/* Use TimePicker for startTime */}
+            {/* Use TimeInput for startTime */}
             <Controller
               name="startTime"
               control={control}
@@ -603,11 +673,11 @@ const deleteSelected = async () => {
               render={({ field }) => (
                 <TimeInput
                   value={field.value} // expects a string like "10:00 AM"
-                  onChange={(newTime) => field.onChange(newTime)}
+                  onChange={handleStartTimeChange}
                 />
               )}
             />
-            {/* Use TimePInputfor endTime */}
+            {/* Use TimeInput for endTime */}
             <Controller
               name="endTime"
               control={control}
@@ -615,7 +685,7 @@ const deleteSelected = async () => {
               render={({ field }) => (
                 <TimeInput
                   value={field.value} // expects a string like "10:00 AM"
-                  onChange={(newTime) => field.onChange(newTime)}
+                  onChange={handleEndTimeChange}
                 />
               )}
             />

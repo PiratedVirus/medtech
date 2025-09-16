@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma'
 import redis, { CACHE_KEYS, CACHE_TTL, cacheUtils } from '@/lib/redis'
+import { AppointmentStatus, LabBookingStatus } from '@/lib/constants/enums'
 
 /**
  * Dashboard Summary Cache
@@ -29,10 +30,10 @@ export async function getCachedDashboardSummary() {
           COUNT(CASE WHEN u.role = 'PATIENT' AND u."deletedAt" IS NULL THEN 1 END) as total_patients,
           COUNT(CASE WHEN st."isActive" = true AND st."deletedAt" IS NULL THEN 1 END) as active_subscriptions,
           COUNT(CASE WHEN da.date = dr.today 
-                     AND a.status NOT IN ('Cancelled', 'Completed') 
+                     AND a.status NOT IN ('${AppointmentStatus.CANCELLED}', '${AppointmentStatus.COMPLETED}') 
                      AND a."deletedAt" IS NULL THEN 1 END) as todays_appointments,
           COUNT(CASE WHEN lb."labDate" = dr.today 
-                     AND lb.status = 'PENDING' 
+                     AND lb.status = '${LabBookingStatus.PENDING}' 
                      AND lb."deletedAt" IS NULL THEN 1 END) as lab_bookings_pending,
           COALESCE(SUM(CASE WHEN p."createdAt" >= dr.month_start 
                            AND p."createdAt" <= dr.month_end 

@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCachedAppointments } from "@/lib/data-cache";
+import { AppointmentStatus, ConsultationType } from "@/lib/constants/enums";
 
 /**
  * GET /api/appointments
@@ -220,7 +221,7 @@ export async function POST(request: Request) {
       doctorConsultationDates
     } = body;
 
-    const consultationType = consultationMode === "video" ? "Video" : "Physical";
+    const consultationType = consultationMode === "video" ? ConsultationType.VIDEO : ConsultationType.PHYSICAL;
 
     if (!patientId || !doctorId || !slot?.id) {
       console.error("Missing required fields", { patientId, doctorId, slot });
@@ -243,7 +244,7 @@ export async function POST(request: Request) {
           mobile,
           email,
           consultationType,
-          status: "Scheduled",
+          status: AppointmentStatus.SCHEDULED,
           isDietician,
           subscriptionId,
         },

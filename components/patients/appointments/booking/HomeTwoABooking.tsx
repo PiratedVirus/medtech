@@ -3,6 +3,7 @@ import { useState, useRef, use, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import axios from "axios";
+import { ConsultationType, PaymentMethod } from "@/lib/constants/enums";
 import { PatientForm } from "@/appointment-book/PatientFormABooking";
 import PaymentSelection from "@/appointment-book/PaymentABooking";
 import DoctorInfoTwo from "@/appointment-book/DoctorInfoTwoABooking";
@@ -22,7 +23,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
   const queryClient = useQueryClient();
   const { useAppointmentBooking } = useSmartMutations();
 
-  const [paymentMethod, setPaymentMethod] = useState("online");
+  const [paymentMethod, setPaymentMethod] = useState(PaymentMethod.ONLINE);
   const { profile } = useDecryptedProfile();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState(""); // Status messages
@@ -154,7 +155,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
       doctorConsultationDates: filteredDoctorConsultationDates, // update them
     };
     console.log("Appointment Data", appointmentData);
-    if (paymentMethod === "online" && (!razorpayResponse || !razorpayResponse.success)) {
+    if (paymentMethod === PaymentMethod.ONLINE && (!razorpayResponse || !razorpayResponse.success)) {
       alert("Payment not completed. Please try again.");
       setLoading(false);
       return;
@@ -200,7 +201,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
             <div className="bg-white flex-grow flex items-center justify-center p-6">
               <PaymentSelection
                 selectedOption={paymentMethod}
-                onOptionChange={setPaymentMethod}
+                onOptionChange={(option: string) => setPaymentMethod(option as PaymentMethod)}
                 consultationType={consultationMode || ""}
                 firstValidDate={firstValidDate}
                 consultationFee={doctor?.doctorProfile.consultationFee}
@@ -217,7 +218,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
                   if (formRef.current) {
                     // @ts-expect-error
                     formRef.current.submitForm(async (data) => {
-                      if (paymentMethod === "online") {
+                      if (paymentMethod === PaymentMethod.ONLINE) {
                         await handlePayment(data, doctor?.doctorProfile.consultationFee);
                       } else {
                         await handleConfirmAppointment(data, undefined, doctor?.doctorProfile.consultationFee);

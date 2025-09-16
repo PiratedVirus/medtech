@@ -3,6 +3,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import axios from "axios";
+import { PaymentMethod } from "@/lib/constants/enums";
 import { LabBookingForm } from "@/patients/labs/booking/LabBookingForm";
 import PaymentSelection from "@/appointment-book/PaymentABooking";
 import PackageInfo from "@/patients/labs/booking/PackageInfo";
@@ -21,7 +22,7 @@ import { useSmartMutations } from "@/hooks/use-query-mutations";
 
 export default function LabBookingHome({ packageInfo, onBack }: any) {
   const router = useRouter();
-  const [paymentOption, setPaymentOption] = useState("online");
+  const [paymentOption, setPaymentOption] = useState(PaymentMethod.ONLINE);
   const { useLabBooking } = useSmartMutations();
   const { profile } = useDecryptedProfile();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -202,7 +203,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
       labPackageFees
     };
 
-    if (paymentOption === "online" && (!razorpayResponse || !razorpayResponse.success)) {
+    if (paymentOption === PaymentMethod.ONLINE && (!razorpayResponse || !razorpayResponse.success)) {
       alert("Payment not completed. Please try again.");
       setLoading(false);
       return;
@@ -249,7 +250,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
             <div className="bg-white flex-grow flex justify-center p-6">
               <PaymentSelection
                 selectedOption={paymentOption}
-                onOptionChange={setPaymentOption}
+                onOptionChange={(option: string) => setPaymentOption(option as PaymentMethod)}
                 firstValidDate={firstValidDate}
                 consultationType={paymentOption || ""}
                 consultationFee={labBbookingData?.price}
@@ -267,7 +268,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
                   if (formRef.current) {
                     // @ts-expect-error
                     formRef.current.submitForm(async (data) => {
-                      if (paymentOption === "online") {
+                      if (paymentOption === PaymentMethod.ONLINE) {
                         await handlePayment(data);
                       } else {
                         await handleConfirmBooking(data, undefined, labBbookingData.price);

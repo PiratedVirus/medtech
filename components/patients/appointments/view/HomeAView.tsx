@@ -17,12 +17,43 @@ export default function AppointmentViewHome() {
   const { data: appointments, isLoading, isError } = useQuery({
     queryKey: ["appointments", clinicId, profile?.id],
     queryFn: async () => {
+      // Ensure we never return undefined
+      const result = await (async () => {
       if (!clinicId || !profile?.id) return { past: [], upcoming: [] };
-      const response = await axios.get(
-        `/api/appointments?clinicId=${clinicId}&patientId=${profile?.id}`,
-        { withCredentials: true }
-      );
-      return response.data.success ? response.data.data : { past: [], upcoming: [] };
+      
+      try {
+        const response = await axios.get(
+          `/api/appointments?clinicId=${clinicId}&patientId=${profile?.id}`,
+          { withCredentials: true }
+        );
+        
+        if (!response.data.success) {
+          console.warn('Appointments API returned success: false', response.data);
+          return { past: [], upcoming: [] };
+        }
+        
+        // Handle different response structures
+        if (response.data.upcomingAppointments !== undefined && response.data.pastAppointments !== undefined) {
+          // When patientId is provided, API returns upcomingAppointments and pastAppointments directly
+          return {
+            past: response.data.pastAppointments || [],
+            upcoming: response.data.upcomingAppointments || []
+          };
+        } else if (response.data.data) {
+          // Default case with nested data structure
+          return response.data.data;
+        } else {
+          console.warn('Unexpected API response structure', response.data);
+          return { past: [], upcoming: [] };
+        }
+      } catch (error) {
+        console.error('Error fetching appointments:', error);
+        return { past: [], upcoming: [] };
+      }
+      })();
+      
+      // Final safeguard - ensure we never return undefined
+      return result || { past: [], upcoming: [] };
     },
     staleTime: 2 * 60 * 1000, // ✅ Keeps cache valid for 10 minutes
     gcTime: 12 * 60 * 1000, // ✅ Keeps cache for 1 hour

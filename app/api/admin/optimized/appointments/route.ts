@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { ConsultationType } from "@/lib/constants/enums";
 
 // Optimized appointments API with proper includes to avoid N+1 queries
 export async function GET(request: Request) {
@@ -64,10 +65,10 @@ export async function GET(request: Request) {
       startTime: appointment.doctorAvailability?.startTime || '',
       endTime: appointment.doctorAvailability?.endTime || '',
       // Meeting room info is now included in the initial query
-      meetingRoomLink: appointment.consultationType === "Video" 
+      meetingRoomLink: appointment.consultationType === ConsultationType.VIDEO 
         ? appointment.doctor?.doctorProfile?.meetingRoomLink 
         : null,
-      ownerToken1: appointment.consultationType === "Video" 
+      ownerToken1: appointment.consultationType === ConsultationType.VIDEO 
         ? appointment.doctor?.doctorProfile?.ownerToken1 
         : null,
       createdAt: appointment.createdAt,

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { NotificationService } from '@/lib/notification-service';
+import { AppointmentStatus, LabBookingStatus } from '@/lib/constants/enums';
 
 export async function GET() {
   try {
@@ -18,7 +19,7 @@ export async function GET() {
           }
         },
         status: {
-          in: ['SCHEDULED', 'CONFIRMED', 'PENDING']
+          in: [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED, LabBookingStatus.PENDING]
         },
         deletedAt: null,
       },
@@ -122,7 +123,7 @@ export async function GET() {
     console.log('🧪 Checking for completed lab tests...');
     const completedLabBookings = await prisma.labBooking.findMany({
       where: {
-        status: 'COMPLETED',
+        status: LabBookingStatus.COMPLETED,
         labResult: {
           isEmpty: false
         },

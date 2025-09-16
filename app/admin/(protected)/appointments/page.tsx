@@ -4,6 +4,7 @@ import DailyIframe, { DailyCall } from '@daily-co/daily-js';
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useForm, Controller } from "react-hook-form";
+import { ConsultationType, AppointmentStatus } from "@/lib/constants/enums";
 import {
   useReactTable,
   getCoreRowModel,
@@ -312,13 +313,30 @@ export default function AppointmentsPage() {
       // @ts-ignore
       const sendThisDoctorId = JSON.parse(selectedDoctorId).doctorId;
 
-      fetchAvailableSlots(Number(sendThisDoctorId)).then((slots) =>
-        setAvailableSlots(slots)
-      );
+      fetchAvailableSlots(Number(sendThisDoctorId)).then((slots: Slot[]) => {
+        // If editing an appointment, ensure the current appointment's slot is included
+        if (selectedAppointment) {
+          const currentSlot = {
+            id: selectedAppointment.doctorAvailabilityId,
+            date: selectedAppointment.doctorAvailability.date,
+            startTime: selectedAppointment.startTime,
+            endTime: selectedAppointment.endTime,
+            status: "booked"
+          };
+          
+          // Check if current slot is already in the slots array
+          const slotExists = slots.some(slot => slot.id === currentSlot.id);
+          if (!slotExists) {
+            slots.push(currentSlot);
+          }
+        }
+        
+        setAvailableSlots(slots);
+      });
     } else {
       setAvailableSlots([]);
     }
-  }, [selectedDoctorId]);
+  }, [selectedDoctorId, selectedAppointment]);
 
   // Load doctors on mount
   useEffect(() => {
@@ -349,7 +367,7 @@ export default function AppointmentsPage() {
       console.log("Selected appointment:", selectedAppointment);
       // 1. Prefill 'patientId'
       const foundPatient = patients.find(
-        (p) => p.name === selectedAppointment.fullName
+        (p) => p.name === selectedAppointment.fullName || p.name === selectedAppointment.patient
       );
       if (foundPatient) {
         setValue("patientId", foundPatient.id.toString());
@@ -510,7 +528,7 @@ export default function AppointmentsPage() {
         </Button>
       ),
       cell: ({ row }) => {
-        if (row.original.consultationType === "Video") {
+        if (row.original.consultationType === ConsultationType.VIDEO) {
           return (
             <Button
               className="bg-transparent shadow-none"
@@ -599,7 +617,7 @@ export default function AppointmentsPage() {
             </Button>
           );
         }
-        return "Physical";
+        return ConsultationType.PHYSICAL;
       }
     },
     {
@@ -962,8 +980,8 @@ export default function AppointmentsPage() {
                     <SelectValue placeholder="Consultation Type" />
                   </SelectTrigger>
                   <SelectContent className="bg-white text-black">
-                    <SelectItem value="Video">Video Consultation</SelectItem>
-                    <SelectItem value="Physical">Physical Visit</SelectItem>
+                    <SelectItem value={ConsultationType.VIDEO}>Video Consultation</SelectItem>
+                    <SelectItem value={ConsultationType.PHYSICAL}>Physical Visit</SelectItem>
                   </SelectContent>
                 </Select>
               )}
@@ -980,9 +998,9 @@ export default function AppointmentsPage() {
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent className="bg-white text-black">
-                    <SelectItem value="Scheduled">Scheduled</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
-                    <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    <SelectItem value={AppointmentStatus.SCHEDULED}>Scheduled</SelectItem>
+                    <SelectItem value={AppointmentStatus.COMPLETED}>Completed</SelectItem>
+                    <SelectItem value={AppointmentStatus.CANCELLED}>Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               )}
@@ -999,7 +1017,13 @@ export default function AppointmentsPage() {
                   value={field.value ? field.value.toString() : undefined}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select Patient" />
+                    <SelectValue placeholder="Select Patient">
+                      {field.value && patients.length > 0 ? (
+                        patients.find(p => p.id.toString() === field.value.toString())?.name || "Select Patient"
+                      ) : (
+                        "Select Patient"
+                      )}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-white text-black">
                     {patients.map((patient) => (

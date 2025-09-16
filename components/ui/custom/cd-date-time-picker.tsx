@@ -1,7 +1,7 @@
 "use client"
 
 import type * as React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { ChevronDown, Clock } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -21,17 +21,55 @@ export function TimeInput({ className, value, onChange, ...props }: TimeInputPro
   const [minutes, setMinutes] = useState<string>("00")
   const [period, setPeriod] = useState<"AM" | "PM">("AM")
   const [displayValue, setDisplayValue] = useState<string>("")
+  const isUpdatingFromProps = useRef(false)
+  const lastEmittedValue = useRef<string>("")
 
-  // Initialize from value prop if provided (e.g. "10:00 AM")
+  // Initialize from value prop if provided (supports "10:00 AM" and "14:30")
   useEffect(() => {
-    if (value) {
-      const match = value.match(/^(\d{1,2}):(\d{2}) (AM|PM)$/)
-      if (match) {
-        setHours(match[1])
-        setMinutes(match[2])
-        setPeriod(match[3] as "AM" | "PM")
+    if (!value) return
+
+    // Parse 12h format: 1-12:MM AM/PM
+    const match12 = value.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i)
+    // Parse 24h format: HH:MM
+    const match24 = value.match(/^([01]?\d|2[0-3]):(\d{2})$/)
+
+    let nextHours = hours
+    let nextMinutes = minutes
+    let nextPeriod: "AM" | "PM" = period
+
+    if (match12) {
+      nextHours = match12[1]
+      nextMinutes = match12[2]
+      nextPeriod = (match12[3].toUpperCase() as "AM" | "PM")
+    } else if (match24) {
+      const h24 = parseInt(match24[1], 10)
+      nextMinutes = match24[2]
+      if (h24 === 0) {
+        nextHours = "12"
+        nextPeriod = "AM"
+      } else if (h24 === 12) {
+        nextHours = "12"
+        nextPeriod = "PM"
+      } else if (h24 > 12) {
+        nextHours = String(h24 - 12)
+        nextPeriod = "PM"
+      } else {
+        nextHours = String(h24)
+        nextPeriod = "AM"
       }
+    } else {
+      // Unrecognized format; don't override user selection or emit changes
+      return
     }
+
+    // Prevent an extra onChange emission after initializing from props
+    const computed = `${nextHours.padStart(2, "0")}:${nextMinutes.padStart(2, "0")} ${nextPeriod}`
+    lastEmittedValue.current = computed
+    isUpdatingFromProps.current = true
+    setHours(nextHours)
+    setMinutes(nextMinutes)
+    setPeriod(nextPeriod)
+    isUpdatingFromProps.current = false
   }, [value])
 
   // Update display value when time components change and export formatted time
@@ -41,10 +79,12 @@ export function TimeInput({ className, value, onChange, ...props }: TimeInputPro
     const timeString = `${formattedHours}:${formattedMinutes} ${period}`
     setDisplayValue(timeString)
 
-    if (onChange) {
+    // Only call onChange if we're not updating from props and the value has actually changed
+    if (onChange && !isUpdatingFromProps.current && lastEmittedValue.current !== timeString) {
+      lastEmittedValue.current = timeString
       onChange(timeString)
     }
-  }, [hours, minutes, period, onChange])
+  }, [hours, minutes, period]) // Removed onChange from dependencies to prevent infinite loop
 
   // Generate hours options (1-12)
   const hoursOptions = Array.from({ length: 12 }, (_, i) => (i + 1).toString())
