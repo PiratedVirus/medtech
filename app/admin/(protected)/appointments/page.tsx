@@ -953,7 +953,7 @@ export default function AppointmentsPage() {
                                 : "border-red-500 text-red-500 "
                               }
                             >
-                              {slot.status === "available" ? "Available" : "Booked"}
+                              {(slot.status).toLowerCase() === "available" ? "Available" : "Booked"}
                             </Badge>
                           </div>
                         </SelectItem>

@@ -17,66 +17,53 @@ interface TimeInputProps {
 
 export function TimeInput({ className, value, onChange, ...props }: TimeInputProps) {
   const [open, setOpen] = useState(false)
-  const [hours, setHours] = useState<string>("12")
+  const [hours, setHours] = useState<string>("00")
   const [minutes, setMinutes] = useState<string>("00")
-  const [period, setPeriod] = useState<"AM" | "PM">("AM")
   const [displayValue, setDisplayValue] = useState<string>("")
   const isUpdatingFromProps = useRef(false)
   const lastEmittedValue = useRef<string>("")
 
-  // Initialize from value prop if provided (supports "10:00 AM" and "14:30")
+  // Initialize from value prop if provided (24h only: "14:30")
   useEffect(() => {
     if (!value) return
 
-    // Parse 12h format: 1-12:MM AM/PM
-    const match12 = value.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i)
     // Parse 24h format: HH:MM
     const match24 = value.match(/^([01]?\d|2[0-3]):(\d{2})$/)
 
     let nextHours = hours
     let nextMinutes = minutes
-    let nextPeriod: "AM" | "PM" = period
 
-    if (match12) {
-      nextHours = match12[1]
-      nextMinutes = match12[2]
-      nextPeriod = (match12[3].toUpperCase() as "AM" | "PM")
-    } else if (match24) {
+    if (match24) {
       const h24 = parseInt(match24[1], 10)
       nextMinutes = match24[2]
-      if (h24 === 0) {
-        nextHours = "12"
-        nextPeriod = "AM"
-      } else if (h24 === 12) {
-        nextHours = "12"
-        nextPeriod = "PM"
-      } else if (h24 > 12) {
-        nextHours = String(h24 - 12)
-        nextPeriod = "PM"
-      } else {
-        nextHours = String(h24)
-        nextPeriod = "AM"
-      }
+      nextHours = String(h24)
     } else {
       // Unrecognized format; don't override user selection or emit changes
       return
     }
 
     // Prevent an extra onChange emission after initializing from props
-    const computed = `${nextHours.padStart(2, "0")}:${nextMinutes.padStart(2, "0")} ${nextPeriod}`
+    const computed = `${nextHours.padStart(2, "0")}:${nextMinutes.padStart(2, "0")}`
     lastEmittedValue.current = computed
     isUpdatingFromProps.current = true
     setHours(nextHours)
     setMinutes(nextMinutes)
-    setPeriod(nextPeriod)
     isUpdatingFromProps.current = false
   }, [value])
 
   // Update display value when time components change and export formatted time
   useEffect(() => {
+    // If no external value provided yet and user hasn't interacted, avoid forcing a default display like "12:00 AM"
+    const noExternalValue = !value
+    const userHasNotInteracted = lastEmittedValue.current === ""
+    if (noExternalValue && userHasNotInteracted) {
+      setDisplayValue("")
+      return
+    }
+
     const formattedHours = hours.padStart(2, "0")
     const formattedMinutes = minutes.padStart(2, "0")
-    const timeString = `${formattedHours}:${formattedMinutes} ${period}`
+    const timeString = `${formattedHours}:${formattedMinutes}`
     setDisplayValue(timeString)
 
     // Only call onChange if we're not updating from props and the value has actually changed
@@ -84,10 +71,10 @@ export function TimeInput({ className, value, onChange, ...props }: TimeInputPro
       lastEmittedValue.current = timeString
       onChange(timeString)
     }
-  }, [hours, minutes, period]) // Removed onChange from dependencies to prevent infinite loop
+  }, [hours, minutes]) // Removed onChange from dependencies to prevent infinite loop
 
-  // Generate hours options (1-12)
-  const hoursOptions = Array.from({ length: 12 }, (_, i) => (i + 1).toString())
+  // Generate hours options (00-23)
+  const hoursOptions = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"))
 
   // Generate minutes options with 15-minute gap
   const minutesOptions = ["00", "15", "30", "45"]
@@ -145,18 +132,7 @@ export function TimeInput({ className, value, onChange, ...props }: TimeInputPro
               </SelectContent>
             </Select>
           </div>
-          <div className="grid gap-1">
-            <p className="text-sm font-medium">Period</p>
-            <Select value={period} onValueChange={(value) => setPeriod(value as "AM" | "PM")}>
-              <SelectTrigger className="w-[70px]">
-                <SelectValue placeholder="AM/PM" />
-              </SelectTrigger>
-              <SelectContent className="bg-white text-black">
-                <SelectItem value="AM">AM</SelectItem>
-                <SelectItem value="PM">PM</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          
         </div>
       </PopoverContent>
     </Popover>

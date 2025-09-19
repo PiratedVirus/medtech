@@ -96,17 +96,23 @@ export async function GET(request: NextRequest) {
         return dateA.getTime() - dateB.getTime();
       }
 
-      // Convert startTime (e.g., "10:00 AM") to total minutes for sorting
-      const convertTo24Hour = (timeStr: string) => {
-        const [time, modifier] = timeStr.split(" ");
-        let [hours, minutes] = time.split(":").map(Number);
-        if (modifier === "PM" && hours !== 12) hours += 12;
-        if (modifier === "AM" && hours === 12) hours = 0;
-        return hours * 60 + minutes; // Convert to total minutes
+      // Convert startTime (either HH:MM or HH:MM AM/PM) to total minutes for sorting
+      const toMinutes = (ts: string) => {
+        const m12 = ts.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        if (m12) {
+          let h = parseInt(m12[1], 10);
+          const mm = parseInt(m12[2], 10);
+          const ap = m12[3].toUpperCase();
+          if (ap === 'PM' && h !== 12) h += 12; if (ap === 'AM' && h === 12) h = 0;
+          return h * 60 + mm;
+        }
+        const m24 = ts.match(/^([01]?\d|2[0-3]):(\d{2})$/);
+        if (m24) return parseInt(m24[1], 10) * 60 + parseInt(m24[2], 10);
+        return 0;
       };
 
-      const timeA = convertTo24Hour(a.doctorAvailability.startTime);
-      const timeB = convertTo24Hour(b.doctorAvailability.startTime);
+      const timeA = toMinutes(a.doctorAvailability.startTime);
+      const timeB = toMinutes(b.doctorAvailability.startTime);
 
       return timeA - timeB; // Sort by startTime within the same date
     });

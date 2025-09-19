@@ -60,13 +60,29 @@ export async function POST(request: Request) {
   try {
     const data = await request.json();
     console.log("Daata for slot booking is ", data);
-    
+    const to24h = (t: string) => {
+      if (!t) return t;
+      const m12 = t.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i);
+      if (m12) {
+        let h = parseInt(m12[1], 10);
+        const mm = m12[2];
+        const ap = m12[3].toUpperCase();
+        if (ap === 'PM' && h !== 12) h += 12; if (ap === 'AM' && h === 12) h = 0;
+        return `${String(h).padStart(2,'0')}:${mm}`;
+      }
+      return t;
+    };
+    const doctorId = Number(data.doctorId);
+    if (!Number.isInteger(doctorId) || doctorId <= 0) {
+      return NextResponse.json({ error: "Invalid or missing doctorId" }, { status: 400 });
+    }
+
     const newSlot = await prisma.doctorAvailability.create({
       data: {
         userId: Number(data.doctorId),
         date: new Date(data.date),
-        startTime: data.startTime,
-        endTime: data.endTime,
+        startTime: to24h(data.startTime),
+        endTime: to24h(data.endTime),
         status: data.status
       }
     });
@@ -90,14 +106,26 @@ export async function PUT(request: Request) {
     const data = await request.json();
 
     const dateInUTC = new Date(data.date).toISOString();
+    const to24h = (t: string) => {
+      if (!t) return t;
+      const m12 = t.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i);
+      if (m12) {
+        let h = parseInt(m12[1], 10);
+        const mm = m12[2];
+        const ap = m12[3].toUpperCase();
+        if (ap === 'PM' && h !== 12) h += 12; if (ap === 'AM' && h === 12) h = 0;
+        return `${String(h).padStart(2,'0')}:${mm}`;
+      }
+      return t;
+    };
 
     const updatedSlot = await prisma.doctorAvailability.update({
       where: { id },
       data: {
         userId: data.doctorId,
         date: new Date(data.date),
-        startTime: data.startTime,
-        endTime: data.endTime,
+        startTime: to24h(data.startTime),
+        endTime: to24h(data.endTime),
         status: data.status
       }
     });
