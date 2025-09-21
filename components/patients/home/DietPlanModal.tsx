@@ -26,7 +26,6 @@ export default function DietPlanModal({ open, onOpenChange, patientId, clinicId,
   const [selectedPlan, setSelectedPlan] = useState<any | null>(dietPlan || null);
   const [dieticians, setDieticians] = useState<any[]>([]);
   const [selectedDieticianId, setSelectedDieticianId] = useState<string>("");
-  const [dieticianQuery, setDieticianQuery] = useState("");
   const [activeTab, setActiveTab] = useState<'overview' | 'meals' | 'requests'>("overview");
   const [expandAll, setExpandAll] = useState(true);
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
@@ -80,7 +79,6 @@ export default function DietPlanModal({ open, onOpenChange, patientId, clinicId,
     loadRequests();
   }, [open, patientId]);
 
-  const filteredDieticians = useMemo(() => (dieticians || []).filter((d: any) => d?.name?.toLowerCase().includes(dieticianQuery.toLowerCase())), [dieticians, dieticianQuery]);
 
   function formatDateRange(plan: any): string | null {
     const s = plan?.startDate ? new Date(plan.startDate) : null;
@@ -200,6 +198,14 @@ export default function DietPlanModal({ open, onOpenChange, patientId, clinicId,
         setDietComplaint("");
         setSelectedDieticianId("");
         setShowRequestForm(false);
+        
+        // Reload pending requests to show the new request immediately
+        try {
+          const requestRes = await axios.get(`/api/dieticians/requests?patientId=${patientId}`);
+          setPendingRequests(requestRes.data?.requests || []);
+        } catch (error) {
+          console.error('Failed to reload requests:', error);
+        }
       } else {
         toast({ variant: 'destructive', title: 'Failed to send request', description: res.data.error });
       }
@@ -382,13 +388,12 @@ export default function DietPlanModal({ open, onOpenChange, patientId, clinicId,
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-600">Select Dietician</label>
-                    <Input placeholder="Search dietician..." value={dieticianQuery} onChange={(e) => setDieticianQuery(e.target.value)} className="mb-2" />
                     <Select value={selectedDieticianId} onValueChange={setSelectedDieticianId}>
                       <SelectTrigger>
                         <SelectValue placeholder="Choose a dietician" />
                       </SelectTrigger>
                       <SelectContent>
-                        {filteredDieticians.map((d: any) => (
+                        {dieticians.map((d: any) => (
                           <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
                         ))}
                       </SelectContent>

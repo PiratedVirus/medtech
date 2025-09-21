@@ -14,6 +14,7 @@ export interface CachedUserProfile {
   deletedAt: Date | null
   userProfilePicture: string | null
   patientProfile: any
+  doctorProfile: any
   subscriptionDetails: any
 }
 
@@ -50,6 +51,7 @@ export async function getCachedUserProfile(phoneNumber: string): Promise<CachedU
           deletedAt: true,
           userProfilePicture: true,
           patientProfile: true,
+          doctorProfile: true,
         },
       })
 

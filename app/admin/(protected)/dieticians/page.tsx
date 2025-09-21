@@ -299,14 +299,7 @@ export default function DieticiansPage() {
       <ToastContainer />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Input
-            placeholder="Search dieticians..."
-            value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-            onChange={(event) =>
-              table.getColumn("name")?.setFilterValue(event.target.value)
-            }
-            className="max-w-sm"
-          />
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">

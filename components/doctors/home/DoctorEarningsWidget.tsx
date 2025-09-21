@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChevronDown } from 'lucide-react';
 import axios from 'axios';
-import { useDecryptedProfile } from '@/hooks/use-profile';
+import { useDecryptedProfile } from '@/hooks/use-centralized-profile';
 
 // Default data for chart
 const defaultData = [
