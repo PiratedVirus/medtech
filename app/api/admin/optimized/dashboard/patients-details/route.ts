@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { normalizeStatus } from "@/lib/utils/status";
+import { LabAssignmentStatus } from "@prisma/client";
 
 // Optimized patients details API 
 export async function GET(request: Request) {
@@ -195,7 +196,7 @@ export async function PUT(request: Request) {
       // Update lab booking status
       const updatedLabBooking = await prisma.labBooking.update({
         where: { id: labBookingId },
-        data: { status: normalizeStatus(status) },
+        data: { status: normalizeStatus(status) as LabAssignmentStatus },
         select: {
           id: true,
           status: true

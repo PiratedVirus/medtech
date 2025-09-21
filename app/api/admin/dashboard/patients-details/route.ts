@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { normalizeStatus } from "@/lib/utils/status";
+import { LabAssignmentStatus } from "@prisma/client";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -232,7 +233,7 @@ export async function PUT(request: Request) {
         labResult: {
           set: [...(existing?.labResult || []), ...links],
         },
-        ...(status ? { status: normalizeStatus(status) } : {}),
+        ...(status ? { status: normalizeStatus(status) as LabAssignmentStatus } : {}),
       },
     });
 

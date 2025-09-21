@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "cross-env NODE_ENV=development NODE_OPTIONS='--inspect' next dev",
-    "build": "cross-env NODE_OPTIONS='--max-old-space-size=8192' NODE_ENV=production prisma generate && next build --no-lint",
-    "build:analyze": "cross-env NODE_ENV=production ANALYZE=true NODE_OPTIONS='--max-old-space-size=8192' prisma generate && next build --no-lint",
+    "build": "cross-env NODE_OPTIONS='--max-old-space-size=30720 --max-semi-space-size=4096' NODE_ENV=production prisma generate && next build --no-lint",
+    "build:incremental": "cross-env NODE_OPTIONS='--max-old-space-size=16384 --max-semi-space-size=1024' NODE_ENV=production prisma generate && next build --no-lint --experimental-build-mode=compile",
+    "build:analyze": "cross-env NODE_ENV=production ANALYZE=true NODE_OPTIONS='--max-old-space-size=16384 --max-semi-space-size=1024' prisma generate && next build --no-lint",
     "start": "cross-env NODE_ENV=production next start",
     "storybook": "concurrently \"npm run watch:storybook\" \"npm run watch:build:css\"",
     "watch:storybook": "storybook dev -p 6006",
