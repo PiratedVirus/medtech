@@ -265,7 +265,7 @@ export async function POST(request: Request) {
       });
 
       // Update subscription tracker if using plan
-      if (paymentMethod === "plan") {
+      if (paymentMethod === "PLAN") {
         await tx.subscriptionTracker.update({
           where: { subscriptionId },
           data: isDietician
@@ -281,7 +281,7 @@ export async function POST(request: Request) {
       });
 
       // Create payment record if online
-      if (paymentMethod === "online" && razorpayResponse) {
+      if (paymentMethod === "ONLINE" && razorpayResponse) {
         await tx.payment.create({
           data: {
             appointmentId: appointment.id,
@@ -295,7 +295,7 @@ export async function POST(request: Request) {
         });
       }
 
-      if(paymentMethod === "clinic") {
+      if(paymentMethod === "CLINIC") {
         await tx.payment.create({
           data: {
             appointmentId: appointment.id,
