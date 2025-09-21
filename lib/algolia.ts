@@ -24,7 +24,7 @@ export async function searchMedicines(query: string, limit: number = 10) {
       }]
     });
 
-    const hits = response.results[0]?.hits || [];
+    const hits = (response.results[0] as any)?.hits || [];
 
     return hits.map((hit: any) => ({
       id: hit.objectID || hit.id,
@@ -80,7 +80,7 @@ export async function updateMedicineInAlgolia(objectID: string, medicine: {
     await adminClient.partialUpdateObject({
       indexName: 'A_Z_medicines_dataset_of_India',
       objectID,
-      body: {
+      attributesToUpdate: {
         ...medicine,
         updatedAt: new Date().toISOString(),
       }
