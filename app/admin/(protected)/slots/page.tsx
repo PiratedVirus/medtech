@@ -50,6 +50,7 @@ import { ChevronDown, ArrowUpDown, EditIcon, Trash } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { DoctorAvailabilityStatus } from "@/lib/constants/enums";
+import { normalizeStatus as normalizeStatusGlobal } from "@/lib/utils/status";
 
 type DoctorProfileLite = {
   id?: number;
@@ -202,15 +203,9 @@ export default function SlotsPage() {
   }, [pagination.pageIndex, pagination.pageSize, sorting, selectedDoctorFilter]);
 
   useEffect(() => {
-    console.log("$$ Selected slot:", selectedSlot);
-    console.log("$$ Doctors:", doctors);
     if (selectedSlot && doctors.length > 0) {
-      // Prefill doctor using same logic as appointments page
-      console.log("$$ Selected slot:", selectedSlot);
-      console.log("$$ Doctors:", doctors);
       const foundDoctor = doctors.find((doc) => doc.userId === selectedSlot.userId);
       if (foundDoctor) {
-        console.log("Found doctor:", foundDoctor);
         setValue("doctorId", JSON.stringify({ id: foundDoctor.id, doctorId: foundDoctor.userId }));
       }
       // Prefill date/time/status
@@ -307,6 +302,9 @@ export default function SlotsPage() {
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Status <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
+      ),
+      cell: ({ row }) => (
+        <span>{normalizeStatusGlobal(row.original.status)}</span>
       ),
       enableSorting: true,
     },

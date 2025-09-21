@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import CdLoader from "@/components/ui/custom/cd-loader";
+import { normalizeStatus } from "@/lib/utils/status";
 import TotalEarningsCard from "@/components/admin/TotalEarningsCard";
 import { PlanUsageMinimal } from "@/components/patients/plans/PlanUsage";
 import { HealthInsightsPanel } from "@/components/admin/HealthInsightsPanel";
@@ -624,7 +625,7 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
                   <td className="px-4 py-2">{appointment.doctorName}</td>
                   <td className="px-4 py-2">{appointment.payment.currency} {(appointment.payment.amount / 100)}</td>
                   <td className="px-4 py-2 flex items-center gap-2">
-                    {appointment.payment.paymentStatus === "Pending" ? (
+                    {normalizeStatus(appointment.payment.paymentStatus) === "PENDING" ? (
                       <>
                         <Badge variant="destructive">Pending</Badge>
                         <Dialog>
@@ -660,7 +661,7 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
                   <td className="px-4 py-2">{labBooking.labPackageName}</td>
                   <td className="px-4 py-2">{labBooking.payment?.currency ?? 'INR'} {(labBooking.payment?.amount ?? 0) / 100}</td>
                   <td className="px-4 py-2 flex items-center gap-2">
-                    {labBooking.payment.paymentStatus === "Pending" ? (
+                    {normalizeStatus(labBooking.payment.paymentStatus) === "PENDING" ? (
                       <>
                         <Badge variant="destructive">Pending</Badge>
                         <Dialog>
@@ -695,7 +696,7 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
                 <td className="px-4 py-2">{plan.planName}</td>
                 <td className="px-4 py-2">{plan.payment?.currency ?? 'INR'} {(plan.payment?.amount ?? 0) / 100}</td>
                 <td className="px-4 py-2 flex items-center gap-2">
-                  {plan.payment?.paymentStatus === "Pending" ? (
+                  {normalizeStatus(plan.payment?.paymentStatus) === "PENDING" ? (
                     <>
                       <Badge variant="destructive">Pending</Badge>
                       <Dialog>
@@ -754,13 +755,13 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
           <TotalEarningsCard
             patientDetails={{
               doctorAppointments: patientDetails.doctorAppointments
-                .filter(a => a.payment?.paymentStatus.toLowerCase() === "paid")
+                .filter(a => a.payment?.paymentStatus?.toUpperCase() === "PAID")
                 .map(a => ({ payment: { amount: a.payment!.amount } })),
               plans: patientDetails.subscriptions
-                .filter(p => p.payment?.paymentStatus.toLowerCase() === "paid")
+                .filter(p => p.payment?.paymentStatus?.toUpperCase() === "PAID")
                 .map(p => ({ amount: p.payment!.amount })),
               labBookings: patientDetails.labBookings
-                .filter(lb => lb.payment?.paymentStatus.toLowerCase() === "paid")
+                .filter(lb => lb.payment?.paymentStatus?.toUpperCase() === "PAID")
                 .map(lb => ({ payment: { amount: lb.payment!.amount } })),
             }}
           />

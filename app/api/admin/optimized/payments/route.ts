@@ -138,3 +138,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to create payment" }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const data = await request.json();
+    const { id, ids } = data;
+
+    if (ids && Array.isArray(ids)) {
+      // Bulk delete
+      await prisma.payment.updateMany({
+        where: { id: { in: ids } },
+        data: { deletedAt: new Date() }
+      });
+      return NextResponse.json({ message: `${ids.length} payments deleted successfully` });
+    } else if (id) {
+      // Single delete
+      await prisma.payment.update({
+        where: { id },
+        data: { deletedAt: new Date() }
+      });
+      return NextResponse.json({ message: "Payment deleted successfully" });
+    } else {
+      return NextResponse.json({ error: "Payment ID is required" }, { status: 400 });
+    }
+  } catch (error) {
+    console.error("Payment deletion error:", error);
+    return NextResponse.json({ error: "Failed to delete payment" }, { status: 500 });
+  }
+}

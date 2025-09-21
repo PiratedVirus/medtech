@@ -133,3 +133,24 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Failed to update lab booking" }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const data = await request.json();
+    const { id } = data;
+
+    if (!id) {
+      return NextResponse.json({ error: "Lab booking ID is required" }, { status: 400 });
+    }
+
+    await prisma.labBooking.update({
+      where: { id },
+      data: { deletedAt: new Date() }
+    });
+
+    return NextResponse.json({ message: "Lab booking deleted successfully" });
+  } catch (error) {
+    console.error("Lab booking deletion error:", error);
+    return NextResponse.json({ error: "Failed to delete lab booking" }, { status: 500 });
+  }
+}

@@ -22,7 +22,6 @@ export function TimePicker24h({ className, value, onChange }: TimePicker24hProps
   const [selectedHour, setSelectedHour] = useState<number>(0);
   const [selectedMinute, setSelectedMinute] = useState<number>(0);
   const [displayValue, setDisplayValue] = useState<string>("");
-    console.log("$$ Value:", value);
   // Initialize from value prop
   useEffect(() => {
     if (value) {

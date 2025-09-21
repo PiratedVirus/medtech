@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Badge } from "@/components/ui/badge";
+import { normalizeStatus } from "@/lib/utils/status";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function LabBookingsTable() {
@@ -48,25 +49,25 @@ export function LabBookingsTable() {
             <TableCell>
               <Badge
                 variant={
-                  booking.status === "Pending"
+                  normalizeStatus(booking.status) === "PENDING"
                     ? "outline"
-                    : booking.status === "Sample Collected"
+                    : normalizeStatus(booking.status) === "SAMPLE_COLLECTED"
                       ? "secondary"
-                      : booking.status === "Processing"
+                      : normalizeStatus(booking.status) === "PROCESSING"
                         ? "default"
-                        : booking.status === "Completed"
+                        : normalizeStatus(booking.status) === "COMPLETED"
                           ? "default"
                           : "destructive"
                 }
                 className={
-                  booking.status === "Pending"
+                  normalizeStatus(booking.status) === "PENDING"
                     ? "border-[#F28A2E] text-[#F28A2E]"
-                    : booking.status === "Sample Collected" || booking.status === "Processing"
+                    : (normalizeStatus(booking.status) === "SAMPLE_COLLECTED" || normalizeStatus(booking.status) === "PROCESSING")
                       ? "bg-[#56A67C] hover:bg-[#134F30]"
                       : ""
                 }
               >
-                {booking.status}
+                {normalizeStatus(booking.status)}
               </Badge>
             </TableCell>
           </TableRow>

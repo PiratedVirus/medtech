@@ -33,10 +33,10 @@ export async function GET(request: NextRequest) {
       const cachedData = await getCachedAppointments(patientId, upcomingOnly);
       return NextResponse.json({
         success: true,
-        upcomingAppointments: cachedData.upcomingAppointments,
-        pastAppointments: cachedData.pastAppointments,
-        totalUpcoming: cachedData.upcomingAppointments.length,
-        totalPast: cachedData.pastAppointments.length
+        upcomingAppointments: cachedData?.upcomingAppointments || [],
+        pastAppointments: cachedData?.pastAppointments || [],
+        totalUpcoming: cachedData?.upcomingAppointments?.length || 0,
+        totalPast: cachedData?.pastAppointments?.length || 0
       });
     }
 
@@ -169,17 +169,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        past: pastAppointments,
-        upcoming: sortedUpcoming,
+        past: pastAppointments || [],
+        upcoming: sortedUpcoming || [],
       },
     });
 
   } catch (error) {
-    console.error("Error fetching appointments:");
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch appointments", details: error },
-      { status: 500 }
-    );
+    console.error("Error fetching appointments:", error);
+    return NextResponse.json({
+      success: false,
+      error: "Failed to fetch appointments",
+      data: {
+        past: [],
+        upcoming: []
+      },
+      upcomingAppointments: [],
+      pastAppointments: [],
+      totalUpcoming: 0,
+      totalPast: 0
+    }, { status: 500 });
   }
 }
 
@@ -269,7 +277,7 @@ export async function POST(request: Request) {
       // Mark the slot as booked
       await tx.doctorAvailability.update({
         where: { id: slot.id },
-        data: { status: "booked" },
+        data: { status: "BOOKED" },
       });
 
       // Create payment record if online
@@ -281,7 +289,7 @@ export async function POST(request: Request) {
             razorpayPaymentId: razorpayResponse.razorpay_payment_id,
             amount: razorpayResponse.amount,
             currency: razorpayResponse.currency || "INR",
-            paymentStatus: "Paid",
+            paymentStatus: "PAID",
             paymentMethod: razorpayResponse.method || "upi",
           },
         });
@@ -293,7 +301,7 @@ export async function POST(request: Request) {
             appointmentId: appointment.id,
             amount: doctorConsultationFee,
             currency: "INR",
-            paymentStatus: "Pending",
+            paymentStatus: "PENDING",
             paymentMethod: "offline",
           },
         });

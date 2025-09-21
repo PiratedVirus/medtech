@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
+import { normalizeStatus } from "@/lib/utils/status";
 
 interface DietPlanRequestCardProps {
   patient: {
@@ -40,11 +41,11 @@ export default function DietPlanRequestCard({ patient }: DietPlanRequestCardProp
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-gray-700">Request #{dietPlanRequest.requestCount}</span>
                 <Badge className={`text-xs font-medium ${
-                  dietPlanRequest.status === 'pending' 
+                  normalizeStatus(dietPlanRequest.status) === 'PENDING' 
                     ? 'bg-orange-100 text-orange-700 border-orange-200' 
                     : 'bg-secondary/10 text-secondary border-secondary/20'
                 }`}>
-                  {dietPlanRequest.status === 'pending' ? 'Pending' : 'Completed'}
+                  {normalizeStatus(dietPlanRequest.status)}
                 </Badge>
               </div>
               <div className="flex items-center gap-1">

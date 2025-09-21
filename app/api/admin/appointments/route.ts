@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { google } from "googleapis";
+import { normalizeStatus } from "@/lib/utils/status";
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
@@ -151,8 +152,8 @@ export async function POST(request: Request) {
 
 
     // Ensure doctorAvailabilityId exists and is available
-    const availability = await prisma.doctorAvailability.findUnique({
-      where: { id: data.doctorAvailabilityId, status: "available" }
+  const availability = await prisma.doctorAvailability.findUnique({
+      where: { id: data.doctorAvailabilityId, status: "AVAILABLE" }
     });
 
     if (!availability) {
@@ -168,7 +169,7 @@ export async function POST(request: Request) {
 
   const appointment = await prisma.appointment.create({
     data: {
-      status: "Scheduled",
+      status: "SCHEDULED",
       userId: data.doctorId,
       doctorAvailabilityId: data.doctorAvailabilityId,
       consultationType: data.consultationType, // Set consultationType from data
@@ -184,7 +185,7 @@ export async function POST(request: Request) {
 
   await prisma.doctorAvailability.update({
     where: { id: data.doctorAvailabilityId },
-    data: { status: "booked" }
+    data: { status: "BOOKED" }
   });
 
     return NextResponse.json({ data: appointment, message: "Appointment created successfully" });
@@ -220,7 +221,7 @@ export async function PUT(request: Request) {
         // Mark old slot as available
         await tx.doctorAvailability.update({
           where: { id: existingAppointment.doctorAvailabilityId },
-          data: { status: "available" }
+          data: { status: "AVAILABLE" }
         });
 
         // Check and update new slot
@@ -228,13 +229,13 @@ export async function PUT(request: Request) {
           where: { id: data.doctorAvailabilityId }
         });
 
-        if (!newAvailability || newAvailability.status !== "available") {
+        if (!newAvailability || newAvailability.status !== "AVAILABLE") {
           throw new Error("New slot is not available");
         }
 
         await tx.doctorAvailability.update({
           where: { id: data.doctorAvailabilityId },
-          data: { status: "booked" }
+          data: { status: "BOOKED" }
         });
       }
 
@@ -242,7 +243,7 @@ export async function PUT(request: Request) {
       return await tx.appointment.update({
         where: { id },
         data: {
-          status: data.status,
+          status: normalizeStatus(data.status),
           userId: data.doctorId,
           doctorAvailabilityId: data.doctorAvailabilityId,
           consultationType: data.consultationType,

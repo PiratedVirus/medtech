@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { normalizeStatus } from "@/lib/utils/status";
 
 export async function GET(request: Request) {
   try {
@@ -83,7 +84,7 @@ export async function POST(request: Request) {
         date: new Date(data.date),
         startTime: to24h(data.startTime),
         endTime: to24h(data.endTime),
-        status: data.status
+        status: normalizeStatus(data.status)
       }
     });
 
@@ -126,7 +127,7 @@ export async function PUT(request: Request) {
         date: new Date(data.date),
         startTime: to24h(data.startTime),
         endTime: to24h(data.endTime),
-        status: data.status
+        status: normalizeStatus(data.status)
       }
     });
 

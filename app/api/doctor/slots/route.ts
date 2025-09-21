@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
+import { normalizeStatus } from "@/lib/utils/status";
 
 // Helper to get doctorId from JWT
 async function getDoctorIdFromRequest() {
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
             date: new Date(date),
             startTime: to24h(slot.startTime),
             endTime: to24h(slot.endTime),
-            status: slot.status,
+            status: normalizeStatus(slot.status),
           },
         })
       )

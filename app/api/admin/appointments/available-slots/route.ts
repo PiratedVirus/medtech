@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   let where = {}
   if (checkAvailability) {
     where = {
-      status: "available",
+      status: "AVAILABLE",
     }
   }
   if (doctorId) {

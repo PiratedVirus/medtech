@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Badge } from "@/components/ui/badge";
+import { normalizeStatus } from "@/lib/utils/status";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function AppointmentsTable() {
@@ -134,23 +135,23 @@ export function AppointmentsTable() {
                 <TableCell>
                   <Badge
                     variant={
-                      appointment.status === "Scheduled"
+                      normalizeStatus(appointment.status) === "SCHEDULED"
                         ? "outline"
-                        : appointment.status === "Confirmed"
+                        : normalizeStatus(appointment.status) === "CONFIRMED"
                         ? "secondary"
-                        : appointment.status === "Completed"
+                        : normalizeStatus(appointment.status) === "COMPLETED"
                         ? "default"
                         : "destructive"
                     }
                     className={
-                      appointment.status === "Scheduled"
+                      normalizeStatus(appointment.status) === "SCHEDULED"
                         ? "border-[#F28A2E] text-[#F28A2E]"
-                        : appointment.status === "Confirmed"
+                        : normalizeStatus(appointment.status) === "CONFIRMED"
                         ? "bg-[#56A67C] hover:bg-[#134F30]"
                         : ""
                     }
                   >
-                    {appointment.status || 'Unknown'}
+                    {normalizeStatus(appointment.status) || 'UNKNOWN'}
                   </Badge>
                 </TableCell>
               </TableRow>

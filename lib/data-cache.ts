@@ -196,84 +196,106 @@ export async function getCachedLLMExtract(analysisId: number) {
 export async function getCachedAppointments(patientId: number, upcomingOnly: boolean = false) {
   const cacheKey = CACHE_KEYS.APPOINTMENTS(patientId, upcomingOnly)
   
-  return await cacheUtils.getOrSet(
-    cacheKey,
-    async () => {
-      // Build where clause
-      const baseWhere: any = { patientId };
-      
-      // Fetch upcoming appointments
-      const upcomingAppointments = await prisma.appointment.findMany({
-        where: {
-          ...baseWhere,
-          deletedAt: null,
-          doctorAvailability: {
-            date: {
-              gte: new Date()
-            }
-          }
-        },
-        include: {
-          doctor: {
-            include: {
-              doctorProfile: true
-            }
-          },
-          doctorAvailability: true,
-          patient: {
-            include: {
-              patientProfile: true
-            }
-          }
-        },
-        orderBy: {
-          doctorAvailability: {
-            date: 'asc'
-          }
-        }
-      });
-
-      // Fetch past appointments if not upcoming only
-      let pastAppointments: any[] = [];
-      if (!upcomingOnly) {
-        pastAppointments = await prisma.appointment.findMany({
-          where: {
-            ...baseWhere,
-            deletedAt: null,
-            doctorAvailability: {
-              date: {
-                lt: new Date()
-              }
-            }
-          },
-          include: {
-            doctor: {
-              include: {
-                doctorProfile: true
+  try {
+    const result = await cacheUtils.getOrSet(
+      cacheKey,
+      async () => {
+        try {
+          // Build where clause
+          const baseWhere: any = { patientId };
+          
+          // Fetch upcoming appointments
+          const upcomingAppointments = await prisma.appointment.findMany({
+            where: {
+              ...baseWhere,
+              deletedAt: null,
+              doctorAvailability: {
+                date: {
+                  gte: new Date()
+                }
               }
             },
-            doctorAvailability: true,
-            patient: {
-              include: {
-                patientProfile: true
+            include: {
+              doctor: {
+                include: {
+                  doctorProfile: true
+                }
+              },
+              doctorAvailability: true,
+              patient: {
+                include: {
+                  patientProfile: true
+                }
+              }
+            },
+            orderBy: {
+              doctorAvailability: {
+                date: 'asc'
               }
             }
-          },
-          orderBy: {
-            doctorAvailability: {
-              date: 'desc'
-            }
-          }
-        });
-      }
+          });
 
-      return {
-        upcomingAppointments,
-        pastAppointments
-      };
-    },
-    CACHE_TTL.APPOINTMENTS
-  )
+          // Fetch past appointments if not upcoming only
+          let pastAppointments: any[] = [];
+          if (!upcomingOnly) {
+            pastAppointments = await prisma.appointment.findMany({
+              where: {
+                ...baseWhere,
+                deletedAt: null,
+                doctorAvailability: {
+                  date: {
+                    lt: new Date()
+                  }
+                }
+              },
+              include: {
+                doctor: {
+                  include: {
+                    doctorProfile: true
+                  }
+                },
+                doctorAvailability: true,
+                patient: {
+                  include: {
+                    patientProfile: true
+                  }
+                }
+              },
+              orderBy: {
+                doctorAvailability: {
+                  date: 'desc'
+                }
+              }
+            });
+          }
+
+          return {
+            upcomingAppointments: upcomingAppointments || [],
+            pastAppointments: pastAppointments || []
+          };
+        } catch (error) {
+          console.error('Error in getCachedAppointments inner function:', error);
+          return {
+            upcomingAppointments: [],
+            pastAppointments: []
+          };
+        }
+      },
+      CACHE_TTL.APPOINTMENTS
+    );
+    
+    // Ensure we always return a valid structure
+    return result || {
+      upcomingAppointments: [],
+      pastAppointments: []
+    };
+  } catch (error) {
+    console.error('Error in getCachedAppointments:', error);
+    return {
+      upcomingAppointments: [],
+      pastAppointments: []
+    };
+  }
 }
 
 /**

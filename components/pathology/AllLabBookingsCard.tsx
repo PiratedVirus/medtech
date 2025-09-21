@@ -9,6 +9,7 @@ import { FileText, ArrowUpRight, Search, Download, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import StatusUpdateModal from "@/components/pathology/StatusUpdateModal";
 import ConsolidatedUploadModal from "@/components/pathology/ConsolidatedUploadModal";
+import { normalizeStatus } from "@/lib/utils/status";
 
 interface Booking {
   id: number;
@@ -64,7 +65,7 @@ export function AllLabBookingsCard() {
     booking.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     booking.mobile.includes(searchQuery) ||
     booking.labPackageName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    booking.status.toLowerCase().includes(searchQuery.toLowerCase())
+    normalizeStatus(booking.status).includes(normalizeStatus(searchQuery))
   );
 
   const handleCardClick = (booking: Booking) => {
@@ -113,7 +114,7 @@ export function AllLabBookingsCard() {
         booking.fullName,
         booking.mobile,
         booking.labPackageName,
-        booking.status,
+        normalizeStatus(booking.status),
         new Date(booking.labDate).toLocaleDateString(),
         booking.sampleStatus,
         booking.assignedPhlebotomist || "Not Assigned"
@@ -176,15 +177,15 @@ export function AllLabBookingsCard() {
               <CardTitle className="text-xl font-semibold text-secondary">#{booking.bookingId}</CardTitle>
               <div className="mt-1">
                 <Badge className={
-                  booking.status === "Scheduled" 
+                  normalizeStatus(booking.status) === "SCHEDULED" 
                     ? "bg-slate-500 text-white text-xs"
-                    : booking.status === "COMPLETED"
+                    : normalizeStatus(booking.status) === "COMPLETED"
                     ? "bg-green-700 text-white text-xs"
-                    : booking.status === "CANCELLED"
+                    : normalizeStatus(booking.status) === "CANCELLED"
                     ? "bg-red-700 text-white text-xs"
                     : "bg-gray-700 text-white text-xs"
                 }>
-                  {booking.status}
+                  {normalizeStatus(booking.status)}
                 </Badge>
               </div>
             </CardHeader>

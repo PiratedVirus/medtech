@@ -135,3 +135,63 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
   }
 }
+
+export async function PUT(request: Request) {
+  try {
+    const data = await request.json();
+    const { id, ...updateData } = data;
+
+    if (!id) {
+      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: updateData,
+      include: {
+        clinic: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    });
+
+    return NextResponse.json({ 
+      data: updatedUser, 
+      message: "User updated successfully" 
+    });
+  } catch (error) {
+    console.error("User update error:", error);
+    return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const data = await request.json();
+    const { id, ids } = data;
+
+    if (ids && Array.isArray(ids)) {
+      // Bulk delete
+      await prisma.user.updateMany({
+        where: { id: { in: ids } },
+        data: { deletedAt: new Date() }
+      });
+      return NextResponse.json({ message: `${ids.length} users deleted successfully` });
+    } else if (id) {
+      // Single delete
+      await prisma.user.update({
+        where: { id },
+        data: { deletedAt: new Date() }
+      });
+      return NextResponse.json({ message: "User deleted successfully" });
+    } else {
+      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+    }
+  } catch (error) {
+    console.error("User deletion error:", error);
+    return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
+  }
+}

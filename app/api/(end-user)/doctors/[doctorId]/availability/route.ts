@@ -53,7 +53,7 @@ const dayRanges = Array.from({ length: DAYS_PER_PAGE }, (_, i) => {
     const availability = await prisma.doctorAvailability.findMany({
       where: {
         userId: doctorProfile.userId,
-        status: { in: ["available", "AVAILABLE"] },
+        status: { in: ["AVAILABLE"] },
         deletedAt: null,
         OR: dayRanges.map(({ start, end }) => ({
           date: { gte: start, lte: end },
@@ -69,7 +69,7 @@ const dayRanges = Array.from({ length: DAYS_PER_PAGE }, (_, i) => {
         const count = await prisma.doctorAvailability.count({
           where: {
             userId: doctorProfile.userId,
-            status: { in: ["available", "AVAILABLE"] },
+            status: { in: ["AVAILABLE"] },
             deletedAt: null,
             date: { gte: start, lte: end },
           },
