@@ -24,7 +24,8 @@ class SeedDataRefresher {
       healthMetrics: 0,
       patientPills: 0,
       criticalLabResults: 0,
-      suspendedUsers: 0
+      suspendedUsers: 0,
+      availabilityRecords: 0
     };
   }
 
@@ -408,6 +409,82 @@ class SeedDataRefresher {
   }
 
   /**
+   * Update all doctor availability dates to be current and relevant
+   */
+  async refreshDoctorAvailability(tx) {
+    console.log('\n📅 Refreshing doctor availability dates...');
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Get all availability records
+    const allAvailabilities = await tx.doctorAvailability.findMany({
+      select: {
+        id: true,
+        userId: true,
+        date: true,
+        startTime: true,
+        endTime: true,
+        status: true
+      }
+    });
+    
+    console.log(`Found ${allAvailabilities.length} availability records`);
+    
+    // Separate past and future availability records
+    const pastAvailabilities = allAvailabilities.filter(avail => 
+      new Date(avail.date) < today
+    );
+    
+    const futureAvailabilities = allAvailabilities.filter(avail => 
+      new Date(avail.date) >= today
+    );
+    
+    console.log(`Past availabilities: ${pastAvailabilities.length}, Future availabilities: ${futureAvailabilities.length}`);
+    
+    const updatePromises = [];
+    
+    // Update past availability records to be in the future (next 30 days)
+    for (const avail of pastAvailabilities) {
+      const futureDate = new Date(today);
+      futureDate.setDate(futureDate.getDate() + Math.floor(Math.random() * 30));
+      
+      updatePromises.push(
+        tx.doctorAvailability.update({
+          where: { id: avail.id },
+          data: {
+            date: futureDate,
+            status: 'AVAILABLE' // Reset to available
+          }
+        })
+      );
+    }
+    
+    // Update future availability records to be more spread out (next 60 days)
+    for (const avail of futureAvailabilities) {
+      const newDate = new Date(today);
+      newDate.setDate(newDate.getDate() + Math.floor(Math.random() * 60));
+      
+      updatePromises.push(
+        tx.doctorAvailability.update({
+          where: { id: avail.id },
+          data: {
+            date: newDate,
+            status: Math.random() > 0.3 ? 'AVAILABLE' : 'BOOKED' // 70% available, 30% booked
+          }
+        })
+      );
+    }
+    
+    await Promise.all(updatePromises);
+    
+    this.stats.availabilityRecords = allAvailabilities.length;
+    console.log(`✅ Updated ${allAvailabilities.length} availability records`);
+    console.log(`   - Moved ${pastAvailabilities.length} past records to future dates`);
+    console.log(`   - Refreshed ${futureAvailabilities.length} future records`);
+  }
+
+  /**
    * Main refresh function using transaction
    */
   async refreshAll() {
@@ -426,6 +503,7 @@ class SeedDataRefresher {
         await this.refreshUsers(tx);
         await this.refreshAnalysisData(tx);
         await this.refreshDietRequests(tx);
+        await this.refreshDoctorAvailability(tx);
         await this.createCriticalLabResults(tx);
         await this.createSuspendedUsers(tx);
         
@@ -443,6 +521,7 @@ class SeedDataRefresher {
       console.log(`🔬 Lab Analyses: ${this.stats.labAnalyses}`);
       console.log(`📄 Prescription Texts: ${this.stats.prescriptionTexts}`);
       console.log(`🥗 Diet Requests: ${this.stats.dietRequests}`);
+      console.log(`📅 Availability Records: ${this.stats.availabilityRecords}`);
       console.log(`🚨 Critical Lab Results: ${this.stats.criticalLabResults}`);
       console.log(`⏸️ Suspended Users: ${this.stats.suspendedUsers}`);
       

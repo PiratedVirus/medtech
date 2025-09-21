@@ -32,24 +32,24 @@ export default function HomeOverview() {
   const { clinicId } = useDecryptedProfile();
   const dispatch = useDispatch();
 
-  const fetchSubscriptionTracker = async (userId: string) => {
+  const fetchSubscriptionTracker = async (subscriptionId: number) => {
     try {
-      const response = await axios.get(`/api/plans/planTracker?userId=${userId}`);
-      dispatch(setSubscriptionData(response.data.data));
+      const response = await axios.get(`/api/plans/planUsage?subscriptionId=${subscriptionId}`);
+      if (response.data.success) {
+        dispatch(setSubscriptionData(response.data.data.subscriptionTracker));
+      }
       return response.data;
     } catch (error) {
-      console.error("Error fetching plan tracker:", error);
+      console.error("Error fetching plan usage:", error);
       return null;
     }
   };
   useEffect(() => {
-    console.log("Profile", profile);
-    if (profile?.id) {
-      if (profile?.subscriptionDetails?.subscriptionId) {
-        fetchSubscriptionTracker(profile.id).then((data) => {
-          console.log("Plan Tracker Data", data);
-        });
-      }
+    if (profile?.subscriptionDetails?.subscriptionId) {
+      // Use planUsage API with subscriptionId for complete data
+      fetchSubscriptionTracker(Number(profile.subscriptionDetails.subscriptionId)).then((data) => {
+        console.log("Plan Usage Data", data);
+      });
       // Fetch the latest dietician link
       const fetchDieticianLink = async () => {
         try {
