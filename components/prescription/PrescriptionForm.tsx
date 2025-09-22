@@ -11,10 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, X, Edit2, Clock, Calendar, User, FileText, Save, Download, Loader2, ArrowLeft } from "lucide-react";
+import { Plus, X, Edit2, Clock, Calendar, User, FileText, Save, Download, Loader2, ArrowLeft, Mic, MicOff, Bot, Sparkles } from "lucide-react";
 import TypeAheadInput from "./TypeAheadInput";
 import ComplaintCard from "./ComplaintCard";
 import MedicineCard from "./MedicineCard";
+import VoiceInput from "./VoiceInput";
 
 interface PrescriptionFormProps {
   prescriptionData: any;
@@ -66,6 +67,11 @@ export default function PrescriptionForm({
   const [showMedicineSaveDialog, setShowMedicineSaveDialog] = useState(false);
   const [showMedicineLoadDialog, setShowMedicineLoadDialog] = useState(false);
   const [medicineTemplates, setMedicineTemplates] = useState<any[]>([]);
+  const [showVoiceInput, setShowVoiceInput] = useState(false);
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [recognition, setRecognition] = useState<any>(null);
   const { toast } = useToast();
 
   const severityOptions = [
@@ -261,7 +267,55 @@ export default function PrescriptionForm({
 
     // Re-check on window resize
     window.addEventListener('resize', detectSplitScreen);
-    return () => window.removeEventListener('resize', detectSplitScreen);
+
+    // Initialize speech recognition
+    if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition;
+      const recognitionInstance = new SpeechRecognition();
+      
+      recognitionInstance.continuous = true;
+      recognitionInstance.interimResults = true;
+      recognitionInstance.lang = 'en-US';
+
+      let finalTranscript = '';
+
+      recognitionInstance.onresult = (event: any) => {
+        let interim = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript + ' ';
+          } else {
+            interim += event.results[i][0].transcript;
+          }
+        }
+
+        setVoiceTranscript(finalTranscript + interim);
+      };
+
+      recognitionInstance.onend = () => {
+        setIsVoiceRecording(false);
+        if (finalTranscript.trim()) {
+          setVoiceTranscript(finalTranscript.trim());
+          processVoiceInput(finalTranscript.trim());
+        }
+      };
+
+      recognitionInstance.onerror = (event: any) => {
+        setIsVoiceRecording(false);
+        toast({
+          title: "Speech Recognition Error",
+          description: "There was an issue with speech recognition. Please try again.",
+          variant: "destructive",
+        });
+      };
+
+      setRecognition(recognitionInstance);
+    }
+
+    return () => {
+      window.removeEventListener('resize', detectSplitScreen);
+    };
   }, []);
 
   const handleSaveTemplate = async () => {
@@ -570,6 +624,188 @@ export default function PrescriptionForm({
     }
   };
 
+  const handleVoiceTranscriptionComplete = (voiceData: any) => {
+    // Merge voice data with existing prescription data intelligently
+    const updatedData = {
+      ...prescriptionData,
+      // Add new complaints with unique IDs
+      complaints: [
+        ...prescriptionData.complaints,
+        ...(voiceData.complaints || []).map((complaint: any) => ({
+          ...complaint,
+          id: Date.now().toString() + Math.random().toString(36).slice(2),
+        }))
+      ],
+      // Update vitals only if voice data has non-empty values
+      vitals: {
+        ...prescriptionData.vitals,
+        ...Object.fromEntries(
+          Object.entries(voiceData.vitals || {}).filter(([_, value]) => value && value.toString().trim())
+        ),
+      },
+      // Update history only if voice data has non-empty values
+      history: {
+        ...prescriptionData.history,
+        ...Object.fromEntries(
+          Object.entries(voiceData.history || {}).filter(([_, value]) => value && value.toString().trim())
+        ),
+      },
+      // Update systemic examination only if voice data has non-empty values
+      systemicExamination: {
+        ...prescriptionData.systemicExamination,
+        ...Object.fromEntries(
+          Object.entries(voiceData.systemicExamination || {}).filter(([_, value]) => value && value.toString().trim())
+        ),
+      },
+      // Add new medicines with unique IDs
+      medicines: [
+        ...prescriptionData.medicines,
+        ...(voiceData.medicines || []).map((medicine: any) => ({
+          ...medicine,
+          id: Date.now().toString() + Math.random().toString(36).slice(2),
+        }))
+      ],
+      // Update advice and tests only if voice data has content
+      advice: voiceData.advice?.trim() || prescriptionData.advice,
+      testsRequested: voiceData.testsRequested?.trim() || prescriptionData.testsRequested,
+      nextVisit: voiceData.nextVisit || prescriptionData.nextVisit,
+    };
+
+    setPrescriptionData(updatedData);
+    setShowVoiceInput(false);
+    
+    const addedItems = [];
+    if (voiceData.complaints?.length) addedItems.push(`${voiceData.complaints.length} complaint(s)`);
+    if (voiceData.medicines?.length) addedItems.push(`${voiceData.medicines.length} medicine(s)`);
+    if (voiceData.advice?.trim()) addedItems.push("advice");
+    if (voiceData.testsRequested?.trim()) addedItems.push("tests");
+    
+    toast({
+      title: "Voice Input Applied", 
+      description: `Prescription form updated with: ${addedItems.join(", ")}`,
+    });
+  };
+
+  const handleAIMicClick = () => {
+    if (isVoiceRecording) {
+      // Stop recording
+      if (recognition) {
+        recognition.stop();
+      }
+    } else {
+      // Start recording
+      if (recognition) {
+        setVoiceTranscript("");
+        setIsVoiceRecording(true);
+        recognition.start();
+        toast({
+          title: "🎤 AI Mic Activated",
+          description: "Listening for prescription details...",
+        });
+      } else {
+        toast({
+          title: "Speech Recognition Not Available",
+          description: "Your browser doesn't support speech recognition.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const processVoiceInput = async (transcript: string) => {
+    setIsProcessingVoice(true);
+    
+    toast({
+      title: "🤖 AI Processing",
+      description: "Converting speech to prescription data...",
+    });
+
+    try {
+      const response = await fetch('/api/llm-process/voice-prescription-openrouter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transcript: transcript,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to process voice input');
+      }
+
+      const data = await response.json();
+      
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid response format');
+      }
+
+      // Auto-fill the prescription form
+      handleVoiceTranscriptionComplete(data);
+      
+    } catch (error) {
+      console.error('Error processing voice input:', error);
+      toast({
+        title: "Processing Error",
+        description: error instanceof Error ? error.message : "Failed to process voice input.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingVoice(false);
+    }
+  };
+
+  const retryVoiceInput = () => {
+    setVoiceTranscript("");
+    setIsProcessingVoice(false);
+    setIsVoiceRecording(false);
+  };
+
+  const clearAllVoiceData = () => {
+    // Clear transcript
+    setVoiceTranscript("");
+    setIsProcessingVoice(false);
+    setIsVoiceRecording(false);
+    
+    // Clear all form data that could have been filled by voice
+    setPrescriptionData({
+      complaints: [],
+      vitals: {
+        bloodPressure: "",
+        pulse: "",
+        height: "",
+        weight: "",
+      },
+      history: {
+        allergies: "",
+        personalHistory: "",
+        pastMedicalHistory: "",
+        familyHistory: "",
+      },
+      systemicExamination: {
+        general: "",
+        cvs: "NAD",
+        rs: "NAD",
+        cns: "NAD",
+      },
+      medicines: [],
+      advice: "",
+      testsRequested: "",
+      nextVisit: {
+        type: "days",
+        value: 7,
+        date: undefined,
+      },
+    });
+
+    toast({
+      title: "✨ Cleared Successfully",
+      description: "All voice data and form inputs have been cleared.",
+    });
+  };
+
   return (
     <>
       {/* Sticky Header - Always visible and positioned outside padded container */}
@@ -586,6 +822,54 @@ export default function PrescriptionForm({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAIMicClick}
+              disabled={isProcessingVoice}
+              className={`relative transition-all duration-500 ease-in-out ${
+                isVoiceRecording 
+                  ? "bg-gradient-to-r from-pink-500 to-blue-500 text-white border-transparent shadow-lg shadow-pink-500/20" 
+                  : isProcessingVoice
+                  ? "bg-gradient-to-r from-pink-400 to-blue-400 text-white border-transparent shadow-lg shadow-blue-500/20"
+                  : "hover:bg-gradient-to-r hover:from-pink-50 hover:to-blue-50 hover:border-pink-200"
+              }`}
+            >
+              {/* Subtle glow effect */}
+              {(isVoiceRecording || isProcessingVoice) && (
+                <div className="absolute inset-0 rounded-md bg-gradient-to-r from-pink-500 to-blue-500 opacity-20 blur-sm"></div>
+              )}
+              
+              {/* Wave Icon */}
+              <div className="relative z-10 mr-2">
+                <div className="flex items-center space-x-0.5">
+                  <div className={`w-0.5 rounded-full transition-all duration-300 ${
+                    isVoiceRecording ? "h-3 bg-white animate-pulse" : isProcessingVoice ? "h-2 bg-white" : "h-2 bg-pink-600"
+                  }`} style={{animationDelay: '0ms'}}></div>
+                  <div className={`w-0.5 rounded-full transition-all duration-300 ${
+                    isVoiceRecording ? "h-5 bg-white animate-pulse" : isProcessingVoice ? "h-3 bg-white" : "h-3 bg-pink-600"
+                  }`} style={{animationDelay: '200ms'}}></div>
+                  <div className={`w-0.5 rounded-full transition-all duration-300 ${
+                    isVoiceRecording ? "h-6 bg-white animate-pulse" : isProcessingVoice ? "h-4 bg-white" : "h-4 bg-pink-600"
+                  }`} style={{animationDelay: '400ms'}}></div>
+                  <div className={`w-0.5 rounded-full transition-all duration-300 ${
+                    isVoiceRecording ? "h-5 bg-white animate-pulse" : isProcessingVoice ? "h-3 bg-white" : "h-3 bg-pink-600"
+                  }`} style={{animationDelay: '600ms'}}></div>
+                  <div className={`w-0.5 rounded-full transition-all duration-300 ${
+                    isVoiceRecording ? "h-3 bg-white animate-pulse" : isProcessingVoice ? "h-2 bg-white" : "h-2 bg-pink-600"
+                  }`} style={{animationDelay: '800ms'}}></div>
+                </div>
+              </div>
+              
+              {/* Text */}
+              <span className={`relative z-10 font-medium transition-all duration-300 ${
+                (isVoiceRecording || isProcessingVoice) 
+                  ? "text-white" 
+                  : "bg-gradient-to-r from-pink-600 to-blue-600 bg-clip-text text-transparent"
+              }`}>
+                {isVoiceRecording ? "Recording..." : isProcessingVoice ? "Filling..." : "AI Mic"}
+              </span>
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -625,6 +909,42 @@ export default function PrescriptionForm({
       </div>
 
       <div className="space-y-6 pt-5 w-full">
+
+      {/* Voice Transcript Display */}
+      {voiceTranscript && (
+        <div className="bg-gradient-to-r from-pink-50 to-blue-50 p-4 rounded-lg border border-pink-200">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="font-medium text-gray-800">Voice Transcript</h4>
+            <div className="flex gap-2">
+              {isProcessingVoice && (
+                <span className="text-sm text-blue-600 flex items-center gap-1">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+                  Processing...
+                </span>
+              )}
+              <Button 
+                onClick={retryVoiceInput}
+                variant="outline" 
+                size="sm"
+                className="text-xs"
+              >
+                <Mic className="h-3 w-3 mr-1" />
+                Retry
+              </Button>
+              <Button 
+                onClick={clearAllVoiceData}
+                variant="outline" 
+                size="sm"
+                className="text-xs text-red-600 hover:text-red-700 hover:border-red-300"
+              >
+                <X className="h-3 w-3 mr-1" />
+                Clear All
+              </Button>
+            </div>
+          </div>
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">{voiceTranscript}</p>
+        </div>
+      )}
 
       {/* Patient Information */}
       <div
