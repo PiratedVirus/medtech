@@ -582,7 +582,6 @@ export default function PrescriptionForm({
               </Button>
             )}
             <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600">#APT0{patientInfo.appointmentId || '001'}</span>
               <span className="text-lg font-semibold text-gray-900">{patientInfo.name}</span>
             </div>
           </div>
@@ -625,7 +624,7 @@ export default function PrescriptionForm({
         </div>
       </div>
 
-      <div className="space-y-6 w-full">
+      <div className="space-y-6 pt-5 w-full">
 
       {/* Patient Information */}
       <div
@@ -639,11 +638,11 @@ export default function PrescriptionForm({
         {/* Content */}
         <div className="relative z-10 w-full flex justify-between items-start">
           <div className="flex items-center gap-3">
-            {onBack && (
+            {/* {onBack && (
               <Button variant="ghost" size="icon" onClick={onBack} className="mr-2 p-2 text-custom-darkgreen">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-            )}
+            )} */}
             <h3 className="text-lg text-custom-darkgreen font-semibold">Patient Information</h3>
           </div>
           <div className="flex flex-col text-right">

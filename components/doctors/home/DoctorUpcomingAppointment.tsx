@@ -1,7 +1,7 @@
 import UpcomingAppointment from '@/components/patients/appointments/view/UpcomingACardAView';
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useDecryptedProfile } from '@/hooks/use-profile';
+import { useDecryptedProfile } from '@/hooks/use-centralized-profile';
 import { DoctorUpcomingSkeleton } from '@/components/ui/custom/cd-appointment-skeleton';
 
 function getGreeting() {

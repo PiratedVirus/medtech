@@ -12,6 +12,10 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { useState, useEffect } from "react";
 import { initializeUserProfile, fetchUserProfile } from "@/store/userSlice";
 import CdLoader from '@/components/ui/custom/cd-loader';
+import ProgressProvider from '@/components/common/ProgressProvider';
+import NavigationProgress from '@/components/common/NavigationProgress';
+import MiddlewareProgressHandler from '@/components/common/MiddlewareProgressHandler';
+import SmartProgressBar from '@/components/common/SmartProgressBar';
 
 const lato = Lato({
   subsets: ['latin'],
@@ -21,7 +25,31 @@ const lato = Lato({
 
 // Client-side only component to wrap children once localStorage is available
 function ClientSideWrapper({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 10 * 60 * 1000,       // 10 minutes - keep data fresh longer
+        gcTime: 30 * 60 * 1000,          // 30 minutes - keep in cache much longer
+        refetchOnWindowFocus: false,     // Prevent unnecessary refetches on tab focus
+        refetchOnMount: false,           // Use cached data when component mounts
+        refetchOnReconnect: false,       // Don't refetch on network reconnect for better UX
+        refetchInterval: false,          // No automatic refetching
+        networkMode: 'offlineFirst',     // Prioritize cache over network
+        retry: (failureCount, error: any) => {
+          // Smart retry logic - don't retry auth errors
+          if (error?.response?.status === 401 || error?.response?.status === 403) {
+            return false;
+          }
+          return failureCount < 1; // Reduce retry attempts for faster response
+        },
+        retryDelay: 1000, // Fixed 1 second delay instead of exponential backoff
+      },
+      mutations: {
+        retry: 1, // Retry mutations only once
+        retryDelay: 1000,
+      },
+    },
+  }));
   const [persister, setPersister] = useState<any>(null);
   const [isReady, setIsReady] = useState(false);
 
@@ -31,15 +59,6 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
       storage: window.localStorage 
     }));
     setIsReady(true);
-    
-    // Initialize user profile from sessionStorage if available
-    const initializeProfile = async () => {
-      const storedProfile = await store.dispatch(initializeUserProfile());
-      if (!storedProfile) {
-        // Only fetch if not in storage
-        await store.dispatch(fetchUserProfile());
-      }
-    };
     
     // Register service worker for push notifications
     if ('serviceWorker' in navigator) {
@@ -52,7 +71,7 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
       });
     }
     
-    initializeProfile();
+    // Profile initialization is now handled by React Query in useCentralizedProfile
   }, []);
 
   if (!isReady) {
@@ -64,7 +83,12 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
       client={queryClient} 
       persistOptions={{ persister }}
     >
-      {children}
+      <ProgressProvider>
+        <NavigationProgress />
+        <MiddlewareProgressHandler />
+        <SmartProgressBar />
+        {children}
+      </ProgressProvider>
     </PersistQueryClientProvider>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Badge } from "@/components/ui/badge";
+import { normalizeStatus } from "@/lib/utils/status";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function AppointmentsTable() {
@@ -26,10 +27,13 @@ export function AppointmentsTable() {
     const fetchAppointments = async () => {
       try {
         setIsLoading(true);
-        const response = await axios.get("/api/admin/dashboard/appointments");
-        setAppointments(response.data);
+        const response = await axios.get("/api/admin/optimized/appointments");
+        // API returns { data: appointments[], total, page, pageSize, totalPages }
+        // We need the appointments array from response.data.data
+        setAppointments(response.data.data || []);
       } catch (error) {
         console.error("Failed to fetch appointments:", error);
+        setAppointments([]); // Set empty array on error to prevent undefined issues
       } finally {
         setIsLoading(false);
       }
@@ -119,35 +123,35 @@ export function AppointmentsTable() {
           ) : (
             appointments.map((appointment) => (
               <TableRow key={appointment.id} className="hover:bg-[rgba(242,138,46,0.05)]">
-                <TableCell className="font-medium">{appointment.patient.name}</TableCell>
-                <TableCell>{appointment.doctor.name}</TableCell>
+                <TableCell className="font-medium">{appointment.patient?.name || 'N/A'}</TableCell>
+                <TableCell>{appointment.doctor?.name || 'N/A'}</TableCell>
                 <TableCell>
-                  {formatDateTime(
+                  {appointment.doctorAvailability ? formatDateTime(
                     appointment.doctorAvailability.date,
                     appointment.doctorAvailability.startTime
-                  )}
+                  ) : 'N/A'}
                 </TableCell>
-                <TableCell>{appointment.consultationType}</TableCell>
+                <TableCell>{appointment.consultationType || 'N/A'}</TableCell>
                 <TableCell>
                   <Badge
                     variant={
-                      appointment.status === "Scheduled"
+                      normalizeStatus(appointment.status) === "SCHEDULED"
                         ? "outline"
-                        : appointment.status === "Confirmed"
+                        : normalizeStatus(appointment.status) === "CONFIRMED"
                         ? "secondary"
-                        : appointment.status === "Completed"
+                        : normalizeStatus(appointment.status) === "COMPLETED"
                         ? "default"
                         : "destructive"
                     }
                     className={
-                      appointment.status === "Scheduled"
+                      normalizeStatus(appointment.status) === "SCHEDULED"
                         ? "border-[#F28A2E] text-[#F28A2E]"
-                        : appointment.status === "Confirmed"
+                        : normalizeStatus(appointment.status) === "CONFIRMED"
                         ? "bg-[#56A67C] hover:bg-[#134F30]"
                         : ""
                     }
                   >
-                    {appointment.status}
+                    {normalizeStatus(appointment.status) || 'UNKNOWN'}
                   </Badge>
                 </TableCell>
               </TableRow>

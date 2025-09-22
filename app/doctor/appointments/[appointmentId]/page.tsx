@@ -596,7 +596,7 @@ export default function PrescriptionPage() {
         // Split Screen Layout for Video Consultations
         <div className="h-screen flex flex-col lg:flex-row">
           {/* Left Side - Video Player */}
-          <div className="lg:w-1/2 w-full h-64 lg:h-full bg-black flex items-center justify-center relative order-1 lg:order-1">
+          <div className="lg:w-1/3 w-full h-64 lg:h-full bg-black flex items-center justify-center relative order-1 lg:order-1">
             <div className="w-full h-full" id="daily-call-container">
               {!activeCallFrame && (
                 <div className="flex flex-col items-center justify-center text-white p-4 lg:p-8 h-full">
@@ -613,9 +613,9 @@ export default function PrescriptionPage() {
           </div>
 
           {/* Right Side - Prescription Form */}
-          <div className="lg:w-1/2 w-full flex-1 lg:h-full overflow-y-auto order-2 lg:order-2">
+          <div className="lg:w-2/3 w-full flex-1 lg:h-full overflow-y-auto order-2 lg:order-2">
             <div className="bg-mutedbg h-full min-h-screen lg:min-h-full">
-              <div className="p-2 lg:p-4">
+              <div className="px-2 lg:px-4">
                 <PrescriptionForm
                   prescriptionData={prescriptionData}
                   setPrescriptionData={setPrescriptionData}

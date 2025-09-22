@@ -90,6 +90,10 @@ model User {
 
   @@unique([phoneNumber, deletedAt])
   @@index([deletedAt])
+  @@index([role, createdAt])
+  @@index([status, role])
+  @@index([clinicId, role])
+  @@index([role, status, deletedAt])
 }
 
 model PatientProfile {
@@ -186,6 +190,9 @@ model DoctorAvailability {
   doctor       DoctorProfile @relation(fields: [userId], references: [userId])
 
   @@index([deletedAt])
+  @@index([date, userId])
+  @@index([status, date])
+  @@index([userId, date, status])
 }
 
 model DieticianAvailability {
@@ -231,6 +238,10 @@ model Appointment {
 
   @@index([deletedAt])
   @@index([patientId, isDietician])
+  @@index([status, createdAt])
+  @@index([userId, status])
+  @@index([consultationType])
+  @@index([doctorAvailabilityId, status])
 }
 
 model Medicine {
@@ -281,6 +292,10 @@ model Payment {
   subscription      SubscriptionTracker? @relation("SubscriptionPayment", fields: [subscriptionId], references: [subscriptionId])
 
   @@index([deletedAt])
+  @@index([paymentStatus, createdAt])
+  @@index([createdAt, paymentStatus])
+  @@index([appointmentId, paymentStatus])
+  @@index([labBookingId, paymentStatus])
 }
 
 model LabPackage {
@@ -328,6 +343,10 @@ model LabBooking {
 
   @@index([deletedAt])
   @@index([labAssignmentId])
+  @@index([status, labDate])
+  @@index([patientId, status])
+  @@index([labDate, status])
+  @@index([createdAt, status])
 }
 
 model Plan {
@@ -385,6 +404,9 @@ model SubscriptionTracker {
   plan                             Plan           @relation(fields: [planId], references: [id])
 
   @@index([deletedAt])
+  @@index([isActive, endDate])
+  @@index([patientId, isActive])
+  @@index([endDate, isActive])
 }
 
 model HealthMetric {
@@ -400,6 +422,8 @@ model HealthMetric {
 
   @@index([deletedAt])
   @@index([userId])
+  @@index([userId, metricName])
+  @@index([metricName, recordedAt])
 }
 
 model PatientPill {
@@ -531,6 +555,8 @@ model PrescriptionText {
 
   @@index([patientId])
   @@index([processingStatus])
+  @@index([processingStatus, createdAt])
+  @@index([patientId, processingStatus])
 }
 
 model PatientAISummary {
@@ -763,6 +789,9 @@ model LabReportAnalysis {
   @@index([labBookingId])
   @@index([processingStatus])
   @@index([deletedAt])
+  @@index([labBookingId, processingStatus])
+  @@index([processedAt])
+  @@index([createdAt, processingStatus])
 }
 
 model ReportTrendData {
@@ -912,6 +941,8 @@ model DietPlanRequest {
   @@index([patientId, deletedAt])
   @@index([dieticianId, deletedAt])
   @@index([deletedAt])
+  @@index([status])
+  @@index([status, createdAt])
 }
 
 model DietPlan {

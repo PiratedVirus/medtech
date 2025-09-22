@@ -1,5 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { getCachedAppointments } from "@/lib/data-cache";
+import { AppointmentStatus, ConsultationType } from "@/lib/constants/enums";
 
 /**
  * GET /api/appointments
@@ -26,7 +28,19 @@ export async function GET(request: NextRequest) {
     if (patientId) baseWhere.patientId = patientId;
     if (clinicId) baseWhere.doctor = { clinicId };
 
-    // Fetch upcoming appointments
+    // Use Redis cache for appointments if patientId is provided
+    if (patientId) {
+      const cachedData = await getCachedAppointments(patientId, upcomingOnly);
+      return NextResponse.json({
+        success: true,
+        upcomingAppointments: cachedData?.upcomingAppointments || [],
+        pastAppointments: cachedData?.pastAppointments || [],
+        totalUpcoming: cachedData?.upcomingAppointments?.length || 0,
+        totalPast: cachedData?.pastAppointments?.length || 0
+      });
+    }
+
+    // Fetch upcoming appointments (fallback for non-patient queries)
     const upcomingAppointmentsWithoutMeetRoomLink = await prisma.appointment.findMany({
       where: { 
         ...baseWhere, 
@@ -82,17 +96,23 @@ export async function GET(request: NextRequest) {
         return dateA.getTime() - dateB.getTime();
       }
 
-      // Convert startTime (e.g., "10:00 AM") to total minutes for sorting
-      const convertTo24Hour = (timeStr: string) => {
-        const [time, modifier] = timeStr.split(" ");
-        let [hours, minutes] = time.split(":").map(Number);
-        if (modifier === "PM" && hours !== 12) hours += 12;
-        if (modifier === "AM" && hours === 12) hours = 0;
-        return hours * 60 + minutes; // Convert to total minutes
+      // Convert startTime (either HH:MM or HH:MM AM/PM) to total minutes for sorting
+      const toMinutes = (ts: string) => {
+        const m12 = ts.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        if (m12) {
+          let h = parseInt(m12[1], 10);
+          const mm = parseInt(m12[2], 10);
+          const ap = m12[3].toUpperCase();
+          if (ap === 'PM' && h !== 12) h += 12; if (ap === 'AM' && h === 12) h = 0;
+          return h * 60 + mm;
+        }
+        const m24 = ts.match(/^([01]?\d|2[0-3]):(\d{2})$/);
+        if (m24) return parseInt(m24[1], 10) * 60 + parseInt(m24[2], 10);
+        return 0;
       };
 
-      const timeA = convertTo24Hour(a.doctorAvailability.startTime);
-      const timeB = convertTo24Hour(b.doctorAvailability.startTime);
+      const timeA = toMinutes(a.doctorAvailability.startTime);
+      const timeB = toMinutes(b.doctorAvailability.startTime);
 
       return timeA - timeB; // Sort by startTime within the same date
     });
@@ -114,7 +134,6 @@ export async function GET(request: NextRequest) {
         fullName: true,
         mobile: true,
         email: true,
-        doctorAvailability: { date: true },
         prescriptionLink: true,
         status: true,
         consultationType: true, // Use consultationType directly
@@ -150,17 +169,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        past: pastAppointments,
-        upcoming: sortedUpcoming,
+        past: pastAppointments || [],
+        upcoming: sortedUpcoming || [],
       },
     });
 
   } catch (error) {
-    console.error("Error fetching appointments:");
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch appointments", details: error },
-      { status: 500 }
-    );
+    console.error("Error fetching appointments:", error);
+    return NextResponse.json({
+      success: false,
+      error: "Failed to fetch appointments",
+      data: {
+        past: [],
+        upcoming: []
+      },
+      upcomingAppointments: [],
+      pastAppointments: [],
+      totalUpcoming: 0,
+      totalPast: 0
+    }, { status: 500 });
   }
 }
 
@@ -208,7 +235,7 @@ export async function POST(request: Request) {
       doctorConsultationDates
     } = body;
 
-    const consultationType = consultationMode === "video" ? "Video" : "Physical";
+    const consultationType = consultationMode === "video" ? ConsultationType.VIDEO : ConsultationType.PHYSICAL;
 
     if (!patientId || !doctorId || !slot?.id) {
       console.error("Missing required fields", { patientId, doctorId, slot });
@@ -231,14 +258,14 @@ export async function POST(request: Request) {
           mobile,
           email,
           consultationType,
-          status: "Scheduled",
+          status: AppointmentStatus.SCHEDULED,
           isDietician,
           subscriptionId,
         },
       });
 
       // Update subscription tracker if using plan
-      if (paymentMethod === "plan") {
+      if (paymentMethod === "PLAN") {
         await tx.subscriptionTracker.update({
           where: { subscriptionId },
           data: isDietician
@@ -250,11 +277,11 @@ export async function POST(request: Request) {
       // Mark the slot as booked
       await tx.doctorAvailability.update({
         where: { id: slot.id },
-        data: { status: "booked" },
+        data: { status: "BOOKED" },
       });
 
       // Create payment record if online
-      if (paymentMethod === "online" && razorpayResponse) {
+      if (paymentMethod === "ONLINE" && razorpayResponse) {
         await tx.payment.create({
           data: {
             appointmentId: appointment.id,
@@ -262,19 +289,19 @@ export async function POST(request: Request) {
             razorpayPaymentId: razorpayResponse.razorpay_payment_id,
             amount: razorpayResponse.amount,
             currency: razorpayResponse.currency || "INR",
-            paymentStatus: "Paid",
+            paymentStatus: "PAID",
             paymentMethod: razorpayResponse.method || "upi",
           },
         });
       }
 
-      if(paymentMethod === "clinic") {
+      if(paymentMethod === "CLINIC") {
         await tx.payment.create({
           data: {
             appointmentId: appointment.id,
             amount: doctorConsultationFee,
             currency: "INR",
-            paymentStatus: "Pending",
+            paymentStatus: "PENDING",
             paymentMethod: "offline",
           },
         });

@@ -3,10 +3,11 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import axios from "axios";
+import { PaymentMethod } from "@/lib/constants/enums";
 import { LabBookingForm } from "@/patients/labs/booking/LabBookingForm";
 import PaymentSelection from "@/appointment-book/PaymentABooking";
 import PackageInfo from "@/patients/labs/booking/PackageInfo";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import SuccessModal from "@/components/ui/custom/cd-success-modal";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
@@ -17,10 +18,12 @@ import { setSubscriptionData } from "@/store/subscriptionSlice";
 import { useDispatch } from "react-redux";
 import { EyeIcon } from "lucide-react";
 import ViewParametersDialog from "@/components/common/ViewParametersDialog";
+import { useSmartMutations } from "@/hooks/use-query-mutations";
 
 export default function LabBookingHome({ packageInfo, onBack }: any) {
   const router = useRouter();
-  const [paymentOption, setPaymentOption] = useState("online");
+  const [paymentOption, setPaymentOption] = useState(PaymentMethod.ONLINE);
+  const { useLabBooking } = useSmartMutations();
   const { profile } = useDecryptedProfile();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState(""); // Status messages
@@ -176,6 +179,8 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
     }
   };
 
+  const labBookingMutation = useLabBooking();
+
   const handleConfirmBooking = async (data: any, razorpayResponse?: any, labPackageFees?: number) => {
     if (!data) {
       alert("Please fill out the form.");
@@ -196,26 +201,25 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
       subscriptionId: subscriptionTracker?.subscriptionId || null, 
       labTestsDates: filteredlabTestsDatesDates,
       labPackageFees
-
     };
 
-    if (paymentOption === "online" && (!razorpayResponse || !razorpayResponse.success)) {
+    if (paymentOption === PaymentMethod.ONLINE && (!razorpayResponse || !razorpayResponse.success)) {
       alert("Payment not completed. Please try again.");
       setLoading(false);
       return;
     }
 
     try {
-      const response = await axios.post("/api/labs", bookingData);
-      if (response.data.success) {
+      const result = await labBookingMutation.mutateAsync(bookingData);
+      if (result.success) {
         setStatusMessage("Booking confirmed!");
         setShowSuccessModal(true);
+        // Cache invalidation now handled automatically by useLabBooking
         setTimeout(() => {
           setShowSuccessModal(false);
           setStatusMessage(""); // Reset status
           router.replace("/dashboard/labs");
         }, 3000);
-
       } else {
         alert("Failed to book lab package.");
       }
@@ -246,7 +250,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
             <div className="bg-white flex-grow flex justify-center p-6">
               <PaymentSelection
                 selectedOption={paymentOption}
-                onOptionChange={setPaymentOption}
+                onOptionChange={(option: string) => setPaymentOption(option as PaymentMethod)}
                 firstValidDate={firstValidDate}
                 consultationType={paymentOption || ""}
                 consultationFee={labBbookingData?.price}
@@ -264,7 +268,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
                   if (formRef.current) {
                     // @ts-expect-error
                     formRef.current.submitForm(async (data) => {
-                      if (paymentOption === "online") {
+                      if (paymentOption === PaymentMethod.ONLINE) {
                         await handlePayment(data);
                       } else {
                         await handleConfirmBooking(data, undefined, labBbookingData.price);

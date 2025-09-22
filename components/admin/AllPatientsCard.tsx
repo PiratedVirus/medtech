@@ -13,7 +13,7 @@ export function AllPatientsCard() {
   useEffect(() => {
     const fetchAllPatients = async () => {
       try {
-        const response = await axios.get("/api/admin/dashboard/patients-details");
+        const response = await axios.get("/api/admin/optimized/dashboard/patients-details");
         console.log("All Patients Data:", response.data);
         setAllPatients(response.data);
       } catch (error) {

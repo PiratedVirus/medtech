@@ -48,7 +48,6 @@ import {
 import { ChevronDown, ArrowUpDown, EditIcon, Trash, Copy, Check, LayoutGrid, Table as TableIcon } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { Clinic } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
@@ -127,7 +126,7 @@ export default function DoctorsPage() {
   const fetchAvailableUsers = async (clinicId: number) => {
     try {
       // This endpoint should return users for the specified clinic
-      const res = await axios.get(`/api/admin/users?role=DOCTOR`);
+      const res = await axios.get(`/api/admin/optimized/users?role=DOCTOR`);
       console.log("Available users for clinic:", res.data.data);
       setAvailableUsers(res.data.data);
     } catch (error) {

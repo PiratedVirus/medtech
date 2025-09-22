@@ -7,7 +7,7 @@ import DoctorQuickActions from '@/components/doctors/home/DoctorQuickActions';
 import DoctorActivePatients from '@/components/doctors/home/DoctorActivePatients';
 import DoctorDashboardActionCard from "@/components/ui/custom/cd-doctor-dashboard-action-card";
 import { BicepsFlexed, FileText, LineChart, Users, Video, VideoIcon, Videotape, VideotapeIcon } from "lucide-react"
-import { useDecryptedProfile } from '@/hooks/use-profile';
+import { useDecryptedProfile } from '@/hooks/use-centralized-profile';
 import Link from 'next/link';
 import DieticianRequestsWidget from '../../../../components/doctors/home/DieticianRequestsWidget';
 

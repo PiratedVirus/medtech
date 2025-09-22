@@ -3,6 +3,7 @@ import { Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
 import Link from "next/link";
+import { normalizeStatus } from "@/lib/utils/status";
 
 interface Appointment {
   id: number;
@@ -51,8 +52,8 @@ export default function AppointmentListCard({ appointment }: { appointment: Appo
           </p>
           <p className="text-gray-500 text-sm">
             Status:{" "}
-            <span className={` ${appointment.status === "Completed" ? "text-green-600" : "text-gray-700"}`}>
-              {appointment.status}
+            <span className={` ${normalizeStatus(appointment.status) === "COMPLETED" ? "text-green-600" : "text-gray-700"}`}>
+              {normalizeStatus(appointment.status)}
             </span>
           </p>
         </div>

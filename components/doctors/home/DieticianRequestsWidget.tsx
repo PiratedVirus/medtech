@@ -5,7 +5,7 @@ import axios from "axios";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import { Clock, CheckCircle2, User, Calendar, ArrowRight, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 

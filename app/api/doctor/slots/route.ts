@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
+import { normalizeStatus } from "@/lib/utils/status";
 
 // Helper to get doctorId from JWT
 async function getDoctorIdFromRequest() {
@@ -61,6 +62,18 @@ export async function POST(request: Request) {
     if (!date || !Array.isArray(slots)) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
+    const to24h = (t: string) => {
+      if (!t) return t;
+      const m12 = t.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i);
+      if (m12) {
+        let h = parseInt(m12[1], 10);
+        const mm = m12[2];
+        const ap = m12[3].toUpperCase();
+        if (ap === 'PM' && h !== 12) h += 12; if (ap === 'AM' && h === 12) h = 0;
+        return `${String(h).padStart(2,'0')}:${mm}`;
+      }
+      return t;
+    };
     // Remove all slots for this doctor/date (soft delete)
     await prisma.doctorAvailability.updateMany({
       where: { userId: doctorId, date: new Date(date) },
@@ -73,9 +86,9 @@ export async function POST(request: Request) {
           data: {
             userId: doctorId,
             date: new Date(date),
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-            status: slot.status,
+            startTime: to24h(slot.startTime),
+            endTime: to24h(slot.endTime),
+            status: normalizeStatus(slot.status),
           },
         })
       )

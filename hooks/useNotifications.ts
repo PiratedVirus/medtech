@@ -11,7 +11,7 @@ export function useNotifications() {
   } = useQuery<NotificationResponse>({
     queryKey: ['admin-notifications'],
     queryFn: async () => {
-      const response = await axios.get('/api/admin/notifications');
+      const response = await axios.get('/api/admin/optimized/notifications');
       return response.data;
     },
     refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes

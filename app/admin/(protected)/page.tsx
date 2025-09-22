@@ -30,10 +30,18 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchSummaryData = async () => {
       try {
-        const response = await axios.get("/api/admin/dashboard/summary");
+        // Try optimized (cached) endpoint first
+        const response = await axios.get("/api/admin/optimized/dashboard-summary");
         setSummaryData(response.data);
       } catch (error) {
-        console.error("Failed to fetch summary data:", error);
+        console.error("Optimized summary failed, falling back:", error);
+        try {
+          // Fallback to non-optimized endpoint to keep UI working
+          const fallback = await axios.get("/api/admin/dashboard/summary");
+          setSummaryData(fallback.data);
+        } catch (fallbackError) {
+          console.error("Fallback summary also failed:", fallbackError);
+        }
       }
     };
 

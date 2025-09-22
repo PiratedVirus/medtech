@@ -119,9 +119,9 @@ export default function AppointmentCard({
     }
 
     // Fallback to any appointment date present
-    if (data.appointmentDate) {
+    if (data.doctorAvailability?.date) {
       return {
-        date: data.appointmentDate,
+        date: data.doctorAvailability.date,
         time: data.startTime || 'Time TBD',
       };
     }

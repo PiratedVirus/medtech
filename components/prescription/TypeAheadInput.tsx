@@ -30,6 +30,8 @@ interface Suggestion {
   frequency?: string[];
   medicineTime?: string[];
   duration?: string[];
+  composition?: string;
+  composition2?: string;
 }
 
 export default function TypeAheadInput({
@@ -43,6 +45,8 @@ export default function TypeAheadInput({
   onFrequencyInput,
 }: TypeAheadInputProps) {
   const { toast } = useToast();
+  
+  
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,11 +64,11 @@ export default function TypeAheadInput({
       { id: "5", text: "Persistent cough for the past week", category: "Respiratory", severity: "MODERATE" },
     ],
     medicines: [
-      { id: "1", name: "Metformin 500mg", category: "Diabetes", frequency: ["1-0-0", "1-0-1", "1-1-1"], medicineTime: ["Pre-meal", "Post-meal"], duration: ["7d", "14d", "30d"] },
-      { id: "2", name: "Glimepiride 1mg", category: "Diabetes", frequency: ["1-0-0", "0-1-0"], medicineTime: ["Pre-meal"], duration: ["30d"] },
-      { id: "3", name: "Paracetamol 500mg", category: "Pain Relief", frequency: ["0-0-1", "1-1-1"], medicineTime: ["Post-meal", "Any time"], duration: ["3d", "5d"] },
-      { id: "4", name: "Amoxicillin 500mg", category: "Antibiotic", frequency: ["1-1-1", "1-0-1"], medicineTime: ["Post-meal"], duration: ["7d", "10d"] },
-      { id: "5", name: "Omeprazole 20mg", category: "Gastric", frequency: ["1-0-0"], medicineTime: ["Pre-meal"], duration: ["14d", "30d"] },
+      { id: "1", name: "Metformin 500mg", category: "Diabetes", frequency: ["1-0-0", "1-0-1", "1-1-1"], medicineTime: ["Pre-meal", "Post-meal"], duration: ["7d", "14d", "30d"], composition: "Metformin (500mg)", composition2: "" },
+      { id: "2", name: "Glimepiride 1mg", category: "Diabetes", frequency: ["1-0-0", "0-1-0"], medicineTime: ["Pre-meal"], duration: ["30d"], composition: "Glimepiride (1mg)", composition2: "" },
+      { id: "3", name: "Paracetamol 500mg", category: "Pain Relief", frequency: ["0-0-1", "1-1-1"], medicineTime: ["Post-meal", "Any time"], duration: ["3d", "5d"], composition: "Paracetamol (500mg)", composition2: "" },
+      { id: "4", name: "Amoxicillin 500mg", category: "Antibiotic", frequency: ["1-1-1", "1-0-1"], medicineTime: ["Post-meal"], duration: ["7d", "10d"], composition: "Amoxicillin (500mg)", composition2: "" },
+      { id: "5", name: "Omeprazole 20mg", category: "Gastric", frequency: ["1-0-0"], medicineTime: ["Pre-meal"], duration: ["14d", "30d"], composition: "Omeprazole (20mg)", composition2: "" },
     ],
     frequency: [
       { id: "1", value: "Once daily", usageCount: 45 },
@@ -112,7 +116,12 @@ export default function TypeAheadInput({
     setIsLoading(true);
     
     try {
-      const response = await fetch(`/api/doctor/prescription/typeahead?type=${type}&query=${encodeURIComponent(query)}`);
+      // Use Algolia search for medicines, fallback to regular API for other types
+      const apiEndpoint = type === "medicines" 
+        ? `/api/doctor/prescription/algolia-medicines?query=${encodeURIComponent(query)}`
+        : `/api/doctor/prescription/typeahead?type=${type}&query=${encodeURIComponent(query)}`;
+      
+      const response = await fetch(apiEndpoint);
       
       if (!response.ok) {
         throw new Error("Failed to fetch suggestions");
@@ -137,6 +146,8 @@ export default function TypeAheadInput({
             frequency: item.frequency || [],
             medicineTime: item.medicineTime || [],
             duration: item.duration || [],
+            composition: item.composition || "",
+            composition2: item.composition2 || "",
           };
         } else {
           return {
@@ -149,6 +160,7 @@ export default function TypeAheadInput({
       }) || [];
       
       setSuggestions(transformedData);
+
     } catch (error) {
       console.error("Error fetching suggestions:", error);
       // Fallback to mock data
@@ -165,10 +177,20 @@ export default function TypeAheadInput({
 
   const createNewItem = async (text: string) => {
     try {
-      const response = await fetch("/api/doctor/prescription/typeahead", {
+      // Use Algolia API for medicines, regular API for other types
+      const apiEndpoint = type === "medicines" 
+        ? "/api/doctor/prescription/algolia-medicines"
+        : "/api/doctor/prescription/typeahead";
+      
+      const response = await fetch(apiEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, value: text }),
+        body: JSON.stringify({ 
+          type, 
+          value: text,
+          name: type === "medicines" ? text : undefined,
+          category: "General"
+        }),
       });
       
       if (!response.ok) {
@@ -188,7 +210,7 @@ export default function TypeAheadInput({
         };
       } else if (type === "medicines") {
         newItem = {
-          id: data.data.id.toString(),
+          id: data.data.objectID || data.data.id.toString(),
           name: text,
           category: "General",
           frequency: [],
@@ -351,9 +373,19 @@ export default function TypeAheadInput({
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="font-medium">{displayValue}</div>
-                            {suggestion.category && (
-                              <div className="text-xs text-gray-500">{suggestion.category}</div>
-                            )}
+                            <div className="text-xs text-gray-500">
+                              {type === "medicines" ? (
+                                <>
+                                  {[suggestion.composition, suggestion.composition2]
+                                    .filter(Boolean)
+                                    .join(', ') || 'No composition data'}
+                                </>
+                              ) : (
+                                <>
+                                  {suggestion.category}
+                                </>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             {suggestion.usageCount && (

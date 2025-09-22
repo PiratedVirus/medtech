@@ -30,6 +30,7 @@ interface MealTimingTemplateManagerProps {
   dieticianId: number;
   onTemplateSelect: (template: MealTimingTemplate) => void;
   selectedTemplate?: MealTimingTemplate | null;
+  onTemplateUpdate?: () => void;
 }
 
 const DEFAULT_MEAL_TIMINGS: MealTiming[] = [
@@ -46,7 +47,8 @@ const MEAL_ICONS = ['🌅', '☕', '🍽️', '🍎', '🌙', '🛏️', '🥗',
 export default function MealTimingTemplateManager({ 
   dieticianId, 
   onTemplateSelect, 
-  selectedTemplate 
+  selectedTemplate,
+  onTemplateUpdate
 }: MealTimingTemplateManagerProps) {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<MealTimingTemplate[]>([]);
@@ -93,6 +95,7 @@ export default function MealTimingTemplateManager({
         setTemplateName('');
         setMealTimings(DEFAULT_MEAL_TIMINGS);
         loadTemplates();
+        onTemplateUpdate?.(); // Notify parent component
       }
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Failed to create template', description: error?.message });
@@ -124,6 +127,7 @@ export default function MealTimingTemplateManager({
         setTemplateName('');
         setMealTimings(DEFAULT_MEAL_TIMINGS);
         loadTemplates();
+        onTemplateUpdate?.(); // Notify parent component
       }
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Failed to update template', description: error?.message });
@@ -140,6 +144,7 @@ export default function MealTimingTemplateManager({
       if (response.data.success) {
         toast({ variant: 'success', title: 'Template deleted successfully' });
         loadTemplates();
+        onTemplateUpdate?.(); // Notify parent component
       }
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Failed to delete template', description: error?.message });

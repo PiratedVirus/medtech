@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { setLabBookingData } from "@/store/labSlice";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import axios from "axios";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { CircleCheckBig } from "lucide-react";
@@ -29,6 +29,8 @@ export default function LabsPage() {
       return response.data || { scheduled: [], completed: [] };
     },
     enabled: !!patientId,
+    staleTime: 5 * 60 * 1000,  // 5 minutes - lab results change moderately
+    refetchOnMount: false,     // Use cached data when available
   });
 
   // Fetch standalone reports (manually uploaded)
@@ -39,6 +41,8 @@ export default function LabsPage() {
       return response.data?.reports || [];
     },
     enabled: !!patientId,
+    staleTime: 10 * 60 * 1000, // 10 minutes - standalone reports change rarely
+    refetchOnMount: false,     // Use cached data when available
   });
 
   const handleBookAppointment = (lab: any) => {
@@ -69,12 +73,9 @@ export default function LabsPage() {
       );
       return response.data.success ? response.data.packages : [];
     },
-    staleTime: 1 * 6 * 1, // ✅ Cache valid for 10 minutes
-    gcTime: 6 * 1 * 1, // ✅ Keeps cache for 1 hour
-    refetchOnWindowFocus: false, // ✅ Prevents re-fetching on tab switch
-    refetchOnMount: false, // ✅ Prevents re-fetching when navigating back
-    refetchOnReconnect: true, // ✅ Fetches only if internet reconnects
-    enabled: !!clinicId, // ✅ Runs only when clinicId exists
+    enabled: !!clinicId && !!profile?.id, // Only run when clinicId and profile.id exist
+    staleTime: 15 * 60 * 1000,  // 15 minutes - lab packages rarely change
+    refetchOnMount: false,      // Use cached data when available
   });
 
   const [searchPackages, setSearchPackages] = useState("");

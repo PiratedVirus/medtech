@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { AppointmentStatus } from "@/lib/constants/enums";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Appointment, DoctorProfile, Payment, User } from "@prisma/client";
 
@@ -66,6 +67,11 @@ export async function GET(
                     paymentStatus: true,
                     createdAt: true
                   }
+                },
+                doctorAvailability: {
+                  select: {
+                    date: true
+                  }
                 }
               },
               orderBy: {
@@ -99,25 +105,25 @@ export async function GET(
     const endOfLastMonth = endOfMonth(subMonths(now, 1));
 
     const appointments = doctorWithRelations.user.doctorAppointments;
-    const completedAppointments = appointments.filter((a) => a.status === "COMPLETED");
-    const upcomingAppointments = appointments.filter((a) => a.status === "SCHEDULED");
+    const completedAppointments = appointments.filter((a) => a.status === AppointmentStatus.COMPLETED);
+    const upcomingAppointments = appointments.filter((a) => a.status === AppointmentStatus.SCHEDULED);
     
     const totalEarnings = completedAppointments.reduce((sum: number, app) => 
       sum + (app.payment?.amount || 0), 0
     );
 
     const thisMonthEarnings = completedAppointments
-      .filter((app) => {
-        if (!app.appointmentDate) return false;
-        const appDate = new Date(app.appointmentDate);
+      .filter((app: any) => {
+        if (!app.doctorAvailability?.date) return false;
+        const appDate = new Date(app.doctorAvailability.date);
         return appDate >= startOfCurrentMonth && appDate <= endOfCurrentMonth;
       })
       .reduce((sum: number, app) => sum + (app.payment?.amount || 0), 0);
 
     const lastMonthEarnings = completedAppointments
-      .filter((app) => {
-        if (!app.appointmentDate) return false;
-        const appDate = new Date(app.appointmentDate);
+      .filter((app: any) => {
+        if (!app.doctorAvailability?.date) return false;
+        const appDate = new Date(app.doctorAvailability.date);
         return appDate >= startOfLastMonth && appDate <= endOfLastMonth;
       })
       .reduce((sum: number, app) => sum + (app.payment?.amount || 0), 0);
@@ -141,7 +147,7 @@ export async function GET(
       doctorCode: doctorWithRelations.doctorCode,
       isDietician: doctorWithRelations.isDietician,
       createdAt: doctorWithRelations.createdAt,
-      appointments: appointments.map(appointment => ({
+      appointments: appointments.map((appointment: any) => ({
         id: appointment.id,
         date: appointment.doctorAvailability.date,
         status: appointment.status,

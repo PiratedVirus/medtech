@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useDecryptedProfile } from '@/hooks/use-profile';
+import { useDecryptedProfile } from '@/hooks/use-centralized-profile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -58,10 +58,11 @@ export default function DietPlansPage() {
     });
   }, [dieticianId]);
 
-  useEffect(() => {
+  // Load meal timing templates
+  const loadTemplates = async () => {
     if (!dieticianId) return;
-    // Load meal timing templates
-    axios.get(`/api/doctor/diet-meal-timings?dieticianId=${dieticianId}`).then(res => {
+    try {
+      const res = await axios.get(`/api/doctor/diet-meal-timings?dieticianId=${dieticianId}`);
       if (res.data.success) {
         setTemplates(res.data.templates);
         // Auto-select default template if available
@@ -70,9 +71,13 @@ export default function DietPlansPage() {
           setSelectedTemplate(defaultTemplate);
         }
       }
-    }).catch(error => {
+    } catch (error) {
       console.error('Failed to load templates:', error);
-    });
+    }
+  };
+
+  useEffect(() => {
+    loadTemplates();
   }, [dieticianId]);
 
   useEffect(() => {
@@ -322,6 +327,7 @@ export default function DietPlansPage() {
               dieticianId={Number(dieticianId)}
               onTemplateSelect={handleTemplateSelect}
               selectedTemplate={selectedTemplate}
+              onTemplateUpdate={loadTemplates}
             />
           )}
         </TabsContent>

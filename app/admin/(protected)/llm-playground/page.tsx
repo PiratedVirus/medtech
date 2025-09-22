@@ -1015,7 +1015,7 @@ function LabAnalysisManager() {
   const fetchLabBookings = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/admin/dashboard/lab-bookings?pageSize=100');
+      const response = await fetch('/api/admin/optimized/lab-bookings?pageSize=100');
       const data = await response.json();
       
       if (data.data) {

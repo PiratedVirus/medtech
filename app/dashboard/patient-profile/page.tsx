@@ -6,7 +6,7 @@ import type { AppDispatch } from "@/store";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { ProfileForm } from "@/components/patients/profile/ProfilePlan";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 
 export default function PatientProfilePage() {
   const dispatch = useDispatch<AppDispatch>();

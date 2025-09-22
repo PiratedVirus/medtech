@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { logoutUser } from "@/store/userSlice";
-import { useProfile } from "@/hooks/context/ProfileContext";
 import { useRouter, usePathname } from "next/navigation";
 import type { AppDispatch } from "@/store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,7 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
 const fullNavigation = [
@@ -47,8 +46,7 @@ const mobileNavigation = [
 ];
 
 export function DashboardHeader() {
-  const { profile } = useProfile();
-  const { isDoctor } = useDecryptedProfile();
+  const { profile, isDoctor } = useDecryptedProfile();
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const pathname = usePathname();

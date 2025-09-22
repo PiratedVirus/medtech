@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { User, Search, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import CdLoader from "@/components/ui/custom/cd-loader";
+import { normalizeStatus } from "@/lib/utils/status";
 
 interface Patient {
   id: string;
@@ -60,7 +61,7 @@ export function AllPatientsCard() {
         patient.address,
         patient.mobileNumber,
         patient.sampleStatus,
-        patient.status
+        normalizeStatus(patient.status)
       ])
     ].map(row => row.join(",")).join("\n");
 
@@ -116,11 +117,11 @@ export function AllPatientsCard() {
               <CardTitle className="text-xl font-semibold text-secondary">{patient.name}</CardTitle>
               <div className="mt-1">
                 <span className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
-                  patient.status === "Phlebotomist Sent" 
+                  normalizeStatus(patient.status) === "PHLEBOTOMIST_LEFT" 
                     ? 'bg-green-700 text-white' 
                     : 'bg-gray-200 text-gray-600'
                 }`}>
-                  {patient.status}
+                  {normalizeStatus(patient.status)}
                 </span>
               </div>
             </CardHeader>
