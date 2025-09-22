@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { DoctorUpcomingSkeleton } from '@/components/ui/custom/cd-appointment-skeleton';
-import { useDecryptedProfile } from '@/hooks/use-profile';
+import { useDecryptedProfile } from '@/hooks/use-centralized-profile';
 import { Calendar, Clock, User } from 'lucide-react';
 
 interface Appointment {

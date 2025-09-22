@@ -78,7 +78,7 @@ interface FetchPaymentsResponse {
 
 const fetchPayments = async (pageIndex: number, pageSize: number): Promise<FetchPaymentsResponse> => {
   try {
-    const response = await axios.get(`/api/admin/payments?page=${pageIndex + 1}&pageSize=${pageSize}`);
+    const response = await axios.get(`/api/admin/optimized/payments?page=${pageIndex + 1}&pageSize=${pageSize}`);
     return response.data;
   } catch (error) {
     console.error("Failed to fetch payments:", error);
@@ -100,7 +100,7 @@ interface CreatePaymentData {
 
 const createPayment = async (data: CreatePaymentData): Promise<Payment | null> => {
   try {
-    const response = await axios.post("/api/admin/payments", data);
+    const response = await axios.post("/api/admin/optimized/payments", data);
     return response.data;
   } catch (error) {
     console.error("Failed to create payment:", error);
@@ -398,7 +398,7 @@ export default function PaymentsPage() {
       (index) => data.payments[parseInt(index)].id
     );
     try {
-      await axios.delete("/api/admin/payments", { data: { ids: selectedIds } });
+      await axios.delete("/api/admin/optimized/payments", { data: { ids: selectedIds } });
       toast.success("Selected payments deleted successfully");
       await fetchData();
       setRowSelection({});

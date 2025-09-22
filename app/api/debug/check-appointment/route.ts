@@ -9,6 +9,9 @@ export async function GET(request: Request) {
     if (appointmentId) {
       const appointment = await prisma.appointment.findUnique({
         where: { id: parseInt(appointmentId) },
+        include: {
+          doctorAvailability: true
+        }
       });
 
       return NextResponse.json({
@@ -18,7 +21,7 @@ export async function GET(request: Request) {
           patientId: appointment.patientId,
           userId: appointment.userId,
           appointmentFor: appointment.appointmentFor,
-          appointmentDate: appointment.appointmentDate,
+          doctorAvailability: { date: appointment.doctorAvailability?.date },
           status: appointment.status,
         } : null,
         exists: !!appointment
@@ -32,7 +35,7 @@ export async function GET(request: Request) {
           id: true,
           patientId: true,
           appointmentFor: true,
-          appointmentDate: true,
+          doctorAvailability: { select: { date: true } },
           status: true,
         }
       });

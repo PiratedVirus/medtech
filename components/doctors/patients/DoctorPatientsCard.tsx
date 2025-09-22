@@ -5,7 +5,7 @@ import axios from "axios";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { User } from "lucide-react";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 
 export function DoctorPatientsCard() {
   const [patients, setPatients] = useState<Patient[]>([]);

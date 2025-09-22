@@ -45,7 +45,10 @@ interface AppointmentCardProps {
     assignedPhlebotomist?: string;
     status: string;
     assignmentStatus?: string;
-    appointmentDate?: string;
+    doctorAvailability?: {
+      date: string;
+      startTime: string;
+    };
     startTime?: string;
     assignedDate?: string;
     assignedTime?: string;
@@ -116,9 +119,9 @@ export default function AppointmentCard({
     }
 
     // Fallback to any appointment date present
-    if (data.appointmentDate) {
+    if (data.doctorAvailability?.date) {
       return {
-        date: data.appointmentDate,
+        date: data.doctorAvailability.date,
         time: data.startTime || 'Time TBD',
       };
     }

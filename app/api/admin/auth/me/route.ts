@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
-import prisma from "@/lib/prisma";
+import { getCachedAdminProfile } from "@/lib/auth-cache";
 
 export async function GET() {
   try {
@@ -28,19 +28,7 @@ export async function GET() {
       );
     }
 
-    const admin = await prisma.user.findUnique({
-      where: {
-        id: decoded.userId,
-        role: "ADMIN",
-        status: "ACTIVE",
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-      },
-    });
+    const admin = await getCachedAdminProfile(decoded.userId);
 
     if (!admin) {
       return NextResponse.json(

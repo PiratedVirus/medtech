@@ -144,7 +144,7 @@ async function extractStandaloneValues(text: string): Promise<{ allValues: any[]
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.log(`[UPLOAD] Groq API returned ${response.status}, checking for valid JSON in error response`);
+      console.error(`[UPLOAD] Groq API returned ${response.status}: ${errorText}`);
       
       // Check if the error response contains valid JSON data
       try {
@@ -162,6 +162,10 @@ async function extractStandaloneValues(text: string): Promise<{ allValues: any[]
     } else {
       const data = await response.json();
       content = data.choices[0]?.message?.content;
+      
+      if (!content) {
+        throw new Error('No content received from Groq API response');
+      }
     }
     
     if (!content) {
@@ -424,10 +428,11 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
     try {
       if (report.fileUrl.startsWith('http')) {
         // Use existing parse-text API for remote files
-        const parseResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/api/llm-process/parse-text`, {
+        const parseResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/llm-process/parse-text`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pdfUrl: report.fileUrl })
+          body: JSON.stringify({ pdfUrl: report.fileUrl }),
+          signal: AbortSignal.timeout(60000) // 60 second timeout
         });
 
         if (parseResponse.ok) {
@@ -445,7 +450,9 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
             }
           });
         } else {
-          throw new Error('Failed to parse file');
+          const errorText = await parseResponse.text();
+          console.error(`[UPLOAD][${reportId}] Parse-text API failed: ${parseResponse.status} ${errorText}`);
+          throw new Error(`Failed to parse file: ${parseResponse.status} ${errorText}`);
         }
       } else {
         throw new Error('Invalid file URL');
@@ -556,7 +563,7 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
       });
 
       const apiKey = process.env.OPENROUTER_API_KEY;
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001';
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
       
       if (apiKey) {
         try {

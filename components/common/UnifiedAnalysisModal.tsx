@@ -16,7 +16,6 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Progress } from '@/components/ui/progress';
 import { toast } from "react-toastify";
 
 interface LabReport {
@@ -97,6 +96,7 @@ interface UnifiedAnalysisModalProps {
   patientId: string;
   labReports: LabReport[];
   standaloneReports?: StandaloneReport[];
+  preSelectedStandaloneReportId?: number | null;
 }
 
 export default function UnifiedAnalysisModal({
@@ -104,7 +104,8 @@ export default function UnifiedAnalysisModal({
   onClose,
   patientId,
   labReports,
-  standaloneReports = []
+  standaloneReports = [],
+  preSelectedStandaloneReportId = null
 }: UnifiedAnalysisModalProps) {
   
   const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
@@ -146,6 +147,22 @@ export default function UnifiedAnalysisModal({
 
   // Use provided standalone reports or fetched ones
   const allStandaloneReports = standaloneReports.length > 0 ? standaloneReports : fetchedStandaloneReports;
+
+  // Handle pre-selection when modal opens
+  useEffect(() => {
+    if (isOpen && preSelectedStandaloneReportId) {
+      setActiveTab('standalone-reports');
+      setSelectedStandaloneReportId(preSelectedStandaloneReportId);
+      
+      // Find and set the analysis for the pre-selected report
+      const preSelectedReport = allStandaloneReports.find(r => r.id === preSelectedStandaloneReportId);
+      if (preSelectedReport?.reportAnalyses?.length && preSelectedReport.reportAnalyses.length > 0) {
+        const completedAnalysis = preSelectedReport.reportAnalyses.find(a => a.processingStatus === 'COMPLETED');
+        const analysis = completedAnalysis || preSelectedReport.reportAnalyses[0];
+        setStandaloneAnalysis(analysis);
+      }
+    }
+  }, [isOpen, preSelectedStandaloneReportId, allStandaloneReports]);
 
   // Polling mechanism for standalone reports
   useEffect(() => {
@@ -372,37 +389,6 @@ export default function UnifiedAnalysisModal({
     return arr.filter(Boolean);
   };
 
-  // Helper function to get processing progress
-  const getProcessingProgress = (report: StandaloneReport) => {
-    if (!report.reportAnalyses || !report.reportAnalyses.length) return 0;
-    
-    const analysis = report.reportAnalyses[0];
-    if (analysis.processingStatus === 'COMPLETED') return 100;
-    if (analysis.processingStatus === 'FAILED') return 0;
-    
-    const errorMsg = analysis.processingError || '';
-    if (errorMsg.includes('Stage 1')) return 25;
-    if (errorMsg.includes('Stage 2')) return 50;
-    if (errorMsg.includes('Stage 3')) return 75;
-    
-    return 0;
-  };
-
-  // Helper function to get current stage name
-  const getCurrentStageName = (report: StandaloneReport) => {
-    if (!report.reportAnalyses || !report.reportAnalyses.length) return '';
-    
-    const analysis = report.reportAnalyses[0];
-    if (analysis.processingStatus === 'COMPLETED') return 'Completed';
-    if (analysis.processingStatus === 'FAILED') return 'Failed';
-    
-    const errorMsg = analysis.processingError || '';
-    if (errorMsg.includes('Stage 1')) return 'Extracting Text';
-    if (errorMsg.includes('Stage 2')) return 'Generating Summary';
-    if (errorMsg.includes('Stage 3')) return 'Extracting Values';
-    
-    return 'Starting...';
-  };
 
   const getFilteredValues = () => {
     const values = showAllValues ? (analysis?.allValues || standaloneAnalysis?.allValues || []) : (analysis?.criticalValues || standaloneAnalysis?.criticalValues || []);
@@ -635,31 +621,9 @@ export default function UnifiedAnalysisModal({
                           </span>
                         )}
                         
-                        {/* Processing stage indicator */}
-                        {report.reportAnalyses && report.reportAnalyses.length > 0 && report.reportAnalyses[0].processingStatus === 'PROCESSING' && (
-                          <span className="ml-2 text-xs text-blue-600">
-                            {report.reportAnalyses[0].processingError?.includes('Stage 1') && '📄 Extracting text...'}
-                            {report.reportAnalyses[0].processingError?.includes('Stage 2') && '📝 Generating summary...'}
-                            {report.reportAnalyses[0].processingError?.includes('Stage 3') && '🔬 Extracting values...'}
-                          </span>
-                        )}
                       </span>
                     </button>
                     
-                    {/* Progress bar for processing reports */}
-                    {report.reportAnalyses && report.reportAnalyses.length > 0 && report.reportAnalyses[0].processingStatus === 'PROCESSING' && (
-                      <div className="mt-2 ml-2">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Progress value={getProcessingProgress(report)} className="h-2 flex-1" />
-                          <span className="text-xs text-blue-600 font-medium">
-                            {getCurrentStageName(report)}
-                          </span>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {getProcessingProgress(report)}% complete
-                        </div>
-                      </div>
-                    )}
                   </div>
                 );
               })
@@ -757,9 +721,9 @@ export default function UnifiedAnalysisModal({
                         {/* Show standalone report info */}
                         {selectedStandaloneReport && (
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
+                            {/* <Badge variant="outline" className="text-xs">
                               {selectedStandaloneReport.reportType}
-                            </Badge>
+                            </Badge> */}
                             <span className="text-xs text-gray-600">
                               Uploaded: {new Date(selectedStandaloneReport.createdAt).toLocaleDateString()}
                             </span>

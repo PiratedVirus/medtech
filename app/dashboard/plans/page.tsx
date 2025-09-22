@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import axios from "axios";
 import { loadRazorpay } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import SuccessModal from "@/components/ui/custom/cd-success-modal";
 import { useQuery } from "@tanstack/react-query";
 import CdLoader from "@/components/ui/custom/cd-loader";

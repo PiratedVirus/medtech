@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { cacheUtils, CACHE_KEYS, CACHE_TTL } from "@/lib/redis";
 
 function getMonthString(date: Date) {
   const month = date.getMonth() + 1;
@@ -17,7 +18,7 @@ const METRIC_ORDER = [
   "Visceral Fat",
 ];
 
-// GET: fetch & group data by month, store item.id, and sort
+// GET: fetch & group data by month, store item.id, and sort (with Redis caching)
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -29,14 +30,34 @@ export async function GET(request: Request) {
       );
     }
 
-    const userId = Number(userIdParam);
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "Invalid userId" },
-        { status: 400 }
-      );
-    }
+    const userId = parseInt(userIdParam, 10);
+    const cacheKey = CACHE_KEYS.INSIGHTS(userId);
 
+    // Use Redis cache for insights (10-minute TTL)
+    const result = await cacheUtils.getOrSet(
+      cacheKey,
+      async () => {
+        return await fetchInsightsData(userId);
+      },
+      CACHE_TTL.INSIGHTS
+    );
+
+    return NextResponse.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    console.error("Error fetching insights:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to fetch insights" },
+      { status: 500 }
+    );
+  }
+}
+
+// Extract the main logic into a separate function for caching
+async function fetchInsightsData(userId: number) {
+  try {
     // 1) Fetch all HealthMetric rows for this user
     const metrics = await prisma.healthMetric.findMany({
       where: { userId },
@@ -101,13 +122,10 @@ export async function GET(request: Request) {
       }
     });
 
-    return NextResponse.json({ success: true, metrics: result });
+    return result;
   } catch (error: any) {
     console.error("Error fetching health metrics:", error);
-    return NextResponse.json(
-      { success: false, error: "Server error fetching metrics" },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 

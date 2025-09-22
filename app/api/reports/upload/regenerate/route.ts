@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     // Trigger actual LLM processing
     try {
       // Start processing in background (don't await to avoid blocking the response)
-      triggerLLMProcessing(reportIdNum, analysisType).catch((error: any) => {
+      triggerLLMProcessing(reportIdNum, analysisType, true).catch((error: any) => {
         console.error(`[REGENERATE] Background processing failed for report ${reportIdNum}:`, error);
       });
       

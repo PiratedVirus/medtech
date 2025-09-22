@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { logoutUser } from "@/store/userSlice";
-import { useProfile } from "@/hooks/context/ProfileContext";
 import { useRouter, usePathname } from "next/navigation";
 import type { AppDispatch } from "@/store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,7 +24,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 const fullNavigation = [
   { name: "Home", href: "/dashboard", current: true, icon: Home },
@@ -46,8 +46,7 @@ const mobileNavigation = [
 ];
 
 export function DashboardHeader() {
-  const { profile } = useProfile();
-  const { isDoctor } = useDecryptedProfile();
+  const { profile, isDoctor } = useDecryptedProfile();
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const pathname = usePathname();
@@ -101,8 +100,10 @@ export function DashboardHeader() {
               ))}
             </nav>
           </div>
-          {/* Profile Dropdown */}
-          <DropdownMenu>
+          {/* Notifications and Profile */}
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <div className="flex items-center gap-3 px-4 py-2 w-32 rounded-xl border border-border cursor-pointer">
                 <User className="h-6 w-6" />
@@ -122,7 +123,8 @@ export function DashboardHeader() {
                 <span className="text-red-500">Logout</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
 

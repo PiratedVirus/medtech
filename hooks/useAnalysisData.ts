@@ -20,7 +20,7 @@ export function useAnalysisData() {
       setRows(data.rows as any[]);
 
       // Fetch lab analysis data
-      const labRes = await fetch('/api/admin/dashboard/lab-bookings?pageSize=100');
+      const labRes = await fetch('/api/admin/optimized/lab-bookings?pageSize=100');
       const labData = await labRes.json();
       
       if (labData.data) {

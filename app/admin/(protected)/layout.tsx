@@ -1,13 +1,14 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUserProfile } from "@/store/userSlice";
 import { ProfileProvider } from "@/hooks/context/ProfileContext";
 import type { AppDispatch, RootState } from "@/store";
 import "@/app/globals.css";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { SidebarNav } from "@/components/admin/AdminSidebarNav";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { useRouter } from 'next/navigation';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
 
@@ -20,6 +21,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const { admin, loading: adminLoading, isAuthenticated, logout } = useAdminAuth();
   const error = !adminLoading && !isAuthenticated;
   const router = useRouter();
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     if (!adminLoading && !isAuthenticated) {
@@ -50,12 +52,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   return (
     <div className="flex min-h-screen">
-        <SidebarNav logout={logout}/>
-        <div className="flex-1 md:ml-16">
-          <main className="flex-1 bg-white">{children}</main>
-        </div>
+      <SidebarNav logout={logout} collapsed={collapsed} onCollapsedChange={setCollapsed}/>
+      <div className={"flex-1 transition-all duration-300 " + (collapsed ? "md:ml-16" : "md:ml-64") }>
+        <AdminHeader />
+        <main className="flex-1 bg-white">{children}</main>
       </div>
-);
+    </div>
+  );
 };
 
 export default AdminLayout;

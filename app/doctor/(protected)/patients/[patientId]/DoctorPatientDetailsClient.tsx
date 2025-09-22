@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast, ToastContainer } from "react-toastify";
 import axios from "axios";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 
 // UI Components
 import CdLoader from "@/components/ui/custom/cd-loader";
@@ -268,6 +268,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
           patientId={patientId}
           labReports={patientDetails.labBookings}
           standaloneReports={standaloneReports}
+          preSelectedStandaloneReportId={null}
         />
 
         {/* Patient Insights Modal (Full insights reused from dashboard) */}

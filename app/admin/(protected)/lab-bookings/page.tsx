@@ -54,13 +54,13 @@ const statusOptions = [
 
 const fetchLabBookings = async (pageIndex: number, pageSize: number) => {
   const res = await axios.get(
-    `/api/admin/dashboard/lab-bookings?page=${pageIndex + 1}&pageSize=${pageSize}`
+    `/api/admin/optimized/lab-bookings?page=${pageIndex + 1}&pageSize=${pageSize}`
   );
   return res.data as { data: LabBooking[]; total: number };
 };
 
 const updateStatus = async (id: number, status: string) => {
-  await axios.put(`/api/admin/dashboard/lab-bookings`, { id, status });
+  await axios.put(`/api/admin/optimized/lab-bookings`, { id, status });
 };
 
 export default function AdminLabBookingsPage() {
@@ -203,7 +203,7 @@ export default function AdminLabBookingsPage() {
         uploadedLinks.push(url);
       }
 
-      const res = await axios.patch(`/api/admin/dashboard/lab-bookings`, {
+      const res = await axios.patch(`/api/admin/optimized/lab-bookings`, {
         id,
         links: uploadedLinks,
       });
@@ -271,7 +271,7 @@ export default function AdminLabBookingsPage() {
 
   const removeReport = async (id: number, url: string) => {
     try {
-      const res = await axios.patch(`/api/admin/dashboard/lab-bookings`, { id, remove: url });
+      const res = await axios.patch(`/api/admin/optimized/lab-bookings`, { id, remove: url });
       toast.success("Report removed");
       await fetchData();
       setSelectedBooking(res.data.data);
@@ -283,7 +283,7 @@ export default function AdminLabBookingsPage() {
 
   const deleteBooking = async (id: number) => {
     try {
-      await axios.delete("/api/admin/dashboard/lab-bookings", { data: { id } });
+      await axios.delete("/api/admin/optimized/lab-bookings", { data: { id } });
       toast.success("Lab booking deleted successfully");
       await fetchData();
     } catch (error) {

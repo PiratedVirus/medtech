@@ -227,11 +227,12 @@ export default function UsersPage() {
   const fetchData = async () => {
     try {
       const [usersRes, clinicsRes] = await Promise.all([
-        axios.get(`/api/admin/users?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`),
+        axios.get(`/api/admin/optimized/users?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`),
         axios.get("/api/admin/clinics/clinics-list"),
       ]);
       setData({ users: usersRes.data.data, total: usersRes.data.total });
-      setClinics(clinicsRes.data);
+      // clinics endpoint returns { success, clinics }
+      setClinics(Array.isArray(clinicsRes.data?.clinics) ? clinicsRes.data.clinics : []);
       // Extract roleCounts from the GET response
       setRoleCounts(usersRes.data.roleCounts || {});
     } catch (error) {
@@ -290,11 +291,11 @@ export default function UsersPage() {
 
       if (selectedUser) {
         // PUT request to update the user (overwrite if new image is uploaded)
-        await axios.put("/api/admin/users", { id: selectedUser.id, ...payload });
+        await axios.put("/api/admin/optimized/users", { id: selectedUser.id, ...payload });
         toast.success("User updated successfully");
       } else {
         // POST request to create a new user
-        await axios.post("/api/admin/users", payload);
+        await axios.post("/api/admin/optimized/users", payload);
         toast.success("User created successfully");
       }
 
@@ -310,7 +311,7 @@ export default function UsersPage() {
   };
   const deleteUser = async (id: number) => {
     try {
-      await axios.delete("/api/admin/users", { data: { id } });
+      await axios.delete("/api/admin/optimized/users", { data: { id } });
       toast.success("User deleted successfully");
       await fetchData();
     } catch (error) {
@@ -324,7 +325,7 @@ export default function UsersPage() {
       (index) => data.users[parseInt(index)].id
     );
     try {
-      await axios.delete("/api/admin/users", { data: { ids: selectedIds } });
+      await axios.delete("/api/admin/optimized/users", { data: { ids: selectedIds } });
       toast.success("Selected users deleted successfully");
       await fetchData();
       setRowSelection({});

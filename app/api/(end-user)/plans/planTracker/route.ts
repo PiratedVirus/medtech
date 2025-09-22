@@ -46,10 +46,19 @@ export async function GET(request: Request) {
     if (subscriptionDetails.subscriptionId === null) {
       return NextResponse.json(
         {
-          success: false,
-          error: "Subscription ID is null",
+          success: true,
+          data: {
+            subscriptionId: null,
+            planId: subscriptionDetails.planId,
+            planName: null,
+            doctorConsultationDates: [],
+            dieticianConsultationDates: [],
+            labTestDates: [],
+            ophthalmologistConsultationDates: [],
+            usedMedicines: [],
+          },
         },
-        { status: 404 }
+        { status: 200 }
       );
     }
 

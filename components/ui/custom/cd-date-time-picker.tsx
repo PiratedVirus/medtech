@@ -1,7 +1,7 @@
 "use client"
 
 import type * as React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { ChevronDown, Clock } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -17,37 +17,64 @@ interface TimeInputProps {
 
 export function TimeInput({ className, value, onChange, ...props }: TimeInputProps) {
   const [open, setOpen] = useState(false)
-  const [hours, setHours] = useState<string>("12")
+  const [hours, setHours] = useState<string>("00")
   const [minutes, setMinutes] = useState<string>("00")
-  const [period, setPeriod] = useState<"AM" | "PM">("AM")
   const [displayValue, setDisplayValue] = useState<string>("")
+  const isUpdatingFromProps = useRef(false)
+  const lastEmittedValue = useRef<string>("")
 
-  // Initialize from value prop if provided (e.g. "10:00 AM")
+  // Initialize from value prop if provided (24h only: "14:30")
   useEffect(() => {
-    if (value) {
-      const match = value.match(/^(\d{1,2}):(\d{2}) (AM|PM)$/)
-      if (match) {
-        setHours(match[1])
-        setMinutes(match[2])
-        setPeriod(match[3] as "AM" | "PM")
-      }
+    if (!value) return
+
+    // Parse 24h format: HH:MM
+    const match24 = value.match(/^([01]?\d|2[0-3]):(\d{2})$/)
+
+    let nextHours = hours
+    let nextMinutes = minutes
+
+    if (match24) {
+      const h24 = parseInt(match24[1], 10)
+      nextMinutes = match24[2]
+      nextHours = String(h24)
+    } else {
+      // Unrecognized format; don't override user selection or emit changes
+      return
     }
+
+    // Prevent an extra onChange emission after initializing from props
+    const computed = `${nextHours.padStart(2, "0")}:${nextMinutes.padStart(2, "0")}`
+    lastEmittedValue.current = computed
+    isUpdatingFromProps.current = true
+    setHours(nextHours)
+    setMinutes(nextMinutes)
+    isUpdatingFromProps.current = false
   }, [value])
 
   // Update display value when time components change and export formatted time
   useEffect(() => {
+    // If no external value provided yet and user hasn't interacted, avoid forcing a default display like "12:00 AM"
+    const noExternalValue = !value
+    const userHasNotInteracted = lastEmittedValue.current === ""
+    if (noExternalValue && userHasNotInteracted) {
+      setDisplayValue("")
+      return
+    }
+
     const formattedHours = hours.padStart(2, "0")
     const formattedMinutes = minutes.padStart(2, "0")
-    const timeString = `${formattedHours}:${formattedMinutes} ${period}`
+    const timeString = `${formattedHours}:${formattedMinutes}`
     setDisplayValue(timeString)
 
-    if (onChange) {
+    // Only call onChange if we're not updating from props and the value has actually changed
+    if (onChange && !isUpdatingFromProps.current && lastEmittedValue.current !== timeString) {
+      lastEmittedValue.current = timeString
       onChange(timeString)
     }
-  }, [hours, minutes, period, onChange])
+  }, [hours, minutes]) // Removed onChange from dependencies to prevent infinite loop
 
-  // Generate hours options (1-12)
-  const hoursOptions = Array.from({ length: 12 }, (_, i) => (i + 1).toString())
+  // Generate hours options (00-23)
+  const hoursOptions = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"))
 
   // Generate minutes options with 15-minute gap
   const minutesOptions = ["00", "15", "30", "45"]
@@ -105,18 +132,7 @@ export function TimeInput({ className, value, onChange, ...props }: TimeInputPro
               </SelectContent>
             </Select>
           </div>
-          <div className="grid gap-1">
-            <p className="text-sm font-medium">Period</p>
-            <Select value={period} onValueChange={(value) => setPeriod(value as "AM" | "PM")}>
-              <SelectTrigger className="w-[70px]">
-                <SelectValue placeholder="AM/PM" />
-              </SelectTrigger>
-              <SelectContent className="bg-white text-black">
-                <SelectItem value="AM">AM</SelectItem>
-                <SelectItem value="PM">PM</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          
         </div>
       </PopoverContent>
     </Popover>

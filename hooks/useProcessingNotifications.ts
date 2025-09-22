@@ -8,8 +8,31 @@ export function useProcessingNotifications() {
   useEffect(() => {
     if (processingNotifications.length === 0) return;
 
+    // Set a maximum polling duration of 5 minutes
+    const maxPollingTime = 5 * 60 * 1000; // 5 minutes
+    const startTime = Date.now();
+
     const interval = setInterval(async () => {
+      // Check if we've been polling for too long
+      if (Date.now() - startTime > maxPollingTime) {
+        console.warn('Polling timeout reached, stopping all notifications');
+        clearInterval(interval);
+        // Mark all processing notifications as failed due to timeout
+        setProcessingNotifications(prev => 
+          prev.map(n => n.overallStatus === 'processing' 
+            ? { ...n, overallStatus: 'failed' as const }
+            : n
+          )
+        );
+        return;
+      }
       const activeNotifications = processingNotifications.filter(n => n.overallStatus === 'processing');
+      
+      // If no active notifications, clear the interval
+      if (activeNotifications.length === 0) {
+        clearInterval(interval);
+        return;
+      }
       
       for (const notification of activeNotifications) {
         try {
@@ -151,20 +174,37 @@ export function useProcessingNotifications() {
         removeProcessingNotification(notificationId);
       }, 5000);
     } else if (analysis.processingStatus === 'FAILED') {
-      // Only show actual errors, not progress tracking messages
+      // Always treat FAILED status as failed, regardless of error message content
       const errorMsg = analysis.processingError || '';
-      if (errorMsg.includes('Stage') || errorMsg.includes('failed')) {
-        // This is a progress tracking message, not a real error
+      
+      // Determine which stage failed based on error message
+      if (errorMsg.includes('Stage 1')) {
         stages.push(
-          { stage: 'Processing', status: 'processing', message: 'Processing in progress...', timestamp: new Date() }
+          { stage: 'Text Extraction', status: 'failed', message: errorMsg || 'Text extraction failed', timestamp: new Date() }
+        );
+      } else if (errorMsg.includes('Stage 2')) {
+        stages.push(
+          { stage: 'Text Extraction', status: 'completed', message: 'Text extracted successfully', timestamp: new Date() },
+          { stage: 'Summary Generation', status: 'failed', message: errorMsg || 'Summary generation failed', timestamp: new Date() }
+        );
+      } else if (errorMsg.includes('Stage 3')) {
+        stages.push(
+          { stage: 'Text Extraction', status: 'completed', message: 'Text extracted successfully', timestamp: new Date() },
+          { stage: 'Summary Generation', status: 'completed', message: 'Summary generated successfully', timestamp: new Date() },
+          { stage: 'Value Extraction', status: 'failed', message: errorMsg || 'Value extraction failed', timestamp: new Date() }
         );
       } else {
-        // This is a real error
         stages.push(
-          { stage: 'Processing', status: 'failed', message: errorMsg || 'Failed', timestamp: new Date() }
+          { stage: 'Processing', status: 'failed', message: errorMsg || 'Processing failed', timestamp: new Date() }
         );
-        overallStatus = 'failed';
       }
+      
+      overallStatus = 'failed';
+      
+      // Auto-remove failed notification after 10 seconds
+      setTimeout(() => {
+        removeProcessingNotification(notificationId);
+      }, 10000);
     } else if (analysis.processingStatus === 'PROCESSING') {
       // Parse processing error to determine current stage
       const errorMsg = analysis.processingError || '';

@@ -4,6 +4,8 @@ import DailyIframe, { DailyCall } from '@daily-co/daily-js';
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useForm, Controller } from "react-hook-form";
+import { ConsultationType, AppointmentStatus } from "@/lib/constants/enums";
+import { normalizeStatus } from "@/lib/utils/status";
 import {
   useReactTable,
   getCoreRowModel,
@@ -64,7 +66,7 @@ type Appointment = {
   doctorName: string;
   startTime: string;
   endTime: string;
-  appointmentDate: string;
+  doctorAvailability: { date: string; }
   fullName: string;
   consultationType: string;
   appointmentLink: string;
@@ -109,7 +111,7 @@ type AppointmentsFormData = {
   consultationType: string;
   startTime: string;
   endTime: string;
-  appointmentDate: string;
+  doctorAvailability: { date: string; }
   patinetName: string;
   patientEmail: string;
   patientPhone: string;
@@ -124,7 +126,7 @@ const updateAppointment = async (id: number, data: AppointmentsFormData) => {
       ...data,
       id: Number(id),
     }
-    const response = await axios.put(`/api/admin/appointments`, dataWIthId);
+    const response = await axios.put(`/api/admin/optimized/appointments`, dataWIthId);
     return response.data;
   } catch (error) {
     console.error("Failed to update appointment:", error);
@@ -169,9 +171,9 @@ export default function AppointmentsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [activeCallFrame, setActiveCallFrame] = useState<DailyCall | null>(null);
-
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [meetingDetails, setMeetingDetails] = useState<{ meetingRoomLink: string; token: string } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
 
   useEffect(() => {
@@ -190,21 +192,20 @@ export default function AppointmentsPage() {
   }, [activeCallFrame]);
 
   const createAppointment = async (data: AppointmentsFormData, availableSlots: any) => {
-    console.log("Creating appointment with formData:", data);
-    console.log("doctorId:", data.doctorId);
     if (typeof data.doctorId === "string") {
       try {
         data.doctorId = JSON.parse(data.doctorId)?.doctorId || Number(data.doctorId);
       } catch (error) {
         console.error("Error parsing doctorId:", error);
       }
-    }    // Convert doctorAvailabilityId to number before comparison
+    }
+    
+    // Convert doctorAvailabilityId to number before comparison
     const slot = availableSlots.find(
-      (slot: any) => slot.id === Number(data.doctorAvailabilityId) // Convert to number
+      (slot: any) => slot.id === Number(data.doctorAvailabilityId)
     );
 
     const selectedPatient = patients.find((pat) => pat.id === Number(data.patientId));
-    console.log("Selected patient:", selectedPatient);
     if (!selectedPatient) {
       console.error("Patient not found!");
       return null;
@@ -217,22 +218,20 @@ export default function AppointmentsPage() {
       console.error("Slot not found!");
       return null;
     }
-    console.log("Slot found:", slot);
 
     const payload = {
       ...data,
       startTime: slot.startTime,
       endTime: slot.endTime,
-      appointmentDate: slot.date,
+      doctorAvailability: { date: slot.date },
       doctorId: Number(data.doctorId),
       patientId: Number(data.patientId),
       doctorAvailabilityId: Number(data.doctorAvailabilityId),
       consultationType: data.consultationType,
     };
-    console.log("Entire payload", payload);
 
     try {
-      const response = await axios.post("/api/admin/appointments", payload);
+      const response = await axios.post("/api/admin/optimized/appointments", payload);
       return response.data;
     } catch (error) {
       console.error("Failed to create appointment:", error);
@@ -248,10 +247,20 @@ export default function AppointmentsPage() {
     setValue,
     control,
     watch,
+    formState: { errors, isValid, isDirty },
   } = useForm<AppointmentsFormData>({
-    defaultValues: { status: "Scheduled" },
+    defaultValues: { status: "SCHEDULED" },
+    mode: "onChange",
   });
-  const [sorting, setSorting] = useState<SortingState>([{ id: "appointmentDate", desc: true }]);
+
+  // Watch form values to determine if form is complete
+  const watchedValues = watch();
+  const isFormComplete = watchedValues.doctorId && 
+                        watchedValues.doctorAvailabilityId && 
+                        watchedValues.patientId && 
+                        watchedValues.consultationType && 
+                        watchedValues.status;
+  const [sorting, setSorting] = useState<SortingState>([{ id: "doctorAvailability.date", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
@@ -262,7 +271,7 @@ export default function AppointmentsPage() {
   const fetchAppointments = async (pageIndex: number, pageSize: number) => {
     try {
       const response = await axios.get(
-        `/api/admin/appointments?page=${pageIndex + 1}&pageSize=${pageSize}`
+        `/api/admin/optimized/appointments?page=${pageIndex + 1}&pageSize=${pageSize}`
       );
       setDataState({ appointments: response.data.data, total: response.data.total });
 
@@ -290,7 +299,7 @@ export default function AppointmentsPage() {
 
   const fetchPatients = async () => {
     try {
-      const response = await axios.get("/api/admin/users?role=PATIENT");
+      const response = await axios.get("/api/admin/optimized/users?role=PATIENT");
       return response.data.data;
     } catch (error) {
       console.error("Failed to fetch patients:", error);
@@ -312,13 +321,30 @@ export default function AppointmentsPage() {
       // @ts-ignore
       const sendThisDoctorId = JSON.parse(selectedDoctorId).doctorId;
 
-      fetchAvailableSlots(Number(sendThisDoctorId)).then((slots) =>
-        setAvailableSlots(slots)
-      );
+      fetchAvailableSlots(Number(sendThisDoctorId)).then((slots: Slot[]) => {
+        // If editing an appointment, ensure the current appointment's slot is included
+        if (selectedAppointment) {
+          const currentSlot = {
+            id: selectedAppointment.doctorAvailabilityId,
+            date: selectedAppointment.doctorAvailability.date,
+            startTime: selectedAppointment.startTime,
+            endTime: selectedAppointment.endTime,
+            status: "BOOKED"
+          };
+          
+          // Check if current slot is already in the slots array
+          const slotExists = slots.some(slot => slot.id === currentSlot.id);
+          if (!slotExists) {
+            slots.push(currentSlot);
+          }
+        }
+        
+        setAvailableSlots(slots);
+      });
     } else {
       setAvailableSlots([]);
     }
-  }, [selectedDoctorId]);
+  }, [selectedDoctorId, selectedAppointment]);
 
   // Load doctors on mount
   useEffect(() => {
@@ -330,8 +356,13 @@ export default function AppointmentsPage() {
 
   // Fetch appointments data
   const fetchData = async () => {
-    const result = await fetchAppointments(pagination.pageIndex, pagination.pageSize);
-    setDataState({ appointments: result.data, total: result.total });
+    try {
+      const result = await fetchAppointments(pagination.pageIndex, pagination.pageSize);
+      setDataState({ appointments: result.data || [], total: result.total || 0 });
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+      setDataState({ appointments: [], total: 0 });
+    }
   };
 
   useEffect(() => {
@@ -344,7 +375,7 @@ export default function AppointmentsPage() {
       console.log("Selected appointment:", selectedAppointment);
       // 1. Prefill 'patientId'
       const foundPatient = patients.find(
-        (p) => p.name === selectedAppointment.fullName
+        (p) => p.name === selectedAppointment.fullName || p.name === selectedAppointment.patient
       );
       if (foundPatient) {
         setValue("patientId", foundPatient.id.toString());
@@ -383,14 +414,19 @@ export default function AppointmentsPage() {
   }, [selectedAppointment, doctors, patients, setValue, reset]);
 
   const onSubmit = async (formData: AppointmentsFormData) => {
-    console.log("Form data in app book:", formData);
+    setIsSubmitting(true);
     try {
       if (selectedAppointment) {
         await updateAppointment(selectedAppointment.id, formData);
         toast.success("Appointment updated successfully");
       } else {
-        await createAppointment(formData, availableSlots);
-        toast.success("Appointment created successfully");
+        const result = await createAppointment(formData, availableSlots);
+        if (result) {
+          toast.success("Appointment created successfully");
+        } else {
+          toast.error("Failed to create appointment");
+          return;
+        }
       }
       await fetchData();
       setDialogOpen(false);
@@ -399,6 +435,8 @@ export default function AppointmentsPage() {
     } catch (error) {
       console.error("Error saving appointment:", error);
       toast.error("Failed to save appointment");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -407,7 +445,7 @@ export default function AppointmentsPage() {
       (index) => dataState.appointments[parseInt(index)].id
     );
     try {
-      await axios.delete("/api/admin/appointments", { data: { ids: selectedIds } });
+      await axios.delete("/api/admin/optimized/appointments", { data: { ids: selectedIds } });
       toast.success("Selected appointments deleted successfully");
       await fetchData();
       setRowSelection({});
@@ -458,14 +496,15 @@ export default function AppointmentsPage() {
       enableSorting: true,
     },
     {
-      accessorKey: "appointmentDate",
+      accessorKey: "doctorAvailability.date",
+      id: "doctorAvailability.date",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Date & Time <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       cell: ({ row }) => {
-        const date = new Date(row.original.appointmentDate);
+        const date = new Date(row.original.doctorAvailability.date);
         // const options = { day: '2-digit', month: 'short', year: 'numeric' };
         const options: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric" };
         return (
@@ -497,13 +536,14 @@ export default function AppointmentsPage() {
     },
     {
       accessorKey: "consultationType",
+      id: "consultationType",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Consultation Type <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       cell: ({ row }) => {
-        if (row.original.consultationType === "Video") {
+        if (row.original.consultationType === ConsultationType.VIDEO) {
           return (
             <Button
               className="bg-transparent shadow-none"
@@ -592,15 +632,19 @@ export default function AppointmentsPage() {
             </Button>
           );
         }
-        return "Physical";
+        return ConsultationType.PHYSICAL;
       }
     },
     {
       accessorKey: "status",
+      id: "status",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           Status <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
+      ),
+      cell: ({ row }) => (
+        <span>{normalizeStatus(row.original.status)}</span>
       ),
       enableSorting: true,
     },
@@ -663,6 +707,22 @@ export default function AppointmentsPage() {
     })} • ${slot.startTime} - ${slot.endTime}`;
   };
 
+  // Safety check to ensure table is initialized and data is available
+  if (!tableInstance || !dataState.appointments) {
+    return <div className="container mx-auto p-4">Loading...</div>;
+  }
+
+  // Debug logging to help identify the issue
+  if (process.env.NODE_ENV === 'development') {
+    console.log('AppointmentsPage Debug:', {
+      tableInstance: !!tableInstance,
+      appointmentsCount: dataState.appointments?.length || 0,
+      total: dataState.total,
+      columns: tableInstance?.getAllColumns()?.map(col => col.id) || [],
+      firstAppointment: dataState.appointments?.[0] || null
+    });
+  }
+
   return (
     <div className="container mx-auto p-4 space-y-4">
       <ToastContainer />
@@ -671,9 +731,9 @@ export default function AppointmentsPage() {
         <div className="flex items-center gap-4">
           <Input
             placeholder="Search appointments..."
-            value={(tableInstance.getColumn("fullName")?.getFilterValue() as string) ?? ""}
+            value={(tableInstance?.getColumn("fullName")?.getFilterValue() as string) ?? ""}
             onChange={(event) =>
-              tableInstance.getColumn("fullName")?.setFilterValue(event.target.value)
+              tableInstance?.getColumn("fullName")?.setFilterValue(event.target.value)
             }
             className="max-w-sm"
           />
@@ -702,7 +762,11 @@ export default function AppointmentsPage() {
           )}
         </div>
         <div>
-          <Button onClick={() => { setSelectedAppointment(null); reset(); setDialogOpen(true); }}>
+          <Button onClick={() => { 
+            setSelectedAppointment(null); 
+            reset(); 
+            setDialogOpen(true);
+          }}>
             Add Appointment
           </Button>
         </div>
@@ -711,7 +775,7 @@ export default function AppointmentsPage() {
       <div className="rounded-md border">
         <Table>
           <TableHeader className="bg-custom-mutedgreen text-gray-950">
-            {tableInstance.getHeaderGroups().map((headerGroup) => (
+            {tableInstance?.getHeaderGroups()?.map((headerGroup) => (
               <TableRow className="text-center" key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id} className="text-black text-center">
@@ -722,7 +786,7 @@ export default function AppointmentsPage() {
             ))}
           </TableHeader>
           <TableBody>
-            {tableInstance.getRowModel().rows?.length ? (
+            {tableInstance?.getRowModel()?.rows?.length ? (
               tableInstance.getRowModel().rows.map((row) => (
                 <TableRow className="text-center" key={row.id} data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
@@ -842,151 +906,178 @@ export default function AppointmentsPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {/* Doctor Dropdown */}
-            <Controller
-              control={control}
-              name="doctorId"
-              rules={{ required: true }}
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value ? field.value.toString() : ""}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Doctor" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white text-black">
-                    {doctors.map((doc) => (
-                      <SelectItem key={doc.userId} value={JSON.stringify({ id: doc.id, doctorId: doc.userId })}>
-                        {doc.user.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-
-                </Select>
-              )}
-            />
-            {/* Available Slot Dropdown */}
-            <Controller
-              control={control}
-              name="doctorAvailabilityId"
-              rules={{ required: true }}
-              render={({ field }) => (
-                <Select
-                  value={field.value ? field.value.toString() : undefined}
-                  onValueChange={field.onChange}
-                >
-                  <SelectTrigger>
-                    {availableSlots.length === 0 ? (
-                      "Loading slots..."
-                    ) : (field.value) ? (
-                      availableSlots.find(slot => slot.id.toString() === field.value.toString()) ? (
-                        <>
-                          <span className="flex items-center gap-2">
-                            {formatSlotDisplay(field.value)}
-                            <Badge variant="outline" className="border-primary text-primary ml-1">
-                              #{field.value}
-                            </Badge>
-                          </span>
-
-                        </>
-                      ) : (
-                        "Loading...!"
-                      )
-                    ) : (
-                      "Select Available Slot"
-                    )}
-                  </SelectTrigger>
-                  <SelectContent className="bg-white text-black">
-                    {availableSlots?.length > 0 ? (
-                      availableSlots.map((slot) => (
-
-                        <SelectItem className="cursor-pointer" disabled={(slot.status === "available") ? false : true} key={slot.id.toString()} value={slot.id.toString()}>
-                          <div className="flex justify-between items-center w-full">
-                            <Badge variant="outline" className="border-primary text-primary">
-                              #{slot.id}
-                            </Badge>
-                            <span className="mx-2">{formatSlotDisplay(slot.id)}</span>
-
-                            <Badge
-                              variant="outline"
-                              className={slot.status === "available"
-                                ? "border-green-500 text-green-500"
-                                : "border-red-500 text-red-500 "
-                              }
-                            >
-                              {slot.status === "available" ? "Available" : "Booked"}
-                            </Badge>
-                          </div>
+            <div>
+              <Controller
+                control={control}
+                name="doctorId"
+                rules={{ required: "Doctor is required" }}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value ? field.value.toString() : ""}>
+                    <SelectTrigger className={errors.doctorId ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Select Doctor" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white text-black">
+                      {doctors.map((doc) => (
+                        <SelectItem key={doc.userId} value={JSON.stringify({ id: doc.id, doctorId: doc.userId })}>
+                          {doc.user.name}
                         </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem key="no-slot" value="no-slot" disabled>
-                        No available slots
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.doctorId && (
+                <p className="text-red-500 text-sm mt-1">{errors.doctorId.message}</p>
               )}
-            />
-            <Controller
-              control={control}
-              name="consultationType"
-              rules={{ required: true }}
-              render={({ field }) => (
-                <Select
-                  value={field.value?.toString()}
-                  onValueChange={(value) => field.onChange(value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Consultation Type" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white text-black">
-                    <SelectItem value="Video">Video Consultation</SelectItem>
-                    <SelectItem value="Physical">Physical Visit</SelectItem>
-                  </SelectContent>
-                </Select>
+            </div>
+            {/* Available Slot Dropdown */}
+            <div>
+              <Controller
+                control={control}
+                name="doctorAvailabilityId"
+                rules={{ required: "Time slot is required" }}
+                render={({ field }) => (
+                  <Select
+                    value={field.value ? field.value.toString() : undefined}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger className={errors.doctorAvailabilityId ? "border-red-500" : ""}>
+                      {availableSlots.length === 0 ? (
+                        "Loading slots..."
+                      ) : (field.value) ? (
+                        availableSlots.find(slot => slot.id.toString() === field.value.toString()) ? (
+                          <>
+                            <span className="flex items-center gap-2">
+                              {formatSlotDisplay(field.value)}
+                              <Badge variant="outline" className="border-primary text-primary ml-1">
+                                #{field.value}
+                              </Badge>
+                            </span>
+                          </>
+                        ) : (
+                          "Loading...!"
+                        )
+                      ) : (
+                        "Select Available Slot"
+                      )}
+                    </SelectTrigger>
+                    <SelectContent className="bg-white text-black">
+                      {availableSlots?.length > 0 ? (
+                        availableSlots.map((slot) => (
+                          <SelectItem className="cursor-pointer" disabled={normalizeStatus(slot.status) !== "AVAILABLE"} key={slot.id.toString()} value={slot.id.toString()}>
+                            <div className="flex justify-between items-center w-full">
+                              <Badge variant="outline" className="border-primary text-primary">
+                                #{slot.id}
+                              </Badge>
+                              <span className="mx-2">{formatSlotDisplay(slot.id)}</span>
+                              <Badge
+                                variant="outline"
+                                className={normalizeStatus(slot.status) === "AVAILABLE"
+                                  ? "border-green-500 text-green-500"
+                                  : "border-red-500 text-red-500 "
+                                }
+                              >
+                                {normalizeStatus(slot.status) === "AVAILABLE" ? "Available" : "-Booked"}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem key="no-slot" value="no-slot" disabled>
+                          No available slots
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.doctorAvailabilityId && (
+                <p className="text-red-500 text-sm mt-1">{errors.doctorAvailabilityId.message}</p>
               )}
-            />
+            </div>
+            <div>
+              <Controller
+                control={control}
+                name="consultationType"
+                rules={{ required: "Consultation type is required" }}
+                render={({ field }) => (
+                  <Select
+                    value={field.value?.toString()}
+                    onValueChange={(value) => field.onChange(value)}
+                  >
+                    <SelectTrigger className={errors.consultationType ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Consultation Type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white text-black">
+                      <SelectItem value={ConsultationType.VIDEO}>Video Consultation</SelectItem>
+                      <SelectItem value={ConsultationType.PHYSICAL}>Physical Visit</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.consultationType && (
+                <p className="text-red-500 text-sm mt-1">{errors.consultationType.message}</p>
+              )}
+            </div>
             {/* Status Dropdown */}
-            <Controller
-              control={control}
-              name="status"
-              defaultValue="Scheduled"
-              rules={{ required: true }}
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Status" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white text-black">
-                    <SelectItem value="Scheduled">Scheduled</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
-                    <SelectItem value="Cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div>
+              <Controller
+                control={control}
+                name="status"
+                defaultValue="SCHEDULED"
+                rules={{ required: "Status is required" }}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger className={errors.status ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Select Status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white text-black">
+                      <SelectItem value={AppointmentStatus.SCHEDULED}>SCHEDULED</SelectItem>
+                      <SelectItem value={AppointmentStatus.COMPLETED}>COMPLETED</SelectItem>
+                      <SelectItem value={AppointmentStatus.CANCELLED}>CANCELLED</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.status && (
+                <p className="text-red-500 text-sm mt-1">{errors.status.message}</p>
               )}
-            />
+            </div>
             {/* Patient Input */}
-            <Controller
-              control={control}
-              name="patientId"
-              rules={{ required: true }}
-              render={({ field }) => (
-                <Select
-                  disabled={!!selectedAppointment}
-                  onValueChange={field.onChange}
-                  value={field.value ? field.value.toString() : undefined}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Patient" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white text-black">
-                    {patients.map((patient) => (
-                      <SelectItem key={patient.id.toString()} value={patient.id.toString()}>
-                        {patient.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div>
+              <Controller
+                control={control}
+                name="patientId"
+                rules={{ required: "Patient is required" }}
+                render={({ field }) => (
+                  <Select
+                    disabled={!!selectedAppointment}
+                    onValueChange={field.onChange}
+                    value={field.value ? field.value.toString() : undefined}
+                  >
+                    <SelectTrigger className={errors.patientId ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Select Patient">
+                        {field.value && patients.length > 0 ? (
+                          patients.find(p => p.id.toString() === field.value.toString())?.name || "Select Patient"
+                        ) : (
+                          "Select Patient"
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="bg-white text-black">
+                      {patients.map((patient) => (
+                        <SelectItem key={patient.id.toString()} value={patient.id.toString()}>
+                          {patient.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.patientId && (
+                <p className="text-red-500 text-sm mt-1">{errors.patientId.message}</p>
               )}
-            />
+            </div>
             <DialogFooter>
               <Button
                 type="button"
@@ -998,8 +1089,12 @@ export default function AppointmentsPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit">
-                {selectedAppointment ? "Save Changes" : "Create Appointment"}
+              <Button 
+                type="submit" 
+                disabled={!isFormComplete || isSubmitting}
+                className={!isFormComplete ? "opacity-50 cursor-not-allowed" : ""}
+              >
+                {isSubmitting ? "Saving..." : selectedAppointment ? "Save Changes" : "Create Appointment"}
               </Button>
             </DialogFooter>
           </form>

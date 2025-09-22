@@ -1,0 +1,93 @@
+name: Deploy to Vercel Project B
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Vercel environment to deploy to (preview or production)"
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - production
+      build_mode:
+        description: "Build mode: cloud (uploads source; builds on Vercel) or prebuilt (local build)"
+        required: true
+        default: cloud
+        type: choice
+        options:
+          - cloud
+          - prebuilt
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    env:
+      # Provide these as GitHub Action secrets from Vercel Project B
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies (if needed for build)
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm i --no-fund --no-audit; fi
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+
+      - name: Link Vercel project (Project B)
+        run: |
+          vercel link --project "$VERCEL_PROJECT_ID" --yes --token "$VERCEL_TOKEN"
+
+      - name: Pull Vercel env from Project B
+        run: |
+          # Creates .vercel/project.json bound to Project B and writes env to .vercel/.env.*
+          vercel pull --yes --environment=${{ inputs.environment }} --token "$VERCEL_TOKEN"
+
+      - name: Build (prebuilt output)
+        if: ${{ inputs.build_mode == 'prebuilt' }}
+        run: |
+          if [ "${{ inputs.environment }}" = "production" ]; then PROD_FLAG="--prod"; else PROD_FLAG=""; fi
+          vercel build $PROD_FLAG --token "$VERCEL_TOKEN"
+
+      - name: Deploy
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.environment }}" = "production" ]; then PROD_FLAG="--prod"; else PROD_FLAG=""; fi
+          if [ "${{ inputs.build_mode }}" = "prebuilt" ]; then
+            DEPLOY_OUTPUT=$(vercel deploy --prebuilt $PROD_FLAG --token "$VERCEL_TOKEN" 2>&1)
+          else
+            # Cloud build uploads source so the Vercel dashboard Source tab is populated
+            DEPLOY_OUTPUT=$(vercel deploy $PROD_FLAG --token "$VERCEL_TOKEN" 2>&1)
+          fi
+          echo "$DEPLOY_OUTPUT"
+          URL=$(echo "$DEPLOY_OUTPUT" | tail -n1 | tr -d '\r\n[:space:]')
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "Deployed to: $URL"
+
+      - name: Add deployment URL to summary
+        if: success()
+        run: |
+          echo "### Vercel Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+
+    outputs:
+      deployment_url: ${{ steps.deploy.outputs.url }}
+
+

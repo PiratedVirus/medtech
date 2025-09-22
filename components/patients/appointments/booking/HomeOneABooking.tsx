@@ -8,7 +8,7 @@ import CdLoader from "@/custom/cd-loader";
 import HomeTwoAppointmentBooking from "@/appointment-book/HomeTwoABooking";
 import { useDispatch } from "react-redux";
 import { setSubscriptionData } from "@/store/subscriptionSlice";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 
 interface AppointmentHomeProps {
   doctor: any;

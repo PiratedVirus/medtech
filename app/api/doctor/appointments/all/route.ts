@@ -37,7 +37,9 @@ export async function GET(request: Request) {
     const upcoming = await prisma.appointment.findMany({
       where: {
         userId: doctorId,
-        appointmentDate: { gte: now },
+        doctorAvailability: {
+          date: { gte: now }
+        },
         deletedAt: null,
       },
       include: {
@@ -47,7 +49,7 @@ export async function GET(request: Request) {
         prescription: { select: { id: true } },
       },
       orderBy: [
-        { appointmentDate: "asc" },
+        { doctorAvailability: { date: "asc" } },
         { doctorAvailability: { startTime: "asc" } },
       ],
       skip: (page - 1) * pageSize,
@@ -58,7 +60,9 @@ export async function GET(request: Request) {
     const past = await prisma.appointment.findMany({
       where: {
         userId: doctorId,
-        appointmentDate: { lt: now },
+        doctorAvailability: {
+          date: { lt: now }
+        },
         deletedAt: null,
       },
       include: {
@@ -68,7 +72,7 @@ export async function GET(request: Request) {
         prescription: { select: { id: true } },
       },
       orderBy: [
-        { appointmentDate: "desc" },
+        { doctorAvailability: { date: "desc" } },
         { doctorAvailability: { startTime: "desc" } },
       ],
       skip: (page - 1) * pageSize,

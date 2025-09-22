@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { setBookingData } from "@/store/appointmentSlice";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import axios from "axios";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { CircleCheckBig, CalendarIcon } from "lucide-react";
@@ -15,7 +15,17 @@ export default function DoctorsPage() {
   const activeTab: 'doctors' | 'dieticians' = 'dieticians';
   const router = useRouter();
   const dispatch = useDispatch();
-  const { clinicId, isLoading: profileLoading } = useDecryptedProfile();
+  const { clinicId, isLoading: profileLoading, profile } = useDecryptedProfile();
+
+  // Debug logging (only in development with debug flag)
+  if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && window.location.search.includes('debug=dieticians')) {
+    console.log('[DieticiansPage] Debug Info:', {
+      profileLoading,
+      clinicId,
+      profileId: profile?.id,
+      hasProfile: !!profile,
+    });
+  }
 
   const { toast } = useToast();
 
@@ -27,7 +37,7 @@ export default function DoctorsPage() {
   // Diet plan requests are now handled entirely inside the View Diet modal on the home page
 
   // Fetch dieticians using React Query
-  const { data: dieticians, isLoading, isError } = useQuery({
+  const { data: dieticians, isLoading, isError, error } = useQuery({
     queryKey: ["dieticians", clinicId], // Unique cache key
     queryFn: async () => {
       if (!clinicId) return [];
@@ -35,16 +45,23 @@ export default function DoctorsPage() {
         `/api/dieticians/get-dieticians?clinicId=${clinicId}`,
         { withCredentials: true }
       );
-      console.log("Dieticians response", response.data);
       return response.data.success ? response.data.dieticians : [];
     },
-    staleTime: 1 * 1 * 1, //  Keeps cache valid for 10 minutes
-    gcTime: 1 * 1 * 1, //  Keeps cache for 1 hour
-    refetchOnWindowFocus: false, //  Prevents re-fetching on tab switch
-    refetchOnMount: false, //  Prevents re-fetching when navigating back
-    refetchOnReconnect: true, //  Fetches only if internet reconnects
-    enabled: !!clinicId, //  Runs only when clinicId exists
+    // Use optimized cache settings for better performance
+    enabled: !!clinicId && !!profile?.id, // Only run when clinicId and profile.id exist
+    staleTime: 5 * 60 * 1000, // 5 minutes - dieticians data doesn't change frequently
+    refetchOnMount: false, // Use cached data when available
   });
+
+  // Debug query state only in development
+  if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && window.location.search.includes('debug=dieticians')) {
+    console.log('[DieticiansQuery] Query state:', {
+      isLoading,
+      isError,
+      hasData: !!dieticians,
+      dataLength: dieticians?.length || 0,
+    });
+  }
 
   if (profileLoading || isLoading) {
     return <CdLoader />;
@@ -79,7 +96,7 @@ export default function DoctorsPage() {
       <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
         <div>
           <p className="text-4xl font-bold text-gray-800">
-            {dieticians.length} Dieticians available for consultation
+            {dieticians?.length || 0} Dieticians available for consultation
           </p>
           <div className="flex items-center gap-2 mt-5">
             <CircleCheckBig className="text-green-700 h-6 w-6" />
@@ -91,7 +108,7 @@ export default function DoctorsPage() {
         <div className="hidden md:block" />
       </div>
 
-      {dieticians.length > 0 ? (
+      {dieticians && dieticians.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {dieticians.map((doctor: any) => (
             <DoctorCard key={doctor.id} doctor={doctor} onBookAppointment={handleBookAppointment} />

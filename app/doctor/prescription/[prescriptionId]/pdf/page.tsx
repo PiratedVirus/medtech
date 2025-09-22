@@ -130,7 +130,8 @@ export default function PrescriptionPDFPage() {
         patientInfo,
         doctorInfo,
         clinicInfo,
-        prescriptionId
+        prescriptionId,
+        visibleSections
       );
 
       if (result.success) {

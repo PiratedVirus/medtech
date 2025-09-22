@@ -43,8 +43,8 @@ async function seedPayments() {
         currency: "INR",
         paymentStatus: paymentStatus,
         paymentMethod: paymentMethod,
-        createdAt: appointment.appointmentDate || new Date(),
-        updatedAt: appointment.appointmentDate || new Date(),
+        createdAt: appointment.doctorAvailability.date || new Date(),
+        updatedAt: appointment.doctorAvailability.date || new Date(),
       },
     });
     payments.push(payment);

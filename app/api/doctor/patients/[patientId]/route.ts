@@ -89,7 +89,7 @@ export async function GET(
           },
           select: {
             id: true,
-            appointmentDate: true,
+            doctorAvailability: { select: { date: true } },
             consultationType: true,
             status: true,
             prescriptionLink: true,
@@ -115,7 +115,7 @@ export async function GET(
             }
           },
           orderBy: {
-            appointmentDate: 'desc'
+            doctorAvailability: { date: 'desc' }
           }
         },
         labPatientBookings: {
@@ -138,7 +138,7 @@ export async function GET(
     }
 
     // Check if this patient has any appointments with the requesting doctor
-    if (patient.patientAppointments.length === 0) {
+    if ((patient as any).patientAppointments.length === 0) {
       return NextResponse.json({ error: "Patient not found or no appointments with this doctor" }, { status: 404 });
     }
 
@@ -147,8 +147,8 @@ export async function GET(
       name: patient.name,
       email: patient.email,
       joinedOn: patient.createdAt,
-      profile: patient.patientProfile,
-      subscriptions: patient.patientProfile?.planTrackers?.map(pt => ({
+      profile: (patient as any).patientProfile,
+      subscriptions: (patient as any).patientProfile?.planTrackers?.map((pt: any) => ({
         id: pt.subscriptionId,
         planName: pt.plan.name,
         startDate: pt.startDate,
@@ -162,19 +162,19 @@ export async function GET(
           createdAt: pt.payments.createdAt
         } : undefined
       })) || [],
-      doctorAppointments: patient.patientAppointments.map(a => ({
+      doctorAppointments: (patient as any).patientAppointments.map((a: any) => ({
         id: a.id,
         date: a.appointmentDate,
         type: a.consultationType,
         status: a.status,
         prescriptionLink: a.prescriptionLink,
         doctorName: a.doctor.name,
-        complaints: a.prescription?.complaints?.map(c => c.complaintText).join(", ") || "",
-        medicines: a.prescription?.medicines?.map(m => `${m.medicineName} (${m.frequency || 'As prescribed'})`).join(", ") || "",
+        complaints: a.prescription?.complaints?.map((c: any) => c.complaintText).join(", ") || "",
+        medicines: a.prescription?.medicines?.map((m: any) => `${m.medicineName} (${m.frequency || 'As prescribed'})`).join(", ") || "",
         tests: a.prescription?.testsRequested || "",
         doctorNotes: a.doctorNotes
       })),
-      labBookings: patient.labPatientBookings.map(lb => ({
+      labBookings: (patient as any).labPatientBookings.map((lb: any) => ({
         id: lb.id,
         date: lb.labDate,
         status: lb.status,

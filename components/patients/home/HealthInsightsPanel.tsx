@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import CdLoader from "@/components/ui/custom/cd-loader";

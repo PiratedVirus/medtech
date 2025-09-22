@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { normalizeStatus, normalizeLabAssignmentStatus } from "@/lib/utils/status";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -52,7 +53,11 @@ export async function GET(request: Request) {
           patientAppointments: {
             select: {
               id: true,
-              appointmentDate: true,
+              doctorAvailability: { 
+                select: { 
+                  date: true 
+                } 
+              },
               consultationType: true,
               status: true,
               isDietician: true,
@@ -113,9 +118,9 @@ export async function GET(request: Request) {
       }
       // Split appointments by doctor vs dietician
       const doctorAppointments = patient.patientAppointments.filter(a => a.isDietician === false)
-        .sort((a, b) => new Date(b.appointmentDate || 0).getTime() - new Date(a.appointmentDate || 0).getTime());
+        .sort((a, b) => new Date(b.doctorAvailability?.date || 0).getTime() - new Date(a.doctorAvailability?.date || 0).getTime());
       const dieticianAppointments = patient.patientAppointments.filter(a => a.isDietician)
-        .sort((a, b) => new Date(b.appointmentDate || 0).getTime() - new Date(a.appointmentDate || 0).getTime());
+        .sort((a, b) => new Date(b.doctorAvailability?.date || 0).getTime() - new Date(a.doctorAvailability?.date || 0).getTime());
       const sortedLabBookings = patient.labPatientBookings
         .sort((a, b) => new Date(b.labDate).getTime() - new Date(a.labDate).getTime());
       const formatted = {
@@ -140,7 +145,7 @@ export async function GET(request: Request) {
         })) || [],
         doctorAppointments: doctorAppointments.map(a => ({
           id: a.id,
-          date: a.appointmentDate,
+          date: a.doctorAvailability?.date,
           type: a.consultationType,
           status: a.status,
           prescriptionLink: a.prescriptionLink,
@@ -149,7 +154,7 @@ export async function GET(request: Request) {
         })),
         dieticianAppointments: dieticianAppointments.map(a => ({
           id: a.id,
-          date: a.appointmentDate,
+          date: a.doctorAvailability?.date,
           type: a.consultationType,
           status: a.status,
           dietPlanLink: a.prescriptionLink,
@@ -227,7 +232,7 @@ export async function PUT(request: Request) {
         labResult: {
           set: [...(existing?.labResult || []), ...links],
         },
-        ...(status ? { status } : {}), // update status only if provided
+        ...(status ? { status: normalizeLabAssignmentStatus(status) } : {}),
       },
     });
 

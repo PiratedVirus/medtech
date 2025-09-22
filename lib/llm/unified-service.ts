@@ -178,9 +178,18 @@ async function callGroqAPIWithProfile(
   }
 
   const data = await response.json();
+  console.log('[LLM-PROC][VALUES] Raw Groq response:', JSON.stringify(data, null, 2));
+  
   const content = extractChatContent(data);
+  console.log('[LLM-PROC][VALUES] Extracted content length:', content.length);
+  console.log('[LLM-PROC][VALUES] Extracted content:', content);
   
   if (content.length < 50) {
+    console.error('[LLM-PROC][VALUES] LLM response too short:', {
+      contentLength: content.length,
+      content: content,
+      rawResponse: data
+    });
     throw new Error('POOR_QUALITY_RESPONSE: LLM returned response that is too short');
   }
   
@@ -229,8 +238,17 @@ Rules:
 6. NO trailing commas
 7. Return empty arrays if no data found`;
 
-  const userPrompt = productionProfile?.summaryPrompt || `Lab Report Text:
+  let userPrompt;
+  if (productionProfile?.summaryPrompt) {
+    // Replace template variables in production profile prompt
+    userPrompt = productionProfile.summaryPrompt
+      .replace(/\{\{TEXT\}\}/g, finalText)
+      .replace(/\{\{PDF_URL\}\}/g, '')
+      .replace(/\{\{ADDITIONAL_CONTEXT\}\}/g, '');
+  } else {
+    userPrompt = `Lab Report Text:
 ${finalText}`;
+  }
 
   const finalModel = productionProfile?.model || model;
   const temperature = productionProfile?.temperature || 0.1;
@@ -298,6 +316,15 @@ export async function extractValues(
   let productionProfile = null;
   try {
     productionProfile = await getActiveProductionProfile();
+    if (productionProfile) {
+      console.log('[LLM-PROC][VALUES] Production profile found:', {
+        id: productionProfile.id,
+        name: productionProfile.name,
+        model: productionProfile.model,
+        valuesPromptLength: productionProfile.valuesPrompt?.length || 0,
+        systemPromptLength: productionProfile.systemPrompt?.length || 0
+      });
+    }
   } catch (error) {
     console.warn('[LLM-PROC][VALUES] Failed to get production profile, using defaults:', error);
   }
@@ -347,14 +374,30 @@ Rules:
 7. NO trailing commas
 8. DO NOT add any tests not present in the original report`;
 
-  const userPrompt = productionProfile?.valuesPrompt || `Lab Report Text:
+  // Use production profile valuesPrompt only if it's substantial, otherwise use default
+  const defaultValuesPrompt = `Please extract all lab test parameters and values from the following lab report text. Return ONLY valid JSON in the exact format specified in the system prompt.
+
+Lab Report Text:
 ${finalText}`;
+  
+  let userPrompt;
+  if (productionProfile?.valuesPrompt && productionProfile.valuesPrompt.length > 100) {
+    // Replace template variables in production profile prompt
+    userPrompt = productionProfile.valuesPrompt
+      .replace(/\{\{TEXT\}\}/g, finalText)
+      .replace(/\{\{PDF_URL\}\}/g, '')
+      .replace(/\{\{ADDITIONAL_CONTEXT\}\}/g, '');
+  } else {
+    userPrompt = defaultValuesPrompt;
+  }
 
   const finalModel = productionProfile?.model || model;
   const temperature = productionProfile?.temperature || 0.1;
   const maxTokens = productionProfile?.maxTokens || 2500;
 
   console.log(`[LLM-PROC][VALUES] Using ${productionProfile ? 'production profile' : 'default settings'}: ${finalModel}`);
+  console.log(`[LLM-PROC][VALUES] User prompt length: ${userPrompt.length}`);
+  console.log(`[LLM-PROC][VALUES] System prompt length: ${systemPrompt.length}`);
 
   try {
     const content = await callGroqAPIWithProfile(userPrompt, apiKey, finalModel, maxTokens, temperature, systemPrompt);

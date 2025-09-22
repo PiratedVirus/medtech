@@ -45,11 +45,18 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
 interface SidebarNavProps extends React.HTMLAttributes<HTMLDivElement> {
   logout: () => void;
+  collapsed?: boolean;
+  onCollapsedChange?: (next: boolean) => void;
 }
 
-export function SidebarNav({ className, logout, ...props }: SidebarNavProps) {
+export function SidebarNav({ className, logout, collapsed: collapsedProp, onCollapsedChange, ...props }: SidebarNavProps) {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(true) // Set to true for default collapsed state
+  const [internalCollapsed, setInternalCollapsed] = useState(false) // Default expanded
+  const collapsed = typeof collapsedProp === 'boolean' ? collapsedProp : internalCollapsed
+  const setCollapsed = (next: boolean) => {
+    if (typeof onCollapsedChange === 'function') onCollapsedChange(next)
+    if (typeof collapsedProp !== 'boolean') setInternalCollapsed(next)
+  }
   const routes = [
     {
       href: "/admin",
@@ -127,6 +134,11 @@ export function SidebarNav({ className, logout, ...props }: SidebarNavProps) {
       href: "/admin/llm-playground",
       icon: Bot,
       title: "LLM Playground",
+    },
+    {
+      href: "/admin/push-notifications",
+      icon: Zap,
+      title: "Push Notifications",
     },
   ]
   return (

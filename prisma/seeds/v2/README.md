@@ -20,6 +20,7 @@ prisma/seeds/
 ├── labBookings.js          # Lab bookings and assignments
 ├── healthMetrics.js        # Health metrics
 ├── prescriptions.js        # Prescriptions and related data
+├── mealTimings.js          # Meal timing templates for dieticians
 ├── payments.js             # Payments
 └── README.md               # This file
 ```
@@ -50,6 +51,7 @@ prisma/seeds/
 - **Lab Bookings**: Sample lab bookings and assignments
 - **Health Metrics**: Historical health data
 - **Prescriptions**: Complete prescription data
+- **Meal Timings**: Default meal timing templates for dieticians
 - **Payments**: Sample payment records with earnings tracking
 
 ### ✅ Data Quality

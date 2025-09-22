@@ -107,12 +107,17 @@ async function main() {
       const payments = await seedPayments(tx);
       
       // 17. Seed default LLM Playground profile
-      console.log("\n🤖 Step 17/18: Seeding LLM Playground default profile...");
+      console.log("\n🤖 Step 17/19: Seeding LLM Playground default profile...");
       const { seedLlmPlaygroundProfile } = require('./llmPlaygroundProfile');
       await seedLlmPlaygroundProfile(tx);
 
-      // 18. Comprehensive Seed (ensure all tables are populated)
-      console.log("\n🔧 Step 18/18: Running comprehensive seed...");
+      // 18. Seed Meal Timing Templates
+      console.log("\n🍽️ Step 18/19: Seeding meal timing templates...");
+      const { seedMealTimings } = require('./mealTimings');
+      const mealTimings = await seedMealTimings(tx);
+
+      // 19. Comprehensive Seed (ensure all tables are populated)
+      console.log("\n🔧 Step 19/19: Running comprehensive seed...");
       const { comprehensiveSeed } = require('./comprehensiveSeed');
       await comprehensiveSeed(tx);
       
@@ -134,7 +139,8 @@ async function main() {
         prescriptionData,
         prescriptionTemplates,
         subscriptionTrackers,
-        payments
+        payments,
+        mealTimings
       };
     }, {
       timeout: 300000, // 5 minutes timeout
@@ -165,6 +171,7 @@ async function main() {
     console.log(`📋 Prescription Templates: ${result.prescriptionTemplates?.length || 0}`);
     console.log(`📊 Subscription Trackers: ${result.subscriptionTrackers?.length || 0}`);
     console.log(`💰 Payments: ${result.payments?.length || 0}`);
+    console.log(`🍽️ Meal Timing Templates: ${result.mealTimings?.length || 0}`);
     console.log(`🔧 Comprehensive seed completed successfully`);
     
   } catch (error) {
@@ -205,6 +212,7 @@ const { seedPrescriptionData } = require('./prescriptions');
 const { seedPrescriptionTemplates } = require('./prescriptionTemplates');
 const { seedSubscriptionTrackers } = require('./subscriptionTrackers');
 const { seedPayments } = require('./payments');
+const { seedMealTimings } = require('./mealTimings');
 const { comprehensiveSeed } = require('./comprehensiveSeed');
 
 main()

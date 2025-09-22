@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 
 export default function Footer() {
+  const currentYear = new Date().getFullYear();
+  
   return (
     <footer className="text-black border-t-2">
       <div className="container px-4 py-12 mx-auto">
@@ -110,7 +112,7 @@ export default function Footer() {
       {/* ✅ Bottom Bar */}
       <div className="border-t bg-[#134f30] text-white border-white/10">
         <div className="container px-4 py-4 mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-sm">Copyright © 2024 | All rights reserved.</p>
+          <p className="text-sm">Copyright © {currentYear} | All rights reserved.</p>
           <div className="flex gap-4">
             <Link href="#" className="hover:text-white/80">
               <Facebook className="h-5 w-5" />

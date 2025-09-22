@@ -41,7 +41,9 @@ export async function GET() {
     const appointments = await prisma.appointment.findMany({
       where: {
         userId: doctorId,
-        appointmentDate: { gte: todayStart },
+        doctorAvailability: {
+          date: { gte: todayStart }
+        },
         // Only scheduled-like statuses; exclude completed/cancelled
         status: {
           in: [
@@ -70,7 +72,9 @@ export async function GET() {
       },
       orderBy: [
         {
-          appointmentDate: "asc",
+          doctorAvailability: {
+            date: "asc",
+          },
         },
         {
           doctorAvailability: {
@@ -87,8 +91,8 @@ export async function GET() {
       patientId: appointment.patientId,
       patient: appointment.patient,
       doctor: { name: user.name }, // Add doctor info
-      // Prefer appointmentDate (source of truth for date)
-      date: (appointment.appointmentDate || appointment.doctorAvailability.date).toISOString(),
+      // Use doctorAvailability.date as source of truth for date
+      date: appointment.doctorAvailability.date.toISOString(),
       startTime: appointment.doctorAvailability.startTime,
       endTime: appointment.doctorAvailability.endTime,
       status: appointment.status,

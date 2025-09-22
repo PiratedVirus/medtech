@@ -1,8 +1,8 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import AppointmentListCard from "@/appointment-view/ListCardAView";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import AppointmentListCard from "@/components/patients/appointments/view/ListCardAView";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
@@ -15,12 +15,43 @@ export default function PrescriptionViewHome() {
   const { data: appointments, isLoading, isError } = useQuery({
     queryKey: ["appointments", clinicId, profile?.id],
     queryFn: async () => {
+      // Ensure we never return undefined
+      const result = await (async () => {
       if (!clinicId || !profile?.id) return { past: [], upcoming: [] };
-      const response = await axios.get(
-        `/api/appointments?clinicId=${clinicId}&patientId=${profile?.id}`,
-        { withCredentials: true }
-      );
-      return response.data.success ? response.data.data : { past: [], upcoming: [] };
+      
+      try {
+        const response = await axios.get(
+          `/api/appointments?clinicId=${clinicId}&patientId=${profile?.id}`,
+          { withCredentials: true }
+        );
+        
+        if (!response.data.success) {
+          console.warn('Appointments API returned success: false', response.data);
+          return { past: [], upcoming: [] };
+        }
+        
+        // Handle different response structures
+        if (response.data.upcomingAppointments !== undefined && response.data.pastAppointments !== undefined) {
+          // When patientId is provided, API returns upcomingAppointments and pastAppointments directly
+          return {
+            past: response.data.pastAppointments || [],
+            upcoming: response.data.upcomingAppointments || []
+          };
+        } else if (response.data.data) {
+          // Default case with nested data structure
+          return response.data.data;
+        } else {
+          console.warn('Unexpected API response structure', response.data);
+          return { past: [], upcoming: [] };
+        }
+      } catch (error) {
+        console.error('Error fetching appointments:', error);
+        return { past: [], upcoming: [] };
+      }
+      })();
+      
+      // Final safeguard - ensure we never return undefined
+      return result || { past: [], upcoming: [] };
     },
     staleTime: 10 * 60 * 1000, // ✅ Keeps cache valid for 10 minutes
     gcTime: 60 * 60 * 1000, // ✅ Keeps cache for 1 hour

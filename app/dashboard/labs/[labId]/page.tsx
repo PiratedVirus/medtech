@@ -2,7 +2,7 @@
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { useQuery } from "@tanstack/react-query";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import axios from "axios";
 import CdLoader from "@/components/ui/custom/cd-loader";
 
@@ -12,12 +12,10 @@ import LabBookingHome from "@/components/patients/labs/booking/LabBookingHome";
 export default function LabBookingHomePage () {
     const labBbookingData = useSelector((state: RootState) => state.labBooking.labBookingData);
     if(labBbookingData) {
-        console.log("serving from if")
         return <LabBookingHome packageInfo={labBbookingData} />
     } else {
-        console.log("serving from else")
 
-        const { clinicId, isLoading: profileLoading } = useDecryptedProfile();
+        const { clinicId, isLoading: profileLoading, profile } = useDecryptedProfile();
         const { data: labs, isLoading, isError } = useQuery({
             queryKey: ["labs", clinicId], // Unique cache key
             queryFn: async () => {
@@ -28,12 +26,9 @@ export default function LabBookingHomePage () {
               );
               return response.data.success ? response.data.packages : [];
             },
-            staleTime: 1 * 6 * 1, // ✅ Cache valid for 10 minutes
-            gcTime: 6 * 6 * 1, // ✅ Keeps cache for 1 hour
-            refetchOnWindowFocus: false, // ✅ Prevents re-fetching on tab switch
-            refetchOnMount: false, // ✅ Prevents re-fetching when navigating back
-            refetchOnReconnect: true, // ✅ Fetches only if internet reconnects
-            enabled: !!clinicId, // ✅ Runs only when clinicId exists
+            enabled: !!clinicId && !!profile?.id, // Only run when clinicId and profile.id exist
+            staleTime: 15 * 60 * 1000,  // 15 minutes - lab packages rarely change
+            refetchOnMount: false,      // Use cached data when available
           });
 
           if (profileLoading || isLoading) {

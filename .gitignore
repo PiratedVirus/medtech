@@ -10,3 +10,4 @@ prisma/seeds/v1
 /*.dump
 db-backups
 backup_db.sh
+.vercel

@@ -1,8 +1,25 @@
 import React, { createContext, useContext } from "react";
-import UserProfile from "@/store/userSlice"; // Adjust the import path as needed
+
+interface DecryptedProfile {
+  id: string;
+  name: string;
+  email: string;
+  clinicId?: string;
+  role: string;
+  subscriptionDetails: any;
+  patientProfile: any;
+  phoneNumber: any;
+  lastUpdated?: string;
+  doctorProfile?: {
+    meetRoomLink?: string;
+    meetingRoomLink?: string;
+    isDietician?: boolean;
+    [key: string]: any;
+  };
+}
 
 interface ProfileContextType {
-  profile: typeof UserProfile | null;
+  profile: DecryptedProfile | null;
 }
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
@@ -16,7 +33,7 @@ export const useProfile = () => {
 };
 
 interface ProfileProviderProps {
-  profile: typeof UserProfile | null;
+  profile: DecryptedProfile | null;
   children: React.ReactNode;
 }
 

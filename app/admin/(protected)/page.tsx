@@ -12,6 +12,7 @@ import { LabBookingsTable } from "@/components/admin/LabBookingsTable"
 import { PatientViewCard } from "@/components/admin/PatientViewCard"
 import { NotificationsList } from "@/components/admin/NotificationsList"
 import { SummaryCard } from "@/components/admin/SummaryCard"
+import NotificationTestPanel from "@/components/admin/NotificationTestPanel"
 
 
 
@@ -24,25 +25,43 @@ export default function DashboardPage() {
     monthlyRevenue: 0,
     newSignupsThisWeek: 0,
   });
+  const [patients, setPatients] = useState<Array<{ id: number; name: string; phoneNumber: string }>>([]);
 
   useEffect(() => {
     const fetchSummaryData = async () => {
       try {
-        const response = await axios.get("/api/admin/dashboard/summary");
+        // Try optimized (cached) endpoint first
+        const response = await axios.get("/api/admin/optimized/dashboard-summary");
         setSummaryData(response.data);
       } catch (error) {
-        console.error("Failed to fetch summary data:", error);
+        console.error("Optimized summary failed, falling back:", error);
+        try {
+          // Fallback to non-optimized endpoint to keep UI working
+          const fallback = await axios.get("/api/admin/dashboard/summary");
+          setSummaryData(fallback.data);
+        } catch (fallbackError) {
+          console.error("Fallback summary also failed:", fallbackError);
+        }
+      }
+    };
+
+    const fetchPatients = async () => {
+      try {
+        const response = await axios.get("/api/admin/patients");
+        setPatients(response.data.data || []);
+      } catch (error) {
+        console.error("Failed to fetch patients:", error);
       }
     };
 
     fetchSummaryData();
+    fetchPatients();
   }, []);
 
   return (
     <div className="flex flex-col">
       <div className="flex items-center justify-between space-y-2 px-2 pt-6 md:px-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted-foreground">Overview of your clinic's performance and activities</p>
         </div>
         <div className="flex items-center space-x-2">
@@ -78,7 +97,7 @@ export default function DashboardPage() {
         <SummaryCard
           title="Today's Appointments"
           value={summaryData.todaysAppointments.toString()}
-          trend="6 more than yesterday"
+          trend=""
           PrimaryIcon={Clock}
           OutlineIcon={Clock}
           accentColor="#F28A2E"
@@ -138,6 +157,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+
 
       {/* Tables Section */}
       <div className="mt-4 grid gap-4 px-2 md:px-4">

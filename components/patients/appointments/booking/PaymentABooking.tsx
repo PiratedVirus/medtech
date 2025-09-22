@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
+import { PaymentMethod } from "@/lib/constants/enums";
 
 interface PaymentSelectionProps {
   selectedOption: string;
@@ -72,7 +73,7 @@ export default function PaymentSelection({
 
   useEffect(() => {
     if (isPlanBookingValid && !hasAutoSelectedPlan) {
-      onOptionChange("plan");
+      onOptionChange(PaymentMethod.PLAN);
       setHasAutoSelectedPlan(true);
     }
   }, [isPlanBookingValid, hasAutoSelectedPlan, onOptionChange]);
@@ -85,7 +86,7 @@ export default function PaymentSelection({
     planCardDisabled
       ? "bg-gray-200 text-gray-400 border-gray-200 cursor-not-allowed"
       : "cursor-pointer border bg-white hover:border-primary",
-    selectedOption === "plan" && !planCardDisabled
+    selectedOption === PaymentMethod.PLAN && !planCardDisabled
       ? "border-2 border-primary text-primary"
       : ""
   );
@@ -93,7 +94,7 @@ export default function PaymentSelection({
   // Online card styles
   const onlineCardClasses = cn(
     "p-2 flex flex-col items-center justify-center transition-all cursor-pointer border bg-white",
-    selectedOption === "online"
+    selectedOption === PaymentMethod.ONLINE
       ? "border-2 border-primary text-primary"
       : "hover:border-primary"
   );
@@ -106,7 +107,7 @@ export default function PaymentSelection({
     isClinicDisabled
       ? "bg-gray-200 text-gray-400 border-gray-200 cursor-not-allowed"
       : "cursor-pointer border bg-white hover:border-primary",
-    selectedOption === "clinic" && !isClinicDisabled
+    selectedOption === PaymentMethod.CLINIC && !isClinicDisabled
       ? "border-2 border-primary text-primary"
       : ""
   );
@@ -125,14 +126,14 @@ export default function PaymentSelection({
           className={planCardClasses}
           onClick={() => {
             if (!planCardDisabled) {
-              onOptionChange("plan");
+              onOptionChange(PaymentMethod.PLAN);
             }
           }}
         >
           <p
             className={cn(
               "text-lg font-medium p-3",
-              selectedOption === "plan" && !planCardDisabled
+              selectedOption === PaymentMethod.PLAN && !planCardDisabled
                 ? "text-primary"
                 : planCardDisabled
                   ? "text-gray-400"
@@ -149,12 +150,12 @@ export default function PaymentSelection({
         {/* Pay Online Card */}
         <Card
           className={onlineCardClasses}
-          onClick={() => onOptionChange("online")}
+          onClick={() => onOptionChange(PaymentMethod.ONLINE)}
         >
           <p
             className={cn(
               "text-lg font-medium mb-1 text-center",
-              selectedOption === "online" ? "text-primary" : "text-[#2c2e38]"
+              selectedOption === PaymentMethod.ONLINE ? "text-primary" : "text-[#2c2e38]"
             )}
           >
             ₹ {consultationFee} <br /> Pay Online
@@ -166,7 +167,7 @@ export default function PaymentSelection({
           className={clinicCardClasses}
           onClick={() => {
             if (!isClinicDisabled) {
-              onOptionChange("clinic");
+              onOptionChange(PaymentMethod.CLINIC);
             }
           }}
         >
@@ -175,7 +176,7 @@ export default function PaymentSelection({
               "text-lg font-medium mb-1 text-center",
               isClinicDisabled
                 ? "text-gray-400"
-                : selectedOption === "clinic"
+                : selectedOption === PaymentMethod.CLINIC
                   ? "text-primary"
                   : "text-[#2c2e38]"
             )}
