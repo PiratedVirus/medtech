@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "message": "User registered successfully",
+  "user": {
+    "id": 1,
+    "name": "Test Patient",
+    "phoneNumber": "+919876543210"
+  }
+}
