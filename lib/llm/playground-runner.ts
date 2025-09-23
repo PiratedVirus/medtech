@@ -353,13 +353,69 @@ export async function executePlaygroundRun(input: RunInput) {
       finishedAt: new Date().toISOString(),
     }, 'running');
   } else {
-    // Extract values for lab reports
+    // Extract values for lab reports using playground profile
     try {
-      // Use the same robust approach as the working LLM processing
+      // Use playground profile prompts directly
       const model = profile?.model || GROQ_MODEL;
-      const values = await llmGenerateValuesFromText(combinedText, apiKey, model);
-      allValues = values.allValues || [];
-      criticalValues = values.criticalValues || [];
+      const temperature = profile?.temperature || 0.1;
+      const maxTokens = profile?.maxTokens || 2500;
+      
+      // Use ONLY playground profile prompts (no hardcoded fallbacks)
+      const systemPrompt = profile?.systemPrompt;
+      const userPrompt = profile?.valuesPrompt;
+
+      // Validate that profile has required prompts
+      if (!systemPrompt || !userPrompt) {
+        throw new Error(`Playground profile is missing required prompts for values extraction. System Prompt: ${!!systemPrompt}, Values Prompt: ${!!userPrompt}. Please configure your profile prompts in the playground.`);
+      }
+
+      // Replace template variables in playground profile prompt
+      const resolvedUserPrompt = userPrompt
+        .replace(/\{\{TEXT\}\}/g, combinedText)
+        .replace(/\{\{PDF_URL\}\}/g, variables.PDF_URL || '')
+        .replace(/\{\{ADDITIONAL_CONTEXT\}\}/g, variables.ADDITIONAL_CONTEXT || '');
+
+      console.log(`[PLAYGROUND][VALUES] Using playground profile: ${profile?.name || 'default'}`);
+      console.log(`[PLAYGROUND][VALUES] Model: ${model}, Temperature: ${temperature}, MaxTokens: ${maxTokens}`);
+      console.log(`[PLAYGROUND][VALUES] User prompt length: ${userPrompt.length}`);
+
+      // Call Groq API directly with playground profile settings
+      const chatPayload = {
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: resolvedUserPrompt }
+        ],
+        max_tokens: maxTokens,
+        temperature,
+        response_format: { type: 'json_object' }
+      };
+
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(chatPayload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Groq API error: ${response.status} ${errorText}`);
+      }
+
+      const data = await response.json();
+      const content = extractGroqContent(data);
+      console.log(`[PLAYGROUND][VALUES] Raw response:`, content);
+
+      const parsed = tryParseLooseJson(content);
+      if (!parsed) {
+        throw new Error('Failed to parse JSON response from LLM');
+      }
+
+      allValues = Array.isArray(parsed.allValues) ? parsed.allValues : [];
+      criticalValues = Array.isArray(parsed.criticalValues) ? parsed.criticalValues : [];
       
       const valuesPromptTemplate = profile?.valuesPrompt || '';
       const resolvedValuesPromptPreview = valuesPromptTemplate
@@ -418,16 +474,71 @@ export async function executePlaygroundRun(input: RunInput) {
   // Stage 3: generate-summary (using same approach as working LLM processing)
   const summaryStart = Date.now();
   try {
-    // Use the same robust approach as the working LLM processing
+    // Use playground profile prompts directly instead of production profile
     const model = profile?.model || GROQ_MODEL;
-    const summaryText = await llmGenerateSummaryFromText(combinedText, apiKey, model);
+    const temperature = profile?.temperature || 0.1;
+    const maxTokens = profile?.maxTokens || 1200;
     
-    // Create summary result object to match expected format
+    // Use ONLY playground profile prompts (no hardcoded fallbacks)
+    const systemPrompt = profile?.systemPrompt;
+    const userPrompt = profile?.summaryPrompt;
+
+    // Validate that profile has required prompts
+    if (!systemPrompt || !userPrompt) {
+      throw new Error(`Playground profile is missing required prompts. System Prompt: ${!!systemPrompt}, User Prompt: ${!!userPrompt}. Please configure your profile prompts in the playground.`);
+    }
+
+    // Replace template variables in playground profile prompt
+    const resolvedUserPrompt = userPrompt
+      .replace(/\{\{TEXT\}\}/g, combinedText)
+      .replace(/\{\{PDF_URL\}\}/g, variables.PDF_URL || '')
+      .replace(/\{\{ADDITIONAL_CONTEXT\}\}/g, variables.ADDITIONAL_CONTEXT || '');
+
+    console.log(`[PLAYGROUND][SUMMARY] Using playground profile: ${profile?.name || 'default'}`);
+    console.log(`[PLAYGROUND][SUMMARY] Model: ${model}, Temperature: ${temperature}, MaxTokens: ${maxTokens}`);
+    console.log(`[PLAYGROUND][SUMMARY] User prompt length: ${userPrompt.length}`);
+
+    // Call Groq API directly with playground profile settings
+    const chatPayload = {
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: resolvedUserPrompt }
+      ],
+      max_tokens: maxTokens,
+      temperature,
+      response_format: { type: 'json_object' }
+    };
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(chatPayload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Groq API error: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
+    const content = extractGroqContent(data);
+    console.log(`[PLAYGROUND][SUMMARY] Raw response:`, content);
+
+    const parsed = tryParseLooseJson(content);
+    if (!parsed) {
+      throw new Error('Failed to parse JSON response from LLM');
+    }
+
+    // Create summary result object from parsed response
     const summaryRes = {
-      summary: summaryText,
-      keyFindings: [],
-      recommendations: [],
-      urgency: 'ROUTINE' as const
+      summary: parsed.summary || content.substring(0, 1200),
+      keyFindings: Array.isArray(parsed.keyFindings) ? parsed.keyFindings : [],
+      recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+      urgency: parsed.urgency || 'ROUTINE'
     };
     const summaryPromptTemplate = profile?.summaryPrompt || '';
     const resolvedSummaryPromptPreview = summaryPromptTemplate
