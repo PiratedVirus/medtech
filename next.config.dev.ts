@@ -201,8 +201,6 @@ const nextDevConfig: NextConfig = {
   experimental: {
     // Enable modern bundling but disable caching
     esmExternals: true,
-    // Disable build cache
-    appDir: true,
   },
 
   // Output configuration for development

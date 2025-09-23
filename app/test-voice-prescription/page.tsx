@@ -5,8 +5,37 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import VoiceInput from "@/components/prescription/VoiceInput";
 
+interface PrescriptionData {
+  complaints: any[];
+  vitals: {
+    bloodPressure: string;
+    pulse: string;
+    height: string;
+    weight: string;
+  };
+  history: {
+    allergies: string;
+    personalHistory: string;
+    pastMedicalHistory: string;
+    familyHistory: string;
+  };
+  systemicExamination: {
+    general: string;
+    cvs: string;
+    rs: string;
+    cns: string;
+  };
+  medicines: any[];
+  advice: string;
+  testsRequested: string;
+  nextVisit: {
+    type: string;
+    value: number;
+  };
+}
+
 export default function TestVoicePrescriptionPage() {
-  const [prescriptionData, setPrescriptionData] = useState({
+  const [prescriptionData, setPrescriptionData] = useState<PrescriptionData>({
     complaints: [],
     vitals: { bloodPressure: "", pulse: "", height: "", weight: "" },
     history: { allergies: "", personalHistory: "", pastMedicalHistory: "", familyHistory: "" },

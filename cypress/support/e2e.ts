@@ -38,6 +38,11 @@ declare global {
       waitForPageLoad(): Chainable<void>
       mockApiResponse(endpoint: string, response: any): Chainable<void>
       // built-in cy.clearLocalStorage()
+      fillRegistrationForm(userData: any): Chainable<void>
+      selectDoctor(doctorName: string): Chainable<void>
+      bookAppointment(appointmentData: any): Chainable<void>
+      uploadFile(selector: string, filePath: string): Chainable<void>
+      waitForApiCall(alias: string): Chainable<void>
     }
   }
 }
