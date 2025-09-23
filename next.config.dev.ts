@@ -227,3 +227,5 @@ const nextDevConfig: NextConfig = {
 };
 
 export default nextDevConfig;
+
+

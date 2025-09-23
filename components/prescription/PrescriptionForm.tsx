@@ -70,8 +70,10 @@ export default function PrescriptionForm({
   const [showVoiceInput, setShowVoiceInput] = useState(false);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [isFillingForm, setIsFillingForm] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [recognition, setRecognition] = useState<any>(null);
+  const [isClearingVoice, setIsClearingVoice] = useState(false);
   const { toast } = useToast();
 
   const severityOptions = [
@@ -295,7 +297,7 @@ export default function PrescriptionForm({
 
       recognitionInstance.onend = () => {
         setIsVoiceRecording(false);
-        if (finalTranscript.trim()) {
+        if (finalTranscript.trim() && !isClearingVoice) {
           setVoiceTranscript(finalTranscript.trim());
           processVoiceInput(finalTranscript.trim());
         }
@@ -625,6 +627,8 @@ export default function PrescriptionForm({
   };
 
   const handleVoiceTranscriptionComplete = (voiceData: any) => {
+    setIsFillingForm(true);
+    
     // Merge voice data with existing prescription data intelligently
     const updatedData = {
       ...prescriptionData,
@@ -680,10 +684,21 @@ export default function PrescriptionForm({
     if (voiceData.advice?.trim()) addedItems.push("advice");
     if (voiceData.testsRequested?.trim()) addedItems.push("tests");
     
-    toast({
-      title: "Voice Input Applied", 
-      description: `Prescription form updated with: ${addedItems.join(", ")}`,
-    });
+    // Only show success if we actually added meaningful data
+    if (addedItems.length > 0) {
+      toast({
+        title: "Voice Input Applied", 
+        description: `Prescription form updated with: ${addedItems.join(", ")}`,
+      });
+    } else {
+      toast({
+        title: "No Data Extracted",
+        description: "Could not extract meaningful prescription data from your voice input. Please try speaking more clearly.",
+        variant: "destructive",
+      });
+    }
+    
+    setIsFillingForm(false);
   };
 
   const handleAIMicClick = () => {
@@ -697,6 +712,7 @@ export default function PrescriptionForm({
       if (recognition) {
         setVoiceTranscript("");
         setIsVoiceRecording(true);
+        setIsClearingVoice(false); // recording anew, clearing finished
         recognition.start();
         toast({
           title: "🎤 AI Mic Activated",
@@ -757,17 +773,18 @@ export default function PrescriptionForm({
     }
   };
 
-  const retryVoiceInput = () => {
-    setVoiceTranscript("");
-    setIsProcessingVoice(false);
-    setIsVoiceRecording(false);
-  };
-
   const clearAllVoiceData = () => {
     // Clear transcript
     setVoiceTranscript("");
     setIsProcessingVoice(false);
     setIsVoiceRecording(false);
+    setIsFillingForm(false);
+    // Set clearing flag and abort any ongoing recognition (no restart)
+    setIsClearingVoice(true);
+
+    if (recognition) {
+      recognition.abort(); // Simply stop recognition; do NOT restart to avoid onend spam
+    }
     
     // Clear all form data that could have been filled by voice
     setPrescriptionData({
@@ -801,7 +818,7 @@ export default function PrescriptionForm({
     });
 
     toast({
-      title: "✨ Cleared Successfully",
+      title: "Cleared Successfully",
       description: "All voice data and form inputs have been cleared.",
     });
   };
@@ -826,17 +843,17 @@ export default function PrescriptionForm({
               variant="outline"
               size="sm"
               onClick={handleAIMicClick}
-              disabled={isProcessingVoice}
+              disabled={isProcessingVoice || isFillingForm}
               className={`relative transition-all duration-500 ease-in-out ${
                 isVoiceRecording 
                   ? "bg-gradient-to-r from-pink-500 to-blue-500 text-white border-transparent shadow-lg shadow-pink-500/20" 
-                  : isProcessingVoice
+                  : (isProcessingVoice || isFillingForm)
                   ? "bg-gradient-to-r from-pink-400 to-blue-400 text-white border-transparent shadow-lg shadow-blue-500/20"
                   : "hover:bg-gradient-to-r hover:from-pink-50 hover:to-blue-50 hover:border-pink-200"
               }`}
             >
               {/* Subtle glow effect */}
-              {(isVoiceRecording || isProcessingVoice) && (
+              {(isVoiceRecording || isProcessingVoice || isFillingForm) && (
                 <div className="absolute inset-0 rounded-md bg-gradient-to-r from-pink-500 to-blue-500 opacity-20 blur-sm"></div>
               )}
               
@@ -844,30 +861,30 @@ export default function PrescriptionForm({
               <div className="relative z-10 mr-2">
                 <div className="flex items-center space-x-0.5">
                   <div className={`w-0.5 rounded-full transition-all duration-300 ${
-                    isVoiceRecording ? "h-3 bg-white animate-pulse" : isProcessingVoice ? "h-2 bg-white" : "h-2 bg-pink-600"
+                    isVoiceRecording ? "h-3 bg-white animate-pulse" : (isProcessingVoice || isFillingForm) ? "h-2 bg-white animate-bounce" : "h-2 bg-pink-600"
                   }`} style={{animationDelay: '0ms'}}></div>
                   <div className={`w-0.5 rounded-full transition-all duration-300 ${
-                    isVoiceRecording ? "h-5 bg-white animate-pulse" : isProcessingVoice ? "h-3 bg-white" : "h-3 bg-pink-600"
+                    isVoiceRecording ? "h-5 bg-white animate-pulse" : (isProcessingVoice || isFillingForm) ? "h-3 bg-white animate-bounce" : "h-3 bg-pink-600"
                   }`} style={{animationDelay: '200ms'}}></div>
                   <div className={`w-0.5 rounded-full transition-all duration-300 ${
-                    isVoiceRecording ? "h-6 bg-white animate-pulse" : isProcessingVoice ? "h-4 bg-white" : "h-4 bg-pink-600"
+                    isVoiceRecording ? "h-6 bg-white animate-pulse" : (isProcessingVoice || isFillingForm) ? "h-4 bg-white animate-bounce" : "h-4 bg-pink-600"
                   }`} style={{animationDelay: '400ms'}}></div>
                   <div className={`w-0.5 rounded-full transition-all duration-300 ${
-                    isVoiceRecording ? "h-5 bg-white animate-pulse" : isProcessingVoice ? "h-3 bg-white" : "h-3 bg-pink-600"
+                    isVoiceRecording ? "h-5 bg-white animate-pulse" : (isProcessingVoice || isFillingForm) ? "h-3 bg-white animate-bounce" : "h-3 bg-pink-600"
                   }`} style={{animationDelay: '600ms'}}></div>
                   <div className={`w-0.5 rounded-full transition-all duration-300 ${
-                    isVoiceRecording ? "h-3 bg-white animate-pulse" : isProcessingVoice ? "h-2 bg-white" : "h-2 bg-pink-600"
+                    isVoiceRecording ? "h-3 bg-white animate-pulse" : (isProcessingVoice || isFillingForm) ? "h-2 bg-white animate-bounce" : "h-2 bg-pink-600"
                   }`} style={{animationDelay: '800ms'}}></div>
                 </div>
               </div>
               
               {/* Text */}
               <span className={`relative z-10 font-medium transition-all duration-300 ${
-                (isVoiceRecording || isProcessingVoice) 
+                (isVoiceRecording || isProcessingVoice || isFillingForm) 
                   ? "text-white" 
                   : "bg-gradient-to-r from-pink-600 to-blue-600 bg-clip-text text-transparent"
               }`}>
-                {isVoiceRecording ? "Recording..." : isProcessingVoice ? "Filling..." : "AI Mic"}
+                {isVoiceRecording ? "Recording..." : isProcessingVoice ? "Thinking..." : isFillingForm ? "Filling..." : "AI Mic"}
               </span>
             </Button>
             <Button
@@ -914,7 +931,9 @@ export default function PrescriptionForm({
       {voiceTranscript && (
         <div className="bg-gradient-to-r from-pink-50 to-blue-50 p-4 rounded-lg border border-pink-200">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="font-medium text-gray-800">Voice Transcript</h4>
+            <h4 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              Voice Transcript
+            </h4>
             <div className="flex gap-2">
               {isProcessingVoice && (
                 <span className="text-sm text-blue-600 flex items-center gap-1">
@@ -922,15 +941,6 @@ export default function PrescriptionForm({
                   Processing...
                 </span>
               )}
-              <Button 
-                onClick={retryVoiceInput}
-                variant="outline" 
-                size="sm"
-                className="text-xs"
-              >
-                <Mic className="h-3 w-3 mr-1" />
-                Retry
-              </Button>
               <Button 
                 onClick={clearAllVoiceData}
                 variant="outline" 
