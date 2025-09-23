@@ -192,6 +192,8 @@ type RunInput = {
   inputType: 'pdf' | 'text' | 'json' | 'prescriptionDraft';
   rawInput?: string | null;
   sourceFileUrl?: string | null;
+  sourceFileUrls?: string[] | null;
+  documentType?: 'lab_report' | 'prescription';
 };
 
 export async function executePlaygroundRun(input: RunInput) {
@@ -215,22 +217,49 @@ export async function executePlaygroundRun(input: RunInput) {
   // Stage 1: parse-text (PDF -> Text)
   let extractedText = input.rawInput || '';
   let extractionMethod = 'text-input';
-  if (input.inputType === 'pdf' && input.sourceFileUrl) {
+  
+  if (input.inputType === 'pdf') {
     const startedAt = Date.now();
     try {
-      // Always use OCR for PDF processing
-      extractionMethod = 'ocr';
-      console.log('[PLAYGROUND] Using OCR (Google Vision) for PDF text extraction');
-      extractedText = await ocrExtractPdfTextFromUrl(input.sourceFileUrl);
+      // Handle multiple PDFs for prescriptions
+      if (input.sourceFileUrls && input.sourceFileUrls.length > 0) {
+        extractionMethod = 'ocr-multiple';
+        console.log(`[PLAYGROUND] Processing ${input.sourceFileUrls.length} PDFs for ${input.documentType || 'lab_report'}`);
+        
+        const allTexts: string[] = [];
+        for (let i = 0; i < input.sourceFileUrls.length; i++) {
+          const url = input.sourceFileUrls[i];
+          console.log(`[PLAYGROUND] Processing PDF ${i + 1}/${input.sourceFileUrls.length}: ${url}`);
+          const text = await ocrExtractPdfTextFromUrl(url);
+          if (text && text.trim()) {
+            allTexts.push(`[Document ${i + 1}]\n${text}`);
+          }
+        }
+        
+        extractedText = allTexts.join('\n\n---\n\n');
+      } else if (input.sourceFileUrl) {
+        // Single PDF processing
+        extractionMethod = 'ocr';
+        console.log('[PLAYGROUND] Using OCR (Google Vision) for single PDF text extraction');
+        extractedText = await ocrExtractPdfTextFromUrl(input.sourceFileUrl);
+      }
+      
       const preview = (extractedText || '').slice(0, 1000);
       await appendStageLog(input.runId, { 
         name: 'parse-text', 
-        request: { pdfUrl: input.sourceFileUrl }, 
+        request: { 
+          pdfUrl: input.sourceFileUrl,
+          pdfUrls: input.sourceFileUrls,
+          documentType: input.documentType,
+          pdfCount: input.sourceFileUrls?.length || (input.sourceFileUrl ? 1 : 0)
+        }, 
         response: { 
           textPreview: preview, 
           textLength: (extractedText || '').length,
           extractionMethod: extractionMethod,
-          fullText: extractedText || ''
+          fullText: extractedText || '',
+          documentType: input.documentType,
+          pdfCount: input.sourceFileUrls?.length || (input.sourceFileUrl ? 1 : 0)
         }, 
         error: null, 
         latencyMs: Date.now() - startedAt, 
@@ -240,7 +269,11 @@ export async function executePlaygroundRun(input: RunInput) {
     } catch (e: any) {
       await appendStageLog(input.runId, {
         name: 'parse-text',
-        request: { pdfUrl: input.sourceFileUrl },
+        request: { 
+          pdfUrl: input.sourceFileUrl,
+          pdfUrls: input.sourceFileUrls,
+          documentType: input.documentType
+        },
         response: { 
           textPreview: '', 
           textLength: 0,
@@ -290,67 +323,96 @@ export async function executePlaygroundRun(input: RunInput) {
     ADDITIONAL_CONTEXT: input.rawInput || null,
   } as const;
 
-  // Stage 2: extract-values (using same approach as working LLM processing)
+  // Stage 2: extract-values (skip for prescriptions)
   const valuesStart = Date.now();
   let allValues: any[] = [];
   let criticalValues: any[] = [];
-  try {
-    // Use the same robust approach as the working LLM processing
-    const model = profile?.model || GROQ_MODEL;
-    const values = await llmGenerateValuesFromText(combinedText, apiKey, model);
-    allValues = values.allValues || [];
-    criticalValues = values.criticalValues || [];
-    
-    const valuesPromptTemplate = profile?.valuesPrompt || '';
-    const resolvedValuesPromptPreview = valuesPromptTemplate
-      ? valuesPromptTemplate
-          .replace(/\{\{TEXT\}\}/g, (variables.TEXT || '').slice(0, 400))
-          .replace(/\{\{PDF_URL\}\}/g, String(variables.PDF_URL || ''))
-          .replace(/\{\{ADDITIONAL_CONTEXT\}\}/g, String(variables.ADDITIONAL_CONTEXT || '').slice(0, 400))
-      : undefined;
+  
+  if (input.documentType === 'prescription') {
+    // Skip extract-values stage for prescriptions
     await appendStageLog(input.runId, {
       name: 'extract-values',
-      request: {
-        model: model,
-        promptTemplate: valuesPromptTemplate || 'default-values-prompt',
-        variablesPreview: {
-          TEXT: (variables.TEXT || '').slice(0, 400),
-          PDF_URL: variables.PDF_URL,
-          ADDITIONAL_CONTEXT: (variables.ADDITIONAL_CONTEXT || '').slice(0, 400),
-        },
-        variablesFull: {
-          TEXT: variables.TEXT,
-          PDF_URL: variables.PDF_URL,
-          ADDITIONAL_CONTEXT: variables.ADDITIONAL_CONTEXT,
-        },
-        textLength: (variables.TEXT || '').length,
-        resolvedPromptPreview: resolvedValuesPromptPreview,
+      request: { 
+        documentType: input.documentType,
+        skipped: true,
+        reason: 'Lab values extraction not applicable for prescription analysis'
       },
       response: { 
-        allValuesCount: allValues.length, 
-        criticalValuesCount: criticalValues.length,
-        allValues: allValues,
-        criticalValues: criticalValues,
-        summary: `Extracted ${allValues.length} total values with ${criticalValues.length} critical values`
+        allValuesCount: 0, 
+        criticalValuesCount: 0,
+        allValues: [],
+        criticalValues: [],
+        documentType: input.documentType,
+        skipped: true,
+        reason: 'Lab values extraction not applicable for prescription analysis',
+        summary: 'Stage skipped for prescription analysis'
       },
       error: null,
       latencyMs: Date.now() - valuesStart,
       startedAt: new Date(valuesStart).toISOString(),
       finishedAt: new Date().toISOString(),
     }, 'running');
-  } catch (e: any) {
-    console.error('[PLAYGROUND][VALUES] Error:', e);
-    await appendStageLog(input.runId, {
-      name: 'extract-values',
-      request: { promptTemplate: profile?.valuesPrompt || 'default-values-prompt', model: profile?.model },
-      response: null,
-      error: String(e?.message || e),
-      latencyMs: Date.now() - valuesStart,
-      startedAt: new Date(valuesStart).toISOString(),
-      finishedAt: new Date().toISOString(),
-    }, 'failed');
-    await completeRun(input.runId, { error: 'Value extraction failed' }, 'failed');
-    return;
+  } else {
+    // Extract values for lab reports
+    try {
+      // Use the same robust approach as the working LLM processing
+      const model = profile?.model || GROQ_MODEL;
+      const values = await llmGenerateValuesFromText(combinedText, apiKey, model);
+      allValues = values.allValues || [];
+      criticalValues = values.criticalValues || [];
+      
+      const valuesPromptTemplate = profile?.valuesPrompt || '';
+      const resolvedValuesPromptPreview = valuesPromptTemplate
+        ? valuesPromptTemplate
+            .replace(/\{\{TEXT\}\}/g, (variables.TEXT || '').slice(0, 400))
+            .replace(/\{\{PDF_URL\}\}/g, String(variables.PDF_URL || ''))
+            .replace(/\{\{ADDITIONAL_CONTEXT\}\}/g, String(variables.ADDITIONAL_CONTEXT || '').slice(0, 400))
+        : undefined;
+      await appendStageLog(input.runId, {
+        name: 'extract-values',
+        request: {
+          model: model,
+          promptTemplate: valuesPromptTemplate || 'default-values-prompt',
+          variablesPreview: {
+            TEXT: (variables.TEXT || '').slice(0, 400),
+            PDF_URL: variables.PDF_URL,
+            ADDITIONAL_CONTEXT: (variables.ADDITIONAL_CONTEXT || '').slice(0, 400),
+          },
+          variablesFull: {
+            TEXT: variables.TEXT,
+            PDF_URL: variables.PDF_URL,
+            ADDITIONAL_CONTEXT: variables.ADDITIONAL_CONTEXT,
+          },
+          textLength: (variables.TEXT || '').length,
+          resolvedPromptPreview: resolvedValuesPromptPreview,
+        },
+        response: { 
+          allValuesCount: allValues.length, 
+          criticalValuesCount: criticalValues.length,
+          allValues: allValues,
+          criticalValues: criticalValues,
+          documentType: input.documentType,
+          summary: `Extracted ${allValues.length} total values with ${criticalValues.length} critical values`
+        },
+        error: null,
+        latencyMs: Date.now() - valuesStart,
+        startedAt: new Date(valuesStart).toISOString(),
+        finishedAt: new Date().toISOString(),
+      }, 'running');
+    } catch (e: any) {
+      console.error('[PLAYGROUND][VALUES] Error:', e);
+      await appendStageLog(input.runId, {
+        name: 'extract-values',
+        request: { promptTemplate: profile?.valuesPrompt || 'default-values-prompt', model: profile?.model },
+        response: null,
+        error: String(e?.message || e),
+        latencyMs: Date.now() - valuesStart,
+        startedAt: new Date(valuesStart).toISOString(),
+        finishedAt: new Date().toISOString(),
+      }, 'failed');
+      await completeRun(input.runId, { error: 'Value extraction failed' }, 'failed');
+      return;
+    }
   }
 
   // Stage 3: generate-summary (using same approach as working LLM processing)

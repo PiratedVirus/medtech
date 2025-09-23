@@ -33,6 +33,12 @@ export default function LlmPlaygroundPage() {
   const [rawInput, setRawInput] = useState('');
   const [pdfUrl, setPdfUrl] = useState('');
   const [pdfInputMethod, setPdfInputMethod] = useState<'url' | 'upload' | 'database'>('url');
+  const [documentType, setDocumentType] = useState<'lab_report' | 'prescription'>('lab_report');
+  const [selectedPdfs, setSelectedPdfs] = useState<string[]>([]);
+  const [multipleUrls, setMultipleUrls] = useState<string[]>(['']);
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{url: string, filename: string}>>([]);
+  const [uploading, setUploading] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [availablePdfs, setAvailablePdfs] = useState<Array<{
     id: string;
     fileUrl: string;
@@ -167,7 +173,7 @@ export default function LlmPlaygroundPage() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch('/api/admin/llm-playground/healthcare-pdfs');
+        const r = await fetch(`/api/admin/llm-playground/healthcare-pdfs?documentType=${documentType}`);
         if (!r.ok) throw new Error(`Failed to load PDFs (${r.status})`);
         const text = await r.text();
         if (!text) { setAvailablePdfs([]); return; }
@@ -179,7 +185,7 @@ export default function LlmPlaygroundPage() {
         console.error('Failed to load PDFs', e);
       }
     })();
-  }, []);
+  }, [documentType]);
 
   async function onCreateProfile() {
     const name = prompt('Profile name?')?.trim();
@@ -274,8 +280,48 @@ export default function LlmPlaygroundPage() {
     
     setIsRunning(true);
     setRun(null);
-    const body: any = { profileId: selectedProfile.id, inputType };
-    if (pdfUrl && inputType === 'pdf') body.sourceFileUrl = pdfUrl;
+    const body: any = { 
+      profileId: selectedProfile.id, 
+      inputType,
+      documentType 
+    };
+    
+    // Handle different input methods
+    if (inputType === 'pdf') {
+      if (pdfInputMethod === 'url') {
+        if (documentType === 'prescription') {
+          // Multiple URLs for prescriptions
+          const validUrls = multipleUrls.filter(url => url.trim());
+          if (validUrls.length > 0) {
+            body.sourceFileUrls = validUrls;
+          }
+        } else {
+          // Single URL for lab reports
+          if (pdfUrl) body.sourceFileUrl = pdfUrl;
+        }
+      } else if (pdfInputMethod === 'upload') {
+        if (documentType === 'prescription') {
+          // Multiple uploaded files for prescriptions
+          if (uploadedFiles.length > 0) {
+            body.sourceFileUrls = uploadedFiles.map(file => file.url);
+          }
+        } else {
+          // Single uploaded file for lab reports
+          if (pdfUrl) body.sourceFileUrl = pdfUrl;
+        }
+      } else if (pdfInputMethod === 'database') {
+        if (documentType === 'prescription') {
+          // Multiple selected PDFs for prescriptions
+          if (selectedPdfs.length > 0) {
+            body.sourceFileUrls = selectedPdfs;
+          }
+        } else {
+          // Single selected PDF for lab reports
+          if (pdfUrl) body.sourceFileUrl = pdfUrl;
+        }
+      }
+    }
+    
     if (rawInput) body.rawInput = rawInput;
     const res = await fetch('/api/admin/llm-playground/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const text = await res.text();
@@ -300,7 +346,11 @@ export default function LlmPlaygroundPage() {
 
   const stageCards = useMemo(() => {
     const logs = (run?.stageLogs as any[]) || [];
-    return logs.map((s, idx) => {
+    // Filter out extract-values stage for prescriptions
+    const filteredLogs = documentType === 'prescription' 
+      ? logs.filter(s => s.name !== 'extract-values')
+      : logs;
+    return filteredLogs.map((s, idx) => {
       const isExpanded = expandedStages.has(s.name);
       const displayName = getStageDisplayName(s.name);
       const description = getStageDescription(s.name);
@@ -322,8 +372,8 @@ export default function LlmPlaygroundPage() {
       
       // Render rich display based on stage type
       const renderRichDisplay = () => {
-        if (s.name === 'parse-text' && s.response) {
-          return (
+      if (s.name === 'parse-text' && s.response) {
+        return (
             <div className="space-y-4">
               {/* Extraction Method */}
               {s.response.extractionMethod && (
@@ -349,14 +399,19 @@ export default function LlmPlaygroundPage() {
                   <div className="text-sm font-medium text-gray-900 mb-2">Extracted Text ({s.response.textLength || 0} chars)</div>
                   <div className="bg-white p-3 rounded border max-h-64 overflow-auto">
                     <pre className="text-sm whitespace-pre-wrap break-words">{s.response.fullText}</pre>
-                  </div>
                 </div>
-              )}
-            </div>
-          );
-        }
-        
-        if (s.name === 'extract-values' && s.response) {
+                  </div>
+                )}
+          </div>
+        );
+      }
+
+      if (s.name === 'extract-values' && s.response) {
+          // Skip extract-values stage for prescriptions
+          if (documentType === 'prescription') {
+            return null; // Don't render this stage at all for prescriptions
+          }
+          
           const values = s.response.allValues || s.response.criticalValues || [];
           return (
             <div className="space-y-4">
@@ -376,7 +431,7 @@ export default function LlmPlaygroundPage() {
                           <div className="flex items-center w-full gap-2">
                             <span className="flex-1 truncate text-[13px] font-semibold text-gray-700" title={value.parameter}>
                               {value.parameter}
-                            </span>
+                                </span>
                             <span className="ml-auto inline-flex items-baseline gap-1.5">
                               <span className={`text-[13px] font-bold ${severityClasses.text}`}>
                                 {value.value}
@@ -385,19 +440,19 @@ export default function LlmPlaygroundPage() {
                                 <span className="text-[11px] text-gray-600">{value.unit}</span>
                               )}
                             </span>
-                          </div>
+                    </div>
                         </div>
                       );
                     })}
                   </div>
                 </div>
               )}
-            </div>
-          );
-        }
-        
-        if (s.name === 'generate-summary' && s.response) {
-          return (
+          </div>
+        );
+      }
+
+      if (s.name === 'generate-summary' && s.response) {
+        return (
             <div className="space-y-4">
               {/* Clinical Summary */}
               {s.response.summary && (
@@ -408,35 +463,35 @@ export default function LlmPlaygroundPage() {
                   </div>
                 </div>
               )}
-              
+
               {/* Key Findings */}
               {s.response.keyFindings && s.response.keyFindings.length > 0 && (
                 <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                   <div className="text-sm font-medium text-yellow-900 mb-2">Key Findings ({s.response.keyFindings.length})</div>
-                  <div className="space-y-2">
-                    {s.response.keyFindings.map((finding: string, i: number) => (
+                    <div className="space-y-2">
+                      {s.response.keyFindings.map((finding: string, i: number) => (
                       <div key={i} className="text-sm bg-white p-2 rounded border">
-                        • {finding}
-                      </div>
-                    ))}
+                          • {finding}
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}
-              
+
               {/* Recommendations */}
               {s.response.recommendations && s.response.recommendations.length > 0 && (
                 <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                   <div className="text-sm font-medium text-green-900 mb-2">Recommendations ({s.response.recommendations.length})</div>
-                  <div className="space-y-2">
-                    {s.response.recommendations.map((recommendation: string, i: number) => (
+                    <div className="space-y-2">
+                      {s.response.recommendations.map((recommendation: string, i: number) => (
                       <div key={i} className="text-sm bg-white p-2 rounded border">
-                        • {recommendation}
-                      </div>
-                    ))}
+                          • {recommendation}
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}
-              
+
               {/* Urgency Level */}
               {s.response.urgency && (
                 <div className="p-3 bg-gray-50 rounded-lg border">
@@ -466,7 +521,7 @@ export default function LlmPlaygroundPage() {
           </div>
         );
       };
-      
+
       return (
         <div key={idx} className="border rounded-lg p-4 mb-4 w-full bg-white">
           <div className="flex items-center justify-between mb-3">
@@ -536,30 +591,30 @@ export default function LlmPlaygroundPage() {
               {stageDisplayMode === 'rich' ? renderRichDisplay() : (
                 <div className="space-y-4">
                   {/* Request */}
-                  <div className="relative w-full">
-                    <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy request" onClick={() => copyText(JSON.stringify(s.request ?? {}, null, 2))}>
-                      <Copy className="h-4 w-4" />
-                    </Button>
+            <div className="relative w-full">
+              <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy request" onClick={() => copyText(JSON.stringify(s.request ?? {}, null, 2))}>
+                <Copy className="h-4 w-4" />
+              </Button>
                     <div className="text-xs text-gray-600 mb-1">Processing Request</div>
                     <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto max-h-64 w-full break-words whitespace-pre-wrap">{JSON.stringify(s.request, null, 2)}</pre>
-                  </div>
+            </div>
 
                   {/* Response */}
-                  <div className="relative w-full">
-                    <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy response" onClick={() => copyText(JSON.stringify(s.response ?? {}, null, 2))}>
-                      <Copy className="h-4 w-4" />
-                    </Button>
+            <div className="relative w-full">
+              <Button size="icon" variant="outline" className="absolute top-2 right-2 z-10" aria-label="Copy response" onClick={() => copyText(JSON.stringify(s.response ?? {}, null, 2))}>
+                <Copy className="h-4 w-4" />
+              </Button>
                     <div className="text-xs text-gray-600 mb-1">Processing Response</div>
                     <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto max-h-64 w-full break-words whitespace-pre-wrap">{JSON.stringify(s.response, null, 2)}</pre>
-                  </div>
-                </div>
+            </div>
+          </div>
               )}
             </div>
           )}
         </div>
       );
     });
-  }, [run, expandedStages, stageDisplayModes]);
+  }, [run, expandedStages, stageDisplayModes, documentType]);
 
   return (
     <div className="p-6 space-y-6 w-full max-w-[95vw] overflow-x-auto">
@@ -587,14 +642,14 @@ export default function LlmPlaygroundPage() {
               <div className="p-2 bg-green-100 rounded-lg">
                 <Stethoscope className="h-5 w-5 text-green-600" />
               </div>
-              <div>
+            <div>
                 <h3 className="font-medium text-green-800">Active Clinical Analysis Profile</h3>
-                <p className="text-sm text-green-600">
+              <p className="text-sm text-green-600">
                   <strong>{currentProductionProfile.name}</strong> - Currently processing patient documents
-                </p>
-                <p className="text-xs text-green-500">
-                  Last updated: {new Date(currentProductionProfile.updatedAt).toLocaleString()}
-                </p>
+              </p>
+              <p className="text-xs text-green-500">
+                Last updated: {new Date(currentProductionProfile.updatedAt).toLocaleString()}
+              </p>
               </div>
             </div>
             <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
@@ -611,37 +666,37 @@ export default function LlmPlaygroundPage() {
           <h3 className="font-medium text-gray-900">Analysis Profiles</h3>
           <span className="text-sm text-gray-500">({profiles.length} configured)</span>
         </div>
-        <div className="w-full overflow-x-auto">
-          <div className="flex items-center gap-2 min-w-max py-2">
-            {profiles.map((p) => (
-              <div key={p.id} className="flex items-center gap-2">
-                <Button 
-                  variant={selectedProfile?.id === p.id ? 'default' : 'outline'} 
+      <div className="w-full overflow-x-auto">
+        <div className="flex items-center gap-2 min-w-max py-2">
+          {profiles.map((p) => (
+            <div key={p.id} className="flex items-center gap-2">
+              <Button 
+                variant={selectedProfile?.id === p.id ? 'default' : 'outline'} 
                   className="whitespace-nowrap flex items-center gap-2" 
-                  onClick={() => setSelectedProfile(p)}
-                >
+                onClick={() => setSelectedProfile(p)}
+              >
                   <Brain className="h-4 w-4" />
-                  {p.name}
-                  {currentProductionProfile?.id === p.id && (
-                    <span className="ml-2 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                {p.name}
+                {currentProductionProfile?.id === p.id && (
+                  <span className="ml-2 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full">
                       LIVE
-                    </span>
-                  )}
-                </Button>
-                {currentProductionProfile?.id !== p.id && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => onPromoteToProduction(p.id)}
-                    disabled={promotingProfile === p.id}
+                  </span>
+                )}
+              </Button>
+              {currentProductionProfile?.id !== p.id && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => onPromoteToProduction(p.id)}
+                  disabled={promotingProfile === p.id}
                     className="text-xs flex items-center gap-1"
-                  >
+                >
                     <Stethoscope className="h-3 w-3" />
                     {promotingProfile === p.id ? 'Activating...' : 'Activate for Production'}
-                  </Button>
-                )}
-              </div>
-            ))}
+                </Button>
+              )}
+            </div>
+          ))}
           </div>
         </div>
       </div>
@@ -652,13 +707,63 @@ export default function LlmPlaygroundPage() {
           <div className="p-2 bg-blue-100 rounded-lg">
             <FileText className="h-5 w-5 text-blue-600" />
           </div>
-          <div>
+              <div>
             <h3 className="font-medium text-gray-900">Document Input Configuration</h3>
             <p className="text-sm text-gray-600">Select and configure the medical document for analysis</p>
           </div>
         </div>
 
+
         <div className="space-y-6">
+          {/* Document Type Selection */}
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-gray-700">Document Type</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setDocumentType('lab_report')}
+                className={`p-4 border-2 rounded-lg text-left transition-all ${
+                  documentType === 'lab_report' 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${documentType === 'lab_report' ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                    <TestTube className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                    <h4 className="font-medium text-gray-900">Lab Report Analysis</h4>
+                    <p className="text-sm text-gray-600">Analyze laboratory test results and extract values</p>
+              </div>
+            </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setDocumentType('prescription')}
+                className={`p-4 border-2 rounded-lg text-left transition-all ${
+                  documentType === 'prescription' 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${documentType === 'prescription' ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                    <FileText className="h-5 w-5 text-blue-600" />
+                  </div>
+                <div>
+                    <h4 className="font-medium text-gray-900">Prescription Analysis</h4>
+                    <p className="text-sm text-gray-600">Analyze medical prescriptions and generate summaries</p>
+                    {documentType === 'prescription' && (
+                      <p className="text-xs text-blue-600 mt-1">💡 Multiple prescriptions recommended for better analysis</p>
+                    )}
+                </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
           {/* PDF Input Method Selection */}
           <div className="space-y-4">
             <label className="block text-sm font-medium text-gray-700">Choose Document Input Method</label>
@@ -676,10 +781,10 @@ export default function LlmPlaygroundPage() {
                   <div className={`p-2 rounded-lg ${pdfInputMethod === 'url' ? 'bg-blue-100' : 'bg-gray-100'}`}>
                     <FileText className={`h-4 w-4 ${pdfInputMethod === 'url' ? 'text-blue-600' : 'text-gray-600'}`} />
                   </div>
-                  <div>
+                <div>
                     <h4 className="font-medium text-sm">Paste PDF URL</h4>
                     <p className="text-xs text-gray-500">Enter a direct PDF link</p>
-                  </div>
+                </div>
                 </div>
               </button>
 
@@ -729,48 +834,225 @@ export default function LlmPlaygroundPage() {
           <div className="space-y-4">
             {pdfInputMethod === 'url' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">PDF URL</label>
-                <input 
-                  type="url"
-                  className="border rounded-lg px-3 py-2 w-full text-sm" 
-                  placeholder="https://example.com/document.pdf"
-                  value={pdfUrl} 
-                  onChange={(e) => setPdfUrl(e.target.value)}
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {documentType === 'prescription' ? 'PDF URLs (Multiple URLs)' : 'PDF URL'}
+                </label>
+                {documentType === 'prescription' ? (
+                  <div className="space-y-2">
+                    {multipleUrls.map((url, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input
+                          type="url"
+                          className="border rounded-lg px-3 py-2 flex-1 text-sm"
+                          placeholder={`https://example.com/prescription-${index + 1}.pdf`}
+                          value={url}
+                          onChange={(e) => {
+                            const newUrls = [...multipleUrls];
+                            newUrls[index] = e.target.value;
+                            setMultipleUrls(newUrls);
+                          }}
+                        />
+                        {multipleUrls.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newUrls = multipleUrls.filter((_, i) => i !== index);
+                              setMultipleUrls(newUrls);
+                            }}
+                            className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg border border-red-200"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setMultipleUrls([...multipleUrls, ''])}
+                      className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                    >
+                      + Add another URL
+                    </button>
+                    {multipleUrls.filter(url => url.trim()).length > 0 && (
+                      <div className="text-sm text-blue-600">
+                        ✓ {multipleUrls.filter(url => url.trim()).length} URL{multipleUrls.filter(url => url.trim()).length > 1 ? 's' : ''} provided
+                      </div>
+                    )}
+              </div>
+            ) : (
+                  <input 
+                    type="url"
+                    className="border rounded-lg px-3 py-2 w-full text-sm" 
+                    placeholder="https://example.com/document.pdf"
+                    value={pdfUrl} 
+                    onChange={(e) => setPdfUrl(e.target.value)}
+                  />
+                )}
               </div>
             )}
 
             {pdfInputMethod === 'upload' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Upload PDF File</label>
-                <input 
-                  type="file"
-                  accept="application/pdf"
-                  className="border rounded-lg px-3 py-2 w-full text-sm" 
-                  onChange={(e) => {
-                    // Handle file upload logic here
-                    console.log('File selected:', e.target.files?.[0]);
-                  }}
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {documentType === 'prescription' ? 'Upload PDF Files (Multiple Files)' : 'Upload PDF File'}
+                </label>
+                {documentType === 'prescription' ? (
+                  <div className="space-y-3">
+                    <input 
+                      type="file"
+                      accept="application/pdf"
+                      multiple
+                      className="border rounded-lg px-3 py-2 w-full text-sm" 
+                      onChange={async (e) => {
+                        const files = e.target.files;
+                        if (!files || files.length === 0) return;
+                        
+                        setUploading(true);
+                        const newFiles: Array<{url: string, filename: string}> = [];
+                        
+                        try {
+                          for (let i = 0; i < files.length; i++) {
+                            const file = files[i];
+                            const fd = new FormData();
+                            fd.append('file', file);
+                            
+                            const r = await fetch('/api/admin/llm-playground/upload', { 
+                              method: 'POST', 
+                              body: fd 
+                            });
+                            const t = await r.text();
+                            const j = t ? JSON.parse(t) : {};
+                            
+                            if (j?.url) {
+                              newFiles.push({url: j.url, filename: file.name});
+                            } else {
+                              console.error(`Upload failed for file ${i + 1}:`, j?.error);
+                            }
+                          }
+                          
+                          if (newFiles.length > 0) {
+                            setUploadedFiles((prev: Array<{url: string, filename: string}>) => [...prev, ...newFiles]);
+                          }
+                        } catch (error) {
+                          console.error('Upload error:', error);
+                        } finally {
+                          setUploading(false);
+                        }
+                      }}
+                    />
+                    {uploadedFiles.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium text-gray-700">Uploaded Files:</div>
+                        {uploadedFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-200">
+                            <div className="flex items-center gap-2 flex-1">
+                              <FileText className="h-4 w-4 text-green-600" />
+                              <a 
+                                href={file.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 hover:text-blue-800 underline truncate"
+                                title={file.filename}
+                              >
+                                {file.filename}
+                              </a>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newFiles = uploadedFiles.filter((_, i) => i !== index);
+                                setUploadedFiles(newFiles);
+                              }}
+                              className="text-red-600 hover:text-red-800 text-sm ml-2"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {uploading && <div className="text-sm text-blue-600">Uploading files...</div>}
+                  </div>
+                ) : (
+                  <input 
+                    type="file"
+                    accept="application/pdf"
+                    className="border rounded-lg px-3 py-2 w-full text-sm" 
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setBusy(true);
+                      try {
+                        const fd = new FormData();
+                        fd.append('file', file);
+                        const r = await fetch('/api/admin/llm-playground/upload', { method: 'POST', body: fd });
+                        const t = await r.text();
+                        const j = t ? JSON.parse(t) : {};
+                        if (j?.url) setPdfUrl(j.url);
+                      } catch (err) {
+                        console.error('Upload failed', err);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  />
+                )}
               </div>
             )}
 
             {pdfInputMethod === 'database' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Select from Patient Records</label>
-                <select 
-                  className="border rounded-lg px-3 py-2 w-full text-sm" 
-                  value={pdfUrl} 
-                  onChange={(e) => setPdfUrl(e.target.value)}
-                >
-                  <option value="">Choose a patient document...</option>
-                  {availablePdfs.map((pdf) => (
-                    <option key={pdf.id} value={pdf.fileUrl}>
-                      {pdf.fileName} - {pdf.patientName} ({pdf.type})
-                    </option>
-                  ))}
-                </select>
-                {availablePdfs.length === 0 && (
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {documentType === 'prescription' ? 'Select Prescriptions (Multiple Selection)' : 'Select from Patient Records'}
+                </label>
+                {documentType === 'prescription' ? (
+                  <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-3">
+                    {availablePdfs.map((pdf) => (
+                      <label key={pdf.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedPdfs.includes(pdf.fileUrl)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedPdfs(prev => [...prev, pdf.fileUrl]);
+                            } else {
+                              setSelectedPdfs(prev => prev.filter(url => url !== pdf.fileUrl));
+                            }
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{pdf.fileName}</div>
+                          <div className="text-xs text-gray-500">
+                            {pdf.patientName} • {pdf.doctorName} • {new Date(pdf.uploadedAt).toLocaleDateString()}
+              </div>
+                        </div>
+                      </label>
+                    ))}
+                    {availablePdfs.length === 0 && (
+                      <p className="text-sm text-gray-500">No prescriptions available in database</p>
+                    )}
+                  </div>
+                ) : (
+                  <select 
+                    className="border rounded-lg px-3 py-2 w-full text-sm" 
+                    value={pdfUrl} 
+                    onChange={(e) => setPdfUrl(e.target.value)}
+                  >
+                    <option value="">Choose a lab report...</option>
+                    {availablePdfs.map((pdf) => (
+                      <option key={pdf.id} value={pdf.fileUrl}>
+                        {pdf.fileName} - {pdf.patientName} ({pdf.type})
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {documentType === 'prescription' && selectedPdfs.length > 0 && (
+                  <div className="text-sm text-blue-600 mt-2">
+                    ✓ {selectedPdfs.length} prescription{selectedPdfs.length > 1 ? 's' : ''} selected
+                  </div>
+                )}
+                {availablePdfs.length === 0 && documentType !== 'prescription' && (
                   <p className="text-sm text-gray-500 mt-1">No medical documents found in the system</p>
                 )}
               </div>
@@ -790,7 +1072,7 @@ export default function LlmPlaygroundPage() {
 
           {/* Analysis Parameters */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
+              <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Analysis Temperature</label>
               <input 
                 type="number" 
@@ -800,8 +1082,8 @@ export default function LlmPlaygroundPage() {
                 onChange={(e) => updateLocalProfile({ temperature: Number(e.target.value) })} 
               />
               <p className="text-xs text-gray-500 mt-1">Controls response creativity (0.0-1.0)</p>
-            </div>
-            <div>
+              </div>
+              <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Response Diversity</label>
               <input 
                 type="number" 
@@ -822,9 +1104,9 @@ export default function LlmPlaygroundPage() {
               />
               <p className="text-xs text-gray-500 mt-1">Maximum tokens in response</p>
             </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
       {/* AI Processing Configuration */}
       <div className="bg-gray-50 border rounded-lg p-6">
@@ -838,291 +1120,137 @@ export default function LlmPlaygroundPage() {
               <p className="text-sm text-gray-600">Configure how the AI analyzes medical documents</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {hasUnsavedChanges && (
-              <span className="text-xs text-orange-600">⚠️ Unsaved changes</span>
-            )}
-            {saveStatus === 'saving' && (
-              <span className="text-xs text-blue-600">💾 Saving...</span>
-            )}
-            {saveStatus === 'saved' && (
-              <span className="text-xs text-green-600">✅ Saved</span>
-            )}
-            {saveStatus === 'error' && (
-              <span className="text-xs text-red-600">❌ Save failed</span>
-            )}
-            <Button 
-              size="sm" 
-              onClick={onSaveProfile}
-              disabled={!hasUnsavedChanges || isSaving}
-              className="text-xs"
-            >
+              <div className="flex items-center gap-2">
+                {hasUnsavedChanges && (
+                  <span className="text-xs text-orange-600">⚠️ Unsaved changes</span>
+                )}
+                {saveStatus === 'saving' && (
+                  <span className="text-xs text-blue-600">💾 Saving...</span>
+                )}
+                {saveStatus === 'saved' && (
+                  <span className="text-xs text-green-600">✅ Saved</span>
+                )}
+                {saveStatus === 'error' && (
+                  <span className="text-xs text-red-600">❌ Save failed</span>
+                )}
+                <Button 
+                  size="sm" 
+                  onClick={onSaveProfile}
+                  disabled={!hasUnsavedChanges || isSaving}
+                  className="text-xs"
+                >
               {isSaving ? 'Saving...' : 'Save Configuration'}
-            </Button>
-          </div>
-        </div>
-        
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">Clinical Analysis Instructions</label>
-            <textarea 
-              className="border rounded-lg px-4 py-3 w-full min-h-[200px] text-sm font-mono" 
-              value={localProfile?.systemPrompt || ''} 
-              onChange={(e) => updateLocalProfile({ systemPrompt: e.target.value })}
-              placeholder="Define how the AI should analyze medical documents..."
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">Patient Context Template</label>
-            <textarea 
-              className="border rounded-lg px-4 py-3 w-full min-h-[160px] text-sm font-mono" 
-              value={localProfile?.userPrompt || ''} 
-              onChange={(e) => updateLocalProfile({ userPrompt: e.target.value })}
-              placeholder="Template for providing patient context to the AI..."
-            />
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">Lab Values Extraction Instructions</label>
-              <textarea 
-                rows={25}
-                className="border rounded-lg px-4 py-3 w-full min-h-[200px] text-sm font-mono" 
-                value={localProfile?.valuesPrompt || ''} 
-                onChange={(e) => updateLocalProfile({ valuesPrompt: e.target.value })}
-                placeholder="Instructions for extracting and analyzing lab values..."
-              />
+                </Button>
+              </div>
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">Clinical Summary Generation</label>
-              <textarea 
-                rows={25}
-                className="border rounded-lg px-4 py-3 w-full min-h-[200px] text-sm font-mono" 
-                value={localProfile?.summaryPrompt || ''} 
-                onChange={(e) => updateLocalProfile({ summaryPrompt: e.target.value })}
-                placeholder="Instructions for generating clinical summaries..."
-              />
+        {/* Variable Information Bar */}
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start gap-3">
+            <div className="p-1 bg-blue-100 rounded">
+              <Brain className="h-4 w-4 text-blue-600" />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-medium text-blue-900 mb-1">Smart Variable System</h4>
+              <p className="text-sm text-blue-800 mb-2">
+                Use <code className="bg-blue-100 px-2 py-1 rounded text-blue-900 font-mono text-xs">{'{{TEXT}}'}</code> in your prompts - 
+                it will automatically be replaced with the actual document content when processing patient reports.
+              </p>
+              <p className="text-xs text-blue-700">
+                This ensures your prompts work consistently across all patient documents without manual text copying.
+              </p>
             </div>
           </div>
         </div>
-        
+
+        <div className="space-y-6">
+            <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Clinical Analysis Instructions
+              <span className="text-xs text-gray-500 ml-2">(Applicable for both document types)</span>
+            </label>
+              <textarea 
+              className="border rounded-lg px-4 py-3 w-full min-h-[200px] text-sm font-mono" 
+                value={localProfile?.systemPrompt || ''} 
+                onChange={(e) => updateLocalProfile({ systemPrompt: e.target.value })}
+              placeholder="Define how the AI should analyze medical documents..."
+              />
+            </div>
+          
+            <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Patient Context Template
+              <span className="text-xs text-gray-500 ml-2">(Applicable for both document types)</span>
+            </label>
+              <textarea 
+              className="border rounded-lg px-4 py-3 w-full min-h-[160px] text-sm font-mono" 
+                value={localProfile?.userPrompt || ''} 
+                onChange={(e) => updateLocalProfile({ userPrompt: e.target.value })}
+              placeholder="Template for providing patient context to the AI..."
+              />
+            </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+              Lab Values Extraction Instructions
+              {documentType === 'prescription' && (
+                <span className="text-xs text-gray-500 ml-2">(Not applicable for prescriptions)</span>
+              )}
+            </label>
+                <textarea 
+                rows={25}
+                className="border rounded-lg px-4 py-3 w-full min-h-[200px] text-sm font-mono" 
+                  value={localProfile?.valuesPrompt || ''} 
+                  onChange={(e) => updateLocalProfile({ valuesPrompt: e.target.value })}
+                placeholder="Instructions for extracting and analyzing lab values..."
+                />
+              </div>
+            
+              <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+              Clinical Summary Generation
+              <span className="text-xs text-gray-500 ml-2">(Applicable for both document types)</span>
+            </label>
+                <textarea 
+                rows={25}
+                className="border rounded-lg px-4 py-3 w-full min-h-[200px] text-sm font-mono" 
+                  value={localProfile?.summaryPrompt || ''} 
+                  onChange={(e) => updateLocalProfile({ summaryPrompt: e.target.value })}
+                placeholder="Instructions for generating clinical summaries..."
+                />
+              </div>
+        </div>
+      </div>
+
         <div className="flex justify-end pt-6 border-t mt-6">
-          <Button 
+                      <Button
             onClick={onRun} 
             disabled={!selectedProfile || isRunning || hasUnsavedChanges}
             className="flex items-center gap-2"
           >
             <Brain className="h-4 w-4" />
             {hasUnsavedChanges ? 'Save & Analyze Document' : 'Analyze Document'}
-          </Button>
-        </div>
-      </div>
-
-      {/* AI Processing Stages */}
+                      </Button>
+                    </div>
+                  </div>
+                  
+      {/* Analysis Output */}
       <div className="bg-gray-50 border rounded-lg p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-purple-100 rounded-lg">
             <TestTube className="h-5 w-5 text-purple-600" />
-          </div>
-          <div>
-            <h3 className="font-medium text-gray-900">AI Processing Stages</h3>
-            <p className="text-sm text-gray-600">Detailed analysis of each processing step</p>
-          </div>
-        </div>
+                    </div>
+                    <div>
+            <h3 className="font-medium text-gray-900">Analysis Output</h3>
+            <p className="text-sm text-gray-600">AI-generated results and processing outputs</p>
+                    </div>
+                  </div>
         <div className="max-h-[60vh] overflow-auto space-y-4">
           {stageCards}
-        </div>
-      </div>
+                    </div>
+                  </div>
 
-      {/* Clinical Analysis Results */}
-      <div className="bg-gray-50 border rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Stethoscope className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-900">Clinical Analysis Results</h3>
-              <p className="text-sm text-gray-600">AI-generated medical insights and recommendations</p>
-            </div>
-          </div>
-          <Button size="icon" variant="outline" aria-label="Copy analysis results" onClick={() => copyText(String(run?.finalOutput ?? ''))}>
-            <Copy className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="relative w-full">
-          {/* Structured display for lab analysis results */}
-          {run?.finalOutput && typeof run.finalOutput === 'object' && (
-            <div className="space-y-4">
-              {/* Summary Section */}
-              {run.finalOutput.summary && (
-                <div className="bg-blue-50 p-3 rounded border">
-                  <h4 className="font-medium text-blue-900 mb-2">Clinical Summary</h4>
-                  <p className="text-sm text-blue-800">{run.finalOutput.summary}</p>
-                </div>
-              )}
-              
-              {/* Key Findings */}
-              {run.finalOutput.keyFindings && run.finalOutput.keyFindings.length > 0 && (
-                <div className="bg-yellow-50 p-3 rounded border">
-                  <h4 className="font-medium text-yellow-900 mb-2">Key Findings</h4>
-                  <ul className="text-sm text-yellow-800 space-y-1">
-                    {run.finalOutput.keyFindings.map((finding: string, i: number) => (
-                      <li key={i} className="flex items-start">
-                        <span className="text-yellow-600 mr-2">•</span>
-                        {finding}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {/* Recommendations */}
-              {run.finalOutput.recommendations && run.finalOutput.recommendations.length > 0 && (
-                <div className="bg-green-50 p-3 rounded border">
-                  <h4 className="font-medium text-green-900 mb-2">Recommendations</h4>
-                  <ul className="text-sm text-green-800 space-y-1">
-                    {run.finalOutput.recommendations.map((rec: string, i: number) => (
-                      <li key={i} className="flex items-start">
-                        <span className="text-green-600 mr-2">•</span>
-                        {rec}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {/* Urgency */}
-              {run.finalOutput.urgency && (
-                <div className="bg-purple-50 p-3 rounded border">
-                  <h4 className="font-medium text-purple-900 mb-2">Urgency Level</h4>
-                  <span className={`inline-block px-2 py-1 rounded text-sm font-medium ${
-                    run.finalOutput.urgency === 'URGENT' ? 'bg-red-100 text-red-800' :
-                    run.finalOutput.urgency === 'SOON' ? 'bg-orange-100 text-orange-800' :
-                    'bg-blue-100 text-blue-800'
-                  }`}>
-                    {run.finalOutput.urgency}
-                  </span>
-                </div>
-              )}
-              
-              {/* Lab Values Summary with Toggle */}
-              {((run.finalOutput.allValues && run.finalOutput.allValues.length > 0) || (run.finalOutput.criticalValues && run.finalOutput.criticalValues.length > 0)) && (
-                <div className="bg-gray-50 p-3 rounded border">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium text-gray-900">Lab Values Summary</h4>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant={showAllValues ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setShowAllValues(true)}
-                        className={`text-xs ${showAllValues ? 'bg-blue-600 text-white' : 'text-blue-700 border-blue-300'}`}
-                      >
-                        <List className="h-3 w-3 mr-1" /> All
-                      </Button>
-                      <Button
-                        variant={!showAllValues ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setShowAllValues(false)}
-                        className={`text-xs ${!showAllValues ? 'bg-red-600 text-white' : 'text-red-700 border-red-300'}`}
-                      >
-                        <AlertTriangle className="h-3 w-3 mr-1" /> Critical
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 text-sm mb-3">
-                    <div>
-                      <span className="font-medium">Total Values:</span> {run.finalOutput.allValues?.length || 0}
-                    </div>
-                    <div>
-                      <span className="font-medium">Critical Values:</span> {run.finalOutput.criticalValues?.length || 0}
-                    </div>
-                  </div>
-                  
-                  {/* Values Table with Toggle */}
-                  <div className="mb-4">
-                    <h5 className="font-medium text-gray-800 mb-2">
-                      {showAllValues ? 'All Values' : 'Critical Values'}
-                    </h5>
-                    <div className={`rounded-lg border bg-white overflow-x-auto ${
-                      showAllValues ? 'border-gray-200' : 'border-red-200'
-                    }`}>
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className={`text-left text-gray-600 border-b ${
-                            showAllValues ? 'bg-gray-50' : 'bg-red-50'
-                          }`}>
-                            <th className="p-2 font-medium">Parameter</th>
-                            <th className="p-2 font-medium">Value</th>
-                            <th className="p-2 font-medium">Normal Range</th>
-                            <th className="p-2 font-medium">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(showAllValues ? run.finalOutput.allValues : run.finalOutput.criticalValues)?.map((val: any, i: number) => (
-                            <tr key={i} className={`border-b ${
-                              val.isAbnormal 
-                                ? val.severity === 'CRITICAL' 
-                                  ? 'bg-red-50' 
-                                  : val.severity === 'HIGH' 
-                                  ? 'bg-orange-50' 
-                                  : 'bg-yellow-50'
-                                : 'bg-white hover:bg-gray-50'
-                            } ${showAllValues ? 'border-gray-100' : 'border-red-100'}`}>
-                              <td className={`p-2 font-medium break-words ${
-                                showAllValues ? 'text-gray-900' : 'text-red-800'
-                              }`}>{val.parameter}</td>
-                              <td className="p-2">
-                                <span className={`font-semibold ${
-                                  showAllValues ? '' : 'text-red-600'
-                                }`}>{val.value}</span>
-                                {val.unit && <span className="text-gray-600 ml-1">{val.unit}</span>}
-                              </td>
-                              <td className="p-2 text-gray-600 break-words">{val.normalRange}</td>
-                              <td className="p-2">
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                  val.isAbnormal 
-                                    ? val.severity === 'CRITICAL' 
-                                      ? 'bg-red-100 text-red-800' 
-                                      : val.severity === 'HIGH' 
-                                      ? 'bg-orange-100 text-orange-800' 
-                                      : 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-green-100 text-green-800'
-                                }`}>
-                                  {val.isAbnormal ? val.severity : 'NORMAL'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="mt-2"
-                    onClick={() => copyText(JSON.stringify(run.finalOutput, null, 2))}
-                  >
-                    View Full JSON Data
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* Fallback to raw display */}
-          {(!run?.finalOutput || typeof run.finalOutput === 'string') && (
-          <div className="bg-gray-50 rounded-lg p-4">
-            <pre className="text-sm overflow-auto min-h-[240px] max-h-[60vh] whitespace-pre-wrap break-words">{run?.finalOutput}</pre>
-          </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
@@ -1155,18 +1283,6 @@ function HealthcarePdfPicker({ onPick }: { onPick: (url: string) => void }) {
     source: string;
   }>>([]);
   
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await fetch('/api/admin/llm-playground/healthcare-pdfs');
-        if (!r.ok) return;
-        const t = await r.text();
-        if (!t) return;
-        const j = JSON.parse(t);
-        if (Array.isArray(j?.data)) setAvailablePdfs(j.data);
-      } catch {}
-    })();
-  }, []);
   
   async function onUploadFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -1185,6 +1301,7 @@ function HealthcarePdfPicker({ onPick }: { onPick: (url: string) => void }) {
       setBusy(false);
     }
   }
+
   
   return (
     <div className="space-y-4">
@@ -1194,7 +1311,7 @@ function HealthcarePdfPicker({ onPick }: { onPick: (url: string) => void }) {
       </div>
       
       <div className="space-y-3">
-        <div>
+      <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Upload New Medical Document</label>
           <div className="flex items-center gap-2">
             <input 
@@ -1221,8 +1338,8 @@ function HealthcarePdfPicker({ onPick }: { onPick: (url: string) => void }) {
               <option key={pdf.id} value={pdf.fileUrl}>
                 {pdf.fileName} - {pdf.patientName} ({pdf.type})
               </option>
-            ))}
-          </select>
+          ))}
+        </select>
           {availablePdfs.length === 0 && (
             <p className="text-sm text-gray-500 mt-1">No medical documents found in the system</p>
           )}
