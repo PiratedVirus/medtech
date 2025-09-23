@@ -56,13 +56,6 @@ Cypress.Commands.add('mockApiResponse', (endpoint: string, response: any) => {
   cy.intercept('GET', `**${endpoint}**`, response).as(`mock${endpoint.replace(/\//g, '')}`)
 })
 
-// Custom command to clear local storage
-Cypress.Commands.add('clearLocalStorage', () => {
-  cy.window().then((win) => {
-    win.localStorage.clear()
-  })
-})
-
 // Custom command to fill registration form
 Cypress.Commands.add('fillRegistrationForm', (userData: {
   name: string

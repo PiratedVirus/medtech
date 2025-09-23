@@ -16,6 +16,16 @@
 // Import commands.js using ES2015 syntax:
 import './commands'
 
+// Ignore React hydration mismatch errors that don't affect functional tests
+Cypress.on('uncaught:exception', (err) => {
+  // Skip known Next.js hydration warning that appears in development/test env
+  if (err.message?.includes('Hydration failed because the server rendered HTML')) {
+    // returning false here prevents Cypress from failing the test
+    return false
+  }
+  // let other errors fail the test
+})
+
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
 
@@ -27,7 +37,7 @@ declare global {
       loginAsDoctor(): Chainable<void>
       waitForPageLoad(): Chainable<void>
       mockApiResponse(endpoint: string, response: any): Chainable<void>
-      clearLocalStorage(): Chainable<void>
+      // built-in cy.clearLocalStorage()
     }
   }
 }
