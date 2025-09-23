@@ -73,7 +73,7 @@ export default function MedicineCard({
     if (!frequency || !duration) return "";
 
     const freqCount = frequency.split('-').reduce((sum, val) => sum + parseInt(val || '0'), 0);
-    const durationDays = parseInt(duration.replace('d', ''));
+    const durationDays = parseInt(String(duration).replace('d', ''));
 
     if (isNaN(freqCount) || isNaN(durationDays)) return "";
 
@@ -295,7 +295,7 @@ export default function MedicineCard({
                   pattern="[0-9]*"
                   value={
                     medicine.duration && !durationPills.some(d => d.value === medicine.duration)
-                      ? medicine.duration.replace("d", "")
+                      ? String(medicine.duration).replace("d", "")
                       : ""
                   }
                   onChange={e => handleCustomDurationChange(e.target.value)}
@@ -477,7 +477,7 @@ export default function MedicineCard({
                     pattern="[0-9]*"
                     value={
                       medicine.duration && !durationPills.some(d => d.value === medicine.duration)
-                        ? medicine.duration.replace("d", "")
+                        ? String(medicine.duration).replace("d", "")
                         : ""
                     }
                     onChange={e => handleCustomDurationChange(e.target.value)}

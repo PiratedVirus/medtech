@@ -1,0 +1,38 @@
+{
+  "success": true,
+  "upcomingAppointments": [
+    {
+      "id": 1,
+      "doctorName": "Dr. John Smith",
+      "specialty": "Cardiologist",
+      "date": "2024-12-31",
+      "time": "10:00 AM",
+      "consultationType": "VIDEO",
+      "status": "SCHEDULED",
+      "fees": 500
+    },
+    {
+      "id": 2,
+      "doctorName": "Dr. Sarah Johnson",
+      "specialty": "Endocrinologist",
+      "date": "2025-01-05",
+      "time": "2:00 PM",
+      "consultationType": "CLINIC",
+      "status": "SCHEDULED",
+      "fees": 600
+    }
+  ],
+  "pastAppointments": [
+    {
+      "id": 3,
+      "doctorName": "Dr. Michael Brown",
+      "specialty": "General Physician",
+      "date": "2024-12-15",
+      "time": "11:00 AM",
+      "consultationType": "VIDEO",
+      "status": "COMPLETED",
+      "fees": 400,
+      "prescriptionId": 1
+    }
+  ]
+}

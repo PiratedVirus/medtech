@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "scheduled": [
+    {
+      "id": 1,
+      "packageName": "Diabetes Complete Package",
+      "tests": ["HbA1c", "Fasting Glucose", "Post Prandial Glucose"],
+      "price": 1200,
+      "date": "2024-12-31",
+      "status": "SCHEDULED"
+    }
+  ],
+  "completed": [
+    {
+      "id": 2,
+      "packageName": "Basic Health Checkup",
+      "tests": ["CBC", "Lipid Profile", "Kidney Function"],
+      "price": 800,
+      "date": "2024-12-15",
+      "status": "COMPLETED",
+      "reportUrl": "/reports/sample-report.pdf"
+    }
+  ]
+}

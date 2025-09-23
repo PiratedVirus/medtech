@@ -16,6 +16,7 @@ import ProgressProvider from '@/components/common/ProgressProvider';
 import NavigationProgress from '@/components/common/NavigationProgress';
 import MiddlewareProgressHandler from '@/components/common/MiddlewareProgressHandler';
 import SmartProgressBar from '@/components/common/SmartProgressBar';
+import { suppressExtensionErrors } from '@/lib/error-suppression';
 
 const lato = Lato({
   subsets: ['latin'],
@@ -54,6 +55,9 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+    // Suppress browser extension errors
+    suppressExtensionErrors();
+    
     // Only run once the component is mounted on the client
     setPersister(createSyncStoragePersister({ 
       storage: window.localStorage 

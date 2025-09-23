@@ -5,21 +5,12 @@ dotenv.config({
   path: `.env.${process.env.NODE_ENV || "dev"}`,
 });
 
-// Check if we should use development config
-if (process.env.NEXT_CONFIG === 'dev') {
-  // Import and export development config directly
-  module.exports = require('./next.config.dev.ts').default;
-}
-
-// Bundle analyzer configuration
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
-});
-
-const nextConfig: NextConfig = {
-  // SWC minification is enabled by default in Next.js 15+
+// Development-specific configuration with disabled caching and chunking
+const nextDevConfig: NextConfig = {
+  // Disable SWC minification for faster builds
+  swcMinify: false,
   
-  // Optimize images with better caching and formats
+  // Basic image configuration without aggressive caching
   images: {
     remotePatterns: [
       {
@@ -28,45 +19,71 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
     ],
-    // Enable modern image formats for better performance
-    formats: ['image/webp', 'image/avif'],
-    // Optimize image loading
-    minimumCacheTTL: 60,
+    // Disable image caching for development
+    minimumCacheTTL: 0,
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 
-  // Compiler optimizations
+  // Compiler optimizations - keep console logs in development
   compiler: {
-    // Remove console logs in production
-    removeConsole: process.env.NODE_ENV === 'production',
+    removeConsole: false,
   },
 
-  // Bundle optimization
+  // Development webpack configuration - disable chunking and caching
   webpack: (config, { dev, isServer }) => {
-    // Optimize bundle splitting for client-side
-    if (!dev && !isServer) {
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
-          },
-          common: {
-            name: 'common',
-            minChunks: 2,
-            chunks: 'all',
-            enforce: true,
+    // Always disable splitting and caching in development
+    if (dev) {
+      // Disable all caching
+      config.cache = false;
+      
+      // Disable chunk splitting for faster rebuilds
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'async',
+          cacheGroups: {
+            default: false,
+            vendors: false,
           },
         },
+        runtimeChunk: false,
+        moduleIds: 'named',
+        chunkIds: 'named',
+      };
+
+      // Disable persistent caching
+      config.snapshot = {
+        managedPaths: [],
+        immutablePaths: [],
+        buildDependencies: {
+          hash: true,
+          timestamp: true,
+        },
+        module: {
+          timestamp: true,
+          hash: true,
+        },
+        resolve: {
+          timestamp: true,
+          hash: true,
+        },
+        resolveBuildDependencies: {
+          timestamp: true,
+          hash: true,
+        },
+      };
+
+      // Force webpack to rebuild everything
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: /node_modules/,
       };
     }
     
-    // Server-side optimizations
+    // Keep server-side externals for functionality
     if (isServer) {
-      // Exclude heavy packages from server bundle
       config.externals = config.externals || [];
       config.externals.push({
         'pdf-parse': 'commonjs pdf-parse',
@@ -95,12 +112,24 @@ const nextConfig: NextConfig = {
     return config;
   },
 
-  // Headers for better caching
+  // Disable aggressive headers and caching for development
   async headers() {
     return [
       {
         source: '/:path*',
         headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate'
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache'
+          },
+          {
+            key: 'Expires',
+            value: '0'
+          },
           {
             key: 'X-DNS-Prefetch-Control',
             value: 'on'
@@ -128,7 +157,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            value: 'no-cache, no-store, must-revalidate',
           },
         ],
       },
@@ -137,44 +166,29 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            value: 'no-cache, no-store, must-revalidate',
           },
         ],
       },
     ];
   },
 
-  // External packages for server components - prevents bundling heavy server dependencies
+  // External packages for server components
   serverExternalPackages: [
-    // PDF Processing
     'pdf-parse',
     '@react-pdf/renderer',
-    
-    // Google Cloud Services
     '@google-cloud/vision',
     '@google-cloud/storage',
     'googleapis',
-    
-    // Firebase & Push Notifications
     'firebase-admin',
     'web-push',
-    
-    // Database & Caching
     'ioredis',
     '@upstash/redis',
-    
-    // HTTP & Rate Limiting
     'axios',
     'bottleneck',
-    
-    // Payment Processing
     'razorpay',
-    
-    // SMS Services
     'msg91',
     'twilio',
-    
-    // Other heavy dependencies
     'crypto-js',
     'bcryptjs',
     'html2canvas',
@@ -183,26 +197,33 @@ const nextConfig: NextConfig = {
     'rss-parser'
   ],
   
-  // Enhanced configuration for PDF processing and performance
+  // Development-specific experimental features
   experimental: {
-    // Enable modern bundling
+    // Enable modern bundling but disable caching
     esmExternals: true,
   },
 
-  // Output configuration for better performance
+  // Output configuration for development
   output: 'standalone',
   
-  // Enable compression
-  compress: true,
+  // Disable compression for faster builds
+  compress: false,
   
-  // Optimize for production
+  // Disable powered by header
   poweredByHeader: false,
   
-  // Enable React strict mode for better development experience
+  // Enable React strict mode for development
   reactStrictMode: true,
+
+  // Development-specific optimizations
+  onDemandEntries: {
+    // Period (in ms) where the server will keep pages in the buffer
+    maxInactiveAge: 25 * 1000,
+    // Number of pages that should be kept simultaneously without being disposed
+    pagesBufferLength: 2,
+  },
 };
 
-// Only export if not using dev config
-if (process.env.NEXT_CONFIG !== 'dev') {
-  module.exports = withBundleAnalyzer(nextConfig);
-}
+export default nextDevConfig;
+
+
