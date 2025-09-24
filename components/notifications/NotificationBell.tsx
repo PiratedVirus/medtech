@@ -64,7 +64,7 @@ const NotificationBell: React.FC = () => {
     <>
       {/* Permission Banner */}
       {showPermissionBanner && (
-        <div className="fixed top-4 right-4 z-50 bg-gradient-to-r from-[#134F30] to-[#F28A2E] text-white p-5 rounded-2xl shadow-2xl max-w-sm animate-in slide-in-from-top-2 duration-300">
+        <div className="fixed top-4 right-4 z-50 bg-gradient-to-r from-[#F28A2E] to-[#F28A2E]/80 text-white p-5 rounded-2xl shadow-2xl max-w-sm animate-in slide-in-from-top-2 duration-300">
           <div className="flex items-start gap-4">
             <div className="p-2 bg-white/20 rounded-full flex-shrink-0">
               <Bell className="h-5 w-5" />
@@ -79,7 +79,7 @@ const NotificationBell: React.FC = () => {
                   size="sm"
                   variant="secondary"
                   onClick={handleRequestPermission}
-                  className="text-xs bg-white text-[#134F30] hover:bg-gray-50 font-medium"
+                  className="text-xs bg-white text-[#F28A2E] hover:bg-gray-50 font-medium"
                 >
                   Enable
                 </Button>
@@ -103,13 +103,13 @@ const NotificationBell: React.FC = () => {
           variant="ghost"
           size="sm"
           onClick={() => setIsNotificationCenterOpen(true)}
-          className="relative p-2"
+          className="relative p-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200"
         >
-          <Bell className="h-5 w-5" />
+          <Bell className="h-5 w-5 text-gray-700" />
           {unreadCount > 0 && (
             <Badge 
               variant="destructive" 
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-[#F28A2E] text-white animate-pulse"
             >
               {unreadCount > 99 ? '99+' : unreadCount}
             </Badge>
