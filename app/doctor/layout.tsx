@@ -3,6 +3,7 @@ import React from "react";
 import { ProfileProvider } from "@/hooks/context/ProfileContext";
 import { DashboardHeader as Header } from "@/components/common/DashboardHeader";
 import Footer from "@/components/common/Footer";
+import FloatingCallButton from "@/components/common/FloatingCallButton";
 import "@/app/globals.css";
 import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
@@ -43,6 +44,7 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
       <div className="hidden sm:block">
         <Footer />
       </div>
+      <FloatingCallButton />
       <ToastContainer />
     </ProfileProvider>
   );
