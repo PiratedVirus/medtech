@@ -16,14 +16,33 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { profileId, inputType, rawInput, sourceFileUrl } = body || {};
+    const { profileId, inputType, rawInput, sourceFileUrl, sourceFileUrls, documentType } = body || {};
     if (!profileId || !inputType) {
       return NextResponse.json({ success: false, error: 'profileId and inputType required' }, { status: 400 });
     }
-    const run = await createRun({ profileId: Number(profileId), inputType, rawInput: rawInput ?? null, sourceFileUrl: sourceFileUrl ?? null });
+    
+    // Handle multiple PDFs for prescriptions
+    const finalSourceFileUrl = sourceFileUrls && sourceFileUrls.length > 0 
+      ? sourceFileUrls.join(',') // Join multiple URLs with comma
+      : sourceFileUrl;
+    
+    const run = await createRun({ 
+      profileId: Number(profileId), 
+      inputType, 
+      rawInput: rawInput ?? null, 
+      sourceFileUrl: finalSourceFileUrl ?? null 
+    });
 
     // Fire-and-forget run execution
-    executePlaygroundRun({ runId: run.id, profileId: Number(profileId), inputType, rawInput: rawInput ?? null, sourceFileUrl: sourceFileUrl ?? null }).catch(console.error);
+    executePlaygroundRun({ 
+      runId: run.id, 
+      profileId: Number(profileId), 
+      inputType, 
+      rawInput: rawInput ?? null, 
+      sourceFileUrl: finalSourceFileUrl ?? null,
+      documentType: documentType ?? 'lab_report',
+      sourceFileUrls: sourceFileUrls ?? null
+    }).catch(console.error);
 
     return NextResponse.json({ success: true, data: { runId: run.id } });
   } catch (e: any) {

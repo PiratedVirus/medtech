@@ -46,14 +46,16 @@ const mobileNavigation = [
 ];
 
 export function DashboardHeader() {
-  const { profile, isDoctor } = useDecryptedProfile();
+  const { profile, isDoctor, clearProfile } = useDecryptedProfile();
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const pathname = usePathname();
 
   const handleLogout = () => {
     dispatch(logoutUser());
-    router.push("/login");
+    clearProfile(); // Clear the React Query cache and sessionStorage
+    // Force a page reload to ensure clean state
+    window.location.href = "/login";
   };
 
   const navigationItems = fullNavigation.map((item) => ({

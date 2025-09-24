@@ -20,6 +20,7 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
   }, [profile, isLoading, isError, router]);
 
   // Show loading while checking authentication (but not if there's an error)
+  // Also add a timeout to prevent infinite loading
   if (isLoading && !isError) {
     return <CdLoader />;
   }
