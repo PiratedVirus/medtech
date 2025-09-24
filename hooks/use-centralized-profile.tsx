@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { decryptData, encryptData } from '@/lib/encryption';
 import axios from 'axios';
 
@@ -118,6 +118,7 @@ const fetchUserProfile = async (): Promise<DecryptedProfile | null> => {
  */
 export const useCentralizedProfile = () => {
   const cachedProfile = getCachedProfile();
+  const queryClient = useQueryClient();
   
   const queryResult = useQuery({
     queryKey: ['userProfile'],
@@ -188,8 +189,8 @@ export const useCentralizedProfile = () => {
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("userProfile");
       }
-      // Clear the query cache
-      queryResult.refetch();
+      // Clear the query cache and set data to null
+      queryClient.setQueryData(['userProfile'], null);
     }
   };
 };

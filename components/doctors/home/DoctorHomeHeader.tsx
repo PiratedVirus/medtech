@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { logoutUser } from "@/store/userSlice";
-import { useProfile } from "@/hooks/context/ProfileContext";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import { useRouter, usePathname } from "next/navigation";
 import type { AppDispatch } from "@/store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -42,14 +42,16 @@ const mobileNavigation = [
 ];
 
 export default function DoctorHomeHeader() {
-  const { profile } = useProfile();
+  const { profile, clearProfile } = useDecryptedProfile();
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const pathname = usePathname();
 
   const handleLogout = () => {
     dispatch(logoutUser());
-    router.push("/login");
+    clearProfile(); // Clear the React Query cache and sessionStorage
+    // Force a page reload to ensure clean state
+    window.location.href = "/login";
   };
 
   const navigationItems = fullNavigation.map((item) => ({
