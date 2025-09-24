@@ -56,7 +56,7 @@ async function generateStandaloneSummary(text: string): Promise<{ summary: strin
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
         messages: [
           {
             role: 'system',
@@ -123,7 +123,7 @@ async function extractStandaloneValues(text: string): Promise<{ allValues: any[]
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
         messages: [
           {
             role: 'system',
@@ -646,12 +646,58 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
         keyFindings,
         recommendations,
         urgency,
-        llmModel: 'llama-3.3-70b-versatile',
+        llmModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
         processedAt: new Date(),
         processingError: null
       }
     });
     
+    // Create trend data for standalone reports
+    if (analysisType === 'lab_analysis' && Array.isArray(allValues) && allValues.length > 0) {
+      console.log(`[UPLOAD][${reportId}] Creating trend data for ${allValues.length} parameters`);
+      
+      try {
+        // Get the first available lab booking for standalone reports
+        const firstLabBooking = await prisma.labBooking.findFirst({
+          where: { deletedAt: null }
+        });
+
+        if (firstLabBooking) {
+          // Create trend data for each parameter
+          for (const value of allValues) {
+            if (value.parameter && value.value) {
+              try {
+                await prisma.reportTrendData.create({
+                  data: {
+                    patientId: report.patientId,
+                    parameter: String(value.parameter),
+                    value: String(value.value),
+                    unit: value.unit ? String(value.unit) : null,
+                    normalRange: value.normalRange ? String(value.normalRange) : null,
+                    isAbnormal: Boolean(value.isAbnormal),
+                    severity: value.severity && ['LOW','NORMAL','HIGH','CRITICAL'].includes(String(value.severity).toUpperCase())
+                      ? String(value.severity).toUpperCase()
+                      : null,
+                    reportDate: report.createdAt,
+                    labBookingId: firstLabBooking.id, // Use existing lab booking for standalone reports
+                    sourceReportId: null // Standalone reports don't have sourceReportId
+                  }
+                });
+              } catch (trendError) {
+                console.log(`[UPLOAD][${reportId}] Error creating trend data for ${value.parameter}: ${trendError.message}`);
+              }
+            }
+          }
+          console.log(`[UPLOAD][${reportId}] Trend data creation completed`);
+        } else {
+          console.log(`[UPLOAD][${reportId}] No lab booking found, skipping trend data creation`);
+        }
+      } catch (trendError) {
+        console.error(`[UPLOAD][${reportId}] Error creating trend data:`, trendError);
+        // Don't fail the upload, just log the error
+      }
+    }
+
     console.log(`[UPLOAD] Successfully processed report ${reportId}`);
     console.log(`[UPLOAD][${reportId}] Database update completed with:`, {
       allValues: Array.isArray(allValues) ? allValues.length : 'not array',

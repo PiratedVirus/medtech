@@ -1,8 +1,10 @@
 'use client'
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Eye, Upload } from "lucide-react";
+import { FileText, Eye, Upload, BarChart3 } from "lucide-react";
 import ReportUploadButton from "@/components/common/ReportUploadButton";
+import ParameterTrendsModal from "@/components/patients/labs/ParameterTrendsModal";
+import { useState } from "react";
 
 interface LabReportsSectionProps {
   labBookings: Array<{
@@ -19,6 +21,7 @@ interface LabReportsSectionProps {
 }
 
 export default function LabReportsSection({ labBookings, patientId, onViewMore, onUploadSuccess }: LabReportsSectionProps) {
+  const [parameterTrendsOpen, setParameterTrendsOpen] = useState(false);
   const recentReports = labBookings.slice(0, 3);
 
   // Function to render individual lab results for a package
@@ -155,9 +158,18 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
             )}
           </div>
 
-          {/* Upload Button */}
+          {/* Action Buttons */}
           {patientId && (
-            <div className="border-t pt-3 mt-auto">
+            <div className="border-t pt-3 mt-auto space-y-2">
+              <Button
+                onClick={() => window.open(`/dashboard/parameter-trends?patientId=${patientId}`, '_blank')}
+                variant="outline"
+                size="sm"
+                className="w-full"
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                View Parameter Trends
+              </Button>
               <ReportUploadButton
                 patientId={Number(patientId)}
                 onUploadSuccess={onUploadSuccess}
@@ -172,6 +184,15 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
           )}
         </div>
       </Card>
+
+      {/* Parameter Trends Modal */}
+      {patientId && (
+        <ParameterTrendsModal
+          isOpen={parameterTrendsOpen}
+          onClose={() => setParameterTrendsOpen(false)}
+          patientId={Number(patientId)}
+        />
+      )}
     </div>
   );
 }

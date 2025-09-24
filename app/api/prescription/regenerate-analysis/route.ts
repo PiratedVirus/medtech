@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
         urgency: summaryResult.urgency,
         lastUpdated: new Date(),
         prescriptionCount: prescriptionTexts.length,
-        llmModel: 'groq-llama-3.3-70b-versatile'
+        llmModel: 'meta-llama/llama-4-scout-17b-16e-instruct'
       },
       create: {
         patientId: parseInt(patientId),
@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
         urgency: summaryResult.urgency,
         lastUpdated: new Date(),
         prescriptionCount: prescriptionTexts.length,
-        llmModel: 'groq-llama-3.3-70b-versatile'
+        llmModel: 'meta-llama/llama-4-scout-17b-16e-instruct'
       }
     });
 

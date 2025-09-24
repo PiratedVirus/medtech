@@ -22,12 +22,12 @@
 ### **Environment Configuration Issues**
 ```bash
 # ❌ BEFORE - Problematic fallback models
-GROQ_FALLBACK_MODELS=llama-3.3-70b-versatile,gemma2-9b-it
+GROQ_FALLBACK_MODELS=meta-llama/llama-4-scout-17b-16e-instruct,gemma2-9b-it
 
 # ✅ AFTER - Only capable models
-GROQ_FALLBACK_MODELS=llama-3.3-70b-versatile,mixtral-8x7b-32768
-GROQ_SUMMARY_MODEL=llama-3.3-70b-versatile
-GROQ_VALUES_MODEL=llama-3.3-70b-versatile
+GROQ_FALLBACK_MODELS=meta-llama/llama-4-scout-17b-16e-instruct,mixtral-8x7b-32768
+GROQ_SUMMARY_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
+GROQ_VALUES_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
 ```
 
 ### **Model Capability Mismatch**

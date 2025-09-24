@@ -22,7 +22,7 @@ async function testProductionIntegration() {
       data: {
         name: 'Test Production Profile',
         description: 'Test profile for production integration',
-        model: 'llama-3.3-70b-versatile',
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
         temperature: 0.2,
         systemPrompt: 'You are a test medical analyzer. This is a test system prompt.',
         summaryPrompt: 'Test summary prompt: {{TEXT}}',

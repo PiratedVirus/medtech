@@ -190,7 +190,7 @@ export default function LlmPlaygroundPage() {
   async function onCreateProfile() {
     const name = prompt('Profile name?')?.trim();
     if (!name) return;
-    const res = await fetch('/api/admin/llm-playground/profiles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, model: 'llama-3.3-70b-versatile' }) });
+    const res = await fetch('/api/admin/llm-playground/profiles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, model: 'meta-llama/llama-4-scout-17b-16e-instruct' }) });
     const json = await res.json();
     if (json?.data) { setProfiles([json.data, ...profiles]); setSelectedProfile(json.data); }
   }

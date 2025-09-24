@@ -257,7 +257,7 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
         processingStatus: 'COMPLETED',
         processingError: null,
         processedAt: new Date(),
-        llmModel: process.env.GROQ_API_KEY ? 'llama-3.3-70b-versatile' : 'openrouter-llama-3.2-3b',
+        llmModel: process.env.GROQ_API_KEY ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'openrouter-llama-3.2-3b',
         llmSummary,
         allValues,
         criticalValues,

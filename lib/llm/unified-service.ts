@@ -3,8 +3,8 @@ import { groqLimiter } from './limiter';
 import { getActiveProductionProfile } from './profile-service';
 
 // Configuration
-const GROQ_SUMMARY_MODEL = process.env.GROQ_SUMMARY_MODEL || 'llama-3.3-70b-versatile';
-const GROQ_VALUES_MODEL = process.env.GROQ_VALUES_MODEL || 'llama-3.3-70b-versatile';
+const GROQ_SUMMARY_MODEL = process.env.GROQ_SUMMARY_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct';
+const GROQ_VALUES_MODEL = process.env.GROQ_VALUES_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct';
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 const MAX_PDF_MB = Number(process.env.OPENROUTER_MAX_PDF_MB ?? 10);
 const MAX_TEXT_TOKENS = 8000;

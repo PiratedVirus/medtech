@@ -5,7 +5,7 @@ async function seedLlmPlaygroundProfile(prisma) {
     name: 'Default Medical Lab Analysis',
     description: 'Mirrors current production prompts and parameters',
     provider: 'groq',
-    model: process.env.GROQ_VALUES_MODEL || 'llama-3.3-70b-versatile',
+    model: process.env.GROQ_VALUES_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct',
     temperature: 0.1,
     topP: 1,
     maxTokens: 2500,

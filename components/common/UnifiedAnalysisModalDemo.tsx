@@ -42,7 +42,7 @@ export default function UnifiedAnalysisModalDemo() {
           keyFindings: ['Finding 1', 'Finding 2'],
           recommendations: ['Recommendation 1', 'Recommendation 2'],
           urgency: 'ROUTINE' as const,
-          llmModel: 'llama-3.3-70b-versatile',
+          llmModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
           processedAt: '2024-01-20T10:30:00Z',
           allValues: [
             {
