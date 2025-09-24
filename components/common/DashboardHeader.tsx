@@ -130,6 +130,11 @@ export function DashboardHeader() {
         </div>
       </header>
 
+      {/* Mobile Notification Bell - Fixed Top Right */}
+      <div className="fixed top-4 right-4 z-50 md:hidden">
+        <NotificationBell />
+      </div>
+
       {/* Bottom Navigation for Mobile Screens */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden bg-background border-t">
         {/* Render first four items as before */}

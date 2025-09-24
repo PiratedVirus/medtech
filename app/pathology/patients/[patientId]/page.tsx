@@ -360,7 +360,7 @@ export default function PatientDetailsPage() {
                               {/* Active Progress Line - Only between completed dots, stops at last completed */}
                               {(() => {
                                 const completedCount = timelineSteps.filter((step) => step.status === "completed").length;
-                                const progressWidth = completedCount > 1 ? (completedCount - 1) / (timelineSteps.length - 1) : 0;
+                                const progressWidth = completedCount / timelineSteps.length;
                                 return (
                                   <div
                                     className="absolute top-3 h-px bg-custom-orange transition-all duration-500"

@@ -24,6 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 const fullNavigation = [
   { name: "Home", href: "/doctor/home", current: true, icon: Home },
@@ -118,6 +119,11 @@ export default function DoctorHomeHeader() {
           </DropdownMenu>
         </div>
       </header>
+
+      {/* Mobile Notification Bell - Fixed Top Right */}
+      <div className="fixed top-4 right-4 z-50 md:hidden">
+        <NotificationBell />
+      </div>
 
       {/* Bottom Navigation for Mobile Screens */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden bg-background border-t">
