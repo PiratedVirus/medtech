@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Printer, Info, Coffee, Sun, UtensilsCrossed, Sandwich, Moon } from "lucide-react";
+import { Copy, Info, Coffee, Sun, UtensilsCrossed, Sandwich, Moon, X } from "lucide-react";
 
 interface DietPlanModalProps {
   open: boolean;
@@ -221,30 +221,25 @@ export default function DietPlanModal({ open, onOpenChange, patientId, clinicId,
         <div className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <DialogTitle>Diet Plan</DialogTitle>
-            {pendingRequests.length > 0 && (
-              <div className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                <Info className="h-3 w-3" /> Request submitted • Pending
-              </div>
-            )}
           </div>
           <div className="flex items-center gap-2">
-            {/* {selectedPlan && (
-              <Button variant="ghost" size="sm" onClick={copyAllMeals} className="h-8 px-2">
-                <Copy className="h-4 w-4 mr-1" /> Copy all
-              </Button>
-            )} */}
-            <Button variant="outline" size="sm" onClick={() => window.print()} className="h-8 px-2">
-              <Printer className="h-4 w-4 mr-1" /> Print
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowRequestForm((v) => !v)} className="h-8 px-3">
+            <Button 
+              variant={showRequestForm ? "outline" : "default"} 
+              size="sm" 
+              onClick={() => setShowRequestForm((v) => !v)} 
+              className="h-8 px-3"
+            >
               {showRequestForm ? 'Close Request Form' : 'Request New Plan'}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} className="h-8 px-2">
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
         {/* Scrollable Body */}
         <div className="px-6 py-4 h-[calc(85vh-52px)] overflow-auto">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-center mb-3">
               <TabsList>
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="meals">Meals</TabsTrigger>
@@ -260,55 +255,64 @@ export default function DietPlanModal({ open, onOpenChange, patientId, clinicId,
             </div>
 
             <TabsContent value="overview">
-                {selectedPlan ? (
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                  {/* Left column: Stacked plan cards */}
-                  <div className="md:col-span-4 space-y-3">
-                    {plans.map((p) => (
-                      <button key={p.id} onClick={() => setSelectedPlan(p)} className={`w-full text-left rounded-lg border p-3 ${selectedPlan?.id===p.id? 'border-primary bg-primary/5' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}>
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="text-sm font-semibold text-gray-800 line-clamp-1">{p.title || 'Diet plan'}</div>
-                          {(() => { const s = deriveStatus(p); return s ? (
-                            <span className={`ml-2 inline-flex px-2 py-0.5 rounded-full text-xs font-semibold border ${s.className}`}>{s.text}</span>
-                          ) : null; })()}
-                        </div>
-                        <div className="text-xs text-gray-600">{formatDateRange(p) || '—'}</div>
-                        <div className="text-xs text-gray-500">Dietician: {(() => { const d = (dieticians || []).find((x: any) => String(x.id) === String(p?.dieticianId)); return d?.name || '—'; })()}</div>
-                      </button>
-                    ))}
-                    {plans.length===0 && (
-                      <div className="text-sm text-gray-500">No plans to show</div>
-                    )}
-                  </div>
-                  {/* Right column: Meals for selected plan */}
-                  <div className="md:col-span-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {getSortedMeals(selectedPlan).map(([k, v]: any) => {
-                        const mealInfo = getMealDisplayInfo(selectedPlan, k);
-                        return (
-                          <div key={k} className="rounded-lg border p-3 bg-white">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-                                <span>{mealInfo.icon}</span>
-                                <span>{mealInfo.name}</span>
-                              </div>
-                              <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyMeal(k, v)}>
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                            </div>
-                            <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
-                              {(expandAll ? parseMealItems(v) : parseMealItems(v).slice(0, 3)).map((item, idx) => (
-                                <li key={idx}>{item}</li>
-                              ))}
-                            </ul>
-                            {parseMealItems(v).length > 3 && (
-                              <button className="mt-2 text-xs text-primary" onClick={() => setExpandAll((val) => !val)}>
-                                {expandAll ? 'Show less' : `Show all (${parseMealItems(v).length})`}
-                              </button>
-                            )}
+              {selectedPlan ? (
+                <div className="space-y-4">
+                  {/* Status pill moved to overview */}
+                  {pendingRequests.length > 0 && (
+                    <div className="inline-flex items-center gap-1 text-xs px-3 py-2 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                      <Info className="h-3 w-3" /> Request submitted • Pending
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    {/* Left column: Stacked plan cards */}
+                    <div className="md:col-span-4 space-y-3">
+                      {plans.map((p) => (
+                        <button key={p.id} onClick={() => setSelectedPlan(p)} className={`w-full text-left rounded-lg border p-3 ${selectedPlan?.id===p.id? 'border-primary bg-primary/5' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-sm font-semibold text-gray-800 line-clamp-1">{p.title || 'Diet plan'}</div>
+                            {(() => { const s = deriveStatus(p); return s ? (
+                              <span className={`ml-2 inline-flex px-2 py-0.5 rounded-full text-xs font-semibold border ${s.className}`}>{s.text}</span>
+                            ) : null; })()}
                           </div>
-                        );
-                      })}
+                          <div className="text-xs text-gray-600">{formatDateRange(p) || '—'}</div>
+                          <div className="text-xs text-gray-500">Dietician: {(() => { const d = (dieticians || []).find((x: any) => String(x.id) === String(p?.dieticianId)); return d?.name || '—'; })()}</div>
+                        </button>
+                      ))}
+                      {plans.length===0 && (
+                        <div className="text-sm text-gray-500">No plans to show</div>
+                      )}
+                    </div>
+                    {/* Right column: Meals for selected plan */}
+                    <div className="md:col-span-8">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {getSortedMeals(selectedPlan).map(([k, v]: any) => {
+                          const mealInfo = getMealDisplayInfo(selectedPlan, k);
+                          return (
+                            <div key={k} className="rounded-lg border p-3 bg-white">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                                  <span>{mealInfo.icon}</span>
+                                  <span>{mealInfo.name}</span>
+                                </div>
+                                <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyMeal(k, v)}>
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                                {(expandAll ? parseMealItems(v) : parseMealItems(v).slice(0, 3)).map((item, idx) => (
+                                  <li key={idx}>{item}</li>
+                                ))}
+                              </ul>
+                              {parseMealItems(v).length > 3 && (
+                                <button className="mt-2 text-xs text-primary" onClick={() => setExpandAll((val) => !val)}>
+                                  {expandAll ? 'Show less' : `Show all (${parseMealItems(v).length})`}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -323,34 +327,34 @@ export default function DietPlanModal({ open, onOpenChange, patientId, clinicId,
             </TabsContent>
 
             <TabsContent value="meals">
-            {selectedPlan ? (
+              {selectedPlan ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {getSortedMeals(selectedPlan).map(([k, v]: any) => {
-                  const mealInfo = getMealDisplayInfo(selectedPlan, k);
-                  return (
-                    <div key={k} className="rounded-lg border p-3 bg-white">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-                          <span>{mealInfo.icon}</span>
-                          <span>{mealInfo.name}</span>
+                  {getSortedMeals(selectedPlan).map(([k, v]: any) => {
+                    const mealInfo = getMealDisplayInfo(selectedPlan, k);
+                    return (
+                      <div key={k} className="rounded-lg border p-3 bg-white">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                            <span>{mealInfo.icon}</span>
+                            <span>{mealInfo.name}</span>
+                          </div>
+                          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyMeal(k, v)}>
+                            <Copy className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyMeal(k, v)}>
-                          <Copy className="h-4 w-4" />
-                        </Button>
+                        <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                          {(expandAll ? parseMealItems(v) : parseMealItems(v).slice(0, 5)).map((item, idx) => (
+                            <li key={idx}>{item}</li>
+                          ))}
+                        </ul>
+                        {parseMealItems(v).length > 5 && (
+                          <button className="mt-2 text-xs text-primary" onClick={() => setExpandAll((val) => !val)}>
+                            {expandAll ? 'Show less' : `Show all (${parseMealItems(v).length})`}
+                          </button>
+                        )}
                       </div>
-                      <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
-                        {(expandAll ? parseMealItems(v) : parseMealItems(v).slice(0, 5)).map((item, idx) => (
-                          <li key={idx}>{item}</li>
-                        ))}
-                      </ul>
-                      {parseMealItems(v).length > 5 && (
-                        <button className="mt-2 text-xs text-primary" onClick={() => setExpandAll((val) => !val)}>
-                          {expandAll ? 'Show less' : `Show all (${parseMealItems(v).length})`}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-[48vh]">
