@@ -15,7 +15,6 @@ import { useState } from "react";
 import ReportUploadButton from "@/components/common/ReportUploadButton";
 import StandaloneReportCard from "@/components/patients/labs/view/StandaloneReportCard";
 import UnifiedAnalysisModal from "@/components/common/UnifiedAnalysisModal";
-import ParameterTrendsModal from "@/components/patients/labs/ParameterTrendsModal";
 import { Button } from "@/components/ui/button";
 
 export default function LabsPage() {
@@ -83,9 +82,8 @@ export default function LabsPage() {
   const [searchPackages, setSearchPackages] = useState("");
   const [searchTests, setSearchTests] = useState("");
   const [tab, setTab] = useState<'catalog' | 'bookings'>("catalog");
-  const [reportTab, setReportTab] = useState<'lab-generated' | 'manually-uploaded' | 'parameter-trends'>("lab-generated");
+  const [reportTab, setReportTab] = useState<'lab-generated' | 'manually-uploaded'>("lab-generated");
   const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
-  const [parameterTrendsOpen, setParameterTrendsOpen] = useState(false);
   const [selectedStandaloneReport, setSelectedStandaloneReport] = useState<any>(null);
 
   const labPackages = (labs || [])
@@ -269,7 +267,7 @@ export default function LabsPage() {
           </div>
 
           {/* Report Type Tabs */}
-          <div className="mb-6">
+          <div className="mb-6 flex justify-center">
             <div className="inline-flex border rounded-full overflow-hidden">
               <button
                 className={`px-6 py-3 text-sm font-medium ${
@@ -290,16 +288,6 @@ export default function LabsPage() {
                 onClick={() => setReportTab('manually-uploaded')}
               >
                 Manually Uploaded ({standaloneReports.length})
-              </button>
-              <button
-                className={`px-6 py-3 text-sm font-medium border-l ${
-                  reportTab === 'parameter-trends' 
-                    ? 'bg-primary text-white' 
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-                onClick={() => setReportTab('parameter-trends')}
-              >
-                Parameter Trends
               </button>
             </div>
           </div>
@@ -344,25 +332,6 @@ export default function LabsPage() {
             </>
           )}
 
-          {/* Parameter Trends Tab */}
-          {reportTab === 'parameter-trends' && (
-            <>
-              <div className="text-center py-12">
-                <div className="mb-6">
-                  <h3 className="text-2xl font-bold text-gray-800 mb-2">Parameter Trends</h3>
-                  <p className="text-gray-600">
-                    Track how your lab parameters change over time with interactive charts
-                  </p>
-                </div>
-                <Button
-                  onClick={() => router.push('/dashboard/parameter-trends')}
-                  className="bg-primary hover:bg-primary/90 text-white px-8 py-3"
-                >
-                  View Parameter Trends
-                </Button>
-              </div>
-            </>
-          )}
         </div>
       </div>
       </>
@@ -381,12 +350,6 @@ export default function LabsPage() {
         preSelectedStandaloneReportId={selectedStandaloneReport?.id || null}
       />
 
-      {/* Parameter Trends Modal */}
-      <ParameterTrendsModal
-        isOpen={parameterTrendsOpen}
-        onClose={() => setParameterTrendsOpen(false)}
-        patientId={Number(profile?.id)}
-      />
     </>
   );
 }

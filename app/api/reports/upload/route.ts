@@ -676,7 +676,7 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
                     normalRange: value.normalRange ? String(value.normalRange) : null,
                     isAbnormal: Boolean(value.isAbnormal),
                     severity: value.severity && ['LOW','NORMAL','HIGH','CRITICAL'].includes(String(value.severity).toUpperCase())
-                      ? String(value.severity).toUpperCase()
+                      ? String(value.severity).toUpperCase() as 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'
                       : null,
                     reportDate: report.createdAt,
                     labBookingId: firstLabBooking.id, // Use existing lab booking for standalone reports
@@ -684,7 +684,7 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
                   }
                 });
               } catch (trendError) {
-                console.log(`[UPLOAD][${reportId}] Error creating trend data for ${value.parameter}: ${trendError.message}`);
+                console.log(`[UPLOAD][${reportId}] Error creating trend data for ${value.parameter}: ${trendError instanceof Error ? trendError.message : 'Unknown error'}`);
               }
             }
           }

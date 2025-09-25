@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import StatusUpdateModal from "@/components/pathology/StatusUpdateModal";
 import ConsolidatedUploadModal from "@/components/pathology/ConsolidatedUploadModal";
 import { normalizeStatus } from "@/lib/utils/status";
+import CdLoader from "@/components/ui/custom/cd-loader";
 
 interface Booking {
   id: number;
@@ -133,7 +134,7 @@ export function AllLabBookingsCard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+        <CdLoader height="100px" />
       </div>
     );
   }

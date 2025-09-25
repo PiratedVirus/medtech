@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
+import CdLoader from '@/components/ui/custom/cd-loader';
 
 interface NotificationCenterProps {
   isOpen: boolean;
@@ -300,7 +301,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
                 {isLoading ? (
                   <div className="flex items-center justify-center h-32">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <CdLoader height="80px" />
                       <span className="text-sm text-gray-500">Loading notifications...</span>
                     </div>
                   </div>

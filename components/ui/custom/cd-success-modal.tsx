@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { CheckCircle, AlertCircle, Info, AlertTriangle } from "lucide-react";
+import CdLoader from "./cd-loader";
 
 type AlertType = "success" | "error" | "info" | "warning";
 
@@ -35,7 +36,7 @@ export default function ModalAlert({ open, text, type = "success", onClose, isLo
         <div className="flex flex-col items-center justify-center space-y-4">
           {isLoading ? (
             <>
-              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#f28a2e]" />
+              <CdLoader height="60px" />
               <h2 className="text-lg font-semibold">{text}</h2>
             </>
           ) : (

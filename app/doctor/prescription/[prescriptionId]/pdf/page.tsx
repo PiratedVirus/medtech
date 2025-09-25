@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import PrescriptionPreview from "@/components/prescription/PrescriptionPreview";
 import { generateAndDownloadPDF } from "@/components/prescription/PrescriptionPDF";
+import CdLoader from "@/components/ui/custom/cd-loader";
 
 interface PrescriptionData {
   id: string;
@@ -164,7 +165,7 @@ export default function PrescriptionPDFPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <CdLoader height="200px" />
           <p className="mt-4 text-gray-600">Loading prescription...</p>
         </div>
       </div>

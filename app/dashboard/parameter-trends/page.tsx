@@ -25,6 +25,7 @@ import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tool
 import { useToast } from '@/hooks/use-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import CdLoader from '@/components/ui/custom/cd-loader';
 
 interface ParameterValue {
   id: number;
@@ -289,7 +290,7 @@ export default function ParameterTrendsPage() {
                   ]}
                   labelFormatter={(label: string, payload: any) => {
                     if (payload && payload[0]) {
-                      return `${payload[0].payload.fullDate}\n${payload[0].payload.reportSource}`;
+                      return `${payload[0].payload.reportSource} on ${payload[0].payload.fullDate}`;
                     }
                     return label;
                   }}
@@ -306,13 +307,13 @@ export default function ParameterTrendsPage() {
                       y={normalRange.min} 
                       stroke="#10b981" 
                       strokeDasharray="5 5" 
-                      label={{ value: "Normal Min", position: "topLeft", style: { fill: '#10b981', fontSize: '12px' } }}
+                      label={{ value: "Normal Min", position: "top", style: { fill: '#10b981', fontSize: '12px' } }}
                     />
                     <ReferenceLine 
                       y={normalRange.max} 
                       stroke="#10b981" 
                       strokeDasharray="5 5" 
-                      label={{ value: "Normal Max", position: "topLeft", style: { fill: '#10b981', fontSize: '12px' } }}
+                      label={{ value: "Normal Max", position: "top", style: { fill: '#10b981', fontSize: '12px' } }}
                     />
                   </>
                 )}
@@ -334,10 +335,13 @@ export default function ParameterTrendsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading parameter trends...</p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="px-20 py-6">
+          <div className="text-center mb-4">
+            <h1 className="text-3xl font-bold text-gray-900">Parameter Trends</h1>
+            <p className="text-gray-600 mt-1">Track your lab parameters over time</p>
+          </div>
+          <CdLoader height="60vh" />
         </div>
       </div>
     );
@@ -346,13 +350,13 @@ export default function ParameterTrendsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="border-b border-gray-200">
+        <div className="mx-auto px-20 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/dashboard/labs" className="text-gray-600 hover:text-gray-900">
+              {/* <Link href="/dashboard/labs" className="text-gray-600 hover:text-gray-900">
                 <ArrowLeft className="h-6 w-6" />
-              </Link>
+              </Link> */}
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Parameter Trends</h1>
                 <p className="text-gray-600 mt-1">Track your lab parameters over time</p>
@@ -368,16 +372,13 @@ export default function ParameterTrendsPage() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
+
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="px-20 py-6">
         {/* Filters and Controls */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
@@ -393,7 +394,7 @@ export default function ParameterTrendsPage() {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              className="px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="all">All Categories</option>
               {categories.map(category => (
@@ -403,7 +404,7 @@ export default function ParameterTrendsPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              className="px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="parameter">Sort by Parameter</option>
               <option value="trend">Sort by Trend</option>
@@ -491,7 +492,7 @@ export default function ParameterTrendsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {filteredAndSortedTrends.map(renderParameterCard)}
           </div>
         )}

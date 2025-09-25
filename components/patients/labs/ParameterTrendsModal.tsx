@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
+import CdLoader from '@/components/ui/custom/cd-loader';
 
 interface ParameterValue {
   id: number;
@@ -215,13 +216,13 @@ export default function ParameterTrendsModal({ isOpen, onClose, patientId }: Par
                       y={normalRange.min} 
                       stroke="#10b981" 
                       strokeDasharray="5 5" 
-                      label={{ value: "Normal Min", position: "topLeft" }}
+                      label={{ value: "Normal Min", position: "top" }}
                     />
                     <ReferenceLine 
                       y={normalRange.max} 
                       stroke="#10b981" 
                       strokeDasharray="5 5" 
-                      label={{ value: "Normal Max", position: "topLeft" }}
+                      label={{ value: "Normal Max", position: "top" }}
                     />
                   </>
                 )}
@@ -249,7 +250,7 @@ export default function ParameterTrendsModal({ isOpen, onClose, patientId }: Par
             <DialogTitle>Parameter Trends</DialogTitle>
           </DialogHeader>
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <CdLoader height="200px" />
           </div>
         </DialogContent>
       </Dialog>
