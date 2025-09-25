@@ -300,19 +300,46 @@ export default function VoiceInput({ onTranscriptionComplete, isRecording, setIs
   };
 
   const clearTranscript = () => {
+    // Stop any ongoing recognition
+    if (recognition) {
+      recognition.abort();
+    }
+    
+    // Clear all transcript states
     setTranscript("");
     setFinalTranscript("");
     setInterimTranscript("");
     setHasError(false);
     setErrorType("");
+    setIsRecording(false);
+    setIsProcessing(false);
+    setIsAutoFilling(false);
+    
+    // Clear manual text if it exists
+    setManualText("");
+    
+    toast({
+      title: "Cleared Successfully",
+      description: "All voice data has been cleared.",
+    });
   };
 
   const retryRecording = () => {
+    // Stop any ongoing recognition first
+    if (recognition) {
+      recognition.abort();
+    }
+    
+    // Clear all states
     setHasError(false);
     setErrorType("");
     setTranscript("");
     setFinalTranscript("");
     setInterimTranscript("");
+    setIsProcessing(false);
+    setIsAutoFilling(false);
+    
+    // Start fresh recording
     startRecording();
   };
 
@@ -626,6 +653,16 @@ export default function VoiceInput({ onTranscriptionComplete, isRecording, setIs
                   <Play className="h-4 w-4" />
                 )}
                 Process Text
+              </Button>
+              <Button 
+                onClick={() => setManualText("")}
+                variant="outline"
+                size="sm"
+                disabled={!manualText.trim()}
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Clear Text
               </Button>
               <Button 
                 onClick={() => setShowManualInput(false)}
