@@ -70,21 +70,21 @@ export default function PatientInfoCard({ patient, className }: PatientInfoCardP
         {/* Bottom: Info section */}
         <div className="space-y-2 mt-auto pt-6 md:pt-8">
           <div className="grid grid-cols-2 gap-2">
-            <div className="flex items-center justify-between rounded-md border border-white/20 bg-white/15 p-2 backdrop-blur-sm">
-              <span className="inline-flex items-center gap-1 text-xs text-emerald-50">Gender</span>
-              <span className="text-xs font-semibold text-white">{patient.profile.gender}</span>
+            <div className="flex flex-col rounded-md border border-white/20 bg-white/15 p-2 backdrop-blur-sm">
+              <span className="text-[10px] text-emerald-50 text-right">Gender</span>
+              <span className="text-sm font-semibold text-white text-right">{patient.profile.gender}</span>
             </div>
-            <div className="flex items-center justify-between rounded-md border border-white/20 bg-white/15 p-2 backdrop-blur-sm">
-              <span className="inline-flex items-center gap-1 text-xs text-emerald-50">Age</span>
-              <span className="text-xs font-semibold text-white">{patient.profile.age} yrs</span>
+            <div className="flex flex-col rounded-md border border-white/20 bg-white/15 p-2 backdrop-blur-sm">
+              <span className="text-[10px] text-emerald-50 text-right">Age</span>
+              <span className="text-sm font-semibold text-white text-right">{patient.profile.age} yrs</span>
             </div>
-            <div className="flex items-center justify-between rounded-md border border-white/20 bg-white/15 p-2 backdrop-blur-sm">
-              <span className="inline-flex items-center gap-1 text-xs text-emerald-50">Weight</span>
-              <span className="text-xs font-semibold text-white">{patient.profile.weight} kg</span>
+            <div className="flex flex-col rounded-md border border-white/20 bg-white/15 p-2 backdrop-blur-sm">
+              <span className="text-[10px] text-emerald-50 text-right">Weight</span>
+              <span className="text-sm font-semibold text-white text-right">{patient.profile.weight} kg</span>
             </div>
-            <div className="flex items-center justify-between rounded-md border border-white/20 bg-white/15 p-2 backdrop-blur-sm">
-              <span className="inline-flex items-center gap-1 text-xs text-emerald-50">Height</span>
-              <span className="text-xs font-semibold text-white">{patient.profile.height} cm</span>
+            <div className="flex flex-col rounded-md border border-white/20 bg-white/15 p-2 backdrop-blur-sm">
+              <span className="text-[10px] text-emerald-50 text-right">Height</span>
+              <span className="text-sm font-semibold text-white text-right">{patient.profile.height} cm</span>
             </div>
           </div>
           <div className="flex items-center justify-between rounded-md border border-white/20 bg-white/15 p-2 backdrop-blur-sm">

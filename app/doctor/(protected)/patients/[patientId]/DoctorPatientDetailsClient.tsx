@@ -184,7 +184,7 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
   return (
     <>
       <ToastContainer />
-      <div className="container mx-auto p-4">
+      <div className="w-full px-8 py-8">
         {/* Top Row - 12 columns layout */}
         <div className="grid gap-4 grid-cols-12 mb-6 items-stretch">
           {/* Patient info - always 2 cols */}

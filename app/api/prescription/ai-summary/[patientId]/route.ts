@@ -29,6 +29,31 @@ export async function GET(
       }
     });
 
+    // Check if patient has any prescriptions first
+    const prescriptionCount = await prisma.prescriptionText.count({
+      where: {
+        patientId,
+        processingStatus: 'COMPLETED'
+      }
+    });
+
+    if (prescriptionCount === 0) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          summary: "No prescriptions available for this patient yet. AI summary will be generated once prescriptions are uploaded and processed.",
+          keyFindings: [],
+          recommendations: [],
+          urgency: 'ROUTINE',
+          lastUpdated: new Date().toISOString(),
+          prescriptionCount: 0,
+          totalPrescriptions: 0,
+          lastPrescriptionDate: null,
+          hasPrescriptions: false
+        }
+      });
+    }
+
     if (!aiSummary) {
       return NextResponse.json({
         success: false,
@@ -37,8 +62,8 @@ export async function GET(
       }, { status: 404 });
     }
 
-    // Get prescription count and last prescription date
-    const prescriptionCount = await prisma.prescriptionText.count({
+    // Get prescription count and last prescription date (already counted above, but need to get the actual count for existing summary)
+    const currentPrescriptionCount = await prisma.prescriptionText.count({
       where: {
         patientId,
         processingStatus: 'COMPLETED'
@@ -66,7 +91,7 @@ export async function GET(
         llmModel: aiSummary.llmModel,
         patientName: aiSummary.patient.name,
         patientPhone: aiSummary.patient.phoneNumber,
-        totalPrescriptions: prescriptionCount,
+        totalPrescriptions: currentPrescriptionCount,
         lastPrescriptionDate: lastPrescription?.processedAt
       }
     });

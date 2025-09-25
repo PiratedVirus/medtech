@@ -18,6 +18,7 @@ interface AISummaryData {
   prescriptionCount: number;
   totalPrescriptions: number;
   lastPrescriptionDate?: string;
+  hasPrescriptions?: boolean;
 }
 
 function patternStyle(rgba: string): React.CSSProperties {
@@ -144,32 +145,39 @@ export default function PatientAISummaryRow({ patientId, summary: fallbackSummar
   }
 
   const displaySummary = aiSummary?.summary || fallbackSummary || 'No AI summary available for this patient.';
+  const hasNoPrescriptions = aiSummary?.hasPrescriptions === false;
 
   return (
     <div className="col-span-full mt-5">
-      <div className="relative rounded-xl border border-blue-200/50 bg-gradient-to-br from-white/80 via-blue-50/70 to-blue-100/80 p-5 shadow-lg overflow-hidden" role="complementary" aria-label="AI generated summary">
+      <div className={`relative rounded-xl border ${hasNoPrescriptions ? 'border-gray-200/50 bg-gradient-to-br from-white/80 via-gray-50/70 to-gray-100/80' : 'border-blue-200/50 bg-gradient-to-br from-white/80 via-blue-50/70 to-blue-100/80'} p-5 shadow-lg overflow-hidden`} role="complementary" aria-label="AI generated summary">
         <div className="flex items-center justify-between mb-3 relative z-10">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 font-bold text-blue-600" aria-hidden />
-            <span className="text-sm font-bold text-blue-700">AI Summary</span>
-            <span className="ml-1 inline-block h-[6px] w-[6px] rounded-full bg-black/10 animate-pulse" aria-hidden />
+            <Sparkles className={`h-4 w-4 font-bold ${hasNoPrescriptions ? 'text-gray-600' : 'text-blue-600'}`} aria-hidden />
+            <span className={`text-sm font-bold ${hasNoPrescriptions ? 'text-gray-700' : 'text-blue-700'}`}>AI Summary</span>
+            {!hasNoPrescriptions && <span className="ml-1 inline-block h-[6px] w-[6px] rounded-full bg-black/10 animate-pulse" aria-hidden />}
           </div>
           
           <div className="flex items-center gap-2">
-            {/* {aiSummary && (
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${urgencyBgColor} ${urgencyColor} border`}>
-                {aiSummary.urgency}
-              </span>
-            )} */}
-
+            {!hasNoPrescriptions && aiSummary && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={regenerateSummary}
+                disabled={loading}
+                className="text-xs"
+              >
+                {loading ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : null}
+                Regenerate
+              </Button>
+            )}
           </div>
         </div>
 
-        <p className="text-sm text-gray-800 leading-relaxed relative z-10 mb-3">
+        <p className={`text-sm leading-relaxed relative z-10 mb-3 ${hasNoPrescriptions ? 'text-gray-600 italic' : 'text-gray-800'}`}>
           {displaySummary}
         </p>
 
-        {aiSummary && (
+        {aiSummary && !hasNoPrescriptions && (
           <div className="mt-4 space-y-3">
             <div className="grid grid-cols-2 gap-6">
               {aiSummary.keyFindings.length > 0 && (
