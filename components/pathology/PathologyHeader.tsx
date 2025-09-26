@@ -23,6 +23,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import { formatDisplayName, isDoctorName } from "@/lib/utils";
 
 const fullNavigation = [
   { name: "Dashboard", href: "/pathology", current: true, icon: Home },
@@ -93,10 +94,12 @@ export default function PathologyHeader() {
           {/* Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <div className="flex items-center gap-3 px-4 py-2 w-32 rounded-xl border border-border cursor-pointer">
+              <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border border-border cursor-pointer ${
+                isDoctorName(profile?.name ?? "") ? "w-40" : "w-32"
+              }`}>
                 <User className="h-6 w-6" />
                 <span className="text-sm text-foreground">
-                  {profile?.name?.trim().split(/\s+/)[0] ?? ""}
+                  {formatDisplayName(profile?.name ?? "")}
                 </span>
               </div>
             </DropdownMenuTrigger>

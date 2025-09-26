@@ -55,3 +55,29 @@ export async function loadRazorpay() {
     document.body.appendChild(script);
   });
 }
+
+// Format name for display in header - show more than just first name for doctors
+export function formatDisplayName(fullName: string): string {
+  if (!fullName) return "";
+  
+  const trimmedName = fullName.trim();
+  const nameParts = trimmedName.split(/\s+/);
+  
+  // If name starts with "Dr." or "Dr", show first two parts (Dr. + First Name)
+  if (nameParts[0].toLowerCase() === "dr." || nameParts[0].toLowerCase() === "dr") {
+    return nameParts.slice(0, 2).join(" ");
+  }
+  
+  // For regular names, show first name only
+  return nameParts[0];
+}
+
+// Check if the name is a doctor name (starts with Dr. or Dr)
+export function isDoctorName(fullName: string): boolean {
+  if (!fullName) return false;
+  
+  const trimmedName = fullName.trim();
+  const nameParts = trimmedName.split(/\s+/);
+  
+  return nameParts[0].toLowerCase() === "dr." || nameParts[0].toLowerCase() === "dr";
+}

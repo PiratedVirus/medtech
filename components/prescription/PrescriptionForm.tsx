@@ -318,11 +318,14 @@ export default function PrescriptionForm({
 
       recognitionInstance.onerror = (event: any) => {
         setIsVoiceRecording(false);
-        toast({
-          title: "Speech Recognition Error",
-          description: "There was an issue with speech recognition. Please try again.",
-          variant: "destructive",
-        });
+        // Don't show error toast if we're clearing voice data or if recording was cancelled
+        if (!isClearingVoice && !recordingCancelledRef.current) {
+          toast({
+            title: "Speech Recognition Error",
+            description: "There was an issue with speech recognition. Please try again.",
+            variant: "destructive",
+          });
+        }
       };
 
       setRecognition(recognitionInstance);
@@ -841,6 +844,7 @@ export default function PrescriptionForm({
     toast({
       title: "Cleared Successfully",
       description: "All voice data and form inputs have been cleared.",
+      options: { autoClose: 2000 }, // 2 seconds instead of default 5 seconds
     });
 
     // Reset clearing flag after a short delay to allow any pending events to be ignored

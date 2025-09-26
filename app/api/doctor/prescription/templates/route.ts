@@ -1,13 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { cookies } from "next/headers";
+import jwt from "jsonwebtoken";
+import prisma from "@/lib/prisma";
 
-const prisma = new PrismaClient();
+// Helper to get doctorId from JWT
+async function getDoctorIdFromRequest() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token")?.value;
+  if (!token) return null;
+  let decoded: any;
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET!);
+  } catch (err) {
+    return null;
+  }
+  const phoneNumber = decoded.plusAddedPhoneNumber as string | undefined;
+  if (!phoneNumber) return null;
+  const user = await prisma.user.findFirst({
+    where: { phoneNumber },
+    include: { doctorProfile: true },
+  });
+  if (!user?.doctorProfile?.id) return null;
+  return user.id;
+}
 
 // GET - Load all templates for a doctor
 export async function GET(request: NextRequest) {
   try {
-    // In a real app, you'd get the doctor ID from the session/auth
-    const doctorId = 1; // Replace with actual auth logic - should be a number
+    const doctorId = await getDoctorIdFromRequest();
+    if (!doctorId) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
     const { searchParams } = new URL(request.url);
     const type = (searchParams.get('type') || 'all').toLowerCase(); // 'complaints' | 'medicines' | 'all'
     
@@ -73,8 +99,13 @@ export async function POST(request: NextRequest) {
     const complaintsArr = Array.isArray(templateData.complaints) ? templateData.complaints : [];
     const medicinesArr = Array.isArray(templateData.medicines) ? templateData.medicines : [];
 
-    // In a real app, you'd get the doctor ID from the session/auth
-    const doctorId = 1; // TODO: Replace with auth context
+    const doctorId = await getDoctorIdFromRequest();
+    if (!doctorId) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
 
     // Determine scope based on which arrays are present
     const hasComplaints = complaintsArr.length > 0;
