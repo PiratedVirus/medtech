@@ -10,6 +10,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { initializeUserProfile, fetchUserProfile } from "@/store/userSlice";
 import CdLoader from '@/components/ui/custom/cd-loader';
 import ProgressProvider from '@/components/common/ProgressProvider';
@@ -26,6 +27,7 @@ const lato = Lato({
 
 // Client-side only component to wrap children once localStorage is available
 function ClientSideWrapper({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
@@ -54,6 +56,9 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
   const [persister, setPersister] = useState<any>(null);
   const [isReady, setIsReady] = useState(false);
 
+  // Check if we're on a superadmin route
+  const isSuperAdminRoute = pathname?.startsWith('/superadmin');
+
   useEffect(() => {
     // Suppress browser extension errors
     suppressExtensionErrors();
@@ -78,7 +83,8 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
     // Profile initialization is now handled by React Query in useCentralizedProfile
   }, []);
 
-  if (!isReady) {
+  // For superadmin routes, don't show loading spinner
+  if (!isReady && !isSuperAdminRoute) {
     return <CdLoader />;
   }
 

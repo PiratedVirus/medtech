@@ -88,6 +88,39 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Super Admin routes protection
+  if (pathname.startsWith("/superadmin")) {
+    // Allow access to superadmin login page
+    if (pathname === "/superadmin/login") {
+      return NextResponse.next();
+    }
+
+    const superAdminToken = request.cookies.get("superadmin_token")?.value;
+
+    if (!superAdminToken) {
+      const redirectUrl = new URL("/superadmin/login", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Fast structural validation first
+    if (!isTokenStructurallyValid(superAdminToken)) {
+      const redirectUrl = new URL("/superadmin/login", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    const decodedSuperAdmin = await verifyUserToken(superAdminToken);
+    if (!decodedSuperAdmin || decodedSuperAdmin.role !== "SUPER_ADMIN") {
+      console.log("Invalid superadmin token as role not matching");
+      const redirectUrl = new URL("/superadmin/login", request.url);
+      redirectUrl.searchParams.set('redirect', 'true');
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    return NextResponse.next();
+  }
+
   // Admin routes protection
   if (pathname.startsWith("/admin")) {
     // Allow access to admin login page
@@ -232,6 +265,7 @@ export async function middleware(request: NextRequest) {
 // Specify the paths to protect - more specific matchers for better performance
 export const config = {
   matcher: [
+    "/superadmin/:path*",
     "/admin/:path*", 
     "/dashboard/:path*", 
     "/pathology/:path*",
