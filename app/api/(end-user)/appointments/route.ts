@@ -311,6 +311,16 @@ export async function POST(request: Request) {
     });
     console.log("Transaction completed successfully, appointment ID:", newAppointment.id);
 
+    // Invalidate user profile cache after appointment creation
+    try {
+      const { invalidateAppointmentCache } = await import('@/lib/cache-invalidation');
+      await invalidateAppointmentCache(patientId);
+      console.log(`[APPOINTMENT] Cache invalidated for user ${patientId} after appointment creation`);
+    } catch (cacheError) {
+      console.error('[APPOINTMENT] Error invalidating cache:', cacheError);
+      // Don't fail the request if cache invalidation fails
+    }
+
     return NextResponse.json({ success: true, data: newAppointment });
 
   } catch (error) {

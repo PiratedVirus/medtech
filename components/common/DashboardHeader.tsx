@@ -10,6 +10,7 @@ import {
   FileText,
   ShieldPlus,
   TestTubeDiagonal,
+  TrendingUp,
   MoreHorizontal as MoreIcon,
 } from "lucide-react";
 import { useDispatch } from "react-redux";
@@ -26,12 +27,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import { formatDisplayName, isDoctorName } from "@/lib/utils";
 
 const fullNavigation = [
   { name: "Home", href: "/dashboard", current: true, icon: Home },
   { name: "Doctors", href: "/dashboard/doctors", current: false, icon: ShieldPlus },
   { name: "Dieticians", href: "/dashboard/dieticians", current: false, icon: ShieldPlus },
-  { name: "Lab", href: "/dashboard/labs", current: false, icon: Clipboard },
+  { name: "Labs & Reports", href: "/dashboard/labs", current: false, icon: Clipboard },
+  { name: "Parameter Trends", href: "/dashboard/parameter-trends", current: false, icon: TrendingUp },
   { name: "Prescriptions", href: "/dashboard/prescriptions", current: false, icon: FileText },
   { name: "Appointments", href: "/dashboard/appointments", current: false, icon: TestTubeDiagonal },
   { name: "Plans", href: "/dashboard/plans", current: false, icon: LayoutGrid },
@@ -41,7 +44,8 @@ const mobileNavigation = [
   { name: "Home", href: "/dashboard", icon: Home },
   { name: "Doctors", href: "/dashboard/doctors", icon: ShieldPlus },
   { name: "Plans", href: "/dashboard/plans", icon: LayoutGrid },
-  { name: "Labs", href: "/dashboard/labs", icon: TestTubeDiagonal },
+  { name: "Labs & Reports", href: "/dashboard/labs", icon: TestTubeDiagonal },
+  { name: "Parameter Trends", href: "/dashboard/parameter-trends", icon: TrendingUp },
   { name: "Profile", href: "/dashboard/profile", icon: User }, // we'll replace this one
 ];
 
@@ -107,10 +111,12 @@ export function DashboardHeader() {
             <NotificationBell />
             <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <div className="flex items-center gap-3 px-4 py-2 w-32 rounded-xl border border-border cursor-pointer">
+              <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border border-border cursor-pointer ${
+                isDoctorName(profile?.name ?? "") ? "w-40" : "w-32"
+              }`}>
                 <User className="h-6 w-6" />
                 <span className="text-sm text-foreground">
-                  {profile?.name?.trim().split(/\s+/)[0] ?? ""}
+                  {formatDisplayName(profile?.name ?? "")}
                 </span>
               </div>
             </DropdownMenuTrigger>
@@ -146,8 +152,12 @@ export function DashboardHeader() {
               item.current ? "text-secondary" : "text-foreground"
             } hover:text-primary transition-colors`}
           >
-            <item.icon className="h-6 w-6" />
-            <span className="text-xs">{item.name}</span>
+            <div className="flex items-center justify-center mb-1 h-6">
+              <item.icon className="h-6 w-6" />
+            </div>
+            <div className="flex items-center justify-center min-h-[2.5rem]">
+              <span className="text-xs text-center leading-tight">{item.name}</span>
+            </div>
           </Link>
         ))}
 
@@ -157,8 +167,12 @@ export function DashboardHeader() {
             <button
               className="flex-1 flex flex-col items-center justify-center py-2 text-foreground hover:text-primary transition-colors"
             >
-              <MoreIcon className="h-6 w-6" />
-              <span className="text-xs">More</span>
+              <div className="flex items-center justify-center mb-1 h-6">
+                <MoreIcon className="h-6 w-6" />
+              </div>
+              <div className="flex items-center justify-center min-h-[2.5rem]">
+                <span className="text-xs text-center leading-tight">More</span>
+              </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="bg-white text-black" align="center">

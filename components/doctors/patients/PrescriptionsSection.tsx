@@ -32,18 +32,20 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
         <div className="relative z-10 h-full flex flex-col overflow-y-auto">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-bold text-gray-900">Prescriptions</h3>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs"
-              onClick={() => {
-                setShowOnlyWithPrescription(true);
-                setOpen(true);
-              }}
-            >
-              <Eye className="h-3 w-3 mr-1" />
-              View More
-            </Button>
+            {prescriptions.length > 3 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs"
+                onClick={() => {
+                  setShowOnlyWithPrescription(true);
+                  setOpen(true);
+                }}
+              >
+                <Eye className="h-3 w-3 mr-1" />
+                View More
+              </Button>
+            )}
           </div>
 
           <div className="space-y-2 mb-3 flex-1">

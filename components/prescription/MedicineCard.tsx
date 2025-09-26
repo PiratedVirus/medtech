@@ -53,6 +53,7 @@ export default function MedicineCard({
   const [frequencyOpen, setFrequencyOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const [isSplitScreen, setIsSplitScreen] = useState(false);
+  const [isTypingDuration, setIsTypingDuration] = useState(false);
 
   useEffect(() => {
     const detectSplitScreen = () => {
@@ -99,6 +100,11 @@ export default function MedicineCard({
   };
 
   const handleDurationChange = (value: string) => {
+    // Don't auto-select if user is actively typing in the input field
+    if (isTypingDuration) {
+      return;
+    }
+
     if (medicine.duration === value) {
       // Toggle off
       onUpdate({ duration: "", quantity: "0" });
@@ -121,6 +127,14 @@ export default function MedicineCard({
       duration: dur,
       quantity: calculateQuantity(medicine.frequency, dur),
     });
+  };
+
+  const handleDurationInputFocus = () => {
+    setIsTypingDuration(true);
+  };
+
+  const handleDurationInputBlur = () => {
+    setIsTypingDuration(false);
   };
 
   const processFrequencyInput = (input: string): string => {
@@ -230,7 +244,7 @@ export default function MedicineCard({
                     variant="outline"
                     role="combobox"
                     aria-expanded={timeOpen}
-                    className="w-24 h-8 justify-between bg-white text-xs"
+                    className="w-36 h-8 justify-between bg-white text-xs"
                   >
                     {medicine.medicineTime || "Select..."}
                     <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
@@ -299,6 +313,8 @@ export default function MedicineCard({
                       : ""
                   }
                   onChange={e => handleCustomDurationChange(e.target.value)}
+                  onFocus={handleDurationInputFocus}
+                  onBlur={handleDurationInputBlur}
                   className="w-16 h-8 bg-white text-center text-xs"
                   placeholder="Days"
                   maxLength={3}
@@ -347,9 +363,11 @@ export default function MedicineCard({
                     variant="outline"
                     role="combobox"
                     aria-expanded={frequencyOpen}
-                    className="w-full h-8 justify-between bg-white text-xs"
+                    className="w-full h-8 justify-between bg-white text-xs min-w-0"
                   >
-                    {medicine.frequency || "Select frequency..."}
+                    <span className="truncate flex-1 text-left">
+                      {medicine.frequency || "Select frequency..."}
+                    </span>
                     <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -409,9 +427,11 @@ export default function MedicineCard({
                     variant="outline"
                     role="combobox"
                     aria-expanded={timeOpen}
-                    className="w-full h-8 justify-between bg-white text-xs"
+                    className="w-full h-8 justify-between bg-white text-xs min-w-0"
                   >
-                    {medicine.medicineTime || "Select time..."}
+                    <span className="truncate flex-1 text-left">
+                      {medicine.medicineTime || "Select time..."}
+                    </span>
                     <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -481,6 +501,8 @@ export default function MedicineCard({
                         : ""
                     }
                     onChange={e => handleCustomDurationChange(e.target.value)}
+                    onFocus={handleDurationInputFocus}
+                    onBlur={handleDurationInputBlur}
                     className="w-24 h-8 bg-white text-center text-xs"
                     placeholder="Days"
                     maxLength={3}

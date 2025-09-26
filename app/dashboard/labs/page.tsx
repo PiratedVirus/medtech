@@ -15,6 +15,7 @@ import { useState } from "react";
 import ReportUploadButton from "@/components/common/ReportUploadButton";
 import StandaloneReportCard from "@/components/patients/labs/view/StandaloneReportCard";
 import UnifiedAnalysisModal from "@/components/common/UnifiedAnalysisModal";
+import { Button } from "@/components/ui/button";
 
 export default function LabsPage() {
   const router = useRouter();
@@ -266,7 +267,7 @@ export default function LabsPage() {
           </div>
 
           {/* Report Type Tabs */}
-          <div className="mb-6">
+          <div className="mb-6 flex justify-center">
             <div className="inline-flex border rounded-full overflow-hidden">
               <button
                 className={`px-6 py-3 text-sm font-medium ${
@@ -330,6 +331,7 @@ export default function LabsPage() {
               )}
             </>
           )}
+
         </div>
       </div>
       </>

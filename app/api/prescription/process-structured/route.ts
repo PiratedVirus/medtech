@@ -244,7 +244,7 @@ async function generateOrUpdatePatientSummary(patientId: number, apiKey: string)
         urgency: summaryResult.urgency || 'ROUTINE',
         lastUpdated: new Date(),
         prescriptionCount: texts.length,
-        llmModel: 'groq-llama-3.3-70b-versatile',
+        llmModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
         updatedAt: new Date()
       },
       create: {
@@ -254,7 +254,7 @@ async function generateOrUpdatePatientSummary(patientId: number, apiKey: string)
         recommendations: summaryResult.recommendations || [],
         urgency: summaryResult.urgency || 'ROUTINE',
         prescriptionCount: texts.length,
-        llmModel: 'groq-llama-3.3-70b-versatile'
+        llmModel: 'meta-llama/llama-4-scout-17b-16e-instruct'
       }
     });
 

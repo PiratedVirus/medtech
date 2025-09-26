@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
         criticalValues: existing?.criticalValues || [],
         allValues: existing?.allValues || [],
         trendAnalysis,
-        llmModel: process.env.GROQ_SUMMARY_MODEL || 'llama-3.3-70b-versatile',
+        llmModel: process.env.GROQ_SUMMARY_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct',
         processingStatus: 'COMPLETED',
         processedAt: new Date(),
       },
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
         criticalValues: existing?.criticalValues || [],
         allValues: existing?.allValues || [],
         trendAnalysis,
-        llmModel: process.env.GROQ_SUMMARY_MODEL || 'llama-3.3-70b-versatile',
+        llmModel: process.env.GROQ_SUMMARY_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct',
         processingStatus: 'COMPLETED',
         processedAt: new Date(),
       }

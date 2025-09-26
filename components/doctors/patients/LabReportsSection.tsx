@@ -1,8 +1,10 @@
 'use client'
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Eye, Upload } from "lucide-react";
+import { FileText, Eye, Upload, BarChart3 } from "lucide-react";
 import ReportUploadButton from "@/components/common/ReportUploadButton";
+import ParameterTrendsModal from "@/components/patients/labs/ParameterTrendsModal";
+import { useState, useEffect } from "react";
 
 interface LabReportsSectionProps {
   labBookings: Array<{
@@ -19,21 +21,71 @@ interface LabReportsSectionProps {
 }
 
 export default function LabReportsSection({ labBookings, patientId, onViewMore, onUploadSuccess }: LabReportsSectionProps) {
-  const recentReports = labBookings.slice(0, 3);
+  const [parameterTrendsOpen, setParameterTrendsOpen] = useState(false);
+  const [standaloneReports, setStandaloneReports] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch standalone reports
+  useEffect(() => {
+    if (patientId) {
+      fetchStandaloneReports();
+    }
+  }, [patientId]);
+
+  const fetchStandaloneReports = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/reports/upload?patientId=${patientId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setStandaloneReports(data.reports || []);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch standalone reports:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Combine lab bookings and standalone reports
+  const allReports = [
+    ...labBookings.map(booking => ({
+      id: `lab-${booking.id}`,
+      type: 'lab',
+      name: booking.labPackageName,
+      date: booking.date,
+      status: booking.status,
+      reportLink: booking.reportLink,
+      labResult: booking.labResult
+    })),
+    ...standaloneReports.map(report => ({
+      id: `standalone-${report.id}`,
+      type: 'standalone',
+      name: report.reportName || `Report ${report.id}`,
+      date: report.createdAt,
+      status: 'COMPLETED',
+      reportLink: [report.reportUrl],
+      labResult: null
+    }))
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const recentReports = allReports.slice(0, 3);
 
   // Function to render individual lab results for a package
-  const renderLabResults = (labBooking: any) => {
+  const renderLabResults = (report: any) => {
     // Use labResult if available, otherwise fall back to reportLink
-    const results = labBooking.labResult || labBooking.reportLink || [];
+    const results = report.labResult || report.reportLink || [];
     
     if (results.length === 0) {
       return (
-        <div className="flex items-center gap-3">
-          <h4 className="font-semibold text-white text-sm truncate flex-1">
-            {labBooking.labPackageName}
+        <div className="flex items-center gap-2">
+          <h4 className="font-semibold text-white text-xs truncate flex-1">
+            {report.name}
           </h4>
-          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
-            {new Date(labBooking.date).toLocaleDateString('en-GB')}
+          <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+            {new Date(report.date).toLocaleDateString('en-GB')}
           </span>
           <div className="ml-auto">
             <Button
@@ -42,7 +94,7 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
               className="p-1 h-auto text-xs text-green-200 cursor-not-allowed"
               disabled
             >
-              <Eye className="h-4 w-4" />
+              <Eye className="h-3 w-3" />
             </Button>
           </div>
         </div>
@@ -52,12 +104,12 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
     // If there's only one result, show it normally
     if (results.length === 1) {
       return (
-        <div className="flex items-center gap-3">
-          <h4 className="font-semibold text-white text-sm truncate flex-1">
-            {labBooking.labPackageName}
+        <div className="flex items-center gap-2">
+          <h4 className="font-semibold text-white text-xs truncate flex-1">
+            {report.name}
           </h4>
-          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
-            {new Date(labBooking.date).toLocaleDateString('en-GB')}
+          <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+            {new Date(report.date).toLocaleDateString('en-GB')}
           </span>
           <div className="ml-auto">
             <Button
@@ -66,7 +118,7 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
               className="p-1 h-auto text-xs text-green-50 hover:text-white"
               onClick={() => window.open(results[0], '_blank')}
             >
-              <Eye className="h-4 w-4" />
+              <Eye className="h-3 w-3" />
             </Button>
           </div>
         </div>
@@ -75,12 +127,12 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
 
     // If there are multiple results, show them as separate items
     return results.map((result: string, index: number) => (
-      <div key={`${labBooking.id}-${index}`} className="flex items-center gap-3 mb-2 last:mb-0">
-        <h4 className="font-semibold text-white text-sm truncate flex-1">
-          {labBooking.labPackageName}-{index + 1}
+      <div key={`${report.id}-${index}`} className="flex items-center gap-2 mb-1 last:mb-0">
+        <h4 className="font-semibold text-white text-xs truncate flex-1">
+          {report.name}-{index + 1}
         </h4>
-        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
-          {new Date(labBooking.date).toLocaleDateString('en-GB')}
+        <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+          {new Date(report.date).toLocaleDateString('en-GB')}
         </span>
         <div className="ml-auto">
           <Button
@@ -89,7 +141,7 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
             className="p-1 h-auto text-xs text-green-50 hover:text-white"
             onClick={() => window.open(result, '_blank')}
           >
-            <Eye className="h-4 w-4" />
+            <Eye className="h-3 w-3" />
           </Button>
         </div>
       </div>
@@ -102,25 +154,27 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
       <Card className="relative overflow-hidden rounded-xl border border-emerald-300 bg-white p-4 shadow-md h-[296px]">
         <div className="absolute inset-0 -skew-y-2 bg-gradient-to-tr from-emerald-100 via-emerald-50 to-lime-100 opacity-60" />
 
-        <div className="relative z-10 h-full flex flex-col overflow-y-auto">
+        <div className="relative z-10 h-full flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-bold text-gray-900">Lab Reports</h3>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs"
-              onClick={onViewMore}
-            >
-              <Eye className="h-3 w-3 mr-1" />
-              View More
-            </Button>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-base font-bold text-gray-900">Lab Reports</h3>
+            {allReports.length > 3 && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs"
+                onClick={onViewMore}
+              >
+                <Eye className="h-3 w-3 mr-1" />
+                View More
+              </Button>
+            )}
           </div>
 
           {/* Lab Reports - show individual results for each package */}
-          <div className="space-y-2 mb-3 flex-1">
-            {recentReports.map((labBooking) => (
-              <div key={labBooking.id} className="group relative overflow-hidden rounded-lg border border-emerald-200/60 p-3 shadow-sm hover:shadow-md transition-all duration-300">
+          <div className="space-y-0.5 mb-1 flex-1">
+            {recentReports.map((report) => (
+              <div key={report.id} className="group relative overflow-hidden rounded-lg border border-emerald-200/60 p-1.5 shadow-sm hover:shadow-md transition-all duration-300">
                 {/* Appointment Card Gradient Background */}
                 <div className="absolute inset-0 bg-gradient-to-b to-[#1e5636] from-[#2e8b57] rounded-lg opacity-90" />
 
@@ -130,48 +184,71 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
                 </div>
                 
                 <div className="relative z-10">
-                  {renderLabResults(labBooking)}
+                  {renderLabResults(report)}
                 </div>
               </div>
             ))}
 
             {/* Placeholders when no reports available */}
             {recentReports.length < 3 && Array(3 - recentReports.length).fill(null).map((_, i) => (
-              <div key={`lr-ph-${i}`} className="relative overflow-hidden rounded-lg border border-gray-200 bg-gray-100/70 p-3">
+              <div key={`lr-ph-${i}`} className="relative overflow-hidden rounded-lg border border-gray-200 bg-gray-100/70 p-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-600">Lab reports will appear here after they are uploaded.</span>
+                  <span className="text-[10px] text-gray-600">Lab reports will appear here after they are uploaded.</span>
                 </div>
               </div>
             ))}
 
             {/* Empty state if no lab reports */}
             {recentReports.length === 0 && (
-              <div className="text-center py-8">
-                <div className="w-12 h-12 bg-green-200 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <FileText className="h-6 w-6 text-green-400" />
+              <div className="text-center py-2">
+                <div className="w-6 h-6 bg-green-200 rounded-full flex items-center justify-center mx-auto mb-1">
+                  <FileText className="h-3 w-3 text-green-400" />
                 </div>
-                <p className="text-sm text-gray-500">No lab reports available</p>
+                <p className="text-[10px] text-gray-500">No lab reports available</p>
               </div>
             )}
           </div>
 
-          {/* Upload Button */}
+          {/* Action Buttons */}
           {patientId && (
-            <div className="border-t pt-3 mt-auto">
-              <ReportUploadButton
-                patientId={Number(patientId)}
-                onUploadSuccess={onUploadSuccess}
-                variant="outline"
-                size="sm"
-                className="w-full"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Report
-              </ReportUploadButton>
+            <div className="border-t pt-1.5 mt-auto">
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => window.open(`/doctor/parameter-trends?patientId=${patientId}`, '_blank')}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  View Trends
+                </Button>
+                <ReportUploadButton
+                  patientId={Number(patientId)}
+                  onUploadSuccess={() => {
+                    fetchStandaloneReports();
+                    onUploadSuccess?.();
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Report
+                </ReportUploadButton>
+              </div>
             </div>
           )}
         </div>
       </Card>
+
+      {/* Parameter Trends Modal */}
+      {patientId && (
+        <ParameterTrendsModal
+          isOpen={parameterTrendsOpen}
+          onClose={() => setParameterTrendsOpen(false)}
+          patientId={Number(patientId)}
+        />
+      )}
     </div>
   );
 }

@@ -4,9 +4,10 @@ import { extractPdfText } from './unified-service';
 import { ocrExtractPdfTextFromUrl } from '../ocr/google-vision';
 
 // Use Groq model configuration for uniformity
-const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+const GROQ_MODEL = process.env.GROQ_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct';
 const FALLBACK_MODELS = [
-  'llama-3.3-70b-versatile',
+  'meta-llama/llama-4-scout-17b-16e-instruct',
+  'meta-llama/llama-4-scout-17b-16e-instruct',
   'llama-3.1-70b-versatile',
   'llama-3.1-8b-instant'
 ];
@@ -212,7 +213,7 @@ export async function executePlaygroundRun(input: RunInput) {
     return;
   }
   
-  console.log(`[PLAYGROUND] Using Groq API for processing. Model: ${profile?.model || 'llama-3.3-70b-versatile'}`);
+  console.log(`[PLAYGROUND] Using Groq API for processing. Model: ${profile?.model || 'meta-llama/llama-4-scout-17b-16e-instruct'}`);
 
   // Stage 1: parse-text (PDF -> Text)
   let extractedText = input.rawInput || '';

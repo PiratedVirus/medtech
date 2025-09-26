@@ -110,6 +110,17 @@ export async function PUT(request: Request) {
       },
     });
 
+    // Invalidate user profile cache after profile update
+    try {
+      const { invalidateAllUserCaches, getUserPhoneNumber } = await import('@/lib/cache-invalidation');
+      const phoneNumber = await getUserPhoneNumber(Number(userId));
+      await invalidateAllUserCaches(Number(userId), phoneNumber || undefined);
+      console.log(`[PROFILE] Cache invalidated for user ${userId} after profile update`);
+    } catch (cacheError) {
+      console.error('[PROFILE] Error invalidating cache:', cacheError);
+      // Don't fail the request if cache invalidation fails
+    }
+
     return NextResponse.json({
       data: updatedUser,
       message: "User info updated successfully",

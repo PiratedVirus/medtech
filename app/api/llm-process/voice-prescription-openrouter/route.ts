@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const systemPrompt = `Extract prescription data from voice transcript. Return ONLY valid JSON:
+    const systemPrompt = `Extract prescription data from voice transcript. Do not return anything else. Strictly return ONLY valid JSON:
 
 {
   "complaints": [{"text": "complaint", "severity": "MODERATE", "daysSince": 1}],
@@ -39,7 +39,9 @@ Rules:
 - Vitals: no units (64 not "64 bpm")
 - Default medicineTime: "Post-meal"
 - Use "NAD" for normal examination
-- Extract only clearly mentioned information`;
+- Extract only clearly mentioned information
+- If no specific date mentioned, use default nextVisit: {"type": "days", "value": 7}
+- Keep response concise and focused`;
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -50,7 +52,7 @@ Rules:
         'X-Title': 'CareDB Voice Prescription Processing'
       },
       body: JSON.stringify({
-        model: 'openai/gpt-oss-20b:free',
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
         messages: [
           {
             role: 'system',
@@ -62,7 +64,7 @@ Rules:
           }
         ],
         temperature: 0.1,
-        max_tokens: 4000,
+        max_tokens: 1500,
         top_p: 0.9,
         stream: false,
       }),
@@ -76,19 +78,57 @@ Rules:
     console.log('OpenRouter response data:', JSON.stringify(data, null, 2));
     
     const responseText = data.choices[0]?.message?.content;
+    const finishReason = data.choices[0]?.finish_reason;
     
     if (!responseText) {
       console.error('No response text found in OpenRouter response:', data);
+      
+      // Check if it's a token limit issue
+      if (finishReason === 'length') {
+        return NextResponse.json(
+          { error: 'Voice input too long. Please speak more concisely and try again.' },
+          { status: 500 }
+        );
+      }
+      
       return NextResponse.json(
         { error: 'AI model could not process your voice input. Please try speaking more clearly or try again.' },
         { status: 500 }
       );
     }
 
+    // Extract JSON from the response (handle markdown formatting)
+    const extractJsonFromResponse = (text: string): string => {
+      // First, try to find JSON within markdown code blocks
+      const jsonBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      if (jsonBlockMatch) {
+        return jsonBlockMatch[1];
+      }
+      
+      // Try to find JSON object directly in the text
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return jsonMatch[0];
+      }
+      
+      // If no JSON found, return the original text
+      return text;
+    };
+
+    // Clean JSON by fixing common issues
+    const cleanJsonString = (jsonStr: string): string => {
+      // Fix arithmetic expressions like "7 * 365" to actual numbers
+      return jsonStr.replace(/(\d+)\s*\*\s*(\d+)/g, (match, num1, num2) => {
+        return (parseInt(num1) * parseInt(num2)).toString();
+      });
+    };
+
     // Parse the JSON response
     let parsedData;
     try {
-      parsedData = JSON.parse(responseText);
+      const jsonText = extractJsonFromResponse(responseText);
+      const cleanedJsonText = cleanJsonString(jsonText);
+      parsedData = JSON.parse(cleanedJsonText);
       
       // Validate that we have the required structure
       if (!parsedData || typeof parsedData !== 'object') {

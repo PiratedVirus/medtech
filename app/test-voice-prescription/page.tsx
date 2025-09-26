@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import VoiceInput from "@/components/prescription/VoiceInput";
+// VoiceInput component removed - voice functionality is built into PrescriptionForm
 
 interface PrescriptionData {
   complaints: any[];
@@ -81,11 +81,14 @@ export default function TestVoicePrescriptionPage() {
           <CardTitle>Voice Prescription Input Test</CardTitle>
         </CardHeader>
         <CardContent>
-          <VoiceInput
-            onTranscriptionComplete={handleVoiceTranscriptionComplete}
-            isRecording={isVoiceRecording}
-            setIsRecording={setIsVoiceRecording}
-          />
+          <div className="text-center py-8">
+            <p className="text-gray-600 mb-4">
+              Voice input functionality is integrated into the PrescriptionForm component.
+            </p>
+            <p className="text-sm text-gray-500">
+              To test voice input, use the prescription form in the doctor dashboard.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
