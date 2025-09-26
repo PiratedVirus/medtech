@@ -220,7 +220,7 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
                   className="flex-1"
                 >
                   <BarChart3 className="h-4 w-4 mr-2" />
-                  View Parameter Trends
+                  View Trends
                 </Button>
                 <ReportUploadButton
                   patientId={Number(patientId)}

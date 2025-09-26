@@ -15,7 +15,7 @@ import { Plus, X, Edit2, Clock, Calendar, User, FileText, Save, Download, Loader
 import TypeAheadInput from "./TypeAheadInput";
 import ComplaintCard from "./ComplaintCard";
 import MedicineCard from "./MedicineCard";
-import VoiceInput from "./VoiceInput";
+// VoiceRecorder import removed - using original UI with robust logic
 
 interface PrescriptionFormProps {
   prescriptionData: any;
@@ -75,6 +75,10 @@ export default function PrescriptionForm({
   const [recognition, setRecognition] = useState<any>(null);
   const [isClearingVoice, setIsClearingVoice] = useState(false);
   const { toast } = useToast();
+  // Ref to hold accumulated transcript across interim/final results
+  const finalTranscriptRef = useRef<string>("");
+  // Ref to mark if recording was cancelled (e.g., via Clear All)
+  const recordingCancelledRef = useRef<boolean>(false);
 
   const severityOptions = [
     { value: "PERFECT", label: "Perfect", color: "bg-green-100 text-green-800" },
@@ -270,36 +274,45 @@ export default function PrescriptionForm({
     // Re-check on window resize
     window.addEventListener('resize', detectSplitScreen);
 
-    // Initialize speech recognition
+    // Initialize speech recognition with robust cancellation
     if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
       const SpeechRecognition = (window as any).webkitSpeechRecognition;
       const recognitionInstance = new SpeechRecognition();
-      
+
       recognitionInstance.continuous = true;
       recognitionInstance.interimResults = true;
       recognitionInstance.lang = 'en-US';
 
-      let finalTranscript = '';
+      finalTranscriptRef.current = "";
+
+      recognitionInstance.onstart = () => {
+        setIsVoiceRecording(true);
+        setVoiceTranscript("");
+        setIsClearingVoice(false);
+        finalTranscriptRef.current = "";
+        recordingCancelledRef.current = false;
+      };
 
       recognitionInstance.onresult = (event: any) => {
         let interim = '';
-        
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript + ' ';
+            finalTranscriptRef.current += event.results[i][0].transcript + ' ';
           } else {
             interim += event.results[i][0].transcript;
           }
         }
-
-        setVoiceTranscript(finalTranscript + interim);
+        setVoiceTranscript(finalTranscriptRef.current + interim);
       };
 
       recognitionInstance.onend = () => {
         setIsVoiceRecording(false);
-        if (finalTranscript.trim() && !isClearingVoice) {
-          setVoiceTranscript(finalTranscript.trim());
-          processVoiceInput(finalTranscript.trim());
+        if (
+          !recordingCancelledRef.current &&
+          finalTranscriptRef.current.trim()
+        ) {
+          setVoiceTranscript(finalTranscriptRef.current.trim());
+          processVoiceInput(finalTranscriptRef.current.trim());
         }
       };
 
@@ -712,7 +725,9 @@ export default function PrescriptionForm({
       if (recognition) {
         setVoiceTranscript("");
         setIsVoiceRecording(true);
-        setIsClearingVoice(false); // recording anew, clearing finished
+        setIsClearingVoice(false);
+        finalTranscriptRef.current = "";
+        recordingCancelledRef.current = false;
         recognition.start();
         toast({
           title: "🎤 AI Mic Activated",
@@ -774,18 +789,24 @@ export default function PrescriptionForm({
   };
 
   const clearAllVoiceData = () => {
-    // Clear transcript
+    // Set clearing flag FIRST to prevent any onend events from processing
+    setIsClearingVoice(true);
+
+    // Mark as cancelled and clear transcript ref before aborting recognition
+    recordingCancelledRef.current = true;
+    finalTranscriptRef.current = "";
+    // Stop any ongoing recognition
+    if (recognition) {
+      recognition.abort();
+    }
+
+    // Clear all voice-related state atomically
     setVoiceTranscript("");
     setIsProcessingVoice(false);
     setIsVoiceRecording(false);
     setIsFillingForm(false);
-    // Set clearing flag and abort any ongoing recognition (no restart)
-    setIsClearingVoice(true);
+    finalTranscriptRef.current = "";
 
-    if (recognition) {
-      recognition.abort(); // Simply stop recognition; do NOT restart to avoid onend spam
-    }
-    
     // Clear all form data that could have been filled by voice
     setPrescriptionData({
       complaints: [],
@@ -821,6 +842,11 @@ export default function PrescriptionForm({
       title: "Cleared Successfully",
       description: "All voice data and form inputs have been cleared.",
     });
+
+    // Reset clearing flag after a short delay to allow any pending events to be ignored
+    setTimeout(() => {
+      setIsClearingVoice(false);
+    }, 100);
   };
 
   return (
