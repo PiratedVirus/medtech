@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const systemPrompt = `Extract prescription data from voice transcript. Return ONLY valid JSON:
+    const systemPrompt = `Extract prescription data from voice transcript. Do not return anything else. Strictly return ONLY valid JSON:
 
 {
   "complaints": [{"text": "complaint", "severity": "MODERATE", "daysSince": 1}],
@@ -97,10 +97,38 @@ Rules:
       );
     }
 
+    // Extract JSON from the response (handle markdown formatting)
+    const extractJsonFromResponse = (text: string): string => {
+      // First, try to find JSON within markdown code blocks
+      const jsonBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      if (jsonBlockMatch) {
+        return jsonBlockMatch[1];
+      }
+      
+      // Try to find JSON object directly in the text
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return jsonMatch[0];
+      }
+      
+      // If no JSON found, return the original text
+      return text;
+    };
+
+    // Clean JSON by fixing common issues
+    const cleanJsonString = (jsonStr: string): string => {
+      // Fix arithmetic expressions like "7 * 365" to actual numbers
+      return jsonStr.replace(/(\d+)\s*\*\s*(\d+)/g, (match, num1, num2) => {
+        return (parseInt(num1) * parseInt(num2)).toString();
+      });
+    };
+
     // Parse the JSON response
     let parsedData;
     try {
-      parsedData = JSON.parse(responseText);
+      const jsonText = extractJsonFromResponse(responseText);
+      const cleanedJsonText = cleanJsonString(jsonText);
+      parsedData = JSON.parse(cleanedJsonText);
       
       // Validate that we have the required structure
       if (!parsedData || typeof parsedData !== 'object') {
