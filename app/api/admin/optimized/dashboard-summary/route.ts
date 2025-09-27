@@ -30,7 +30,15 @@ export async function GET(request: NextRequest) {
     const activeSubscriptions = await prisma.subscriptionTracker.count({
       where: { 
         isActive: true,
-        user: userClinicFilter.user
+        user: {
+          // PatientProfile level filter
+          user: {
+            clinicId: clinicId,
+            deletedAt: null,
+          },
+          deletedAt: null,
+        },
+        deletedAt: null,
       },
     });
 
@@ -42,14 +50,20 @@ export async function GET(request: NextRequest) {
             lt: new Date(new Date().setHours(23, 59, 59, 999)),
           }
         },
-        doctor: userClinicFilter.user
+        doctor: {
+          clinicId: clinicId,
+          deletedAt: null
+        }
       },
     });
 
     const labBookingsPending = await prisma.labBooking.count({
       where: { 
         status: 'PENDING',
-        patient: userClinicFilter.user
+        patient: {
+          clinicId: clinicId,
+          deletedAt: null
+        }
       },
     });
 
@@ -62,8 +76,8 @@ export async function GET(request: NextRequest) {
         },
         // Filter payments by clinic through appointments or subscriptions
         OR: [
-          { appointment: { doctor: userClinicFilter.user } },
-          { subscription: { user: userClinicFilter.user } }
+          { appointment: { doctor: { clinicId: clinicId, deletedAt: null } } },
+          { subscription: { user: { user: { clinicId: clinicId, deletedAt: null } } } }
         ]
       },
     });

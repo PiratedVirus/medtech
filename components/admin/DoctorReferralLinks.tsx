@@ -37,7 +37,7 @@ export default function DoctorReferralLinks() {
 
   const fetchDoctors = async () => {
     try {
-      const response = await axios.get("/api/admin/doctors");
+      const response = await axios.get("/api/admin/optimized/doctors");
       if (response.data.success) {
         setDoctors(response.data.doctors);
       }

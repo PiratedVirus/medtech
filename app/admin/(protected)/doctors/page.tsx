@@ -307,10 +307,10 @@ export default function DoctorsPage() {
   const fetchData = async () => {
     try {
       const [doctorsRes, clinicsRes] = await Promise.all([
-        axios.get(`/api/admin/doctors?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`),
+        axios.get(`/api/admin/optimized/doctors?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`),
         axios.get("/api/admin/clinics"),
       ]);
-      setData({ doctors: doctorsRes.data.data, total: doctorsRes.data.total });
+      setData({ doctors: doctorsRes.data.doctors, total: doctorsRes.data.total });
       setClinics(clinicsRes.data.data);
       setRoleCounts(doctorsRes.data.roleCounts || {});
     } catch (error) {

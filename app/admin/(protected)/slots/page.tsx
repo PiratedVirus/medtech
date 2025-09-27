@@ -112,8 +112,8 @@ export default function SlotsPage() {
 
   const fetchDoctors = async () => {
     try {
-      const res = await axios.get("/api/admin/doctors", { params: { pageSize: 1000, showActiveOnly: true } });
-      return res.data?.data ?? [];
+      const res = await axios.get("/api/admin/optimized/doctors", { params: { pageSize: 1000, showActiveOnly: true } });
+      return res.data?.doctors ?? [];
     } catch (e) {
       console.error("Failed to fetch doctors", e);
       return [] as DoctorProfileLite[];
