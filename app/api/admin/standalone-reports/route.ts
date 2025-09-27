@@ -1,18 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getAdminClinicId, createUserClinicFilter } from '@/lib/admin-clinic-middleware';
 
 export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '100');
     const search = searchParams.get('search') || '';
 
-    // Build where clause
+    // Create clinic filter
+    const userClinicFilter = createUserClinicFilter(clinicId);
+
+    // Build where clause with clinic isolation
     const where: any = {
-      deletedAt: null
+      deletedAt: null,
+      patient: userClinicFilter.user
     };
 
     if (search) {

@@ -1,16 +1,34 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { normalizeStatus, normalizeLabAssignmentStatus } from "@/lib/utils/status";
+import { getAdminClinicId, createClinicFilter } from "@/lib/admin-clinic-middleware";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const patientIdParam = searchParams.get("patientId");
-  const patientId = patientIdParam ? parseInt(patientIdParam, 10) : undefined;
-
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        message: "Please log out and log back in to access your clinic data" 
+      }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const patientIdParam = searchParams.get("patientId");
+    const patientId = patientIdParam ? parseInt(patientIdParam, 10) : undefined;
+
+    // Create clinic filter
+    const clinicFilter = createClinicFilter(clinicId);
+
     if (patientId) {
-      const patient = await prisma.user.findUnique({
-        where: { id: patientId },
+      // Single patient details - verify patient belongs to clinic
+      const patient = await prisma.user.findFirst({
+        where: { 
+          id: patientId,
+          ...clinicFilter
+        },
         select: {
           id: true,
           name: true,
@@ -173,8 +191,12 @@ export async function GET(request: Request) {
       };
       return NextResponse.json(formatted);
     } else {
+      // All patients list - filter by clinic
       const users = await prisma.user.findMany({
-        where: { role: 'PATIENT' },
+        where: { 
+          role: 'PATIENT',
+          ...clinicFilter
+        },
         select: { 
           id: true,
           name: true, 

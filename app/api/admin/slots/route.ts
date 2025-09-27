@@ -1,19 +1,35 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { normalizeStatus } from "@/lib/utils/status";
+import { getAdminClinicId, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        message: "Please log out and log back in to access your clinic data" 
+      }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
     const doctorId = parseInt(searchParams.get("doctorId") || "0");
 
-    let where: any = {};
+    // Create clinic filter
+    const userClinicFilter = createUserClinicFilter(clinicId);
+
+    let where: any = {
+      doctor: userClinicFilter.user
+    };
     
-      if (doctorId) {
-    where.userId = doctorId;
-  }
+    if (doctorId) {
+      where.userId = doctorId;
+    }
 
     const [slots, total] = await prisma.$transaction([
       prisma.doctorAvailability.findMany({

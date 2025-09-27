@@ -20,6 +20,7 @@ const uploadImageToCloudinary = async (file: File) => {
 };
 import axios from "axios";
 import { useForm } from "react-hook-form";
+import { fetchWithCacheBusting, clearAdminCache } from "@/lib/admin-api-client";
 import {
   useReactTable,
   getCoreRowModel,
@@ -227,14 +228,15 @@ export default function UsersPage() {
   const fetchData = async () => {
     try {
       const [usersRes, clinicsRes] = await Promise.all([
-        axios.get(`/api/admin/optimized/users?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`),
-        axios.get("/api/admin/clinics/clinics-list"),
+        fetchWithCacheBusting(`/api/admin/optimized/users?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`),
+        fetchWithCacheBusting("/api/admin/clinics/clinics-list"),
       ]);
       setData({ users: usersRes.data.data, total: usersRes.data.total });
       // clinics endpoint returns { success, clinics }
       setClinics(Array.isArray(clinicsRes.data?.clinics) ? clinicsRes.data.clinics : []);
       // Extract roleCounts from the GET response
       setRoleCounts(usersRes.data.roleCounts || {});
+      console.log("Users page - Role counts for clinic:", usersRes.data.roleCounts);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to fetch data");
@@ -340,7 +342,22 @@ export default function UsersPage() {
       {/* ToastContainer renders the toasts */}
       <ToastContainer />
       {/* Header Section */}
-
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Users Management</h1>
+          <p className="text-sm text-gray-600">Manage users in your clinic</p>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={() => {
+            clearAdminCache();
+            fetchData();
+          }}
+          title="Clear cache and refresh data"
+        >
+          Refresh Data
+        </Button>
+      </div>
 
       {/* Stats Section - Cards for role counts */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

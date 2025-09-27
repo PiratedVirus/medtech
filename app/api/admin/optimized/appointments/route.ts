@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { ConsultationType } from "@/lib/constants/enums";
 import { normalizeStatus } from "@/lib/utils/status";
 import { google } from "googleapis";
+import { getAdminClinicId, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
@@ -59,14 +61,29 @@ const createGoogleMeetLink = async (slot: any, doctorId: number, patientId: numb
 };
 
 // Optimized appointments API with proper includes to avoid N+1 queries
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        message: "Please log out and log back in to access your clinic data" 
+      }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
 
+    // Create clinic filter
+    const userClinicFilter = createUserClinicFilter(clinicId);
+
     const [appointments, total] = await prisma.$transaction([
       prisma.appointment.findMany({
+        where: {
+          doctor: userClinicFilter.user
+        },
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: {
@@ -99,7 +116,11 @@ export async function GET(request: Request) {
         },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.appointment.count(),
+      prisma.appointment.count({
+        where: {
+          doctor: userClinicFilter.user
+        }
+      }),
     ]);
 
     // Transform appointments with meeting links already included

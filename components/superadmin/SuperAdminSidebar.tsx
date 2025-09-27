@@ -13,7 +13,9 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Home
+  Home,
+  Brain,
+  Bell
 } from 'lucide-react'
 
 interface SuperAdminSidebarProps {
@@ -27,6 +29,8 @@ const navigation = [
   { name: 'Clinics', href: '/superadmin/clinics', icon: Building2 },
   { name: 'Admins', href: '/superadmin/admins', icon: Users },
   { name: 'Analytics', href: '/superadmin/analytics', icon: BarChart3 },
+  { name: 'LLM Playground', href: '/superadmin/llm-playground', icon: Brain },
+  { name: 'Push Notifications', href: '/superadmin/push-notifications', icon: Bell },
   { name: 'Settings', href: '/superadmin/settings', icon: Settings },
 ]
 

@@ -5,6 +5,7 @@ import axios from "axios";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { User } from "lucide-react";
+import { fetchWithCacheBusting } from "@/lib/admin-api-client";
 
 export function AllPatientsCard() {
   const [allPatients, setAllPatients] = useState<Patient[]>([]);
@@ -13,7 +14,7 @@ export function AllPatientsCard() {
   useEffect(() => {
     const fetchAllPatients = async () => {
       try {
-        const response = await axios.get("/api/admin/optimized/dashboard/patients-details");
+        const response = await fetchWithCacheBusting("/api/admin/optimized/dashboard/patients-details");
         console.log("All Patients Data:", response.data);
         setAllPatients(response.data);
       } catch (error) {
@@ -42,6 +43,21 @@ export function AllPatientsCard() {
   const handleCardClick = (patientId: string): void => {
     router.push(`/admin/patients/${patientId}`);
   };
+
+  // Show empty state if no patients
+  if (allPatients.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="mb-4">
+          <User size={64} className="text-gray-400" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-600 mb-2">No Patients Available</h3>
+        <p className="text-gray-500">
+          There are no patients registered in your clinic yet.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

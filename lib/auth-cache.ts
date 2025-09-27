@@ -23,6 +23,11 @@ export interface CachedAdminProfile {
   name: string
   email: string
   role: string
+  clinicId: number | null
+  clinic?: {
+    id: number
+    name: string
+  } | null
 }
 
 /**
@@ -97,6 +102,13 @@ export async function getCachedAdminProfile(userId: number): Promise<CachedAdmin
           name: true,
           email: true,
           role: true,
+          clinicId: true,
+          clinic: {
+            select: {
+              id: true,
+              name: true,
+            }
+          }
         },
       })
 

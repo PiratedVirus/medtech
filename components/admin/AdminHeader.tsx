@@ -4,13 +4,44 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationBadge } from "@/components/admin/NotificationBadge";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NotificationsList } from "./NotificationsList";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export function AdminHeader() {
   const { summary, hasHighPriorityNotifications } = useNotifications();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [clinicName, setClinicName] = useState('Loading...');
+
+  // Fetch clinic name on component mount
+  useEffect(() => {
+    const fetchClinicName = async () => {
+      try {
+        const response = await fetch('/api/admin/auth/me', {
+          cache: 'no-cache',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        })
+        const data = await response.json()
+        console.log('AdminHeader - API Response:', data)
+        if (data.success && data.user?.clinic?.name) {
+          console.log('AdminHeader - Setting clinic name to:', data.user.clinic.name)
+          setClinicName(data.user.clinic.name)
+        } else if (data.success && data.user && !data.user.clinic) {
+          console.log('AdminHeader - No clinic data found')
+          setClinicName('⚠️ Please Re-login')
+        } else {
+          console.log('AdminHeader - API failed or no user data')
+          setClinicName('Clinic')
+        }
+      } catch (error) {
+        console.error('AdminHeader - Failed to fetch clinic name:', error)
+        setClinicName('Clinic')
+      }
+    }
+    fetchClinicName()
+  }, [])
 
   const getHighestPriority = () => {
     if (summary.highPriority > 0) return 'high';
@@ -25,7 +56,10 @@ export function AdminHeader() {
   return (
     <div className="flex items-center justify-between p-4 border-b bg-white">
       <div className="flex items-center space-x-4">
-        <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+          <p className="text-sm text-gray-600">{clinicName}</p>
+        </div>
       </div>
       
       <div className="flex items-center space-x-4">
