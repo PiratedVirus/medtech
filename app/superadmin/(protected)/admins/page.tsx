@@ -144,17 +144,12 @@ export default function AdminsPage() {
 
               <div className="flex space-x-2 pt-2">
                 <Button asChild variant="outline" size="sm" className="flex-1">
-                  <Link href={`/superadmin/admins/${admin.id}`}>
+                  <Link href={`/superadmin/admins/${admin.id}/edit`}>
                     <Edit className="h-4 w-4 mr-1" />
                     Edit
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="sm" className="flex-1">
-                  <Link href={`/superadmin/admins/${admin.id}/permissions`}>
-                    <Shield className="h-4 w-4 mr-1" />
-                    Permissions
-                  </Link>
-                </Button>
+
               </div>
             </CardContent>
           </Card>

@@ -93,27 +93,28 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center justify-between space-y-2 px-2 pt-6 md:px-4">
-        <div>
-          <p className="text-muted-foreground">Overview of your clinic's performance and activities</p>
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="flex flex-col">
+        <div className="flex items-center justify-between space-y-2 px-2 pt-6 md:px-4">
+          <div>
+            <p className="text-muted-foreground">Overview of your clinic's performance and activities</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={forceRefresh}
+              title="Clear cache and refresh data"
+            >
+               Refresh Data
+            </Button>
+            <Button asChild>
+              <Link href="/appointments/new">
+                <CalendarPlus className="mr-2 h-4 w-4" />
+                New Appointment
+              </Link>
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button 
-            variant="outline" 
-            onClick={forceRefresh}
-            title="Clear cache and refresh data"
-          >
-             Refresh Data
-          </Button>
-          <Button asChild>
-            <Link href="/appointments/new">
-              <CalendarPlus className="mr-2 h-4 w-4" />
-              New Appointment
-            </Link>
-          </Button>
-        </div>
-      </div>
 
       {/* Summary Cards */}
       <div className="mt-4 grid gap-4 px-2 md:px-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -173,27 +174,27 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-4 px-2 md:px-4 md:grid-cols-3 mt-4">
+      <div className="grid gap-6 px-2 md:px-4 md:grid-cols-3 mt-6">
         {/* Upcoming Appointments (moved to where Quick Actions was) */}
         <div className="md:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Upcoming Appointments</CardTitle>
-              <CardDescription>View and manage upcoming patient appointments</CardDescription>
+          <Card className="shadow-sm border-0 bg-white">
+            <CardHeader className="border-b border-gray-100 bg-custom-mutedgreen">
+              <CardTitle className="text-gray-800">Upcoming Appointments</CardTitle>
+              <CardDescription className="text-gray-600">View and manage upcoming patient appointments</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <AppointmentsTable />
             </CardContent>
           </Card>
         </div>
 
         {/* Notifications Section */}
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Notifications</CardTitle>
-            <CardDescription>Important alerts</CardDescription>
+        <Card className="md:col-span-1 shadow-sm border-0 bg-white">
+          <CardHeader className="border-b border-gray-100 bg-custom-mutedgreen">
+            <CardTitle className="text-gray-800">Notifications</CardTitle>
+            <CardDescription className="text-gray-600">Important alerts</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <NotificationsList />
           </CardContent>
         </Card>
@@ -202,46 +203,47 @@ export default function DashboardPage() {
 
 
       {/* Tables Section */}
-      <div className="mt-4 grid gap-4 px-2 md:px-4">
-        <div className="grid md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader>
+      <div className="mt-6 grid gap-6 px-2 md:px-4 mb-8">
+        <div className="grid md:grid-cols-2 gap-6">
+          <Card className="shadow-sm border-0 bg-white">
+            <CardHeader className="border-b border-gray-100 bg-custom-mutedgreen">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Recent Lab Bookings</CardTitle>
-                  <CardDescription>View and manage recent laboratory test bookings</CardDescription>
+                  <CardTitle className="text-gray-800">Recent Lab Bookings</CardTitle>
+                  <CardDescription className="text-gray-600">View and manage recent laboratory test bookings</CardDescription>
                 </div>
-                <Button asChild variant="outline" size="sm">
+                <Button asChild variant="outline" size="sm" className="border-gray-200 hover:bg-gray-50">
                   <Link href="/admin/lab-bookings">
                     Manage Lab Bookings
                   </Link>
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <LabBookingsTable />
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
+          <Card className="shadow-sm border-0 bg-white">
+            <CardHeader className="border-b border-gray-100 bg-custom-mutedgreen">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>New Patients This Week</CardTitle>
-                  <CardDescription>Patients who registered in the last 7 days</CardDescription>
+                  <CardTitle className="text-gray-800">New Patients This Week</CardTitle>
+                  <CardDescription className="text-gray-600">Patients who registered in the last 7 days</CardDescription>
                 </div>
-                <Button asChild variant="outline" size="sm">
+                <Button asChild variant="outline" size="sm" className="border-gray-200 hover:bg-gray-50">
                   <Link href="/admin/patients">
                     View All Patients
                   </Link>
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <PatientViewCard />
             </CardContent>
           </Card>
         </div>
+      </div>
       </div>
     </div>
   )

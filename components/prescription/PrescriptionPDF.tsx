@@ -1,5 +1,5 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, pdf } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, pdf, Image } from '@react-pdf/renderer';
 import jsPDF from 'jspdf';
 
 const formatDate = (date: Date) => {
@@ -18,6 +18,12 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
+          {clinicInfo?.logo && (
+            <Image 
+              src={clinicInfo.logo} 
+              style={styles.clinicLogo}
+            />
+          )}
           <Text style={styles.hospital}>{clinicInfo?.name || "Care Diabetics Hospital"}</Text>
           <Text style={styles.subheading}>{clinicInfo?.subtitle || "AIIMS (NEW DELHI) ALUMNI INITIATIVE"}</Text>
         </View>
@@ -176,6 +182,11 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flex: 1,
+  },
+  clinicLogo: {
+    width: 60,
+    height: 60,
+    marginBottom: 10,
   },
   headerRight: {
     alignItems: "flex-end",
@@ -353,6 +364,17 @@ export const generatePDFWithJsPDF = async (
     doc.setFont("helvetica");
     
     // Header
+    // Add clinic logo if available
+    if (clinicInfo?.logo) {
+      try {
+        // Note: jsPDF doesn't support direct image URLs, you'd need to convert to base64
+        // For now, we'll skip the logo in jsPDF version
+        console.log('Clinic logo available:', clinicInfo.logo);
+      } catch (error) {
+        console.log('Could not add clinic logo to jsPDF:', error);
+      }
+    }
+    
     doc.setFontSize(16);
     doc.setTextColor(12, 124, 89); // Green color
     doc.text(clinicInfo?.name || "Care Diabetics Hospital", 20, 20);

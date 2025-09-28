@@ -14,12 +14,12 @@ import axios from 'axios'
 
 interface ClinicFormData {
   name: string
-  subdomain: string
   domain: string
   address: string
   contactInfo: string
   timings: string
   subtitle: string
+  logo: string
 }
 
 export default function CreateClinicPage() {
@@ -28,12 +28,12 @@ export default function CreateClinicPage() {
   const [error, setError] = useState('')
   const [formData, setFormData] = useState<ClinicFormData>({
     name: '',
-    subdomain: '',
     domain: '',
     address: '',
     contactInfo: '',
     timings: '',
     subtitle: '',
+    logo: '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,8 +60,49 @@ export default function CreateClinicPage() {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File size must be less than 5MB')
+      return
+    }
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await axios.post('/api/upload/clinic-logo', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+
+      if (response.data.success) {
+        setFormData(prev => ({
+          ...prev,
+          logo: response.data.url
+        }))
+        setError('')
+      } else {
+        throw new Error(response.data.error || 'Upload failed')
+      }
+    } catch (error) {
+      console.error('Logo upload failed:', error)
+      setError('Failed to upload logo')
+    }
+  }
+
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-full mx-auto">
       <div className="flex items-center gap-4 mb-6">
         <Button asChild variant="outline" size="sm">
           <Link href="/superadmin/clinics">
@@ -118,41 +159,18 @@ export default function CreateClinicPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="subdomain">Subdomain *</Label>
-                <div className="flex">
-                  <Input
-                    id="subdomain"
-                    value={formData.subdomain}
-                    onChange={(e) => handleInputChange('subdomain', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                    placeholder="clinic-name"
-                    required
-                    disabled={loading}
-                    className="rounded-r-none"
-                  />
-                  <span className="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-r-md">
-                    .yourdomain.com
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500">
-                  This will be the subdomain for the clinic (e.g., clinic-name.yourdomain.com)
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="domain">Custom Domain</Label>
-                <Input
-                  id="domain"
-                  value={formData.domain}
-                  onChange={(e) => handleInputChange('domain', e.target.value)}
-                  placeholder="clinic.com"
-                  disabled={loading}
-                />
-                <p className="text-xs text-gray-500">
-                  Optional: Custom domain for the clinic
-                </p>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="domain">Custom Domain</Label>
+              <Input
+                id="domain"
+                value={formData.domain}
+                onChange={(e) => handleInputChange('domain', e.target.value)}
+                placeholder="clinic.com"
+                disabled={loading}
+              />
+              <p className="text-xs text-gray-500">
+                Optional: Custom domain for the clinic
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -189,6 +207,30 @@ export default function CreateClinicPage() {
                   disabled={loading}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="logo">Clinic Logo</Label>
+              <Input
+                id="logo"
+                type="file"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                disabled={loading}
+                className="cursor-pointer"
+              />
+              <p className="text-xs text-gray-500">
+                Upload a logo for the clinic (max 5MB, JPG/PNG)
+              </p>
+              {formData.logo && (
+                <div className="mt-2">
+                  <img
+                    src={formData.logo}
+                    alt="Clinic logo preview"
+                    className="h-20 w-20 rounded-lg object-cover border"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end space-x-4">

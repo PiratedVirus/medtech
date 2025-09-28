@@ -76,7 +76,7 @@ export default function CreateAdminPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 mx-auto">
       <div className="flex items-center gap-4 mb-6">
         <Button asChild variant="outline" size="sm">
           <Link href="/superadmin/admins">

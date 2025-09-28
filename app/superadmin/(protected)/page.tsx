@@ -53,7 +53,7 @@ export default function SuperAdminDashboard() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Super Admin Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-900">CareDiabetics Super Admin Panel</h1>
         <p className="text-gray-600 mt-2">Manage your SaaS platform and client clinics</p>
       </div>
 
@@ -124,7 +124,7 @@ export default function SuperAdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        {/* <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -135,7 +135,7 @@ export default function SuperAdminDashboard() {
               New clinics this month
             </p>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {/* Quick Actions */}
@@ -178,24 +178,6 @@ export default function SuperAdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Analytics
-            </CardTitle>
-            <CardDescription>
-              View platform analytics and performance metrics
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full">
-              <Link href="/superadmin/analytics">
-                View Analytics
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )
