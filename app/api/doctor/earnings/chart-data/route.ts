@@ -81,11 +81,11 @@ export async function GET(request: Request) {
         break;
       case "cash":
         whereClause.paymentStatus = "PAID";
-        whereClause.paymentMethod = "cash";
+        whereClause.paymentMethod = { in: ["cash", "Cash", "CASH"] };
         break;
       case "online":
         whereClause.paymentStatus = "PAID";
-        whereClause.paymentMethod = "online";
+        whereClause.paymentMethod = { in: ["online", "Online", "ONLINE", "upi", "UPI", "card", "Card", "CARD"] };
         break;
       default:
         whereClause.paymentStatus = "PAID";

@@ -78,6 +78,9 @@ export default function DoctorAppointmentsPage() {
     const isPastIncomplete = isPast && 
       appt.status.toUpperCase() !== "COMPLETED" && 
       !appt.prescriptionLink;
+      
+    // Check if this is a completed appointment (either by status or by having prescription)
+    const isCompleted = appt.status.toUpperCase() === "COMPLETED" || !!appt.prescriptionLink;
 
     return (
       <div className={cn("relative rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow mb-4 bg-custom-mutedgreen flex flex-col justify-between min-h-[170px]", ribbon)}>
@@ -120,7 +123,7 @@ export default function DoctorAppointmentsPage() {
           {/* Consultation Type */}
           <div className="flex items-center gap-2 text-sm">
             <>
-            {appt.consultationType.toUpperCase() === "CLINIC" ? (
+            {appt.consultationType.toUpperCase() === "CLINIC" || appt.consultationType.toUpperCase() === "PHYSICAL" ? (
               <>
                 <Building2 className="h-4 w-4 text-gray-600" />
                 <span className="font-bold text-gray-800">Physical consultation</span>
@@ -144,21 +147,8 @@ export default function DoctorAppointmentsPage() {
           {/* Prescription Actions */}
           <div className="flex items-center justify-start mt-2 gap-2">
             {isPast ? (
-              isPastIncomplete ? (
-                // Past appointment that's not completed and has no prescription - show "Start Appointment Now" button
-                <Button
-                  size="sm"
-                  className="bg-primary hover:bg-primary/80 text-white"
-                  onClick={() => {
-                    // Navigate to start appointment page
-                    window.location.href = `/doctor/appointments/${appt.id}`;
-                  }}
-                >
-                  <Clock3 className="h-4 w-4 mr-2" />
-                  Start Appointment Now
-                </Button>
-              ) : appt.prescriptionLink ? (
-                // Past appointment with prescription - show "View Prescription" button
+              isCompleted && appt.prescriptionLink ? (
+                // Completed appointment with prescription - show "View Prescription" button
                 <Button
                   variant="outline"
                   size="sm"
@@ -170,8 +160,20 @@ export default function DoctorAppointmentsPage() {
                   <FileText className="h-4 w-4 mr-2" />
                   View Prescription
                 </Button>
+              ) : isCompleted ? (
+                // Completed appointment without prescription - show "Edit Prescription" button
+                <Button
+                  size="sm"
+                  className="bg-secondary hover:bg-secondary/80 text-white"
+                  onClick={() => {
+                    window.location.href = `/doctor/appointments/${appt.id}`;
+                  }}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Edit Prescription
+                </Button>
               ) : (
-                // Past appointment without prescription - show "Start Appointment Now" button
+                // Past appointment that's not completed - show "Start Appointment Now" button
                 <Button
                   size="sm"
                   className="bg-primary hover:bg-primary/80 text-white"
