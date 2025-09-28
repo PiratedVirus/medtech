@@ -63,10 +63,10 @@ export default function HomeAppointmentOverview() {
     // Additional React Query options to prevent undefined returns
     retry: 1,
     retryDelay: 1000,
-    staleTime: 2 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 0,              // always treat cache as stale
+    gcTime: 10 * 60 * 1000,   // keep in memory 10 min
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
     refetchOnReconnect: true,
     enabled: !!clinicId && !!profile?.id && !profileLoading,
     placeholderData: null, // Provide explicit placeholder to prevent undefined

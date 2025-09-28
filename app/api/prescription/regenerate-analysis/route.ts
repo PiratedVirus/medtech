@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generatePrescriptionSummary } from '@/lib/llm/unified-service';
 import prisma from '@/lib/prisma';
+import { getAdminClinicId, createUserClinicFilter } from '@/lib/admin-clinic-middleware';
 
 export async function POST(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        message: "Please log out and log back in to access your clinic data" 
+      }, { status: 401 });
+    }
+
     const body = await request.json();
     const { patientId, force = false } = body;
     
@@ -22,9 +32,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get patient with all prescriptions
-    const patient = await prisma.user.findUnique({
-      where: { id: parseInt(patientId) },
+    // Create clinic filter
+    const userClinicFilter = createUserClinicFilter(clinicId);
+
+    // Get patient with all prescriptions, ensuring they belong to the admin's clinic
+    const patient = await prisma.user.findFirst({
+      where: { 
+        id: parseInt(patientId),
+        ...userClinicFilter.user
+      },
       include: {
         patientPrescriptions: {
           include: {

@@ -142,11 +142,6 @@ export function SidebarNav({ className, logout, collapsed: collapsedProp, onColl
       title: "Lab Bookings",
     },
     {
-      href: "/admin/clinics",
-      icon: Hospital,
-      title: "Clinics",
-    },
-    {
       href: "/admin/payments",
       icon: IndianRupee,
       title: "Payments",

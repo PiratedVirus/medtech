@@ -93,7 +93,8 @@ type DoctorsPageFormData = {
 
 export default function DoctorsPage() {
   const [data, setData] = useState<{ doctors: Doctor[]; total: number }>({ doctors: [], total: 0 });
-  const [clinics, setClinics] = useState<{ id: number; name: string }[]>([]);
+  const [adminClinicId, setAdminClinicId] = useState<number | null>(null);
+  const [adminClinicName, setAdminClinicName] = useState<string>("");
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [roleCounts, setRoleCounts] = useState<{ [key: string]: number }>({});
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
@@ -120,8 +121,22 @@ export default function DoctorsPage() {
   const [viewMode, setViewMode] = useState<"table" | "card">("table");
   const router = useRouter();
 
-  // Watch clinicId to filter available users
-  const selectedClinicId = watch("clinicId");
+  const fetchAdminClinicInfo = async () => {
+    try {
+      const res = await axios.get('/api/admin/auth/me');
+      if (res.data.success && res.data.user?.clinic) {
+        setAdminClinicId(res.data.user.clinic.id);
+        setAdminClinicName(res.data.user.clinic.name);
+        // Set the clinic ID in the form
+        setValue("clinicId", res.data.user.clinic.id);
+        // Fetch available users for this clinic
+        fetchAvailableUsers(res.data.user.clinic.id);
+      }
+    } catch (error) {
+      console.error("Error fetching admin clinic info:", error);
+      toast.error("Failed to fetch clinic information");
+    }
+  };
 
   const fetchAvailableUsers = async (clinicId: number) => {
     try {
@@ -136,12 +151,8 @@ export default function DoctorsPage() {
   };
 
   useEffect(() => {
-    if (selectedClinicId) {
-      fetchAvailableUsers(selectedClinicId);
-    } else {
-      setAvailableUsers([]);
-    }
-  }, [selectedClinicId]);
+    fetchAdminClinicInfo();
+  }, []);
 
   const columns: ColumnDef<Doctor>[] = [
     {
@@ -306,12 +317,8 @@ export default function DoctorsPage() {
 
   const fetchData = async () => {
     try {
-      const [doctorsRes, clinicsRes] = await Promise.all([
-        axios.get(`/api/admin/optimized/doctors?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`),
-        axios.get("/api/admin/clinics"),
-      ]);
+      const doctorsRes = await axios.get(`/api/admin/optimized/doctors?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`);
       setData({ doctors: doctorsRes.data.doctors, total: doctorsRes.data.total });
-      setClinics(clinicsRes.data.data);
       setRoleCounts(doctorsRes.data.roleCounts || {});
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -685,26 +692,14 @@ export default function DoctorsPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label className="block font-medium">Select Clinic</label>
-              <Controller
-                control={control}
-                name="clinicId"
-                rules={{ required: true }}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value ? field.value.toString() : ""}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Clinic" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white text-black">
-                      {Array.isArray(clinics) && clinics.map((clinic) => (
-                        <SelectItem key={clinic.id} value={clinic.id.toString()}>
-                          {clinic.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+              <label className="block font-medium">Clinic</label>
+              <Input 
+                value={adminClinicName || "Loading..."} 
+                disabled 
+                className="bg-gray-100 cursor-not-allowed"
+                placeholder="Your clinic will be automatically selected"
               />
+              <p className="text-sm text-gray-500 mt-1">You can only create doctors for your clinic</p>
             </div>
 
             {/* User Dropdown (filtered by clinic) */}

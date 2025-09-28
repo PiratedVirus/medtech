@@ -5,6 +5,7 @@ import { ConsultationType } from "@/lib/constants/enums";
 import { normalizeStatus } from "@/lib/utils/status";
 import { google } from "googleapis";
 import { getAdminClinicId, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
+import { invalidateAppointmentsCache } from "@/lib/data-cache";
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
@@ -226,6 +227,14 @@ export async function POST(request: Request) {
       where: { id: data.doctorAvailabilityId },
       data: { status: "BOOKED" }
     });
+
+    // Invalidate appointments cache for the patient
+    try {
+      await invalidateAppointmentsCache(data.patientId);
+      console.log(`[ADMIN-OPTIMIZED-APPOINTMENT] Appointments cache invalidated for patient ${data.patientId} after appointment creation`);
+    } catch (cacheError) {
+      console.error('[ADMIN-OPTIMIZED-APPOINTMENT] Error invalidating appointments cache:', cacheError);
+    }
 
     return NextResponse.json({ data: appointment, message: "Appointment created successfully" });
   } catch (error) {

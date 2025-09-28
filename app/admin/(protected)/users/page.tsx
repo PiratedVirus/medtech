@@ -81,7 +81,8 @@ type User = {
 
 export default function UsersPage() {
   const [data, setData] = useState<{ users: User[]; total: number }>({ users: [], total: 0 });
-  const [clinics, setClinics] = useState<{ id: number; name: string }[]>([]);
+  const [adminClinicId, setAdminClinicId] = useState<number | null>(null);
+  const [adminClinicName, setAdminClinicName] = useState<string>("");
   const [roleCounts, setRoleCounts] = useState<{ [key: string]: number }>({});
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -95,6 +96,25 @@ export default function UsersPage() {
     pageIndex: 0,
     pageSize: 10,
   });
+
+  const fetchAdminClinicInfo = async () => {
+    try {
+      const res = await axios.get('/api/admin/auth/me');
+      if (res.data.success && res.data.user?.clinic) {
+        setAdminClinicId(res.data.user.clinic.id);
+        setAdminClinicName(res.data.user.clinic.name);
+        // Set the clinic ID in the form
+        setValue("clinicId", res.data.user.clinic.id);
+      }
+    } catch (error) {
+      console.error("Error fetching admin clinic info:", error);
+      toast.error("Failed to fetch clinic information");
+    }
+  };
+
+  useEffect(() => {
+    fetchAdminClinicInfo();
+  }, []);
 
   const columns: ColumnDef<User>[] = [
     {
@@ -227,13 +247,8 @@ export default function UsersPage() {
 
   const fetchData = async () => {
     try {
-      const [usersRes, clinicsRes] = await Promise.all([
-        fetchWithCacheBusting(`/api/admin/optimized/users?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`),
-        fetchWithCacheBusting("/api/admin/clinics/clinics-list"),
-      ]);
+      const usersRes = await fetchWithCacheBusting(`/api/admin/optimized/users?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`);
       setData({ users: usersRes.data.data, total: usersRes.data.total });
-      // clinics endpoint returns { success, clinics }
-      setClinics(Array.isArray(clinicsRes.data?.clinics) ? clinicsRes.data.clinics : []);
       // Extract roleCounts from the GET response
       setRoleCounts(usersRes.data.roleCounts || {});
       console.log("Users page - Role counts for clinic:", usersRes.data.roleCounts);
@@ -576,18 +591,16 @@ export default function UsersPage() {
                 <SelectItem value="SUSPENDED">Suspended</SelectItem>
               </SelectContent>
             </Select>
-            <Select onValueChange={(value) => setValue("clinicId", value)} defaultValue={selectedUser?.clinic?.id?.toString()}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select Clinic" />
-              </SelectTrigger>
-              <SelectContent className="bg-white text-black">
-                {clinics.map((clinic) => (
-                  <SelectItem key={clinic.id} value={clinic.id.toString()}>
-                    {clinic.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div>
+              <label className="block font-medium mb-2">Clinic</label>
+              <Input 
+                value={adminClinicName || "Loading..."} 
+                disabled 
+                className="bg-gray-100 cursor-not-allowed"
+                placeholder="Your clinic will be automatically selected"
+              />
+              <p className="text-sm text-gray-500 mt-1">You can only create users for your clinic</p>
+            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => {
                 setDialogOpen(false);
