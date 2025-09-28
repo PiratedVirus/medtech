@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     // Get admin's clinic ID for validation
     const clinicId = getAdminClinicId(request);
@@ -151,7 +151,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
     // Get admin's clinic ID for validation
     const clinicId = getAdminClinicId(request);
@@ -218,7 +218,7 @@ export async function PUT(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   try {
     // Get admin's clinic ID for validation
     const clinicId = getAdminClinicId(request);

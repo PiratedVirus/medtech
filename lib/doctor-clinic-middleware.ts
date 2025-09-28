@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
-export function getDoctorClinicId(request: NextRequest): number | null {
+export async function getDoctorClinicId(request: NextRequest): Promise<number | null> {
   try {
     // Get the doctor's clinic ID from the request
     // This could be from cookies, headers, or JWT token
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const doctorToken = cookieStore.get('doctor-token')?.value;
     
     if (!doctorToken) {

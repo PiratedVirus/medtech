@@ -26,7 +26,7 @@ export function useSuperAdminAuth() {
         }
       } catch (error) {
         // Don't log errors for unauthenticated requests
-        if (error.response?.status !== 401) {
+        if (axios.isAxiosError(error) && error.response?.status !== 401) {
           console.error('Super admin auth error:', error)
         }
         setSuperAdmin(null)

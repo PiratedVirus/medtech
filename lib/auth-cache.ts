@@ -21,7 +21,7 @@ export interface CachedUserProfile {
 export interface CachedAdminProfile {
   id: number
   name: string
-  email: string
+  email: string | null
   role: string
   clinicId: number | null
   clinic?: {

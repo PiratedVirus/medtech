@@ -50,7 +50,9 @@ export async function GET(request: NextRequest) {
           status: {
             in: ["SCHEDULED", "Confirmed"]
           },
-          doctor: userClinicFilter.user
+          doctor: {
+            clinicId: clinicId
+          }
         },
         include: {
           patient: { select: { name: true } },
@@ -85,7 +87,9 @@ export async function GET(request: NextRequest) {
         where: {
           labDate: today,
           status: "PENDING",
-          patient: userClinicFilter.user
+          patient: {
+            clinicId: clinicId
+          }
         },
         include: {
           patient: { select: { name: true } },
@@ -105,14 +109,34 @@ export async function GET(request: NextRequest) {
             gte: new Date(now.getTime() - 24 * 60 * 60 * 1000)
           },
           OR: [
-            { appointment: { doctor: userClinicFilter.user } },
-            { subscription: { user: userClinicFilter.user } },
-            { labBooking: { patient: userClinicFilter.user } }
+            { appointment: { doctor: { clinicId: clinicId } } },
+            { subscription: { user: { user: { clinicId: clinicId } } } },
+            { labBooking: { patient: { clinicId: clinicId } } }
           ]
         },
         include: {
-          appointment: { include: { patient: { select: { name: true } } } },
-          labBooking: { include: { patient: { select: { name: true } } } }
+          appointment: { 
+            include: { 
+              patient: { select: { name: true } },
+              doctor: { select: { name: true } }
+            } 
+          },
+          labBooking: { 
+            include: { 
+              patient: { select: { name: true } },
+              labPackage: { select: { name: true } }
+            } 
+          },
+          subscription: {
+            include: {
+              user: {
+                include: {
+                  user: { select: { name: true } }
+                }
+              },
+              plan: { select: { name: true } }
+            }
+          }
         },
         take: 5
       }).catch(error => {
@@ -128,12 +152,18 @@ export async function GET(request: NextRequest) {
             lte: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
           },
           isActive: true,
-          user: userClinicFilter.user
+          user: {
+            user: {
+              clinicId: clinicId
+            }
+          }
         },
         include: {
           user: {
             include: {
-              user: { select: { name: true } }
+              user: {
+                select: { name: true }
+              }
             }
           },
           plan: { select: { name: true } }

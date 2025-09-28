@@ -19,12 +19,11 @@ export async function GET(request: NextRequest) {
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
 
     // Create clinic filter for payments
-    const userClinicFilter = createUserClinicFilter(clinicId);
     const paymentFilter = {
       OR: [
-        { appointment: { doctor: userClinicFilter.user } },
-        { subscription: { user: userClinicFilter.user } },
-        { labBooking: { patient: userClinicFilter.user } }
+        { appointment: { doctor: { clinicId: clinicId } } },
+        { subscription: { user: { user: { clinicId: clinicId } } } },
+        { labBooking: { patient: { clinicId: clinicId } } }
       ]
     };
 
@@ -63,10 +62,10 @@ export async function GET(request: NextRequest) {
       }),
     ]);
     const earnings = {
-      lab: labAgg._sum.amount ?? 0,
-      appointment: appointmentAgg._sum.amount ?? 0,
-      subscription: subscriptionAgg._sum.amount ?? 0,
-      total: totalAgg._sum.amount ?? 0,
+      lab: labAgg._sum?.amount ?? 0,
+      appointment: appointmentAgg._sum?.amount ?? 0,
+      subscription: subscriptionAgg._sum?.amount ?? 0,
+      total: totalAgg._sum?.amount ?? 0,
     };
 
     return NextResponse.json({

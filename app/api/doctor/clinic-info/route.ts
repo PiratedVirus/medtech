@@ -6,7 +6,7 @@ import { getDoctorClinicId } from "@/lib/doctor-clinic-middleware";
 export async function GET(request: NextRequest) {
   try {
     // Get doctor's clinic ID
-    const clinicId = getDoctorClinicId(request);
+    const clinicId = await getDoctorClinicId(request);
     if (!clinicId) {
       return NextResponse.json({ 
         error: "Unauthorized", 
