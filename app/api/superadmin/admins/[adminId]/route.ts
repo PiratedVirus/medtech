@@ -4,10 +4,11 @@ import prisma from "@/lib/prisma";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { adminId: string } }
+  { params }: { params: Promise<{ adminId: string }> }
 ) {
   try {
-    const adminId = parseInt(params.adminId);
+    const resolvedParams = await params;
+    const adminId = parseInt(resolvedParams.adminId);
     
     if (isNaN(adminId)) {
       return NextResponse.json({ error: "Invalid admin ID" }, { status: 400 });
@@ -41,10 +42,11 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { adminId: string } }
+  { params }: { params: Promise<{ adminId: string }> }
 ) {
   try {
-    const adminId = parseInt(params.adminId);
+    const resolvedParams = await params;
+    const adminId = parseInt(resolvedParams.adminId);
     
     if (isNaN(adminId)) {
       return NextResponse.json({ error: "Invalid admin ID" }, { status: 400 });
@@ -148,10 +150,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { adminId: string } }
+  { params }: { params: Promise<{ adminId: string }> }
 ) {
   try {
-    const adminId = parseInt(params.adminId);
+    const resolvedParams = await params;
+    const adminId = parseInt(resolvedParams.adminId);
     
     if (isNaN(adminId)) {
       return NextResponse.json({ error: "Invalid admin ID" }, { status: 400 });

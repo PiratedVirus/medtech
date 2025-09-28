@@ -4,10 +4,11 @@ import prisma from "@/lib/prisma";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { clinicId: string } }
+  { params }: { params: Promise<{ clinicId: string }> }
 ) {
   try {
-    const clinicId = parseInt(params.clinicId);
+    const resolvedParams = await params;
+    const clinicId = parseInt(resolvedParams.clinicId);
     
     if (isNaN(clinicId)) {
       return NextResponse.json({ error: "Invalid clinic ID" }, { status: 400 });
@@ -37,10 +38,11 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { clinicId: string } }
+  { params }: { params: Promise<{ clinicId: string }> }
 ) {
   try {
-    const clinicId = parseInt(params.clinicId);
+    const resolvedParams = await params;
+    const clinicId = parseInt(resolvedParams.clinicId);
     
     if (isNaN(clinicId)) {
       return NextResponse.json({ error: "Invalid clinic ID" }, { status: 400 });
@@ -111,10 +113,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { clinicId: string } }
+  { params }: { params: Promise<{ clinicId: string }> }
 ) {
   try {
-    const clinicId = parseInt(params.clinicId);
+    const resolvedParams = await params;
+    const clinicId = parseInt(resolvedParams.clinicId);
     
     if (isNaN(clinicId)) {
       return NextResponse.json({ error: "Invalid clinic ID" }, { status: 400 });
