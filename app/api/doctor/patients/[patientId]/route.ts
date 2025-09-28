@@ -164,7 +164,8 @@ export async function GET(
       })) || [],
       doctorAppointments: (patient as any).patientAppointments.map((a: any) => ({
         id: a.id,
-        date: a.appointmentDate,
+        // Use the underlying doctorAvailability.date for a reliable appointment date
+        date: a.doctorAvailability?.date,
         type: a.consultationType,
         status: a.status,
         prescriptionLink: a.prescriptionLink,
