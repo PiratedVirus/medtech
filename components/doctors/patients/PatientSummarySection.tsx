@@ -452,7 +452,6 @@ export default function PatientSummarySection({
                             ?.split(',')
                             .map(c => c.trim())
                             .filter(Boolean)
-                            .filter(c => /high|low|severe|critical|urgent|blood pressure|bp|sugar|glucose|pain|fever/i.test(c))
                             .map((complaint, index) => (
                               <span key={`complaint-${index}`} className="inline-flex items-center gap-1.5 rounded-full bg-secondary/10 px-2.5 py-1 text-xs text-secondary">
                                 {complaint}
