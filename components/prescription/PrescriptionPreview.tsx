@@ -51,8 +51,12 @@ export default function PrescriptionPreview({
             <Image src="/images/logo.png" alt="Care Diabetics Logo" width={60} height={60} />
           )}
           <div className="ml-3">
-            <h1 className="text-lg font-bold text-gray-900">{clinicInfo?.name || "Care Diabetics Hospital"}</h1>
-            <p className="text-xs text-gray-500">{clinicInfo?.subtitle || "AIIMS (NEW DELHI) ALUMNI INITIATIVE"}</p>
+            {clinicInfo?.name && (
+              <h1 className="text-lg font-bold text-gray-900">{clinicInfo.name}</h1>
+            )}
+            {clinicInfo?.subtitle && (
+              <p className="text-xs text-gray-500">{clinicInfo.subtitle}</p>
+            )}
           </div>
         </div>
         <div className="text-right">
@@ -103,10 +107,6 @@ export default function PrescriptionPreview({
           </div>
         )}
 
-        {/* Diagnosis */}
-        <p className="mb-4">
-          <span className="font-semibold">Diagnosis:</span> {prescriptionData.diagnosis || 'Chronic Pulpits'}
-        </p>
       </section>
 
       {/* Rx Section - Medical Style */}
@@ -176,10 +176,12 @@ export default function PrescriptionPreview({
         </div>
       </footer>
       
-      <div className="flex justify-between mt-4 text-xs text-gray-500 border-t pt-2">
-        <p>Address: {clinicInfo?.address || "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704"}</p>
-        <p>Timings: {clinicInfo?.timings || "Mon - Sat (9:00 AM to 5:00 PM)"}</p>
-      </div>
+      {(clinicInfo?.address || clinicInfo?.timings) && (
+        <div className="flex justify-between mt-4 text-xs text-gray-500 border-t pt-2">
+          {clinicInfo?.address && <p>Address: {clinicInfo.address}</p>}
+          {clinicInfo?.timings && <p>Timings: {clinicInfo.timings}</p>}
+        </div>
+      )}
     </div>
   );
 }

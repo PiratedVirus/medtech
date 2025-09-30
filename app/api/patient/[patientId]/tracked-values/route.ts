@@ -26,6 +26,28 @@ export async function GET(
       orderBy: { labDate: "desc" },
     });
 
+    // Also fetch standalone reports with their analyses
+    const allStandaloneReports = await prisma.standaloneReport.findMany({
+      where: {
+        patientId,
+        deletedAt: null
+      },
+      include: {
+        reportAnalyses: {
+          where: { deletedAt: null }
+        }
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    
+    // Filter for reports with lab analysis (relaxed filtering)
+    const standaloneReports = allStandaloneReports.filter(report => 
+      report.reportAnalyses.some(analysis => 
+        analysis.analysisType === "lab_analysis" && 
+        (analysis.allValues || analysis.criticalValues)
+      )
+    );
+
     const selectedValues: Array<{
       parameter: string;
       value: string | number;
@@ -40,6 +62,7 @@ export async function GET(
       isTracked: boolean;
     }> = [];
 
+    // Process lab bookings
     labBookings.forEach((booking) => {
       const analysis = booking.reportAnalyses as any;
       const criticalList: any[] = Array.isArray(analysis?.criticalValues) ? analysis.criticalValues : [];
@@ -86,6 +109,56 @@ export async function GET(
       }
     });
 
+    // Process standalone reports
+    standaloneReports.forEach((report) => {
+      for (const analysis of report.reportAnalyses) {
+        if (analysis.analysisType !== "lab_analysis") continue;
+        
+        const criticalList: any[] = Array.isArray(analysis.criticalValues) ? analysis.criticalValues : [];
+        const allList: any[] = Array.isArray(analysis.allValues) ? analysis.allValues : [];
+
+        // 1) Include critical values unless explicitly untracked
+        for (const value of criticalList) {
+          if (!value || !value.parameter || value.value === undefined) continue;
+          const isTracked = value.isTracked !== false; // default to true
+          if (!isTracked) continue; // skip untracked critical
+          selectedValues.push({
+            parameter: value.parameter,
+            value: value.value,
+            unit: value.unit || "",
+            normalRange: value.normalRange,
+            isAbnormal: value.isAbnormal ?? true,
+            severity: value.severity || "HIGH",
+            category: value.category,
+            reportDate: report.createdAt.toISOString().split("T")[0],
+            labPackageName: `Standalone Report (${report.reportType})`,
+            reportId: report.id,
+            isTracked,
+          });
+        }
+
+        // 2) Include non-critical (allValues) ONLY if explicitly tracked
+        for (const value of allList) {
+          if (!value || !value.parameter || value.value === undefined) continue;
+          const isTracked = value.isTracked === true; // default to false unless explicitly tracked
+          if (!isTracked) continue;
+          selectedValues.push({
+            parameter: value.parameter,
+            value: value.value,
+            unit: value.unit || "",
+            normalRange: value.normalRange,
+            isAbnormal: value.isAbnormal ?? false,
+            severity: value.severity || "NORMAL",
+            category: value.category,
+            reportDate: report.createdAt.toISOString().split("T")[0],
+            labPackageName: `Standalone Report (${report.reportType})`,
+            reportId: report.id,
+            isTracked,
+          });
+        }
+      }
+    });
+
     const uniqueLatest = new Map<string, (typeof selectedValues)[number]>();
     for (const v of selectedValues) {
       const existing = uniqueLatest.get(v.parameter);
@@ -98,6 +171,7 @@ export async function GET(
       success: true,
       data: {
         totalReports: labBookings.length,
+        totalStandaloneReports: standaloneReports.length,
         totalCriticalValues: selectedValues.length,
         criticalValues: Array.from(uniqueLatest.values()),
       },

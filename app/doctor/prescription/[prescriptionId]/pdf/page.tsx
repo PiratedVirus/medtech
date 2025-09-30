@@ -67,6 +67,8 @@ export default function PrescriptionPDFPage() {
     patientId: "81243",
     prescriptionId: "8541302",
   });
+  const [doctorInfo, setDoctorInfo] = useState<any>(null);
+  const [clinicInfo, setClinicInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [visibleSections, setVisibleSections] = useState({
@@ -82,6 +84,7 @@ export default function PrescriptionPDFPage() {
 
   useEffect(() => {
     fetchPrescription();
+    fetchClinicInfo();
   }, [prescriptionId]);
 
   const fetchPrescription = async () => {
@@ -105,25 +108,65 @@ export default function PrescriptionPDFPage() {
     }
   };
 
+  const fetchClinicInfo = async () => {
+    try {
+      // Fetch clinic information from the database using doctor's clinic ID
+      const clinicRes = await fetch(`/api/doctor/clinic-info`);
+      if (clinicRes.ok) {
+        const clinicData = await clinicRes.json();
+        if (clinicData.success && clinicData.clinic) {
+          setClinicInfo({
+            name: clinicData.clinic.name || "Care Diabetics Hospital",
+            logo: clinicData.clinic.logo || "",
+            address: clinicData.clinic.address || "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
+            timings: clinicData.clinic.timings || "Mon - Sat ( 9:00 AM to 5:00 PM )",
+            subtitle: clinicData.clinic.subtitle || "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
+          });
+        }
+      } else {
+        // Use default clinic info if fetch fails
+        setClinicInfo({
+          name: "Care Diabetics Hospital",
+          logo: "",
+          address: "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
+          timings: "Mon - Sat ( 9:00 AM to 5:00 PM )",
+          subtitle: "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
+        });
+      }
+
+      // Set default doctor info (could be fetched from API in future)
+      setDoctorInfo({
+        name: "Dr. Smith",
+        id: "DOC001",
+        qualification: "MBBS, MD",
+        regNumber: "12345"
+      });
+    } catch (error) {
+      console.error("Error fetching clinic info:", error);
+      // Use default clinic info
+      setClinicInfo({
+        name: "Care Diabetics Hospital",
+        logo: "",
+        address: "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
+        timings: "Mon - Sat ( 9:00 AM to 5:00 PM )",
+        subtitle: "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
+      });
+      
+      setDoctorInfo({
+        name: "Dr. Smith",
+        id: "DOC001",
+        qualification: "MBBS, MD",
+        regNumber: "12345"
+      });
+    }
+  };
+
   const handleDownloadPDF = async () => {
     try {
-      if (!prescriptionData || !patientInfo) {
+      if (!prescriptionData || !patientInfo || !clinicInfo || !doctorInfo) {
         toast({ title: "Error", description: "Missing prescription data", variant: "destructive" });
         return;
       }
-
-      // Mock doctor and clinic info for this page
-      const doctorInfo = {
-        name: "Dr. Smith",
-        id: "DOC001"
-      };
-
-      const clinicInfo = {
-        name: "Care Diabetics Hospital",
-        subtitle: "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
-        address: "123 Medical Center, City",
-        timings: "Mon - Sat (9:00 AM to 5:00 PM)"
-      };
 
       // Generate PDF using frontend
       const result = await generateAndDownloadPDF(
@@ -257,6 +300,8 @@ export default function PrescriptionPDFPage() {
               <PrescriptionPreview
                 prescriptionData={prescriptionData}
                 patientInfo={patientInfo}
+                doctorInfo={doctorInfo}
+                clinicInfo={clinicInfo}
                 visibleSections={visibleSections}
               />
             </Card>

@@ -74,9 +74,6 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
             })}
           </View>
         )}
-        <Text style={styles.patientInfo}>
-          <Text style={styles.bold}>Diagnosis:</Text> {prescriptionData.diagnosis || 'Chronic Pulpitis'}
-        </Text>
       </View>
 
       {/* Prescription Symbol - Medical Style */}
@@ -432,7 +429,6 @@ export const generatePDFWithJsPDF = async (
       doc.text("Complaints: None", 20, 100);
     }
     const diagnosisY = prescriptionData.complaints?.length > 0 ? 110 + (prescriptionData.complaints.length * 5) + 5 : 110;
-    doc.text(`Diagnosis: ${prescriptionData.diagnosis || 'Chronic Pulpitis'}`, 20, diagnosisY);
     
     // Prescription symbol - Medical Style
     const rxY = diagnosisY + 15;
