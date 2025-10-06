@@ -22,7 +22,9 @@ export async function GET(request: NextRequest) {
     const userClinicFilter = createUserClinicFilter(clinicId);
     
     let where: any = {
-      doctor: userClinicFilter.user
+      doctor: {
+        user: userClinicFilter.user
+      }
     };
     
     if (checkAvailability) {
