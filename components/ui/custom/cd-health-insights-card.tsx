@@ -71,7 +71,7 @@ export default function HealthInsightsCard({
   const [newReading, setNewReading] = useState("");
   const [recordedAt, setRecordedAt] = useState("");
 
-  // Get query client for cache invalidation
+  // Get query client for cache invalidation (following codebase patterns)
   const queryClient = useQueryClient();
 
   // Handle form submission
@@ -119,14 +119,10 @@ export default function HealthInsightsCard({
         setNewReading("");
         setRecordedAt("");
         // Invalidate all insights-related queries to force refetch
-        await queryClient.invalidateQueries({ queryKey: ["insightsPanel"] });
-        await queryClient.invalidateQueries({ queryKey: ["insights"] });
-        await queryClient.invalidateQueries({ queryKey: ["health-insights"] });
-        
-        // Force refetch of all queries
-        await queryClient.refetchQueries({ queryKey: ["insightsPanel"] });
-        await queryClient.refetchQueries({ queryKey: ["insights"] });
-        await queryClient.refetchQueries({ queryKey: ["health-insights"] });
+        // Invalidate health insights cache (following codebase patterns)
+        queryClient.invalidateQueries({ queryKey: ["insightsPanel"] });
+        queryClient.invalidateQueries({ queryKey: ["insights"] });
+        queryClient.invalidateQueries({ queryKey: ["health-insights"] });
       } else {
         console.error("HealthInsightsCard - API error:", json.error);
         toast.error(`Error: ${json.error}`);

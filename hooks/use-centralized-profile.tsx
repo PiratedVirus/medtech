@@ -1,5 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { decryptData, encryptData } from '@/lib/encryption';
+import { clearUserSpecificCache, clearCacheOnUserChange } from '@/lib/cache-utils';
 import axios from 'axios';
 
 interface DecryptedProfile {
@@ -66,6 +68,7 @@ const setCachedProfile = (profile: DecryptedProfile) => {
   }
 };
 
+
 // Centralized profile fetcher function
 const fetchUserProfile = async (): Promise<DecryptedProfile | null> => {
   try {
@@ -119,6 +122,7 @@ const fetchUserProfile = async (): Promise<DecryptedProfile | null> => {
 export const useCentralizedProfile = () => {
   const cachedProfile = getCachedProfile();
   const queryClient = useQueryClient();
+  const previousProfileId = useRef<string | null>(null);
   
   const queryResult = useQuery({
     queryKey: ['userProfile'],
@@ -147,6 +151,28 @@ export const useCentralizedProfile = () => {
   
   // Use the cached profile we already retrieved
   const effectiveProfile = profile || cachedProfile;
+
+  // Clear cache when user changes
+  useEffect(() => {
+    const currentProfileId = effectiveProfile?.id || null;
+    
+    // Use centralized cache utility to handle user changes
+    clearCacheOnUserChange(queryClient, previousProfileId.current, currentProfileId);
+    
+    // Update the previous profile ID
+    previousProfileId.current = currentProfileId;
+  }, [effectiveProfile?.id, queryClient]);
+
+  // Clear cache when component unmounts (user navigates away)
+  useEffect(() => {
+    return () => {
+      // Only clear cache if we're actually unmounting due to navigation
+      if (typeof window !== "undefined") {
+        console.log('[useCentralizedProfile] Component unmounting, clearing user-specific cache');
+        clearUserSpecificCache(queryClient);
+      }
+    };
+  }, [queryClient]);
 
   // Debug logging (temporarily enabled for debugging login issue)
   if (process.env.NODE_ENV === 'development') {
@@ -186,11 +212,16 @@ export const useCentralizedProfile = () => {
     },
     // Utility function to clear profile
     clearProfile: () => {
+      console.log('[clearProfile] Clearing profile and all related cache');
+      
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("userProfile");
       }
       // Clear the query cache and set data to null
       queryClient.setQueryData(['userProfile'], null);
+      
+      // Use centralized cache utility to clear all user-specific data
+      clearUserSpecificCache(queryClient);
     }
   };
 };

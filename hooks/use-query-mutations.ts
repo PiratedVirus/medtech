@@ -77,6 +77,21 @@ export function useSmartMutations() {
       }
     }),
 
+    // Health insights update - invalidate insights cache
+    useHealthInsightsUpdate: () => useMutation({
+      mutationFn: async (insightData: any) => {
+        const response = await axios.post('/api/insights', insightData)
+        return response.data
+      },
+      onSuccess: () => {
+        invalidateQueries([
+          'insights',           // Health insights page
+          'insightsPanel',     // Home page insights panel
+          'health-insights'    // Admin health insights
+        ])
+      }
+    }),
+
     // Manual cache invalidation for custom cases
     invalidateQueries
   }
