@@ -31,20 +31,13 @@ export async function GET(request: Request) {
     }
 
     const userId = parseInt(userIdParam, 10);
-    const cacheKey = CACHE_KEYS.INSIGHTS(userId);
 
-    // Use Redis cache for insights (10-minute TTL)
-    const result = await cacheUtils.getOrSet(
-      cacheKey,
-      async () => {
-        return await fetchInsightsData(userId);
-      },
-      CACHE_TTL.INSIGHTS
-    );
+    // Fetch data directly without caching for immediate updates
+    const result = await fetchInsightsData(userId);
 
     return NextResponse.json({
       success: true,
-      data: result,
+      metrics: result,
     });
   } catch (error: any) {
     console.error("Error fetching insights:", error);
@@ -58,9 +51,23 @@ export async function GET(request: Request) {
 // Extract the main logic into a separate function for caching
 async function fetchInsightsData(userId: number) {
   try {
-    // 1) Fetch all HealthMetric rows for this user
+    // Metrics to exclude from health insights
+    const excludedMetrics = [
+      "Blood Sugar (Post Prandial)",
+      "Diastolic Blood Pressure", 
+      "Systolic Blood Pressure",
+      "Weight",
+      "Blood Sugar (Fasting)"
+    ];
+
+    // 1) Fetch all HealthMetric rows for this user, excluding unwanted metrics
     const metrics = await prisma.healthMetric.findMany({
-      where: { userId },
+      where: { 
+        userId,
+        metricName: {
+          notIn: excludedMetrics
+        }
+      },
       orderBy: { recordedAt: "asc" },
     });
 
@@ -73,28 +80,32 @@ async function fetchInsightsData(userId: number) {
       groupedByMetric[item.metricName].push(item);
     });
 
-    // 3) For each metricName, group by month, compute averages, and store an ID for editing
+    // 3) For each metricName, return individual readings instead of monthly averages
     const result = Object.entries(groupedByMetric).map(([metricName, arr]) => {
-      const monthlyMap: Record<string, { reading: number; id: number }[]> = {};
+      // Sort by recordedAt to get chronological order
+      const sortedArr = arr.sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime());
+      
+      // Group by month but keep individual readings
+      const monthlyMap: Record<string, { reading: number; id: number; recordedAt: Date }[]> = {};
 
-      arr.forEach((item) => {
+      sortedArr.forEach((item) => {
         const monthKey = getMonthString(item.recordedAt);
         if (!monthlyMap[monthKey]) {
           monthlyMap[monthKey] = [];
         }
-        monthlyMap[monthKey].push({ reading: item.reading, id: item.id });
+        monthlyMap[monthKey].push({ 
+          reading: item.reading, 
+          id: item.id, 
+          recordedAt: item.recordedAt 
+        });
       });
 
       const data = Object.entries(monthlyMap).map(([month, items]) => {
-        // average reading
-        const readings = items.map((x) => x.reading);
-        const avg = readings.reduce((acc, val) => acc + val, 0) / readings.length;
-
-        // store ID of the last item for that month (for editing)
+        // Get the latest reading for this month (most recent)
         const latestItem = items[items.length - 1];
         return {
           month,
-          average: parseFloat(avg.toFixed(2)),
+          average: latestItem.reading, // Use latest reading instead of average
           latestId: latestItem.id,
         };
       });
