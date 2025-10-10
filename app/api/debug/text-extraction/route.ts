@@ -5,7 +5,17 @@ export async function GET(request: NextRequest) {
   const requestId = Math.random().toString(36).substring(7);
   console.log(`[DEBUG][${requestId}] Text extraction health check started`);
   
-  const healthCheck = {
+  const healthCheck: {
+    timestamp: string;
+    requestId: string;
+    status: string;
+    checks: {
+      environment: Record<string, any>;
+      apis: Record<string, any>;
+      services: Record<string, any>;
+    };
+    errors: string[];
+  } = {
     timestamp: new Date().toISOString(),
     requestId,
     status: 'checking',
@@ -78,12 +88,20 @@ export async function GET(request: NextRequest) {
     // Test GCP credentials (without making actual API calls)
     console.log(`[DEBUG][${requestId}] Testing GCP credentials...`);
     try {
-      const { getCreds } = await import('@/lib/ocr/google-vision');
-      const creds = getCreds();
+      // Test GCP credentials by checking environment variables
+      const gcpProjectId = process.env.GCP_PROJECT_ID;
+      const gcpClientEmail = process.env.GCP_CLIENT_EMAIL;
+      const gcpPrivateKey = process.env.GCP_PRIVATE_KEY;
+      const gcsBucket = process.env.GCS_BUCKET;
+      
+      if (!gcpProjectId || !gcpClientEmail || !gcpPrivateKey || !gcsBucket) {
+        throw new Error('Missing GCP environment variables');
+      }
+      
       healthCheck.checks.services.gcp = {
         credentialsValid: true,
-        projectId: creds.projectId,
-        bucketName: creds.bucketName
+        projectId: gcpProjectId,
+        bucketName: gcsBucket
       };
       console.log(`[DEBUG][${requestId}] GCP credentials validation passed`);
     } catch (gcpError) {
