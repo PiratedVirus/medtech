@@ -67,6 +67,9 @@ export default function AppointmentPrescriptionPage() {
     patientId: "",
     prescriptionId: "",
     appointmentId: "",
+    phone: "",
+    age: 0,
+    gender: "",
   });
   const [doctorInfo, setDoctorInfo] = useState({
     name: "",
