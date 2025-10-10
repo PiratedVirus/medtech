@@ -721,18 +721,33 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = Math.random().toString(36).substring(7);
+  console.log(`[UPLOAD][${requestId}] Starting report upload process`);
+  
   try {
     const user = await getUserFromRequest(request);
     if (!user) {
+      console.log(`[UPLOAD][${requestId}] Authentication failed - no valid user token`);
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
+    console.log(`[UPLOAD][${requestId}] User authenticated: ${user.name} (${user.role})`);
 
     const formData = await request.formData();
     const patientId = formData.get('patientId') as string;
     const reportType = formData.get('reportType') as string;
     const file = formData.get('file') as File;
 
+    console.log(`[UPLOAD][${requestId}] Form data received:`, {
+      patientId,
+      reportType,
+      hasFile: !!file,
+      fileSize: file?.size,
+      fileType: file?.type,
+      fileName: file?.name
+    });
+
     if (!patientId || !reportType || !file) {
+      console.log(`[UPLOAD][${requestId}] Missing required fields:`, { patientId, reportType, hasFile: !!file });
       return NextResponse.json({ 
         success: false, 
         error: 'Missing required fields: patientId, reportType, file' 
@@ -741,6 +756,7 @@ export async function POST(request: NextRequest) {
 
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
+      console.log(`[UPLOAD][${requestId}] Invalid file type: ${file.type}`);
       return NextResponse.json({ 
         success: false, 
         error: 'Invalid file type. Only PDF and image files are allowed.' 
@@ -749,16 +765,28 @@ export async function POST(request: NextRequest) {
 
     const maxSize = 10 * 1024 * 1024; // 10MB
     if (file.size > maxSize) {
+      console.log(`[UPLOAD][${requestId}] File size exceeds limit: ${file.size} bytes`);
       return NextResponse.json({ 
         success: false, 
         error: 'File size too large. Maximum size is 10MB.' 
       }, { status: 400 });
     }
 
+    console.log(`[UPLOAD][${requestId}] File validation passed: ${file.name} (${file.size} bytes, ${file.type})`);
+
     const isPatient = user.id === Number(patientId);
     const isDoctor = user.role === 'DOCTOR' || user.role === 'DIETICIAN';
     
+    console.log(`[UPLOAD][${requestId}] Permission check:`, {
+      isPatient,
+      isDoctor,
+      userId: user.id,
+      patientId: Number(patientId),
+      userRole: user.role
+    });
+    
     if (!isPatient && !isDoctor) {
+      console.log(`[UPLOAD][${requestId}] Permission denied for user ${user.id} to upload for patient ${patientId}`);
       return NextResponse.json({ 
         success: false, 
         error: 'You do not have permission to upload reports for this patient' 
@@ -766,11 +794,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Upload file to Vercel Blob
+    console.log(`[UPLOAD][${requestId}] Starting file upload to Vercel Blob...`);
     let fileUrl = '';
     try {
       const { put } = await import('@vercel/blob');
       const arrayBuffer = await file.arrayBuffer();
       const fileName = `standalone-report-${Date.now()}-${file.name}`;
+      
+      console.log(`[UPLOAD][${requestId}] Uploading file: ${fileName} (${arrayBuffer.byteLength} bytes)`);
       
       const { url } = await put(fileName, arrayBuffer, {
         access: 'public',
@@ -778,14 +809,16 @@ export async function POST(request: NextRequest) {
       });
       
       fileUrl = url;
+      console.log(`[UPLOAD][${requestId}] File uploaded successfully: ${fileUrl}`);
     } catch (uploadError) {
-      console.error('File upload failed:', uploadError);
+      console.error(`[UPLOAD][${requestId}] File upload failed:`, uploadError);
       return NextResponse.json({ 
         success: false, 
         error: 'Failed to upload file to storage' 
       }, { status: 500 });
     }
 
+    console.log(`[UPLOAD][${requestId}] Creating report record in database...`);
     const report = await prisma.standaloneReport.create({
       data: {
         patientId: Number(patientId),
@@ -798,9 +831,11 @@ export async function POST(request: NextRequest) {
         status: 'PENDING'
       }
     });
+    console.log(`[UPLOAD][${requestId}] Report record created with ID: ${report.id}`);
 
     // Trigger LLM processing based on report type
     if (reportType === 'lab_report') {
+      console.log(`[UPLOAD][${requestId}] Creating lab analysis record...`);
       await prisma.standaloneReportAnalysis.create({
         data: {
           reportId: report.id,
@@ -810,13 +845,16 @@ export async function POST(request: NextRequest) {
       });
 
       // Trigger automatic LLM processing for lab reports
+      console.log(`[UPLOAD][${requestId}] Triggering LLM processing for lab report ${report.id}...`);
       try {
         await triggerLLMProcessing(report.id, 'lab_analysis');
+        console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for report ${report.id}`);
       } catch (error) {
-        console.error('Failed to trigger LLM processing:', error);
+        console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for report ${report.id}:`, error);
         // Don't fail the upload, just log the error
       }
     } else if (reportType === 'prescription') {
+      console.log(`[UPLOAD][${requestId}] Creating prescription analysis record...`);
       await prisma.standaloneReportAnalysis.create({
         data: {
           reportId: report.id,
@@ -826,12 +864,15 @@ export async function POST(request: NextRequest) {
       });
 
       // Trigger automatic LLM processing for prescriptions
+      console.log(`[UPLOAD][${requestId}] Triggering LLM processing for prescription ${report.id}...`);
       try {
         await triggerLLMProcessing(report.id, 'prescription_analysis');
+        console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for prescription ${report.id}`);
       } catch (error) {
-        console.error('Failed to trigger LLM processing:', error);
+        console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for prescription ${report.id}:`, error);
       }
     } else {
+      console.log(`[UPLOAD][${requestId}] Creating document summary analysis record...`);
       await prisma.standaloneReportAnalysis.create({
         data: {
           reportId: report.id,
@@ -841,13 +882,16 @@ export async function POST(request: NextRequest) {
       });
 
       // Trigger automatic LLM processing for medical documents
+      console.log(`[UPLOAD][${requestId}] Triggering LLM processing for document ${report.id}...`);
       try {
         await triggerLLMProcessing(report.id, 'document_summary');
+        console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for document ${report.id}`);
       } catch (error) {
-        console.error('Failed to trigger LLM processing:', error);
+        console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for document ${report.id}:`, error);
       }
     }
 
+    console.log(`[UPLOAD][${requestId}] Upload process completed successfully for report ${report.id}`);
     return NextResponse.json({ 
       success: true, 
       report,
@@ -855,7 +899,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Report upload error:', error);
+    console.error(`[UPLOAD][${requestId}] Report upload error:`, error);
     return NextResponse.json({ 
       success: false, 
       error: error?.message || 'Failed to upload report' 
