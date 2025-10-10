@@ -846,12 +846,33 @@ export async function POST(request: NextRequest) {
 
       // Trigger automatic LLM processing for lab reports
       console.log(`[UPLOAD][${requestId}] Triggering LLM processing for lab report ${report.id}...`);
+      console.log(`[UPLOAD][${requestId}] Environment check:`, {
+        hasGroqKey: !!process.env.GROQ_API_KEY,
+        hasGcpProject: !!process.env.GCP_PROJECT_ID,
+        hasGcpEmail: !!process.env.GCP_CLIENT_EMAIL,
+        hasGcpKey: !!process.env.GCP_PRIVATE_KEY,
+        hasGcsBucket: !!process.env.GCS_BUCKET,
+        siteUrl: process.env.NEXT_PUBLIC_SITE_URL
+      });
+      
       try {
         await triggerLLMProcessing(report.id, 'lab_analysis');
         console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for report ${report.id}`);
       } catch (error) {
-        console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for report ${report.id}:`, error);
-        // Don't fail the upload, just log the error
+        console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for report ${report.id}:`, {
+          error,
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        
+        // Update the analysis record with the error
+        await prisma.standaloneReportAnalysis.updateMany({
+          where: { reportId: report.id, analysisType: 'lab_analysis' },
+          data: {
+            processingStatus: 'FAILED',
+            processingError: `LLM processing trigger failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          }
+        });
       }
     } else if (reportType === 'prescription') {
       console.log(`[UPLOAD][${requestId}] Creating prescription analysis record...`);

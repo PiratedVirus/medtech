@@ -9,6 +9,18 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
   const requestId = Math.random().toString(36).substring(7);
   console.log(`[LLM-PROCESSING][${requestId}] Starting LLM processing for report ${reportId}, type: ${analysisType}, forceRegeneration: ${forceRegeneration}`);
   
+  // Log to database for tracking
+  try {
+    await prisma.standaloneReportAnalysis.updateMany({
+      where: { reportId, analysisType },
+      data: {
+        processingError: `[${requestId}] LLM processing started at ${new Date().toISOString()}`
+      }
+    });
+  } catch (dbLogError) {
+    console.error(`[LLM-PROCESSING][${requestId}] Failed to log start to database:`, dbLogError);
+  }
+  
   try {
     // Update status to PROCESSING
     console.log(`[LLM-PROCESSING][${requestId}] Updating analysis status to PROCESSING...`);
