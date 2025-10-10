@@ -1,27 +1,49 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
+import jwt from "jsonwebtoken";
+import prisma from "@/lib/prisma";
 
 export async function getDoctorClinicId(request: NextRequest): Promise<number | null> {
   try {
-    // Get the doctor's clinic ID from the request
-    // This could be from cookies, headers, or JWT token
+    // Get the doctor's token from cookies
     const cookieStore = await cookies();
-    const doctorToken = cookieStore.get('doctor-token')?.value;
+    const token = cookieStore.get('token')?.value;
     
-    if (!doctorToken) {
+    if (!token) {
       return null;
     }
 
-    // For now, we'll extract clinic ID from the token
-    // In a real implementation, you'd decode the JWT and get the clinic ID
-    // This is a simplified version - you might need to implement proper JWT decoding
+    // Decode the JWT token to get the phone number
+    let decoded: any;
     try {
-      const tokenData = JSON.parse(atob(doctorToken.split('.')[1]));
-      return tokenData.clinicId || null;
-    } catch (error) {
-      console.error('Error decoding doctor token:', error);
+      decoded = jwt.verify(token, process.env.JWT_SECRET!);
+    } catch (err) {
+      console.error('Error verifying token:', err);
       return null;
     }
+
+    const phoneNumber = decoded.plusAddedPhoneNumber as string | undefined;
+    if (!phoneNumber) {
+      return null;
+    }
+
+    // Find the user and get their clinic ID
+    const user = await prisma.user.findFirst({
+      where: { 
+        phoneNumber,
+        deletedAt: null
+      },
+      select: { 
+        clinicId: true,
+        role: true
+      }
+    });
+
+    if (!user || user.role !== 'DOCTOR') {
+      return null;
+    }
+
+    return user.clinicId;
   } catch (error) {
     console.error('Error getting doctor clinic ID:', error);
     return null;

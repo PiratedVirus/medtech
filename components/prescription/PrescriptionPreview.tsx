@@ -45,12 +45,16 @@ export default function PrescriptionPreview({
       {/* Header */}
       <header className="flex justify-between items-start pb-4 border-b border-gray-200">
         <div className="flex items-center">
-          {clinicInfo?.logo ? (
-            <Image src={clinicInfo.logo} alt={`${clinicInfo.name} Logo`} width={60} height={60} />
-          ) : (
-            <Image src="/images/logo.png" alt="Care Diabetics Logo" width={60} height={60} />
+          {clinicInfo?.logo && (
+            <Image 
+              src={clinicInfo.logo} 
+              alt={`${clinicInfo.name} Logo`} 
+              width={60} 
+              height={60}
+              className="object-contain mr-3"
+            />
           )}
-          <div className="ml-3">
+          <div>
             {clinicInfo?.name && (
               <h1 className="text-lg font-bold text-gray-900">{clinicInfo.name}</h1>
             )}

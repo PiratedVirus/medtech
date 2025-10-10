@@ -116,23 +116,14 @@ export default function PrescriptionPDFPage() {
         const clinicData = await clinicRes.json();
         if (clinicData.success && clinicData.clinic) {
           setClinicInfo({
-            name: clinicData.clinic.name || "Care Diabetics Hospital",
-            logo: clinicData.clinic.logo || "",
-            address: clinicData.clinic.address || "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
-            timings: clinicData.clinic.timings || "Mon - Sat ( 9:00 AM to 5:00 PM )",
-            subtitle: clinicData.clinic.subtitle || "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
+            name: clinicData.clinic.name,
+            logo: clinicData.clinic.logo,
+            address: clinicData.clinic.address,
+            timings: clinicData.clinic.timings,
+            subtitle: clinicData.clinic.subtitle,
           });
         }
-      } else {
-        // Use default clinic info if fetch fails
-        setClinicInfo({
-          name: "Care Diabetics Hospital",
-          logo: "",
-          address: "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
-          timings: "Mon - Sat ( 9:00 AM to 5:00 PM )",
-          subtitle: "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
-        });
-      }
+          }
 
       // Set default doctor info (could be fetched from API in future)
       setDoctorInfo({
@@ -143,14 +134,7 @@ export default function PrescriptionPDFPage() {
       });
     } catch (error) {
       console.error("Error fetching clinic info:", error);
-      // Use default clinic info
-      setClinicInfo({
-        name: "Care Diabetics Hospital",
-        logo: "",
-        address: "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
-        timings: "Mon - Sat ( 9:00 AM to 5:00 PM )",
-        subtitle: "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
-      });
+      // Don't set default clinic info - let it remain empty
       
       setDoctorInfo({
         name: "Dr. Smith",

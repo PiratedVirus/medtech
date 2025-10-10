@@ -155,28 +155,30 @@ export default function AppointmentPrescriptionPage() {
       // Fetch clinic information from the database using doctor's clinic ID
       try {
         const clinicRes = await fetch(`/api/doctor/clinic-info`);
+        console.log("Clinic API response status:", clinicRes.status);
+        
         if (clinicRes.ok) {
           const clinicData = await clinicRes.json();
+          console.log("Clinic API response data:", clinicData);
+          
           if (clinicData.success && clinicData.clinic) {
-            setClinicInfo({
-              name: clinicData.clinic.name || "Care Diabetics Hospital",
-              logo: clinicData.clinic.logo || "",
-              address: clinicData.clinic.address || "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
-              timings: clinicData.clinic.timings || "Mon - Sat ( 9:00 AM to 5:00 PM )",
-              subtitle: clinicData.clinic.subtitle || "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
-            });
+            const clinicInfo = {
+              name: clinicData.clinic.name,
+              logo: clinicData.clinic.logo,
+              address: clinicData.clinic.address,
+              timings: clinicData.clinic.timings,
+              subtitle: clinicData.clinic.subtitle,
+            };
+            console.log("Setting clinic info:", clinicInfo);
+            setClinicInfo(clinicInfo);
           }
+        } else {
+          const errorData = await clinicRes.json();
+          console.log("Clinic API error:", errorData);
         }
       } catch (error) {
         console.error("Error fetching clinic info:", error);
-        // Use default clinic info
-        setClinicInfo({
-          name: "Care Diabetics Hospital",
-          logo: "",
-          address: "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
-          timings: "Mon - Sat ( 9:00 AM to 5:00 PM )",
-          subtitle: "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
-        });
+        // Don't set default clinic info - let it remain empty
       }
 
       // Then fetch prescription data

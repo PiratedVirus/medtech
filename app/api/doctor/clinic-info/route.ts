@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
   try {
     // Get doctor's clinic ID
     const clinicId = await getDoctorClinicId(request);
+    console.log("Clinic ID from middleware:", clinicId);
+    
     if (!clinicId) {
       return NextResponse.json({ 
         error: "Unauthorized", 
@@ -31,6 +33,8 @@ export async function GET(request: NextRequest) {
         domain: true
       }
     });
+
+    console.log("Clinic data from database:", clinic);
 
     if (!clinic) {
       return NextResponse.json({ 

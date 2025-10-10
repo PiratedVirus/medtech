@@ -18,14 +18,22 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          {clinicInfo?.logo && (
-            <Image 
-              src={clinicInfo.logo} 
-              style={styles.clinicLogo}
-            />
-          )}
-          <Text style={styles.hospital}>{clinicInfo?.name || "Care Diabetics Hospital"}</Text>
-          <Text style={styles.subheading}>{clinicInfo?.subtitle || "AIIMS (NEW DELHI) ALUMNI INITIATIVE"}</Text>
+          <View style={styles.clinicInfoRow}>
+            {clinicInfo?.logo && (
+              <Image 
+                src={clinicInfo.logo} 
+                style={styles.clinicLogo}
+              />
+            )}
+            <View style={styles.clinicTextContainer}>
+              {clinicInfo?.name && (
+                <Text style={styles.hospital}>{clinicInfo.name}</Text>
+              )}
+              {clinicInfo?.subtitle && (
+                <Text style={styles.subheading}>{clinicInfo.subtitle}</Text>
+              )}
+            </View>
+          </View>
         </View>
         <View style={styles.headerRight}>
           <Text style={styles.dateTime}>Date & Time: {formatDate(new Date())}</Text>
@@ -36,19 +44,16 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
 
       {/* Patient Info */}
       <View style={styles.patientSection}>
-        <Text style={styles.sectionTitle}>Patient Information</Text>
         <Text style={styles.patientInfo}>
-          <Text style={styles.bold}>Patient Name:</Text> Mr. {patientInfo.name} (28 yrs, Male) - +91 {patientInfo.phone || '9949693659'}
+          <Text style={styles.bold}>Patient Name:</Text> Mr. {patientInfo.name} - +91 {patientInfo.phone || ''}
         </Text>
         <Text style={styles.patientInfo}>
-          <Text style={styles.bold}>BP:</Text> {prescriptionData.vitals?.bloodPressure || '120/80'} mmHg {"   "}
-          <Text style={styles.bold}>Pulse:</Text> {prescriptionData.vitals?.pulse || '72'} bpm {"   "}
-          <Text style={styles.bold}>Height:</Text> {prescriptionData.vitals?.height || '185'} cm {"   "}
-          <Text style={styles.bold}>Weight:</Text> {prescriptionData.vitals?.weight || '90'} kgs
+          <Text style={styles.bold}>BP:</Text> {prescriptionData.vitals?.bloodPressure || '-'} mmHg {"   "}
+          <Text style={styles.bold}>Pulse:</Text> {prescriptionData.vitals?.pulse || '-'} bpm {"   "}
+          <Text style={styles.bold}>Height:</Text> {prescriptionData.vitals?.height || '-'} cm {"   "}
+          <Text style={styles.bold}>Weight:</Text> {prescriptionData.vitals?.weight || '-'} kgs
         </Text>
-        <Text style={styles.patientInfo}>
-          <Text style={styles.bold}>Random Blood Sugar:</Text> 150 mg/dL
-        </Text>
+
         {/* Complaints with Timeline */}
         {visibleSections?.complaints !== false && prescriptionData.complaints?.length > 0 && (
           <View style={styles.complaintsSection}>
@@ -145,14 +150,20 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
       </View>
 
       {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          {clinicInfo?.address || "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704"}
-        </Text>
-        <Text style={styles.footerText}>
-          {clinicInfo?.timings || "Mon - Sat (9:00 AM to 5:00 PM)"}
-        </Text>
-      </View>
+      {(clinicInfo?.address || clinicInfo?.timings) && (
+        <View style={styles.footer}>
+          {clinicInfo?.address && (
+            <Text style={styles.footerText}>
+              Address: {clinicInfo.address}
+            </Text>
+          )}
+          {clinicInfo?.timings && (
+            <Text style={styles.footerText}>
+              Timings: {clinicInfo.timings}
+            </Text>
+          )}
+        </View>
+      )}
 
       {/* Page Number */}
       <Text
@@ -180,10 +191,17 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
   },
+  clinicInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   clinicLogo: {
     width: 60,
     height: 60,
-    marginBottom: 10,
+    marginRight: 12,
+  },
+  clinicTextContainer: {
+    flex: 1,
   },
   headerRight: {
     alignItems: "flex-end",
@@ -191,7 +209,7 @@ const styles = StyleSheet.create({
   hospital: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#0C7C59",
+    color: "#000000",
     marginBottom: 4,
   },
   subheading: {
@@ -372,13 +390,19 @@ export const generatePDFWithJsPDF = async (
       }
     }
     
-    doc.setFontSize(16);
-    doc.setTextColor(12, 124, 89); // Green color
-    doc.text(clinicInfo?.name || "Care Diabetics Hospital", 20, 20);
+    // Clinic info in single row
+    let clinicY = 20;
+    if (clinicInfo?.name) {
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0); // Default black color
+      doc.text(clinicInfo.name, 20, clinicY);
+    }
     
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    doc.text(clinicInfo?.subtitle || "AIIMS (NEW DELHI) ALUMNI INITIATIVE", 20, 30);
+    if (clinicInfo?.subtitle) {
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      doc.text(clinicInfo.subtitle, 20, clinicY + 8);
+    }
     
     // Date
     const currentDate = new Date().toLocaleDateString("en-GB", {
@@ -512,10 +536,17 @@ export const generatePDFWithJsPDF = async (
     
     // Footer
     const footerY = 270;
+    let currentY = footerY;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text(clinicInfo?.address || "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704", 20, footerY);
-    doc.text(clinicInfo?.timings || "Mon - Sat (9:00 AM to 5:00 PM)", 20, footerY + 5);
+    
+    if (clinicInfo?.address) {
+      doc.text(`Address: ${clinicInfo.address}`, 20, currentY);
+      currentY += 5;
+    }
+    if (clinicInfo?.timings) {
+      doc.text(`Timings: ${clinicInfo.timings}`, 20, currentY);
+    }
     
     // Get PDF as base64
     const pdfBase64 = doc.output('datauristring').split(',')[1];
