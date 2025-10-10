@@ -136,15 +136,51 @@ export default function AppointmentPrescriptionPage() {
 
       if (!appointment) throw new Error("Appointment not found");
 
-      // Set patient info from appointment data
-      setPatientInfo({
-        name: appointment.patientName,
-        patientId: appointment.patientId.toString(),
-        prescriptionId:
-          appointment.prescriptionNumber ||
-          `PRES-${appointment.patientName.split(" ").map((n: string) => n[0]).join("" ).toUpperCase()}-${appointmentId}`,
-        appointmentId: appointmentId,
-      });
+      // Fetch detailed patient information
+      try {
+        const patientRes = await fetch(`/api/doctor/patients/${appointment.patientId}`);
+        if (patientRes.ok) {
+          const patientData = await patientRes.json();
+          setPatientInfo({
+            name: patientData.name,
+            patientId: patientData.id.toString(),
+            phone: patientData.phoneNumber || "Not provided", // Use the actual phoneNumber field
+            age: patientData.profile?.age || 0,
+            gender: patientData.profile?.gender || "Not specified",
+            prescriptionId:
+              appointment.prescriptionNumber ||
+              `PRES-${appointment.patientName.split(" ").map((n: string) => n[0]).join("" ).toUpperCase()}-${appointmentId}`,
+            appointmentId: appointmentId,
+          });
+        } else {
+          // Fallback to basic info if patient details fetch fails
+          setPatientInfo({
+            name: appointment.patientName,
+            patientId: appointment.patientId.toString(),
+            phone: "Not provided", // fallback
+            age: 0,
+            gender: "Not specified",
+            prescriptionId:
+              appointment.prescriptionNumber ||
+              `PRES-${appointment.patientName.split(" ").map((n: string) => n[0]).join("" ).toUpperCase()}-${appointmentId}`,
+            appointmentId: appointmentId,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching patient details:", error);
+        // Fallback to basic info
+        setPatientInfo({
+          name: appointment.patientName,
+          patientId: appointment.patientId.toString(),
+          phone: "Not provided", // fallback
+          age: 0,
+          gender: "Not specified",
+          prescriptionId:
+            appointment.prescriptionNumber ||
+            `PRES-${appointment.patientName.split(" ").map((n: string) => n[0]).join("" ).toUpperCase()}-${appointmentId}`,
+          appointmentId: appointmentId,
+        });
+      }
 
       // Set doctor info from appointment data - use the actual doctor conducting the appointment
       setDoctorInfo({

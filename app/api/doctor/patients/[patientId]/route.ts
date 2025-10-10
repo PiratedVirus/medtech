@@ -146,6 +146,7 @@ export async function GET(
       id: patient.id,
       name: patient.name,
       email: patient.email,
+      phoneNumber: patient.phoneNumber,
       joinedOn: patient.createdAt,
       profile: (patient as any).patientProfile,
       subscriptions: (patient as any).patientProfile?.planTrackers?.map((pt: any) => ({

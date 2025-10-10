@@ -71,7 +71,7 @@ export default function PrescriptionPreview({
 
       {/* Patient Info */}
       <section className="mt-4">
-        <p className="mb-2"><span className="font-semibold">Patient name:</span> Mr. {patientInfo.name} (28 yrs, Male) - +91 {patientInfo.phone || '9949693659'}</p>
+        <p className="mb-2"><span className="font-semibold">Patient name:</span> Mr. {patientInfo.name} ({patientInfo.age || 0} yrs, {patientInfo.gender || 'Not specified'}) - +91 {patientInfo.phone || 'Not provided'}</p>
         
         {visibleSections.vitals && (
           <div className="flex flex-wrap gap-6 text-sm mb-3">
@@ -90,20 +90,20 @@ export default function PrescriptionPreview({
             <div className="ml-4">
               {prescriptionData.complaints.map((complaint: any, index: number) => {
                 const getTimeAgo = (daysSince?: number) => {
-                  if (!daysSince || daysSince === 0) return "recent";
-                  if (daysSince === 1) return "1 day";
-                  if (daysSince < 7) return `${daysSince} days`;
+                  if (!daysSince || daysSince === 0) return "today";
+                  if (daysSince === 1) return "1 day ago";
+                  if (daysSince < 7) return `${daysSince} days ago`;
                   if (daysSince < 30) {
-                    const weeks = Math.floor(daysSince / 7);
-                    return `${weeks} week${weeks > 1 ? 's' : ''}`;
+                    const weeks = Math.round(daysSince / 7);
+                    return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
                   }
-                  const months = Math.floor(daysSince / 30);
-                  return `${months} month${months > 1 ? 's' : ''}`;
+                  const months = Math.round(daysSince / 30);
+                  return `${months} month${months > 1 ? 's' : ''} ago`;
                 };
                 
                 return (
                   <p key={index} className="text-sm mb-1">
-                    • {complaint.text} (since {getTimeAgo(complaint.daysSince)})
+                    • {complaint.text} {complaint.daysSince !== null && complaint.daysSince !== undefined ? `(${getTimeAgo(complaint.daysSince)})` : ''}
                   </p>
                 );
               })}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, pdf, Image } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, pdf, Image, Font } from '@react-pdf/renderer';
 import jsPDF from 'jspdf';
 
 const formatDate = (date: Date) => {
@@ -45,7 +45,7 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
       {/* Patient Info */}
       <View style={styles.patientSection}>
         <Text style={styles.patientInfo}>
-          <Text style={styles.bold}>Patient Name:</Text> Mr. {patientInfo.name} - +91 {patientInfo.phone || ''}
+          <Text style={styles.bold}>Patient Name:</Text> Mr. {patientInfo.name} ({patientInfo.age || 0} yrs, {patientInfo.gender || 'Not specified'}) - {patientInfo.phone || 'Not provided'}
         </Text>
         <Text style={styles.patientInfo}>
           <Text style={styles.bold}>BP:</Text> {prescriptionData.vitals?.bloodPressure || '-'} mmHg {"   "}
@@ -60,20 +60,20 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
             <Text style={[styles.patientInfo, styles.bold]}>Chief Complaints:</Text>
             {prescriptionData.complaints.map((complaint: any, index: number) => {
               const getTimeAgo = (daysSince?: number) => {
-                if (!daysSince || daysSince === 0) return "recent";
-                if (daysSince === 1) return "1 day";
-                if (daysSince < 7) return `${daysSince} days`;
+                if (!daysSince || daysSince === 0) return "today";
+                if (daysSince === 1) return "1 day ago";
+                if (daysSince < 7) return `${daysSince} days ago`;
                 if (daysSince < 30) {
-                  const weeks = Math.floor(daysSince / 7);
-                  return `${weeks} week${weeks > 1 ? 's' : ''}`;
+                  const weeks = Math.round(daysSince / 7);
+                  return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
                 }
-                const months = Math.floor(daysSince / 30);
-                return `${months} month${months > 1 ? 's' : ''}`;
+                const months = Math.round(daysSince / 30);
+                return `${months} month${months > 1 ? 's' : ''} ago`;
               };
               
               return (
                 <Text key={index} style={styles.complaintItem}>
-                  • {complaint.text} (since {getTimeAgo(complaint.daysSince)})
+                  • {complaint.text} {complaint.daysSince !== null && complaint.daysSince !== undefined ? `(${getTimeAgo(complaint.daysSince)})` : ''}
                 </Text>
               );
             })}
@@ -424,7 +424,7 @@ export const generatePDFWithJsPDF = async (
     
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(`Name: Mr. ${patientInfo.name} (28 yrs, Male) - +91 ${patientInfo.phone || '9949693659'}`, 20, 60);
+    doc.text(`Name: Mr. ${patientInfo.name} (${patientInfo.age || 0} yrs, ${patientInfo.gender || 'Not specified'}) - +91 ${patientInfo.phone || 'Not provided'}`, 20, 60);
     doc.text(`BP: ${prescriptionData.vitals?.bloodPressure || '120/80'} mmHg | Pulse: ${prescriptionData.vitals?.pulse || '72'} bpm`, 20, 70);
     doc.text(`Height: ${prescriptionData.vitals?.height || '185'} cm | Weight: ${prescriptionData.vitals?.weight || '90'} kgs`, 20, 80);
     doc.text(`Random Blood Sugar: 150 mg/dL`, 20, 90);
@@ -436,15 +436,15 @@ export const generatePDFWithJsPDF = async (
       
       prescriptionData.complaints.forEach((complaint: any, index: number) => {
         const getTimeAgo = (daysSince?: number) => {
-          if (!daysSince || daysSince === 0) return "recent";
-          if (daysSince === 1) return "1 day";
-          if (daysSince < 7) return `${daysSince} days`;
+          if (!daysSince || daysSince === 0) return "today";
+          if (daysSince === 1) return "1 day ago";
+          if (daysSince < 7) return `${daysSince} days ago`;
           if (daysSince < 30) {
-            const weeks = Math.floor(daysSince / 7);
-            return `${weeks} week${weeks > 1 ? 's' : ''}`;
+            const weeks = Math.round(daysSince / 7);
+            return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
           }
-          const months = Math.floor(daysSince / 30);
-          return `${months} month${months > 1 ? 's' : ''}`;
+          const months = Math.round(daysSince / 30);
+          return `${months} month${months > 1 ? 's' : ''} ago`;
         };
         
         doc.text(`• ${complaint.text} (since ${getTimeAgo(complaint.daysSince)})`, 20, 110 + (index * 5));
