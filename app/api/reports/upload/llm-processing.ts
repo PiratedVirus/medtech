@@ -62,28 +62,13 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
     let extractedText = '';
     try {
       if (report.fileUrl.startsWith('http')) {
-        console.log(`[LLM-PROCESSING][${requestId}] Making request to parse-text API...`);
-        // Use relative URL like all other APIs in the codebase
-        const parseUrl = '/api/llm-process/parse-text';
-        console.log(`[LLM-PROCESSING][${requestId}] Parse-text API URL: ${parseUrl}`);
+        console.log(`[LLM-PROCESSING][${requestId}] Calling OCR function directly instead of HTTP request`);
         
-        const parseResponse = await fetch(parseUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pdfUrl: report.fileUrl }),
-        });
-
-        console.log(`[LLM-PROCESSING][${requestId}] Parse-text API response:`, {
-          status: parseResponse.status,
-          statusText: parseResponse.statusText,
-          ok: parseResponse.ok
-        });
-
-        if (parseResponse.ok) {
-          const parseData = await parseResponse.json();
-          extractedText = parseData.text;
+        try {
+          const { ocrExtractPdfTextFromUrl } = await import('@/lib/ocr/google-vision');
+          extractedText = await ocrExtractPdfTextFromUrl(report.fileUrl);
           
-          console.log(`[LLM-PROCESSING][${requestId}] Stage 1: Text extraction completed (${extractedText.length} chars)`);
+          console.log(`[LLM-PROCESSING][${requestId}] Direct OCR extraction completed (${extractedText.length} chars)`);
           
           if (extractedText.length === 0) {
             console.warn(`[LLM-PROCESSING][${requestId}] No text extracted from PDF`);
@@ -99,14 +84,13 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
               processingError: 'Stage 2: Generating summary...',
             },
           });
-        } else {
-          const errorText = await parseResponse.text();
-          console.error(`[LLM-PROCESSING][${requestId}] Parse-text API failed:`, {
-            status: parseResponse.status,
-            statusText: parseResponse.statusText,
-            errorText
+        } catch (directOcrError) {
+          console.error(`[LLM-PROCESSING][${requestId}] Direct OCR extraction failed:`, {
+            error: directOcrError,
+            message: directOcrError instanceof Error ? directOcrError.message : 'Unknown error',
+            stack: directOcrError instanceof Error ? directOcrError.stack : undefined
           });
-          throw new Error(`Failed to parse file: ${parseResponse.status} ${errorText}`);
+          throw new Error(`Failed to extract text from file: ${directOcrError instanceof Error ? directOcrError.message : 'Unknown error'}`);
         }
       } else {
         console.error(`[LLM-PROCESSING][${requestId}] Invalid file URL format: ${report.fileUrl}`);

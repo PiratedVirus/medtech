@@ -428,22 +428,15 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
     try {
       if (report.fileUrl.startsWith('http')) {
         // Use existing parse-text API for remote files
-        // Use relative URL like all other APIs in the codebase
-        const parseUrl = '/api/llm-process/parse-text';
-        console.log(`[UPLOAD][${reportId}] Making parse-text API call to: ${parseUrl}`);
+        // For server-side API calls, we need to use the full URL or call the function directly
+        // Let's call the OCR function directly instead of making an HTTP request
+        console.log(`[UPLOAD][${reportId}] Calling OCR function directly instead of HTTP request`);
         
-        const parseResponse = await fetch(parseUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pdfUrl: report.fileUrl }),
-          signal: AbortSignal.timeout(60000) // 60 second timeout
-        });
-
-        if (parseResponse.ok) {
-          const parseData = await parseResponse.json();
-          extractedText = parseData.text;
+        try {
+          const { ocrExtractPdfTextFromUrl } = await import('@/lib/ocr/google-vision');
+          extractedText = await ocrExtractPdfTextFromUrl(report.fileUrl);
           
-          console.log(`[UPLOAD][${reportId}] Stage 1: Text extraction completed (${extractedText.length} chars)`);
+          console.log(`[UPLOAD][${reportId}] Direct OCR extraction completed (${extractedText.length} chars)`);
           
           // Update database with extracted text and progress
           await prisma.standaloneReportAnalysis.updateMany({
@@ -453,10 +446,9 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
               processingError: 'Stage 2: Generating summary...'
             }
           });
-        } else {
-          const errorText = await parseResponse.text();
-          console.error(`[UPLOAD][${reportId}] Parse-text API failed: ${parseResponse.status} ${errorText}`);
-          throw new Error(`Failed to parse file: ${parseResponse.status} ${errorText}`);
+        } catch (directOcrError) {
+          console.error(`[UPLOAD][${reportId}] Direct OCR extraction failed:`, directOcrError);
+          throw new Error(`Failed to extract text from file: ${directOcrError instanceof Error ? directOcrError.message : 'Unknown error'}`);
         }
       } else {
         throw new Error('Invalid file URL');
