@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       // Extract text from PDF if not already done
       if (!extractedText && prescription.appointment?.prescriptionLink) {
         try {
-          const extractResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/llm-process/parse-text`, {
+          const extractResponse = await fetch('/api/llm-process/parse-text', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ pdfUrl: prescription.appointment.prescriptionLink })

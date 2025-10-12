@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     // Test parse-text API endpoint
     console.log(`[DEBUG][${requestId}] Testing parse-text API endpoint...`);
     try {
-      const parseTextUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/llm-process/parse-text`;
+      const parseTextUrl = '/api/llm-process/parse-text';
       console.log(`[DEBUG][${requestId}] Testing parse-text API at: ${parseTextUrl}`);
       
       // Test with a dummy URL (this will fail but we can see if the endpoint is reachable)

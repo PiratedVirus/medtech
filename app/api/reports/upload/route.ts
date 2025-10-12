@@ -428,8 +428,8 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
     try {
       if (report.fileUrl.startsWith('http')) {
         // Use existing parse-text API for remote files
-        // Use relative URL to avoid localhost issues
-        const parseUrl = process.env.NEXT_PUBLIC_SITE_URL ? `${process.env.NEXT_PUBLIC_SITE_URL}/api/llm-process/parse-text` : '/api/llm-process/parse-text';
+        // Use relative URL like all other APIs in the codebase
+        const parseUrl = '/api/llm-process/parse-text';
         console.log(`[UPLOAD][${reportId}] Making parse-text API call to: ${parseUrl}`);
         
         const parseResponse = await fetch(parseUrl, {

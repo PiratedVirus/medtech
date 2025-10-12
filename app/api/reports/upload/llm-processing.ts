@@ -63,10 +63,9 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
     try {
       if (report.fileUrl.startsWith('http')) {
         console.log(`[LLM-PROCESSING][${requestId}] Making request to parse-text API...`);
-        // Use relative URL to avoid localhost issues
-        const parseUrl = process.env.NEXT_PUBLIC_SITE_URL ? `${process.env.NEXT_PUBLIC_SITE_URL}/api/llm-process/parse-text` : '/api/llm-process/parse-text';
+        // Use relative URL like all other APIs in the codebase
+        const parseUrl = '/api/llm-process/parse-text';
         console.log(`[LLM-PROCESSING][${requestId}] Parse-text API URL: ${parseUrl}`);
-        console.log(`[LLM-PROCESSING][${requestId}] Environment NEXT_PUBLIC_SITE_URL: ${process.env.NEXT_PUBLIC_SITE_URL}`);
         
         const parseResponse = await fetch(parseUrl, {
           method: 'POST',
@@ -196,7 +195,7 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
       // Stage 3: Extract Lab Values using standalone extract-values API
       console.log(`[LLM-PROCESSING][${requestId}] Stage 3: Extracting lab values via standalone API`);
       try {
-        const extractUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/llm-process/extract-standalone-values`;
+        const extractUrl = '/api/llm-process/extract-standalone-values';
         console.log(`[LLM-PROCESSING][${requestId}] Extract values API URL: ${extractUrl}`);
         
         const extractResponse = await fetch(extractUrl, {
