@@ -45,7 +45,7 @@ export function PatientViewCard() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {newPatients.map((patient) => (
+      {newPatients.slice(0, 3).map((patient) => (
         <Card
           key={patient.id}
           onClick={() => handleCardClick(patient.id)}

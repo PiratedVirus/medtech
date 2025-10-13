@@ -1,14 +1,26 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAdminClinicId, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
 
+    // Create clinic filter
+    const userClinicFilter = createUserClinicFilter(clinicId);
+
     const [dieticians, total] = await prisma.$transaction([
       prisma.dieticianProfile.findMany({
+        where: userClinicFilter,
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: {
@@ -18,7 +30,9 @@ export async function GET(request: Request) {
         },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.dieticianProfile.count(),
+      prisma.dieticianProfile.count({
+        where: userClinicFilter
+      }),
     ]);
 
     return NextResponse.json({

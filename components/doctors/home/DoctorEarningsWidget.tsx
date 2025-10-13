@@ -29,10 +29,10 @@ interface IDoctorEarningsWidgetProps {
 export default function DoctorEarningsWidget( {isDropdownVisible, earningType}: IDoctorEarningsWidgetProps ) {
   const { profile } = useDecryptedProfile();
   const [data, setData] = useState(defaultData);
-  const [selectedFilter, setSelectedFilter] = useState('paid');
+  const [selectedFilter, setSelectedFilter] = useState(earningType || 'paid');
   const [isLoading, setIsLoading] = useState(true);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [widgetTitle, setWidgetTitle] = useState('Total Earnings');
+  const [widgetTitle, setWidgetTitle] = useState(earningType || 'Total Earnings');
 
 
   useEffect(() => {

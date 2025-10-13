@@ -1,19 +1,31 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAdminClinicId, createClinicFilter } from "@/lib/admin-clinic-middleware";
 
 // Optimized users API with better filtering and role count optimization
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "20");
     const role = searchParams.get("role");
     const search = searchParams.get("search") || "";
 
+    // Create base filter with clinic isolation
+    const baseFilter = createClinicFilter(clinicId);
+
     // If a role is passed, return a simplified response
     if (role) {
       const usersForRole = await prisma.user.findMany({
         where: { 
+          ...baseFilter,
           role: role as any,
           deletedAt: null,
           ...(search && {
@@ -34,8 +46,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ data: usersForRole });
     }
 
-    // Build where clause for main query
+    // Build where clause for main query with clinic isolation
     const whereClause = {
+      ...baseFilter,
       deletedAt: null,
       ...(search && {
         OR: [
@@ -63,10 +76,13 @@ export async function GET(request: Request) {
         orderBy: { createdAt: "desc" },
       }),
       prisma.user.count({ where: whereClause }),
-      // Optimized role counts - only count non-deleted users
+      // Optimized role counts - only count non-deleted users from admin's clinic
       prisma.user.groupBy({
         by: ["role"],
-        where: { deletedAt: null },
+        where: { 
+          deletedAt: null,
+          ...baseFilter
+        },
         _count: { role: true },
       }),
     ]);

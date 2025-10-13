@@ -71,31 +71,60 @@ export default function HealthInsightsCard({
   const [newReading, setNewReading] = useState("");
   const [recordedAt, setRecordedAt] = useState("");
 
-  // Get query client for cache invalidation
+  // Get query client for cache invalidation (following codebase patterns)
   const queryClient = useQueryClient();
 
   // Handle form submission
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    
+    // Validate form data
+    if (!newReading || newReading.trim() === "") {
+      toast.error("Please enter a reading value");
+      return;
+    }
+    
+    if (!userId) {
+      toast.error("User ID is missing");
+      return;
+    }
+    
     try {
+      const requestData = {
+        userId,
+        metricName: title, // same metric as this card
+        reading: newReading,
+        recordedAt: recordedAt || undefined, // Only send if provided
+      };
+      
+      console.log("HealthInsightsCard - Sending request:", requestData);
+      
       const response = await fetch("/api/insights", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          metricName: title, // same metric as this card
-          reading: newReading,
-          recordedAt,
-        }),
+        body: JSON.stringify(requestData),
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const json = await response.json();
+      console.log("HealthInsightsCard - API response:", json);
+      
       if (json.success) {
         toast.success("New record added!");
         setIsModalOpen(false);
-        // Invalidate both the insights panel and detailed insights queries
-        await queryClient.invalidateQueries({ queryKey: ["insightsPanel", userId] });
-        await queryClient.invalidateQueries({ queryKey: ["insights", userId] });
+        // Reset form
+        setNewReading("");
+        setRecordedAt("");
+        // Invalidate all insights-related queries to force refetch
+        // Invalidate health insights cache (following codebase patterns)
+        queryClient.invalidateQueries({ queryKey: ["insightsPanel"] });
+        queryClient.invalidateQueries({ queryKey: ["insights"] });
+        queryClient.invalidateQueries({ queryKey: ["health-insights"] });
       } else {
+        console.error("HealthInsightsCard - API error:", json.error);
         toast.error(`Error: ${json.error}`);
       }
     } catch (error) {

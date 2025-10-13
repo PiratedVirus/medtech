@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { FileText, Eye, Upload, BarChart3 } from "lucide-react";
 import ReportUploadButton from "@/components/common/ReportUploadButton";
 import ParameterTrendsModal from "@/components/patients/labs/ParameterTrendsModal";
+import UnifiedAnalysisModal from "@/components/common/UnifiedAnalysisModal";
 import { useState, useEffect } from "react";
 
 interface LabReportsSectionProps {
@@ -24,6 +25,7 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
   const [parameterTrendsOpen, setParameterTrendsOpen] = useState(false);
   const [standaloneReports, setStandaloneReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
 
   // Fetch standalone reports
   useEffect(() => {
@@ -158,17 +160,31 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
           {/* Header */}
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-base font-bold text-gray-900">Lab Reports</h3>
-            {allReports.length > 3 && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs"
-                onClick={onViewMore}
-              >
-                <Eye className="h-3 w-3 mr-1" />
-                View More
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {/* View Analysis Button - Top Right */}
+              {allReports.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs"
+                  onClick={() => setAnalysisModalOpen(true)}
+                >
+                  <BarChart3 className="h-3 w-3 mr-1" />
+                  View Analysis
+                </Button>
+              )}
+              {allReports.length > 3 && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs"
+                  onClick={onViewMore}
+                >
+                  <Eye className="h-3 w-3 mr-1" />
+                  View More
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Lab Reports - show individual results for each package */}
@@ -191,9 +207,10 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
 
             {/* Placeholders when no reports available */}
             {recentReports.length < 3 && Array(3 - recentReports.length).fill(null).map((_, i) => (
-              <div key={`lr-ph-${i}`} className="relative overflow-hidden rounded-lg border border-gray-200 bg-gray-100/70 p-1.5">
+              <div key={`lr-ph-${i}`} className="relative overflow-hidden rounded-lg border border-gray-200 bg-gray-100/70 p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-gray-600">Lab reports will appear here after they are uploaded.</span>
+                  <span className="text-xs text-gray-600">Lab reports will appear here after they are uploaded.</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">Pending</span>
                 </div>
               </div>
             ))}
@@ -247,6 +264,18 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
           isOpen={parameterTrendsOpen}
           onClose={() => setParameterTrendsOpen(false)}
           patientId={Number(patientId)}
+        />
+      )}
+
+      {/* Unified Analysis Modal */}
+      {analysisModalOpen && (
+        <UnifiedAnalysisModal
+          isOpen={analysisModalOpen}
+          onClose={() => setAnalysisModalOpen(false)}
+          patientId={patientId || ""}
+          labReports={labBookings}
+          standaloneReports={standaloneReports}
+          preSelectedStandaloneReportId={null}
         />
       )}
     </div>

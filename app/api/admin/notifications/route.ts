@@ -1,15 +1,29 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAdminClinicId, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        message: "Please log out and log back in to access your clinic data" 
+      }, { status: 401 });
+    }
+
     const now = new Date();
     // Use UTC to avoid timezone issues
     const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const tomorrow = new Date(today);
     tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
     
-    console.log("🔔 Fetching notifications...", { now: now.toISOString(), today: today.toISOString() });
+    // Create clinic filter
+    const userClinicFilter = createUserClinicFilter(clinicId);
+    
+    console.log("🔔 Fetching notifications for clinic:", clinicId, { now: now.toISOString(), today: today.toISOString() });
     
     // Get notifications in parallel for better performance
     const [
@@ -35,6 +49,9 @@ export async function GET(request: Request) {
           },
           status: {
             in: ["SCHEDULED", "Confirmed"]
+          },
+          doctor: {
+            clinicId: clinicId
           }
         },
         include: {
@@ -69,7 +86,10 @@ export async function GET(request: Request) {
       prisma.labBooking.findMany({
         where: {
           labDate: today,
-          status: "PENDING"
+          status: "PENDING",
+          patient: {
+            clinicId: clinicId
+          }
         },
         include: {
           patient: { select: { name: true } },
@@ -87,11 +107,36 @@ export async function GET(request: Request) {
           paymentStatus: "FAILED",
           createdAt: {
             gte: new Date(now.getTime() - 24 * 60 * 60 * 1000)
-          }
+          },
+          OR: [
+            { appointment: { doctor: { clinicId: clinicId } } },
+            { subscription: { user: { user: { clinicId: clinicId } } } },
+            { labBooking: { patient: { clinicId: clinicId } } }
+          ]
         },
         include: {
-          appointment: { include: { patient: { select: { name: true } } } },
-          labBooking: { include: { patient: { select: { name: true } } } }
+          appointment: { 
+            include: { 
+              patient: { select: { name: true } },
+              doctor: { select: { name: true } }
+            } 
+          },
+          labBooking: { 
+            include: { 
+              patient: { select: { name: true } },
+              labPackage: { select: { name: true } }
+            } 
+          },
+          subscription: {
+            include: {
+              user: {
+                include: {
+                  user: { select: { name: true } }
+                }
+              },
+              plan: { select: { name: true } }
+            }
+          }
         },
         take: 5
       }).catch(error => {
@@ -106,12 +151,19 @@ export async function GET(request: Request) {
             gte: today,
             lte: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
           },
-          isActive: true
+          isActive: true,
+          user: {
+            user: {
+              clinicId: clinicId
+            }
+          }
         },
         include: {
           user: {
             include: {
-              user: { select: { name: true } }
+              user: {
+                select: { name: true }
+              }
             }
           },
           plan: { select: { name: true } }
@@ -128,7 +180,8 @@ export async function GET(request: Request) {
           status: "SUSPENDED",
           updatedAt: {
             gte: new Date(now.getTime() - 24 * 60 * 60 * 1000)
-          }
+          },
+          clinicId: clinicId
         },
         select: {
           id: true,
@@ -148,7 +201,8 @@ export async function GET(request: Request) {
           role: "PATIENT",
           createdAt: {
             gte: new Date(now.getTime() - 24 * 60 * 60 * 1000)
-          }
+          },
+          clinicId: clinicId
         },
         select: {
           id: true,
@@ -167,7 +221,8 @@ export async function GET(request: Request) {
           processingStatus: "FAILED",
           createdAt: {
             gte: new Date(now.getTime() - 24 * 60 * 60 * 1000)
-          }
+          },
+          patient: userClinicFilter.user
         },
         include: {
           patient: { select: { name: true } }
@@ -184,6 +239,9 @@ export async function GET(request: Request) {
           processingStatus: "FAILED",
           createdAt: {
             gte: new Date(now.getTime() - 24 * 60 * 60 * 1000)
+          },
+          labBooking: {
+            patient: userClinicFilter.user
           }
         },
         include: {
@@ -204,6 +262,9 @@ export async function GET(request: Request) {
         where: {
           processedAt: {
             gte: new Date(now.getTime() - 24 * 60 * 60 * 1000)
+          },
+          labBooking: {
+            patient: userClinicFilter.user
           }
         },
         include: {
@@ -222,7 +283,8 @@ export async function GET(request: Request) {
       // Pending diet plan requests
       prisma.dietPlanRequest.findMany({
         where: {
-          status: "PENDING"
+          status: "PENDING",
+          patient: userClinicFilter.user
         },
         include: {
           patient: { select: { name: true } },

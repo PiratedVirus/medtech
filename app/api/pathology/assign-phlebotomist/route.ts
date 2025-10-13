@@ -192,7 +192,7 @@ export async function POST(request: Request) {
         where: { id: actualLabBookingId },
         data: {
           labAssignmentId: labAssignment.id,
-          labTechId: phlebotomistId,
+          labTechId: phlebotomist.userId,
           status: "ASSIGNED" // Single status sync - set to ASSIGNED when phlebotomist is assigned
         }
       });
@@ -259,6 +259,18 @@ export async function PUT(request: Request) {
       );
     }
 
+    // Fetch the phlebotomist to obtain underlying userId for labTechId FK
+    const phlebotomist = await prisma.phlebotomist.findUnique({
+      where: { id: phlebotomistId },
+    });
+
+    if (!phlebotomist) {
+      return NextResponse.json(
+        { error: "Phlebotomist not found" },
+        { status: 404 }
+      );
+    }
+
     // Find the lab booking by its string ID if it's not a number
     let actualLabBookingId = labBookingId;
     if (labBookingId && typeof labBookingId === 'string' && labBookingId.startsWith('booking-')) {
@@ -321,7 +333,7 @@ export async function PUT(request: Request) {
           where: { id: actualLabBookingId },
           data: {
             labAssignmentId: newAssignment.id,
-            labTechId: phlebotomistId,
+            labTechId: phlebotomist.userId,
             status: "ASSIGNED"
           }
         });
@@ -377,7 +389,7 @@ export async function PUT(request: Request) {
         where: { id: actualLabBookingId },
         data: {
           labAssignmentId: updatedAssignment.id,
-          labTechId: phlebotomistId,
+          labTechId: phlebotomist.userId,
           status: "ASSIGNED" // Single status sync - keep as ASSIGNED
         }
       });

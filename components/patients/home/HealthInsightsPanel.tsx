@@ -85,6 +85,11 @@ export default function HealthInsightsPanel() {
       return res.json();
     },
     enabled: !!profile?.id,
+    staleTime: 0, // Always consider data stale
+    refetchOnMount: true, // Always refetch on mount
+    refetchOnWindowFocus: true, // Refetch when window gains focus
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchIntervalInBackground: false, // Don't refetch when tab is not active
   });
 
   if (isLoading) {

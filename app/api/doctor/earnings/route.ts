@@ -80,7 +80,7 @@ export async function GET(request: Request) {
           appointment: {
             userId: doctorId,
           },
-          paymentMethod: "cash",
+          paymentMethod: { in: ["cash", "Cash", "CASH"] },
           paymentStatus: "PAID",        },
         include: {
           appointment: {
@@ -99,7 +99,7 @@ export async function GET(request: Request) {
           appointment: {
             userId: doctorId,
           },
-          paymentMethod: "online",
+          paymentMethod: { in: ["online", "Online", "ONLINE", "upi", "UPI", "card", "Card", "CARD"] },
           paymentStatus: "PAID",        },
         include: {
           appointment: {
@@ -119,6 +119,10 @@ export async function GET(request: Request) {
     const pendingEarnings = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
     const cashEarnings = cashPaymentsCount.reduce((sum, p) => sum + p.amount, 0);
     const onlineEarnings = onlinePaymentsCount.reduce((sum, p) => sum + p.amount, 0);
+    
+    // Calculate counts for cash and online payments
+    const cashCount = cashPaymentsCount.length;
+    const onlineCount = onlinePaymentsCount.length;
 
     // Combine all payments for table display
     const allPayments = [...paidPayments, ...pendingPayments];
@@ -138,8 +142,10 @@ export async function GET(request: Request) {
       earnings: { 
         paid: paidEarnings, 
         pending: pendingEarnings, 
-        cashCount: cashEarnings, 
-        onlineCount: onlineEarnings,
+        cash: cashEarnings,
+        online: onlineEarnings,
+        cashCount: cashCount,
+        onlineCount: onlineCount,
         total: paidEarnings + pendingEarnings 
       },
     });

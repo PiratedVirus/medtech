@@ -39,9 +39,36 @@ export async function POST(
       take: 10,
     });
 
+    // Also find standalone reports that contain this parameter
+    // Use the same relaxed approach as in all-values API
+    const allStandaloneReports = await prisma.standaloneReport.findMany({
+      where: {
+        patientId,
+        deletedAt: null
+      },
+      include: {
+        reportAnalyses: {
+          where: { deletedAt: null }
+        }
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    });
+    
+    // Filter for reports with lab analysis (relaxed filtering)
+    const standaloneReports = allStandaloneReports.filter(report => 
+      report.reportAnalyses.some(analysis => 
+        analysis.analysisType === "lab_analysis" && 
+        (analysis.allValues || analysis.criticalValues)
+      )
+    );
+
     console.log('[TRACKED-VALUES][POST] Searched recent bookings count:', bookings.length);
+    console.log('[TRACKED-VALUES][POST] Searched standalone reports count:', standaloneReports.length);
 
     let updated = false;
+
+    // Process lab bookings
     for (const booking of bookings) {
       const analysis: any = booking.reportAnalyses;
       if (!analysis) continue;
@@ -99,6 +126,46 @@ export async function POST(
         console.log('[TRACKED-VALUES][POST] Update saved for booking', booking.id);
         updated = true;
         break;
+      }
+    }
+
+    // Process standalone reports if not updated from lab bookings
+    if (!updated) {
+      console.log('[TRACKED-VALUES][POST] Searching in standalone reports...');
+      for (const report of standaloneReports) {
+        console.log(`[TRACKED-VALUES][POST] Checking standalone report ${report.id} with ${report.reportAnalyses.length} analyses`);
+        for (const analysis of report.reportAnalyses) {
+          const criticalValues: any[] = Array.isArray(analysis.criticalValues) ? analysis.criticalValues : [];
+          const allValues: any[] = Array.isArray(analysis.allValues) ? analysis.allValues : [];
+          const idx = criticalValues.findIndex((v) => v?.parameter?.toLowerCase() === String(parameter).toLowerCase());
+          const idxAll = allValues.findIndex((v) => v?.parameter?.toLowerCase() === String(parameter).toLowerCase());
+          
+          console.log(`[TRACKED-VALUES][POST] Analysis ${analysis.id}: criticalValues count: ${criticalValues.length}, allValues count: ${allValues.length}`);
+          console.log(`[TRACKED-VALUES][POST] Parameter search: ${parameter}, found in critical: ${idx >= 0}, found in all: ${idxAll >= 0}`);
+          
+          if (idx >= 0 || idxAll >= 0) {
+            if (idx >= 0) {
+              criticalValues[idx] = { ...criticalValues[idx], isTracked };
+              console.log(`[TRACKED-VALUES][POST] Updated critical value for parameter: ${parameter}, isTracked: ${isTracked}`);
+            }
+            if (idxAll >= 0) {
+              allValues[idxAll] = { ...allValues[idxAll], isTracked };
+              console.log(`[TRACKED-VALUES][POST] Updated all value for parameter: ${parameter}, isTracked: ${isTracked}`);
+            }
+            
+            await prisma.standaloneReportAnalysis.update({
+              where: { id: analysis.id },
+              data: {
+                criticalValues: criticalValues as any,
+                allValues: allValues as any,
+              }
+            });
+            console.log('[TRACKED-VALUES][POST] Update saved for standalone report', report.id);
+            updated = true;
+            break;
+          }
+        }
+        if (updated) break;
       }
     }
 

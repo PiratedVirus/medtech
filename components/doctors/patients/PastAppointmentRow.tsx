@@ -20,9 +20,20 @@ export default function PastAppointmentRow({ appointments, patientId }: PastAppo
   const [open, setOpen] = useState(false)
 
   const sorted = useMemo(() => {
-    return [...(appointments || [])]
-      .filter(a => !!a?.date)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    const filtered = [...(appointments || [])]
+      .filter(a => {
+        if (!a?.date) return false;
+        // Include completed appointments or past appointments
+        const isPast = new Date(a.date).getTime() < Date.now();
+        return isPast || a.status === 'COMPLETED';
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    // Debug logging
+    console.log('PastAppointmentRow - appointments:', appointments);
+    console.log('PastAppointmentRow - filtered:', filtered);
+    
+    return filtered;
   }, [appointments])
 
   const recent = sorted.slice(0, 3)
@@ -62,7 +73,7 @@ export default function PastAppointmentRow({ appointments, patientId }: PastAppo
               title={`Appointment #${apt.id}`}
             >
               <CalendarDays className="h-3 w-3 mr-1" />
-               {new Date(apt.date).toLocaleDateString('en-GB')}
+               {apt.date ? new Date(apt.date).toLocaleDateString('en-GB') : 'No date'}
             </Button>
           ))}
 
@@ -94,7 +105,7 @@ export default function PastAppointmentRow({ appointments, patientId }: PastAppo
                         <span className="text-sm font-medium text-gray-800">Appointment #{apt.id}</span>
                       </div>
                       <div className="text-xs text-gray-600">
-                        {new Date(apt.date).toLocaleString()}
+                        {apt.date ? new Date(apt.date).toLocaleString() : 'No date'}
                       </div>
                     </li>
                   ))}

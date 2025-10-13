@@ -146,6 +146,7 @@ export async function GET(
       id: patient.id,
       name: patient.name,
       email: patient.email,
+      phoneNumber: patient.phoneNumber,
       joinedOn: patient.createdAt,
       profile: (patient as any).patientProfile,
       subscriptions: (patient as any).patientProfile?.planTrackers?.map((pt: any) => ({
@@ -164,7 +165,8 @@ export async function GET(
       })) || [],
       doctorAppointments: (patient as any).patientAppointments.map((a: any) => ({
         id: a.id,
-        date: a.appointmentDate,
+        // Use the underlying doctorAvailability.date for a reliable appointment date
+        date: a.doctorAvailability?.date,
         type: a.consultationType,
         status: a.status,
         prescriptionLink: a.prescriptionLink,

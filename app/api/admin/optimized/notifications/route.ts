@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { AppointmentStatus } from "@/lib/constants/enums";
+import { getAdminClinicId } from "@/lib/admin-clinic-middleware";
 
 // Optimized notifications API using single aggregated query instead of 10+ parallel queries
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        message: "Please log out and log back in to access your clinic data" 
+      }, { status: 401 });
+    }
+
     const now = new Date();
     const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const tomorrow = new Date(today);
@@ -12,7 +23,7 @@ export async function GET(request: Request) {
     const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const next7Days = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    console.log("🔔 Fetching optimized notifications...", { now: now.toISOString(), today: today.toISOString() });
+    console.log("🔔 Fetching optimized notifications for clinic:", clinicId, { now: now.toISOString(), today: today.toISOString() });
 
     // Single optimized query to get all notification data
     const notificationData = await prisma.$queryRaw<Array<{
@@ -43,6 +54,7 @@ export async function GET(request: Request) {
         AND da.date <= ${tomorrow}
         AND a.status IN ('${AppointmentStatus.SCHEDULED}', '${AppointmentStatus.CONFIRMED}')
         AND a."deletedAt" IS NULL
+        AND d."clinicId" = ${clinicId}
 
       UNION ALL
 
@@ -64,6 +76,7 @@ export async function GET(request: Request) {
       WHERE lb."labDate" = ${today}
         AND lb.status = 'PENDING'
         AND lb."deletedAt" IS NULL
+        AND p."clinicId" = ${clinicId}
 
       UNION ALL
 
@@ -87,6 +100,7 @@ export async function GET(request: Request) {
       WHERE pay."paymentStatus" = 'FAILED'
         AND pay."createdAt" >= ${last24Hours}
         AND pay."deletedAt" IS NULL
+        AND (ap."clinicId" = ${clinicId} OR lp."clinicId" = ${clinicId})
 
       UNION ALL
 
@@ -110,6 +124,7 @@ export async function GET(request: Request) {
         AND st."endDate" <= ${next7Days}
         AND st."isActive" = true
         AND st."deletedAt" IS NULL
+        AND u."clinicId" = ${clinicId}
 
       UNION ALL
 
@@ -128,6 +143,7 @@ export async function GET(request: Request) {
       WHERE u.role = 'PATIENT'
         AND u."createdAt" >= ${last24Hours}
         AND u."deletedAt" IS NULL
+        AND u."clinicId" = ${clinicId}
 
       UNION ALL
 
@@ -146,6 +162,7 @@ export async function GET(request: Request) {
       JOIN "User" u ON pt."patientId" = u.id
       WHERE pt."processingStatus" = 'FAILED'
         AND pt."createdAt" >= ${last24Hours}
+        AND u."clinicId" = ${clinicId}
 
       UNION ALL
 
@@ -166,6 +183,7 @@ export async function GET(request: Request) {
       WHERE lra."processingStatus" = 'FAILED'
         AND lra."createdAt" >= ${last24Hours}
         AND lra."deletedAt" IS NULL
+        AND u."clinicId" = ${clinicId}
 
       UNION ALL
 
@@ -186,6 +204,7 @@ export async function GET(request: Request) {
       JOIN "User" d ON dpr."dieticianId" = d.id
       WHERE dpr.status = 'PENDING'
         AND dpr."deletedAt" IS NULL
+        AND p."clinicId" = ${clinicId}
     `;
 
     // Process results into notification format

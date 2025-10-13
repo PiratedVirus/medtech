@@ -185,7 +185,7 @@ export async function POST(request: Request) {
 
     // Trigger background LLM processing for the structured prescription
     try {
-      fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/prescription/process-structured`, {
+      fetch('/api/prescription/process-structured', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -423,7 +423,7 @@ export async function PUT(request: Request) {
 
     // Trigger background LLM processing for the updated structured prescription
     try {
-      fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/prescription/process-structured`, {
+      fetch('/api/prescription/process-structured', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
