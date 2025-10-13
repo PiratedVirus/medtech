@@ -1,4 +1,4 @@
-name: Deploy to Vercel Project B
+name: Deploy to DEV server
 
 on:
   workflow_dispatch:
