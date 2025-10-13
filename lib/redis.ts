@@ -31,6 +31,11 @@ export const CACHE_KEYS = {
   APPOINTMENTS: (patientId: number, upcomingOnly: boolean) => `appointments:${patientId}:${upcomingOnly}`,
   INSIGHTS: (patientId: number) => `insights:${patientId}`,
   PATHOLOGY_APPOINTMENTS: 'pathology:upcoming:appointments',
+  // Doctor-related cache keys
+  DOCTOR_PROFILE: (doctorId: number) => `doctor:profile:${doctorId}`,
+  DOCTOR_LIST: (clinicId: number) => `doctors:list:${clinicId}`,
+  DOCTOR_AVAILABILITY: (doctorId: number) => `doctor:availability:${doctorId}`,
+  DOCTOR_APPOINTMENTS: (doctorId: number) => `doctor:appointments:${doctorId}`,
 } as const
 
 // Cache TTL (Time To Live) in seconds
@@ -45,6 +50,11 @@ export const CACHE_TTL = {
   APPOINTMENTS: 5 * 60, // 5 minutes
   INSIGHTS: 10 * 60, // 10 minutes
   PATHOLOGY_APPOINTMENTS: 3 * 60, // 3 minutes
+  // Doctor-related cache TTL
+  DOCTOR_PROFILE: 15 * 60, // 15 minutes
+  DOCTOR_LIST: 10 * 60, // 10 minutes
+  DOCTOR_AVAILABILITY: 5 * 60, // 5 minutes
+  DOCTOR_APPOINTMENTS: 5 * 60, // 5 minutes
 } as const
 
 // Utility functions

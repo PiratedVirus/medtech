@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { SmartCacheInvalidation } from "@/lib/cache-dependencies";
 
 // GET: Retrieve the user info based on the logged-in user's ID
 export async function GET(request: Request) {
@@ -110,15 +111,24 @@ export async function PUT(request: Request) {
       },
     });
 
-    // Invalidate user profile cache after profile update
+    // ✅ HIGH PRIORITY: Smart cache invalidation with dependencies
     try {
-      const { invalidateAllUserCaches, getUserPhoneNumber } = await import('@/lib/cache-invalidation');
-      const phoneNumber = await getUserPhoneNumber(Number(userId));
-      await invalidateAllUserCaches(Number(userId), phoneNumber || undefined);
-      console.log(`[PROFILE] Cache invalidated for user ${userId} after profile update`);
+      await SmartCacheInvalidation.onUserUpdate(Number(userId), {
+        patientProfile: patientProfile,
+        // Add other relevant changes here
+      });
+      console.log(`[PROFILE] Smart cache invalidation completed for user ${userId}`);
     } catch (cacheError) {
-      console.error('[PROFILE] Error invalidating cache:', cacheError);
-      // Don't fail the request if cache invalidation fails
+      console.error('[PROFILE] Error in smart cache invalidation:', cacheError);
+      // Fallback to basic cache invalidation
+      try {
+        const { invalidateAllUserCaches, getUserPhoneNumber } = await import('@/lib/cache-invalidation');
+        const phoneNumber = await getUserPhoneNumber(Number(userId));
+        await invalidateAllUserCaches(Number(userId), phoneNumber || undefined);
+        console.log(`[PROFILE] Fallback cache invalidation completed for user ${userId}`);
+      } catch (fallbackError) {
+        console.error('[PROFILE] Fallback cache invalidation also failed:', fallbackError);
+      }
     }
 
     return NextResponse.json({

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { SmartCacheInvalidation } from "@/lib/cache-dependencies";
 
 export async function GET(request: Request) {
   try {
@@ -185,6 +186,15 @@ export async function POST(request: Request) {
     });
 
     console.log("Lab booking transaction completed successfully, ID:", newLabBooking.id);
+
+    // ✅ MEDIUM PRIORITY: Smart cache invalidation for lab results
+    try {
+      await SmartCacheInvalidation.onLabResultUpdate(parseInt(patientId, 10));
+      console.log(`[LAB-BOOKING] Smart cache invalidation completed for patient ${patientId}`);
+    } catch (cacheError) {
+      console.error('[LAB-BOOKING] Error in smart cache invalidation:', cacheError);
+      // Don't fail the request if cache invalidation fails
+    }
 
     return NextResponse.json({ success: true, labBooking: newLabBooking });
   } catch (err: any) {

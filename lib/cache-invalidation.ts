@@ -120,6 +120,70 @@ export async function invalidateAllUserCaches(userId: number, phoneNumber?: stri
 }
 
 /**
+ * Invalidate doctor profile cache for a specific doctor
+ * This should be called when doctor profile data changes
+ */
+export async function invalidateDoctorProfileCache(doctorId: number) {
+  try {
+    console.log(`[CACHE-INVALIDATION] Invalidating doctor profile cache for doctor ${doctorId}`);
+    
+    // Clear doctor-specific caches
+    await redis.del(`doctor:profile:${doctorId}`);
+    await redis.del(`doctor:availability:${doctorId}`);
+    await redis.del(`doctor:appointments:${doctorId}`);
+    
+    console.log(`[CACHE-INVALIDATION] Successfully invalidated doctor profile cache for doctor ${doctorId}`);
+    return true;
+  } catch (error) {
+    console.error(`[CACHE-INVALIDATION] Error invalidating doctor profile cache for doctor ${doctorId}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Invalidate doctor list cache for a specific clinic
+ * This should be called when doctors are added/removed from a clinic
+ */
+export async function invalidateDoctorListCache(clinicId: number) {
+  try {
+    console.log(`[CACHE-INVALIDATION] Invalidating doctor list cache for clinic ${clinicId}`);
+    
+    // Clear doctor list cache for the clinic
+    await redis.del(`doctors:list:${clinicId}`);
+    
+    console.log(`[CACHE-INVALIDATION] Successfully invalidated doctor list cache for clinic ${clinicId}`);
+    return true;
+  } catch (error) {
+    console.error(`[CACHE-INVALIDATION] Error invalidating doctor list cache for clinic ${clinicId}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Invalidate all doctor-related caches
+ * This should be called when major doctor changes occur
+ */
+export async function invalidateAllDoctorCaches(doctorId: number, clinicId?: number) {
+  try {
+    console.log(`[CACHE-INVALIDATION] Invalidating all doctor caches for doctor ${doctorId}`);
+    
+    // Clear doctor-specific caches
+    await invalidateDoctorProfileCache(doctorId);
+    
+    // Clear clinic doctor list if clinicId provided
+    if (clinicId) {
+      await invalidateDoctorListCache(clinicId);
+    }
+    
+    console.log(`[CACHE-INVALIDATION] Successfully invalidated all doctor caches for doctor ${doctorId}`);
+    return true;
+  } catch (error) {
+    console.error(`[CACHE-INVALIDATION] Error invalidating all doctor caches for doctor ${doctorId}:`, error);
+    return false;
+  }
+}
+
+/**
  * Get user phone number from database
  * Helper function to get phone number for cache invalidation
  */
