@@ -1,28 +1,46 @@
 import { NextResponse } from "next/server";
-import prisma  from "@/lib/prisma";
+import { NextRequest } from "next/server";
+import prisma from "@/lib/prisma";
+import { getAdminClinicId, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
 
-export async function GET(request: Request) {
-  const {searchParams} = new URL(request.url);
-  const doctorId = parseInt(searchParams.get("id") || "0") ;
-  const checkAvailability = searchParams.get("checkAvailability") === "true";
-  let where = {}
-  if (checkAvailability) {
-    where = {
-      status: "available",
+export async function GET(request: NextRequest) {
+  try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        message: "Please log out and log back in to access your clinic data" 
+      }, { status: 401 });
     }
-  }
-  if (doctorId) {
-    where = {
-      ...where,
-      userId: doctorId,
+
+    const {searchParams} = new URL(request.url);
+    const doctorId = parseInt(searchParams.get("id") || "0") ;
+    const checkAvailability = searchParams.get("checkAvailability") === "true";
+    
+    // Create clinic filter
+    const userClinicFilter = createUserClinicFilter(clinicId);
+    
+    let where: any = {
+      doctor: {
+        user: userClinicFilter.user
+      }
+    };
+    
+    if (checkAvailability) {
+      where.status = "AVAILABLE";
     }
-  }
-    try {
-      const clinics = await prisma.doctorAvailability.findMany({
-        where
+    if (doctorId) {
+      where.userId = doctorId;
+    }
+
+    const slots = await prisma.doctorAvailability.findMany({
+      where
     });
-      return NextResponse.json(clinics);
-    } catch (error) {
-      return NextResponse.json({ error: "Failed to fetch clinics" }, { status: 500 });
-    }
+    
+    return NextResponse.json(slots);
+  } catch (error) {
+    console.error("Error fetching available slots:", error);
+    return NextResponse.json({ error: "Failed to fetch available slots" }, { status: 500 });
   }
+}

@@ -1,35 +1,63 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
-
-//TODO: ClinicId filter
+import { getAdminClinicId, createClinicFilter } from "@/lib/admin-clinic-middleware";
 
 // Enhanced GET endpoint with filtering and role counts
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        message: "Please log out and log back in to access your clinic data" 
+      }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "20");
     const role = searchParams.get("role");
 
+    // Create base filter with clinic isolation
+    const baseFilter = createClinicFilter(clinicId);
+
     // If a role is passed, return a simplified response (user id and name only)
     if (role) {
       const usersForRole = await prisma.user.findMany({
-        // @ts-ignore
-        where: { role }
+        where: { 
+          ...baseFilter,
+          role: role as any,
+          deletedAt: null
+        }
       });
       return NextResponse.json({ data: usersForRole });
     }
 
     const [users, total, groupData] = await prisma.$transaction([
       prisma.user.findMany({
+        where: {
+          ...baseFilter,
+          deletedAt: null
+        },
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: { clinic: true },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.user.count(),
+      prisma.user.count({
+        where: {
+          ...baseFilter,
+          deletedAt: null
+        }
+      }),
       prisma.user.groupBy({
         by: ["role"],
+        where: {
+          ...baseFilter,
+          deletedAt: null
+        },
         _count: { role: true },
       }),
     ]);

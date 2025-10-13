@@ -1,22 +1,32 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAdminClinicId, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
     const showActiveOnly = searchParams.get("showActiveOnly") === "true";
 
-    let where: any = {};
-    if (searchParams.get("doctorId")) {
-      where = { userId: JSON.parse(searchParams.get("doctorId") as string) };
-    }
+    // Create base filter with clinic isolation
+    const baseClinicFilter = createUserClinicFilter(clinicId);
 
-    if (searchParams.get("clinicId")) {
+    let where: any = {
+      ...baseClinicFilter
+    };
+    
+    if (searchParams.get("doctorId")) {
       where = { 
-        ...where, 
-        user: { clinicId: JSON.parse(searchParams.get("clinicId") as string) } 
+        ...where,
+        userId: JSON.parse(searchParams.get("doctorId") as string) 
       };
     }
 
@@ -171,6 +181,8 @@ export async function POST(request: Request) {
         ownerToken1: ownerTokens[0],
         ownerToken2: ownerTokens[1],
         isDietician: data.isDietician || false,
+        supportsVideo: typeof data.supportsVideo === 'boolean' ? data.supportsVideo : true,
+        supportsClinic: typeof data.supportsClinic === 'boolean' ? data.supportsClinic : true,
         doctorCode: data.doctorCode?.toUpperCase() || null,
         user: { connect: { id: Number(data.userId) } },
       },
@@ -244,6 +256,8 @@ export async function PUT(request: Request) {
           yearsOfExperience: data.yearsOfExperience,
           consultationFee: data.consultationFee,
           isDietician: isDietician || false,
+          supportsVideo: typeof data.supportsVideo === 'boolean' ? data.supportsVideo : undefined,
+          supportsClinic: typeof data.supportsClinic === 'boolean' ? data.supportsClinic : undefined,
           doctorCode: doctorCode?.toUpperCase() || null
         },
       });

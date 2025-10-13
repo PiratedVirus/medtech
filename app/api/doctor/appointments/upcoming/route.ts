@@ -34,11 +34,23 @@ export async function GET() {
 
     const doctorId = user.id;
 
+    // Start of current day to avoid timezone drift when @db.Date is used
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
     const appointments = await prisma.appointment.findMany({
       where: {
         userId: doctorId,
-        appointmentDate: {
-          gte: new Date(),
+        doctorAvailability: {
+          date: { gte: todayStart }
+        },
+        // Only scheduled-like statuses; exclude completed/cancelled
+        status: {
+          in: [
+            'Scheduled', 'SCHEDULED',
+            'Pending', 'PENDING',
+            'Confirmed', 'CONFIRMED'
+          ]
         },
         deletedAt: null,
       },
@@ -60,7 +72,9 @@ export async function GET() {
       },
       orderBy: [
         {
-          appointmentDate: "asc",
+          doctorAvailability: {
+            date: "asc",
+          },
         },
         {
           doctorAvailability: {
@@ -77,6 +91,7 @@ export async function GET() {
       patientId: appointment.patientId,
       patient: appointment.patient,
       doctor: { name: user.name }, // Add doctor info
+      // Use doctorAvailability.date as source of truth for date
       date: appointment.doctorAvailability.date.toISOString(),
       startTime: appointment.doctorAvailability.startTime,
       endTime: appointment.doctorAvailability.endTime,

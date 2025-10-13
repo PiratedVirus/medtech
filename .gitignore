@@ -5,8 +5,9 @@
 node_modules
 next-env.d.ts
 prisma/migrations
-prisma/seeds
+prisma/seeds/v1
 /*.sql
 /*.dump
 db-backups
 backup_db.sh
+.vercel

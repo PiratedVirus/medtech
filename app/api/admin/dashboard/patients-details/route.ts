@@ -1,15 +1,34 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { normalizeStatus, normalizeLabAssignmentStatus } from "@/lib/utils/status";
+import { getAdminClinicId, createClinicFilter } from "@/lib/admin-clinic-middleware";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const patientIdParam = searchParams.get("patientId");
-  const patientId = patientIdParam ? parseInt(patientIdParam, 10) : undefined;
-
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        message: "Please log out and log back in to access your clinic data" 
+      }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const patientIdParam = searchParams.get("patientId");
+    const patientId = patientIdParam ? parseInt(patientIdParam, 10) : undefined;
+
+    // Create clinic filter
+    const clinicFilter = createClinicFilter(clinicId);
+
     if (patientId) {
-      const patient = await prisma.user.findUnique({
-        where: { id: patientId },
+      // Single patient details - verify patient belongs to clinic
+      const patient = await prisma.user.findFirst({
+        where: { 
+          id: patientId,
+          ...clinicFilter
+        },
         select: {
           id: true,
           name: true,
@@ -52,7 +71,11 @@ export async function GET(request: Request) {
           patientAppointments: {
             select: {
               id: true,
-              appointmentDate: true,
+              doctorAvailability: { 
+                select: { 
+                  date: true 
+                } 
+              },
               consultationType: true,
               status: true,
               isDietician: true,
@@ -113,9 +136,9 @@ export async function GET(request: Request) {
       }
       // Split appointments by doctor vs dietician
       const doctorAppointments = patient.patientAppointments.filter(a => a.isDietician === false)
-        .sort((a, b) => new Date(b.appointmentDate || 0).getTime() - new Date(a.appointmentDate || 0).getTime());
+        .sort((a, b) => new Date(b.doctorAvailability?.date || 0).getTime() - new Date(a.doctorAvailability?.date || 0).getTime());
       const dieticianAppointments = patient.patientAppointments.filter(a => a.isDietician)
-        .sort((a, b) => new Date(b.appointmentDate || 0).getTime() - new Date(a.appointmentDate || 0).getTime());
+        .sort((a, b) => new Date(b.doctorAvailability?.date || 0).getTime() - new Date(a.doctorAvailability?.date || 0).getTime());
       const sortedLabBookings = patient.labPatientBookings
         .sort((a, b) => new Date(b.labDate).getTime() - new Date(a.labDate).getTime());
       const formatted = {
@@ -140,7 +163,7 @@ export async function GET(request: Request) {
         })) || [],
         doctorAppointments: doctorAppointments.map(a => ({
           id: a.id,
-          date: a.appointmentDate,
+          date: a.doctorAvailability?.date,
           type: a.consultationType,
           status: a.status,
           prescriptionLink: a.prescriptionLink,
@@ -149,7 +172,7 @@ export async function GET(request: Request) {
         })),
         dieticianAppointments: dieticianAppointments.map(a => ({
           id: a.id,
-          date: a.appointmentDate,
+          date: a.doctorAvailability?.date,
           type: a.consultationType,
           status: a.status,
           dietPlanLink: a.prescriptionLink,
@@ -161,14 +184,19 @@ export async function GET(request: Request) {
           date: lb.labDate,
           status: lb.status,
           reportLink: Array.isArray(lb.labResult) ? lb.labResult : lb.labResult ? [lb.labResult] : [],
+          labResult: lb.labResult,
           labPackageName: lb.labPackage.name,
           payment: lb.payment
         }))
       };
       return NextResponse.json(formatted);
     } else {
+      // All patients list - filter by clinic
       const users = await prisma.user.findMany({
-        where: { role: 'PATIENT' },
+        where: { 
+          role: 'PATIENT',
+          ...clinicFilter
+        },
         select: { 
           id: true,
           name: true, 
@@ -226,7 +254,7 @@ export async function PUT(request: Request) {
         labResult: {
           set: [...(existing?.labResult || []), ...links],
         },
-        ...(status ? { status } : {}), // update status only if provided
+        ...(status ? { status: normalizeLabAssignmentStatus(status) } : {}),
       },
     });
 

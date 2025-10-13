@@ -1,5 +1,46 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import * as jose from 'jose';
+
+// JWT payload interface
+interface JWTPayload {
+  plusAddedPhoneNumber: string;
+  userExists: boolean;
+  userRole: string;
+}
+
+// Function to verify JWT token and get user
+async function verifyUserToken(token: string): Promise<JWTPayload | null> {
+  try {
+    const secretKey = new TextEncoder().encode(process.env.JWT_SECRET!);
+    const { payload } = await jose.jwtVerify(token, secretKey);
+    return payload as unknown as JWTPayload;
+  } catch (error) {
+    console.error('JWT verification error:', error);
+    return null;
+  }
+}
+
+// Function to get user from request
+async function getUserFromRequest(request: NextRequest) {
+  const token = request.cookies.get("token")?.value;
+  if (!token) return null;
+  
+  const decoded = await verifyUserToken(token);
+  if (!decoded) return null;
+  
+  // Get user from database using phone number from JWT
+  const user = await prisma.user.findFirst({
+    where: { 
+      phoneNumber: decoded.plusAddedPhoneNumber,
+      deletedAt: null
+    },
+    select: { id: true, name: true, role: true, phoneNumber: true }
+  });
+  
+  return user;
+}
 
 function getMonthString(date: Date) {
   const month = date.getMonth() + 1;
@@ -17,9 +58,21 @@ const METRIC_ORDER = [
   "Visceral Fat",
 ];
 
-// GET: fetch & group data by month, store item.id, and sort
-export async function GET(request: Request) {
+// GET: fetch & group data by month, store item.id, and sort (with Redis caching)
+export async function GET(request: NextRequest) {
   try {
+    // Step 1: Authenticate the user
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      console.log('[insights API] Authentication failed - no user found');
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    console.log('[insights API] Authenticated user:', { id: user.id, role: user.role, name: user.name });
+
     const { searchParams } = new URL(request.url);
     const userIdParam = searchParams.get("userId");
     if (!userIdParam) {
@@ -29,17 +82,99 @@ export async function GET(request: Request) {
       );
     }
 
-    const userId = Number(userIdParam);
-    if (!userId) {
+    const requestedUserId = parseInt(userIdParam, 10);
+
+    console.log('[insights API] Requested userId:', requestedUserId);
+
+    // Step 2: Check permissions
+    const isPatient = user.id === requestedUserId;
+    const isDoctor = user.role === 'DOCTOR' || user.role === 'DIETICIAN';
+    const isAdmin = user.role === 'ADMIN';
+    
+    console.log('[insights API] Permission check:', { isPatient, isDoctor, isAdmin, userRole: user.role });
+    
+    if (!isPatient && !isDoctor && !isAdmin) {
+      console.log('[insights API] Permission denied - user does not have access');
       return NextResponse.json(
-        { success: false, error: "Invalid userId" },
-        { status: 400 }
+        { success: false, error: "You do not have permission to access this patient's health insights" },
+        { status: 403 }
       );
     }
 
-    // 1) Fetch all HealthMetric rows for this user
+    // Step 3: For doctors and admins, verify the patient exists and they have access
+    if (isDoctor || isAdmin) {
+      const patient = await prisma.user.findFirst({
+        where: { 
+          id: requestedUserId,
+          deletedAt: null
+        },
+        select: { id: true, name: true, role: true }
+      });
+
+      if (!patient) {
+        return NextResponse.json(
+          { success: false, error: "Patient not found" },
+          { status: 404 }
+        );
+      }
+
+      // For doctors, check if they have access to this patient (same clinic)
+      if (isDoctor) {
+        const doctorUser = await prisma.user.findFirst({
+          where: { id: user.id },
+          select: { clinicId: true }
+        });
+
+        const patientUser = await prisma.user.findFirst({
+          where: { id: requestedUserId },
+          select: { clinicId: true }
+        });
+
+        if (!doctorUser || !patientUser || doctorUser.clinicId !== patientUser.clinicId) {
+          return NextResponse.json(
+            { success: false, error: "You do not have permission to access this patient's data" },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
+    // Step 4: Fetch data with proper authorization
+    const result = await fetchInsightsData(requestedUserId);
+
+    return NextResponse.json({
+      success: true,
+      metrics: result,
+    });
+  } catch (error: any) {
+    console.error("Error fetching insights:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to fetch insights" },
+      { status: 500 }
+    );
+  }
+}
+
+// Extract the main logic into a separate function for caching
+async function fetchInsightsData(userId: number) {
+  try {
+    // Metrics to exclude from health insights
+    const excludedMetrics = [
+      "Blood Sugar (Post Prandial)",
+      "Diastolic Blood Pressure", 
+      "Systolic Blood Pressure",
+      "Weight",
+      "Blood Sugar (Fasting)"
+    ];
+
+    // 1) Fetch all HealthMetric rows for this user, excluding unwanted metrics
     const metrics = await prisma.healthMetric.findMany({
-      where: { userId },
+      where: { 
+        userId,
+        metricName: {
+          notIn: excludedMetrics
+        }
+      },
       orderBy: { recordedAt: "asc" },
     });
 
@@ -52,28 +187,32 @@ export async function GET(request: Request) {
       groupedByMetric[item.metricName].push(item);
     });
 
-    // 3) For each metricName, group by month, compute averages, and store an ID for editing
+    // 3) For each metricName, return individual readings instead of monthly averages
     const result = Object.entries(groupedByMetric).map(([metricName, arr]) => {
-      const monthlyMap: Record<string, { reading: number; id: number }[]> = {};
+      // Sort by recordedAt to get chronological order
+      const sortedArr = arr.sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime());
+      
+      // Group by month but keep individual readings
+      const monthlyMap: Record<string, { reading: number; id: number; recordedAt: Date }[]> = {};
 
-      arr.forEach((item) => {
+      sortedArr.forEach((item) => {
         const monthKey = getMonthString(item.recordedAt);
         if (!monthlyMap[monthKey]) {
           monthlyMap[monthKey] = [];
         }
-        monthlyMap[monthKey].push({ reading: item.reading, id: item.id });
+        monthlyMap[monthKey].push({ 
+          reading: item.reading, 
+          id: item.id, 
+          recordedAt: item.recordedAt 
+        });
       });
 
       const data = Object.entries(monthlyMap).map(([month, items]) => {
-        // average reading
-        const readings = items.map((x) => x.reading);
-        const avg = readings.reduce((acc, val) => acc + val, 0) / readings.length;
-
-        // store ID of the last item for that month (for editing)
+        // Get the latest reading for this month (most recent)
         const latestItem = items[items.length - 1];
         return {
           month,
-          average: parseFloat(avg.toFixed(2)),
+          average: latestItem.reading, // Use latest reading instead of average
           latestId: latestItem.id,
         };
       });
@@ -101,19 +240,25 @@ export async function GET(request: Request) {
       }
     });
 
-    return NextResponse.json({ success: true, metrics: result });
+    return result;
   } catch (error: any) {
     console.error("Error fetching health metrics:", error);
-    return NextResponse.json(
-      { success: false, error: "Server error fetching metrics" },
-      { status: 500 }
-    );
+    throw error;
   }
 }
 
 // POST: create a new HealthMetric
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Step 1: Authenticate the user
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { userId, metricName, reading, recordedAt } = body;
 
@@ -124,9 +269,21 @@ export async function POST(request: Request) {
       );
     }
 
+    const requestedUserId = parseInt(userId, 10);
+
+    // Step 2: Check permissions - only patients can add their own metrics
+    const isPatient = user.id === requestedUserId;
+    
+    if (!isPatient) {
+      return NextResponse.json(
+        { success: false, error: "You can only add health metrics for your own account" },
+        { status: 403 }
+      );
+    }
+
     const newMetric = await prisma.healthMetric.create({
       data: {
-        userId,
+        userId: requestedUserId,
         metricName,
         reading: parseFloat(reading),
         recordedAt: recordedAt ? new Date(recordedAt) : new Date(),
@@ -144,8 +301,17 @@ export async function POST(request: Request) {
 }
 
 // PATCH: edit an existing HealthMetric
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
   try {
+    // Step 1: Authenticate the user
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { id, reading, recordedAt } = body;
 
@@ -156,8 +322,34 @@ export async function PATCH(request: Request) {
       );
     }
 
+    // Step 2: Check if the metric belongs to the user
+    const existingMetric = await prisma.healthMetric.findFirst({
+      where: { 
+        id: parseInt(id, 10),
+        deletedAt: null
+      },
+      select: { userId: true }
+    });
+
+    if (!existingMetric) {
+      return NextResponse.json(
+        { success: false, error: "Health metric not found" },
+        { status: 404 }
+      );
+    }
+
+    // Step 3: Check permissions - only patients can edit their own metrics
+    const isPatient = user.id === existingMetric.userId;
+    
+    if (!isPatient) {
+      return NextResponse.json(
+        { success: false, error: "You can only edit your own health metrics" },
+        { status: 403 }
+      );
+    }
+
     const updatedMetric = await prisma.healthMetric.update({
-      where: { id },
+      where: { id: parseInt(id, 10) },
       data: {
         reading: parseFloat(reading),
         recordedAt: recordedAt ? new Date(recordedAt) : new Date(),

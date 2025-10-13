@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { logoutUser } from "@/store/userSlice";
-import { useProfile } from "@/hooks/context/ProfileContext";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import { useRouter, usePathname } from "next/navigation";
 import type { AppDispatch } from "@/store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,6 +24,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import NotificationBell from "@/components/notifications/NotificationBell";
+import { formatDisplayName, isDoctorName } from "@/lib/utils";
 
 const fullNavigation = [
   { name: "Home", href: "/doctor/home", current: true, icon: Home },
@@ -42,14 +44,16 @@ const mobileNavigation = [
 ];
 
 export default function DoctorHomeHeader() {
-  const { profile } = useProfile();
+  const { profile, clearProfile } = useDecryptedProfile();
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const pathname = usePathname();
 
   const handleLogout = () => {
     dispatch(logoutUser());
-    router.push("/login");
+    clearProfile(); // Clear the React Query cache and sessionStorage
+    // Force a page reload to ensure clean state
+    window.location.href = "/login";
   };
 
   const navigationItems = fullNavigation.map((item) => ({
@@ -95,10 +99,12 @@ export default function DoctorHomeHeader() {
           {/* Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <div className="flex items-center gap-3 px-4 py-2 w-32 rounded-xl border border-border cursor-pointer">
+              <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border border-border cursor-pointer ${
+                isDoctorName(profile?.name ?? "") ? "w-40" : "w-32"
+              }`}>
                 <User className="h-6 w-6" />
                 <span className="text-sm text-foreground">
-                  {profile?.name?.trim().split(/\s+/)[0] ?? ""}
+                  {formatDisplayName(profile?.name ?? "")}
                 </span>
               </div>
             </DropdownMenuTrigger>
@@ -116,6 +122,11 @@ export default function DoctorHomeHeader() {
           </DropdownMenu>
         </div>
       </header>
+
+      {/* Mobile Notification Bell - Fixed Top Right */}
+      <div className="fixed top-4 right-4 z-50 md:hidden">
+        <NotificationBell />
+      </div>
 
       {/* Bottom Navigation for Mobile Screens */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden bg-background border-t">

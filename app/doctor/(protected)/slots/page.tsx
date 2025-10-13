@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useToast } from '@/hooks/use-toast';
 import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, addMinutes, setHours, setMinutes, addDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,7 @@ interface SlotStates {
 }
 
 export default function DoctorSlotsPage() {
+  const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [slotStates, setSlotStates] = useState<SlotStates>({});
   const [loading, setLoading] = useState(false);
@@ -87,9 +89,8 @@ export default function DoctorSlotsPage() {
   function handleSlotClick(startTime: string) {
     setSlotStates((prev) => {
       const next: SlotStates = { ...prev };
-      if (next[startTime] === 'unselected') next[startTime] = 'available';
-      else if (next[startTime] === 'available') next[startTime] = 'break';
-      else next[startTime] = 'unselected';
+      // Toggle only between unselected and available (remove BREAK state)
+      next[startTime] = next[startTime] === 'available' ? 'unselected' : 'available';
       return next;
     });
   }
@@ -101,17 +102,24 @@ export default function DoctorSlotsPage() {
       const payload = ALL_SLOTS.map((slot) => ({
         startTime: slot.startTime,
         endTime: slot.endTime,
-        status:
-          slotStates[slot.startTime] === 'available'
-            ? 'AVAILABLE'
-            : slotStates[slot.startTime] === 'break'
-            ? 'BREAK'
-            : null,
+        status: slotStates[slot.startTime] === 'available' ? 'AVAILABLE' : null,
       })).filter((s) => s.status);
       // Upsert: backend should handle create/update for the date
       await axios.post('/api/doctor/slots', {
         date: selectedDate,
         slots: payload,
+      });
+      toast({
+        variant: 'success',
+        title: 'Slots saved',
+        description: `Availability updated for ${format(parseISO(selectedDate), 'dd MMM yyyy')}`,
+      });
+    } catch (error: any) {
+      const message = error?.response?.data?.error || 'Failed to save availability';
+      toast({
+        variant: 'destructive',
+        title: 'Save failed',
+        description: message,
       });
     } finally {
       setSaving(false);
@@ -128,13 +136,13 @@ export default function DoctorSlotsPage() {
   const grouped = groupSlots(ALL_SLOTS);
 
   return (
-    <div className="min-h-screen bg-muted flex flex-col items-center">
-      <div className="container max-w-4xl w-full bg-white rounded-2xl shadow-lg p-4 md:p-8 mt-8 mb-8 mx-auto">
+    <div className="bg-muted flex flex-col items-center">
+      <div className="container w-full p-4">
         <h2 className="text-2xl font-semibold mb-6">Manage Availability</h2>
-        <div className="flex flex-col md:flex-row gap-8">
+        <div className="flex flex-col md:flex-row gap-8 bg-white rounded-xl p-6">
           {/* Calendar & Date Navigation */}
           <div className="flex flex-col items-start gap-2 min-w-[220px]">
-            <label className="block mb-2 font-medium">Choose Date</label>
+            <label className="block mb-2 font-semibold">Choose Date</label>
             <div className="flex items-center gap-2">
               <button
                 aria-label="Previous day"
@@ -162,7 +170,7 @@ export default function DoctorSlotsPage() {
           </div>
           {/* Slots */}
           <div className="flex-1">
-            <label className="block mb-2 font-medium">Choose Time Slots</label>
+            <label className="block mb-2 font-semibold">Choose Time Slots</label>
             {loading ? (
               <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="animate-spin" /> Loading...</div>
             ) : (
@@ -198,7 +206,6 @@ export default function DoctorSlotsPage() {
         <div className="flex flex-col md:flex-row items-center justify-between mt-8 gap-4">
           <div className="flex items-center gap-4">
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-300">Available</span>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-300">Break</span>
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-muted text-foreground border border-muted">Unselected</span>
           </div>
           <button

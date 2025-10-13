@@ -10,11 +10,11 @@ import {
   FileText,
   ShieldPlus,
   TestTubeDiagonal,
+  TrendingUp,
   MoreHorizontal as MoreIcon,
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { logoutUser } from "@/store/userSlice";
-import { useProfile } from "@/hooks/context/ProfileContext";
 import { useRouter, usePathname } from "next/navigation";
 import type { AppDispatch } from "@/store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,13 +25,16 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
+import NotificationBell from "@/components/notifications/NotificationBell";
+import { formatDisplayName, isDoctorName } from "@/lib/utils";
 
 const fullNavigation = [
   { name: "Home", href: "/dashboard", current: true, icon: Home },
   { name: "Doctors", href: "/dashboard/doctors", current: false, icon: ShieldPlus },
   { name: "Dieticians", href: "/dashboard/dieticians", current: false, icon: ShieldPlus },
-  { name: "Lab", href: "/dashboard/labs", current: false, icon: Clipboard },
+  { name: "Labs & Reports", href: "/dashboard/labs", current: false, icon: Clipboard },
+  { name: "Parameter Trends", href: "/dashboard/parameter-trends", current: false, icon: TrendingUp },
   { name: "Prescriptions", href: "/dashboard/prescriptions", current: false, icon: FileText },
   { name: "Appointments", href: "/dashboard/appointments", current: false, icon: TestTubeDiagonal },
   { name: "Plans", href: "/dashboard/plans", current: false, icon: LayoutGrid },
@@ -41,20 +44,22 @@ const mobileNavigation = [
   { name: "Home", href: "/dashboard", icon: Home },
   { name: "Doctors", href: "/dashboard/doctors", icon: ShieldPlus },
   { name: "Plans", href: "/dashboard/plans", icon: LayoutGrid },
-  { name: "Labs", href: "/dashboard/labs", icon: TestTubeDiagonal },
+  { name: "Labs & Reports", href: "/dashboard/labs", icon: TestTubeDiagonal },
+  { name: "Parameter Trends", href: "/dashboard/parameter-trends", icon: TrendingUp },
   { name: "Profile", href: "/dashboard/profile", icon: User }, // we'll replace this one
 ];
 
 export function DashboardHeader() {
-  const { profile } = useProfile();
-  const { isDoctor } = useDecryptedProfile();
+  const { profile, isDoctor, clearProfile } = useDecryptedProfile();
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const pathname = usePathname();
 
   const handleLogout = () => {
     dispatch(logoutUser());
-    router.push("/login");
+    clearProfile(); // Clear the React Query cache and sessionStorage
+    // Force a page reload to ensure clean state
+    window.location.href = "/login";
   };
 
   const navigationItems = fullNavigation.map((item) => ({
@@ -101,13 +106,17 @@ export function DashboardHeader() {
               ))}
             </nav>
           </div>
-          {/* Profile Dropdown */}
-          <DropdownMenu>
+          {/* Notifications and Profile */}
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <div className="flex items-center gap-3 px-4 py-2 w-32 rounded-xl border border-border cursor-pointer">
+              <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border border-border cursor-pointer ${
+                isDoctorName(profile?.name ?? "") ? "w-40" : "w-32"
+              }`}>
                 <User className="h-6 w-6" />
                 <span className="text-sm text-foreground">
-                  {profile?.name?.trim().split(/\s+/)[0] ?? ""}
+                  {formatDisplayName(profile?.name ?? "")}
                 </span>
               </div>
             </DropdownMenuTrigger>
@@ -122,9 +131,15 @@ export function DashboardHeader() {
                 <span className="text-red-500">Logout</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
+
+      {/* Mobile Notification Bell - Fixed Top Right */}
+      <div className="fixed top-4 right-4 z-50 md:hidden">
+        <NotificationBell />
+      </div>
 
       {/* Bottom Navigation for Mobile Screens */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden bg-background border-t">
@@ -137,8 +152,12 @@ export function DashboardHeader() {
               item.current ? "text-secondary" : "text-foreground"
             } hover:text-primary transition-colors`}
           >
-            <item.icon className="h-6 w-6" />
-            <span className="text-xs">{item.name}</span>
+            <div className="flex items-center justify-center mb-1 h-6">
+              <item.icon className="h-6 w-6" />
+            </div>
+            <div className="flex items-center justify-center min-h-[2.5rem]">
+              <span className="text-xs text-center leading-tight">{item.name}</span>
+            </div>
           </Link>
         ))}
 
@@ -148,8 +167,12 @@ export function DashboardHeader() {
             <button
               className="flex-1 flex flex-col items-center justify-center py-2 text-foreground hover:text-primary transition-colors"
             >
-              <MoreIcon className="h-6 w-6" />
-              <span className="text-xs">More</span>
+              <div className="flex items-center justify-center mb-1 h-6">
+                <MoreIcon className="h-6 w-6" />
+              </div>
+              <div className="flex items-center justify-center min-h-[2.5rem]">
+                <span className="text-xs text-center leading-tight">More</span>
+              </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="bg-white text-black" align="center">

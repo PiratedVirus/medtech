@@ -22,6 +22,19 @@ export async function GET(request: Request) {
             name: true,
           },
         },
+        labAssignments: {
+          include: {
+            phlebotomist: {
+              include: {
+                user: {
+                  select: {
+                    name: true,
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       orderBy: {
         labDate: "desc",
@@ -29,7 +42,7 @@ export async function GET(request: Request) {
     });
 
     const scheduled = bookings
-      .filter(b => b.status === "Scheduled")
+      .filter(b => b.status !== "COMPLETED" && b.status !== "CANCELLED")
       .map((b) => ({
         id: b.id,
         resultDate: b.labDate,
@@ -37,6 +50,8 @@ export async function GET(request: Request) {
         resultName: `${b.patient.name} - ${b.labPackage.name} - ${new Date(b.labDate).toLocaleDateString("en-GB")}`,
         reports: [],
         status: b.status,
+        phlebotomist: b.labAssignments[0]?.phlebotomist?.user?.name || "Not assigned",
+        labAssignmentId: b.labAssignments[0]?.id,
       }));
 
     const completed = bookings
@@ -62,11 +77,14 @@ export async function GET(request: Request) {
             })
           : [],
         status: b.status,
+        phlebotomist: b.labAssignments[0]?.phlebotomist?.user?.name || "Not assigned",
+        labAssignmentId: b.labAssignments[0]?.id,
       }));
 
     return NextResponse.json({ scheduled, completed });
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to fetch lab results" }, { status: 500 });
+    console.error("Error fetching lab bookings:", error);
+    return NextResponse.json({ success: false, error: "Failed to fetch lab bookings" }, { status: 500 });
   }
 }
 
@@ -105,7 +123,7 @@ export async function POST(request: Request) {
       // Create the lab booking
       const booking = await tx.labBooking.create({
         data: {
-          patientId,
+          patientId: parseInt(patientId, 10),
           labPackageId: packageId,
           appointmentFor,
           fullName,
@@ -114,11 +132,15 @@ export async function POST(request: Request) {
           address,
           paymentOption,
           labDate: new Date(date),
-          status: "Scheduled",
+          status: "PENDING", // Single status for entire workflow
         },
       });
 
       console.log("LabBooking created:", booking);
+
+      // Manual assignment policy: do not auto-create or link any LabAssignment here.
+      // Pathology staff will assign phlebotomists from the pathology panel.
+      console.log("Manual assignment policy active: no auto-creation/linking of LabAssignment for booking:", booking.id);
 
       // Update subscription tracker if using plan
       if (paymentOption === "plan") {

@@ -48,7 +48,6 @@ import {
 import { ChevronDown, ArrowUpDown, EditIcon, Trash, Copy, Check, LayoutGrid, Table as TableIcon } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { Clinic } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
@@ -88,11 +87,14 @@ type DoctorsPageFormData = {
   clinicId: number;
   isDietician: boolean;
   doctorCode: string;
+  supportsVideo?: boolean;
+  supportsClinic?: boolean;
 };
 
 export default function DoctorsPage() {
   const [data, setData] = useState<{ doctors: Doctor[]; total: number }>({ doctors: [], total: 0 });
-  const [clinics, setClinics] = useState<{ id: number; name: string }[]>([]);
+  const [adminClinicId, setAdminClinicId] = useState<number | null>(null);
+  const [adminClinicName, setAdminClinicName] = useState<string>("");
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [roleCounts, setRoleCounts] = useState<{ [key: string]: number }>({});
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
@@ -119,13 +121,27 @@ export default function DoctorsPage() {
   const [viewMode, setViewMode] = useState<"table" | "card">("table");
   const router = useRouter();
 
-  // Watch clinicId to filter available users
-  const selectedClinicId = watch("clinicId");
+  const fetchAdminClinicInfo = async () => {
+    try {
+      const res = await axios.get('/api/admin/auth/me');
+      if (res.data.success && res.data.user?.clinic) {
+        setAdminClinicId(res.data.user.clinic.id);
+        setAdminClinicName(res.data.user.clinic.name);
+        // Set the clinic ID in the form
+        setValue("clinicId", res.data.user.clinic.id);
+        // Fetch available users for this clinic
+        fetchAvailableUsers(res.data.user.clinic.id);
+      }
+    } catch (error) {
+      console.error("Error fetching admin clinic info:", error);
+      toast.error("Failed to fetch clinic information");
+    }
+  };
 
   const fetchAvailableUsers = async (clinicId: number) => {
     try {
       // This endpoint should return users for the specified clinic
-      const res = await axios.get(`/api/admin/users?role=DOCTOR`);
+      const res = await axios.get(`/api/admin/optimized/users?role=DOCTOR`);
       console.log("Available users for clinic:", res.data.data);
       setAvailableUsers(res.data.data);
     } catch (error) {
@@ -135,12 +151,8 @@ export default function DoctorsPage() {
   };
 
   useEffect(() => {
-    if (selectedClinicId) {
-      fetchAvailableUsers(selectedClinicId);
-    } else {
-      setAvailableUsers([]);
-    }
-  }, [selectedClinicId]);
+    fetchAdminClinicInfo();
+  }, []);
 
   const columns: ColumnDef<Doctor>[] = [
     {
@@ -305,12 +317,8 @@ export default function DoctorsPage() {
 
   const fetchData = async () => {
     try {
-      const [doctorsRes, clinicsRes] = await Promise.all([
-        axios.get(`/api/admin/doctors?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`),
-        axios.get("/api/admin/clinics"),
-      ]);
-      setData({ doctors: doctorsRes.data.data, total: doctorsRes.data.total });
-      setClinics(clinicsRes.data.data);
+      const doctorsRes = await axios.get(`/api/admin/optimized/doctors?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`);
+      setData({ doctors: doctorsRes.data.doctors, total: doctorsRes.data.total });
       setRoleCounts(doctorsRes.data.roleCounts || {});
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -345,6 +353,8 @@ export default function DoctorsPage() {
         consultationFee: Number(formData.consultationFee),
         isDietician: formData.isDietician || false,
         doctorCode: formData.doctorCode.toUpperCase(),
+        supportsVideo: formData.supportsVideo ?? true,
+        supportsClinic: formData.supportsClinic ?? true,
       };
 
       if (selectedDoctor) {
@@ -682,26 +692,14 @@ export default function DoctorsPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label className="block font-medium">Select Clinic</label>
-              <Controller
-                control={control}
-                name="clinicId"
-                rules={{ required: true }}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value ? field.value.toString() : ""}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Clinic" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white text-black">
-                      {Array.isArray(clinics) && clinics.map((clinic) => (
-                        <SelectItem key={clinic.id} value={clinic.id.toString()}>
-                          {clinic.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+              <label className="block font-medium">Clinic</label>
+              <Input 
+                value={adminClinicName || "Loading..."} 
+                disabled 
+                className="bg-gray-100 cursor-not-allowed"
+                placeholder="Your clinic will be automatically selected"
               />
+              <p className="text-sm text-gray-500 mt-1">You can only create doctors for your clinic</p>
             </div>
 
             {/* User Dropdown (filtered by clinic) */}
@@ -775,6 +773,39 @@ export default function DoctorsPage() {
                 </div>
               )}
             />
+            {/* Consultation types */}
+            <div className="space-y-2">
+              <div className="font-medium">Consultation Availability</div>
+              <div className="flex items-center gap-6">
+                <Controller
+                  control={control}
+                  name="supportsVideo"
+                  defaultValue={true}
+                  rules={{ validate: () => (watch('supportsVideo') || watch('supportsClinic')) || 'Select at least one' }}
+                  render={({ field }) => (
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={!!field.value} onChange={(e)=> field.onChange(e.target.checked)} className="w-4 h-4" />
+                      Video / Online consultation
+                    </label>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="supportsClinic"
+                  defaultValue={true}
+                  rules={{ validate: () => (watch('supportsVideo') || watch('supportsClinic')) || 'Select at least one' }}
+                  render={({ field }) => (
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={!!field.value} onChange={(e)=> field.onChange(e.target.checked)} className="w-4 h-4" />
+                      Physical / Clinic consultation
+                    </label>
+                  )}
+                />
+              </div>
+              {!(watch('supportsVideo') || watch('supportsClinic')) && (
+                <div className="text-xs text-red-600">Select at least one consultation mode</div>
+              )}
+            </div>
             <Input
               {...register("doctorCode", {
                 required: true,

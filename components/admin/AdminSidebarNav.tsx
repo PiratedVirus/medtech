@@ -24,9 +24,19 @@ import {
   Leaf,
   IndianRupee,
   LogOut,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Brain,
+  Bot,
+  Cpu,
+  Sparkles,
+  Activity,
+  TrendingUp,
+  Zap,
+  Code,
+  Layers,
+  Workflow
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -35,11 +45,49 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
 interface SidebarNavProps extends React.HTMLAttributes<HTMLDivElement> {
   logout: () => void;
+  collapsed?: boolean;
+  onCollapsedChange?: (next: boolean) => void;
 }
 
-export function SidebarNav({ className, logout, ...props }: SidebarNavProps) {
+export function SidebarNav({ className, logout, collapsed: collapsedProp, onCollapsedChange, ...props }: SidebarNavProps) {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(true) // Set to true for default collapsed state
+  const [internalCollapsed, setInternalCollapsed] = useState(false) // Default expanded
+  const [clinicName, setClinicName] = useState('Loading...')
+  const collapsed = typeof collapsedProp === 'boolean' ? collapsedProp : internalCollapsed
+  const setCollapsed = (next: boolean) => {
+    if (typeof onCollapsedChange === 'function') onCollapsedChange(next)
+    if (typeof collapsedProp !== 'boolean') setInternalCollapsed(next)
+  }
+
+  // Fetch clinic name on component mount
+  useEffect(() => {
+    const fetchClinicName = async () => {
+      try {
+        const response = await fetch('/api/admin/auth/me', {
+          cache: 'no-cache',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        })
+        const data = await response.json()
+        console.log('AdminSidebar - API Response:', data)
+        if (data.success && data.user?.clinic?.name) {
+          console.log('AdminSidebar - Setting clinic name to:', data.user.clinic.name)
+          setClinicName(data.user.clinic.name)
+        } else if (data.success && data.user && !data.user.clinic) {
+          console.log('AdminSidebar - No clinic data found')
+          setClinicName('⚠️ Please Re-login')
+        } else {
+          console.log('AdminSidebar - API failed or no user data')
+          setClinicName('Clinic')
+        }
+      } catch (error) {
+        console.error('AdminSidebar - Failed to fetch clinic name:', error)
+        setClinicName('Clinic')
+      }
+    }
+    fetchClinicName()
+  }, [])
   const routes = [
     {
       href: "/admin",
@@ -56,6 +104,11 @@ export function SidebarNav({ className, logout, ...props }: SidebarNavProps) {
       href: "/admin/patients",
       icon: HeartPulse,
       title: "Patients",
+    },
+    {
+      href: "/admin/patients/analysis",
+      icon: Brain,
+      title: "AI Analysis",
     },
 
     {
@@ -89,11 +142,6 @@ export function SidebarNav({ className, logout, ...props }: SidebarNavProps) {
       title: "Lab Bookings",
     },
     {
-      href: "/admin/clinics",
-      icon: Hospital,
-      title: "Clinics",
-    },
-    {
       href: "/admin/payments",
       icon: IndianRupee,
       title: "Payments",
@@ -122,7 +170,7 @@ export function SidebarNav({ className, logout, ...props }: SidebarNavProps) {
           <div className="space-y-4 py-4">
             <div className="px-3 py-2">
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-semibold tracking-tight">CareDiabetics Clinic</h2>
+                <h2 className="text-lg font-semibold tracking-tight">{clinicName}</h2>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon">
                     <X className="h-5 w-5" />
@@ -167,7 +215,7 @@ export function SidebarNav({ className, logout, ...props }: SidebarNavProps) {
         <div className="space-y-4 py-4 flex flex-col h-full">
           <div className="px-3 py-2">
             <div className="flex items-center justify-between mb-6 px-2">
-              {!collapsed && <h2 className="text-lg font-semibold text-primary tracking-tight">CareDiabetics Clinic</h2>}
+              {!collapsed && <h2 className="text-lg font-semibold text-primary tracking-tight">{clinicName}</h2>}
               <Button
                 variant="ghost"
                 size="icon"

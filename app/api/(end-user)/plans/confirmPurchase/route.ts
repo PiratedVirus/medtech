@@ -217,6 +217,17 @@ export async function POST(request: Request) {
       return newTracker;
     });
 
+    // Invalidate user profile cache after subscription update
+    try {
+      const { invalidateAllUserCaches, getUserPhoneNumber } = await import('@/lib/cache-invalidation');
+      const phoneNumber = await getUserPhoneNumber(patientId);
+      await invalidateAllUserCaches(patientId, phoneNumber || undefined);
+      console.log(`[SUBSCRIPTION] Cache invalidated for user ${patientId} after subscription update`);
+    } catch (cacheError) {
+      console.error('[SUBSCRIPTION] Error invalidating cache:', cacheError);
+      // Don't fail the request if cache invalidation fails
+    }
+
     return NextResponse.json({
       success: true,
       subscriptionTracker: newTracker,

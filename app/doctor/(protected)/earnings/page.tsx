@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { toast } from "react-toastify";
 import {
@@ -46,6 +46,8 @@ interface Payment {
 interface EarningsData {
   paid: number;
   pending: number;
+  cash: number;
+  online: number;
   cashCount: number;
   onlineCount: number;
   total: number;
@@ -54,7 +56,7 @@ interface EarningsData {
 export default function DoctorEarningsPage() {
   const { profile, isLoading: profileLoading } = useDecryptedProfile();
   const [allPayments, setAllPayments] = useState<Payment[]>([]);
-  const [earnings, setEarnings] = useState<EarningsData>({ paid: 0, pending: 0, cashCount: 0, onlineCount: 0, total: 0 });
+  const [earnings, setEarnings] = useState<EarningsData>({ paid: 0, pending: 0, cash: 0, online: 0, cashCount: 0, onlineCount: 0, total: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([{ id: "createdAt", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -222,7 +224,7 @@ export default function DoctorEarningsPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 space-y-4 bg-white">
+    <div className="container mx-auto p-4 space-y-4 bg-mutedbg">
       {/* Earnings Cards */}
       <div className="grid grid-cols-4 md:grid-cols-4 gap-4 mb-6">
         <div className="col-span-1">
@@ -249,11 +251,11 @@ export default function DoctorEarningsPage() {
         </div>
         <div className="p-4 border rounded-lg bg-custom-mutedgreen flex flex-col items-end">
           <h3 className="text-lg font-semibold">Cash Payments</h3>
-          <p className="text-3xl text-primary">₹{(earnings.cashCount / 100).toFixed(2)}</p>
+          <p className="text-3xl text-primary">₹{(earnings.cash / 100).toFixed(2)}</p>
         </div>
         <div className="p-4 border rounded-lg bg-custom-mutedgreen flex flex-col items-end">
           <h3 className="text-lg font-semibold">Online Payments</h3>
-          <p className="text-3xl text-primary">₹{(earnings.onlineCount / 100).toFixed(2)}</p>
+          <p className="text-3xl text-primary">₹{(earnings.online / 100).toFixed(2)}</p>
         </div>
       </div>
 
@@ -272,7 +274,7 @@ export default function DoctorEarningsPage() {
       </div>
 
       {/* Payments Table */}
-      <div className="rounded-md border">
+      <div className="rounded-md border bg-white">
         <Table>
           <TableHeader className="bg-custom-mutedgreen text-gray-950">
             {table.getHeaderGroups().map((headerGroup) => (

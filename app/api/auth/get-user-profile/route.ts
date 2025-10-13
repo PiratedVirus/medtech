@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
-import prisma from "@/lib/prisma";
+import { getCachedUserProfile } from "@/lib/auth-cache";
 
 export async function GET() {
   try {
@@ -29,37 +29,9 @@ export async function GET() {
       );
     }
 
-    // Step 3: Fetch user details from the database using phoneNumber
-    const onlyUser = await prisma.user.findFirst({
-      where: { phoneNumber: decoded.plusAddedPhoneNumber, deletedAt: null },
-      select: {
-        id: true,
-        clinicId: true,
-        phoneNumber: true,
-        email: true,
-        name: true,
-        role: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-        deletedAt: true,
-        userProfilePicture: true,
-        patientProfile: true,
-      },
-    });
-    console.log("Fetched user:", onlyUser);
-
-    const subscriptionDetails = await prisma.subscriptionTracker.findFirst({
-      where: {
-        patientId: onlyUser?.patientProfile?.id,
-        isActive: true,
-        endDate: {
-          gt: new Date(),
-        },
-      },
-    });
-
-    const user = { ...onlyUser, subscriptionDetails };
+    // Step 3: Fetch user details from Redis cache (with database fallback)
+    const user = await getCachedUserProfile(decoded.plusAddedPhoneNumber);
+    console.log("Fetched user from cache:", user);
 
     if (!user) {
       return NextResponse.json(

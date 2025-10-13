@@ -20,6 +20,7 @@ const uploadImageToCloudinary = async (file: File) => {
 };
 import axios from "axios";
 import { useForm } from "react-hook-form";
+import { fetchWithCacheBusting, clearAdminCache } from "@/lib/admin-api-client";
 import {
   useReactTable,
   getCoreRowModel,
@@ -80,7 +81,8 @@ type User = {
 
 export default function UsersPage() {
   const [data, setData] = useState<{ users: User[]; total: number }>({ users: [], total: 0 });
-  const [clinics, setClinics] = useState<{ id: number; name: string }[]>([]);
+  const [adminClinicId, setAdminClinicId] = useState<number | null>(null);
+  const [adminClinicName, setAdminClinicName] = useState<string>("");
   const [roleCounts, setRoleCounts] = useState<{ [key: string]: number }>({});
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -94,6 +96,25 @@ export default function UsersPage() {
     pageIndex: 0,
     pageSize: 10,
   });
+
+  const fetchAdminClinicInfo = async () => {
+    try {
+      const res = await axios.get('/api/admin/auth/me');
+      if (res.data.success && res.data.user?.clinic) {
+        setAdminClinicId(res.data.user.clinic.id);
+        setAdminClinicName(res.data.user.clinic.name);
+        // Set the clinic ID in the form
+        setValue("clinicId", res.data.user.clinic.id);
+      }
+    } catch (error) {
+      console.error("Error fetching admin clinic info:", error);
+      toast.error("Failed to fetch clinic information");
+    }
+  };
+
+  useEffect(() => {
+    fetchAdminClinicInfo();
+  }, []);
 
   const columns: ColumnDef<User>[] = [
     {
@@ -226,14 +247,11 @@ export default function UsersPage() {
 
   const fetchData = async () => {
     try {
-      const [usersRes, clinicsRes] = await Promise.all([
-        axios.get(`/api/admin/users?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`),
-        axios.get("/api/admin/clinics/clinics-list"),
-      ]);
+      const usersRes = await fetchWithCacheBusting(`/api/admin/optimized/users?page=${pagination.pageIndex + 1}&pageSize=${pagination.pageSize}`);
       setData({ users: usersRes.data.data, total: usersRes.data.total });
-      setClinics(clinicsRes.data);
       // Extract roleCounts from the GET response
       setRoleCounts(usersRes.data.roleCounts || {});
+      console.log("Users page - Role counts for clinic:", usersRes.data.roleCounts);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to fetch data");
@@ -290,11 +308,11 @@ export default function UsersPage() {
 
       if (selectedUser) {
         // PUT request to update the user (overwrite if new image is uploaded)
-        await axios.put("/api/admin/users", { id: selectedUser.id, ...payload });
+        await axios.put("/api/admin/optimized/users", { id: selectedUser.id, ...payload });
         toast.success("User updated successfully");
       } else {
         // POST request to create a new user
-        await axios.post("/api/admin/users", payload);
+        await axios.post("/api/admin/optimized/users", payload);
         toast.success("User created successfully");
       }
 
@@ -310,7 +328,7 @@ export default function UsersPage() {
   };
   const deleteUser = async (id: number) => {
     try {
-      await axios.delete("/api/admin/users", { data: { id } });
+      await axios.delete("/api/admin/optimized/users", { data: { id } });
       toast.success("User deleted successfully");
       await fetchData();
     } catch (error) {
@@ -324,7 +342,7 @@ export default function UsersPage() {
       (index) => data.users[parseInt(index)].id
     );
     try {
-      await axios.delete("/api/admin/users", { data: { ids: selectedIds } });
+      await axios.delete("/api/admin/optimized/users", { data: { ids: selectedIds } });
       toast.success("Selected users deleted successfully");
       await fetchData();
       setRowSelection({});
@@ -339,7 +357,22 @@ export default function UsersPage() {
       {/* ToastContainer renders the toasts */}
       <ToastContainer />
       {/* Header Section */}
-
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Users Management</h1>
+          <p className="text-sm text-gray-600">Manage users in your clinic</p>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={() => {
+            clearAdminCache();
+            fetchData();
+          }}
+          title="Clear cache and refresh data"
+        >
+          Refresh Data
+        </Button>
+      </div>
 
       {/* Stats Section - Cards for role counts */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -558,18 +591,16 @@ export default function UsersPage() {
                 <SelectItem value="SUSPENDED">Suspended</SelectItem>
               </SelectContent>
             </Select>
-            <Select onValueChange={(value) => setValue("clinicId", value)} defaultValue={selectedUser?.clinic?.id?.toString()}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select Clinic" />
-              </SelectTrigger>
-              <SelectContent className="bg-white text-black">
-                {clinics.map((clinic) => (
-                  <SelectItem key={clinic.id} value={clinic.id.toString()}>
-                    {clinic.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div>
+              <label className="block font-medium mb-2">Clinic</label>
+              <Input 
+                value={adminClinicName || "Loading..."} 
+                disabled 
+                className="bg-gray-100 cursor-not-allowed"
+                placeholder="Your clinic will be automatically selected"
+              />
+              <p className="text-sm text-gray-500 mt-1">You can only create users for your clinic</p>
+            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => {
                 setDialogOpen(false);

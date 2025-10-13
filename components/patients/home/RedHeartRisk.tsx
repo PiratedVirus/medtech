@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 
 export default function HeartRiskCardRed() {
   return (
-    <Link href="/dashboard/heart-risk" className="block w-full">
+    <Link href="/calculators/heart-risk" className="block w-full">
       <Card className="group relative w-full sm:h-[194px] md:h-[184px] overflow-hidden border-0 bg-gradient-to-br from-red-600 to-red-900 shadow-md transition-all duration-300 hover:shadow-lg">
         {/* Large heart outline in background */}
         <div className="absolute -right-12 -top-4 h-64 w-64 opacity-10">

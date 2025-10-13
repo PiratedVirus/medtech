@@ -15,6 +15,9 @@ model Clinic {
   domain          String?                @unique
   address         String?
   contactInfo     String?
+  logo            String?
+  timings         String?
+  subtitle        String?
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
   deletedAt       DateTime?
@@ -35,32 +38,62 @@ model ClinicSpecialization {
 }
 
 model User {
-  id                  Int               @id @default(autoincrement())
-  clinicId            Int?
-  phoneNumber         String
-  email               String?           @unique
-  password            String?
-  name                String
-  role                UserRole
-  status              UserStatus        @default(ACTIVE)
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-  deletedAt           DateTime?
-  userProfilePicture  String?
-  doctorCode          String?
-  doctorAppointments  Appointment[]     @relation("Doctor")
-  patientAppointments Appointment[]     @relation("Patient")
-  dieticianProfile    DieticianProfile?
-  doctorProfile       DoctorProfile?
-  healthMetrics       HealthMetric[]
-  labTechBookings     LabBooking[]      @relation("LabTech")
-  labPatientBookings  LabBooking[]      @relation("LabPatient")
-  labTechProfile      LabTechProfile?
-  patientProfile      PatientProfile?
-  clinic              Clinic?           @relation(fields: [clinicId], references: [id])
+  id                   Int                    @id @default(autoincrement())
+  clinicId             Int?
+  phoneNumber          String
+  email                String?                @unique
+  password             String?
+  name                 String
+  role                 UserRole
+  status               UserStatus             @default(ACTIVE)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  deletedAt            DateTime?
+  userProfilePicture   String?
+  doctorCode           String?
+  patientAppointments  Appointment[]          @relation("Patient")
+  doctorAppointments   Appointment[]          @relation("Doctor")
+  dieticianProfile     DieticianProfile?
+  doctorProfile        DoctorProfile?
+  healthMetrics        HealthMetric[]
+  labAssignments       LabAssignment[]        @relation("PatientLabAssignment")
+  labTechBookings      LabBooking[]           @relation("LabTech")
+  labPatientBookings   LabBooking[]           @relation("LabPatient")
+  labTechProfile       LabTechProfile?
+  aiSummaries          PatientAISummary?      @relation("PatientAISummaries")
+  patientPills         PatientPill[]
+  patientProfile       PatientProfile?
+  phlebotomistProfile  Phlebotomist?
+  doctorPrescriptions  Prescription[]         @relation("DoctorPrescriptions")
+  patientPrescriptions Prescription[]         @relation("PatientPrescriptions")
+  doctorTemplates      PrescriptionTemplate[] @relation("DoctorTemplates")
+  prescriptionTexts    PrescriptionText[]     @relation("PatientPrescriptionTexts")
+  patientTrendData     ReportTrendData[]      @relation("PatientTrendData")
+  testResultsReported  TestResult[]           @relation("TestResultReporter")
+  // LLM playground back-relations
+  llmPlaygroundProfilesCreated LlmPlaygroundProfile[] @relation("LlmPlaygroundProfileCreatedBy")
+  llmPlaygroundProfilesUpdated LlmPlaygroundProfile[] @relation("LlmPlaygroundProfileUpdatedBy")
+  llmPlaygroundRunsCreated     LlmPlaygroundRun[]     @relation("LlmPlaygroundRunCreatedBy")
+  llmDatasetsCreated           LlmDataset[]           @relation("LlmDatasetCreatedBy")
+  clinic               Clinic?                @relation(fields: [clinicId], references: [id])
+  // Diet Plan relations
+  dietPlanRequestsAsPatient   DietPlanRequest[] @relation("DietPlanRequestPatient")
+  dietPlanRequestsAsDietician DietPlanRequest[] @relation("DietPlanRequestDietician")
+  dietPlansAsPatient          DietPlan[]        @relation("DietPlanPatient")
+  dietPlansAsDietician        DietPlan[]        @relation("DietPlanDietician")
+  dietMealTimingTemplates    DietMealTimingTemplate[] @relation("DietMealTimingTemplateDietician")
+  standaloneReportsAsPatient  StandaloneReport[] @relation("StandaloneReportPatient")
+  standaloneReportsUploaded   StandaloneReport[] @relation("StandaloneReportUploader")
+  // Notifications
+  notifications              PatientNotification[]
+  deviceTokens              PatientDeviceToken[]
 
   @@unique([phoneNumber, deletedAt])
   @@index([deletedAt])
+  @@index([role, createdAt])
+  @@index([status, role])
+  @@index([clinicId, role])
+  @@index([role, status, deletedAt])
 }
 
 model PatientProfile {
@@ -74,6 +107,9 @@ model PatientProfile {
   gender           String
   bloodGroup       String?
   allergies        String?
+  personalHistory  String?
+  pastMedicalHistory String?
+  familyHistory    String?
   medicalHistory   String?
   emergencyContact String?
   dateOfBirth      DateTime?             @db.Date
@@ -100,6 +136,8 @@ model DoctorProfile {
   consultationFee   Int
   rating            Float?
   type              String?
+  supportsVideo     Boolean?             @default(true)
+  supportsClinic    Boolean?             @default(true)
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
   deletedAt         DateTime?
@@ -113,16 +151,17 @@ model DoctorProfile {
 }
 
 model DieticianProfile {
-  id                Int                     @id @default(autoincrement())
-  userId            Int                     @unique
-  specialty         String?
-  yearsOfExperience Int?
-  certifications    String?
-  createdAt         DateTime                @default(now())
-  updatedAt         DateTime                @updatedAt
-  deletedAt         DateTime?
-  availability      DieticianAvailability[]
-  user              User                    @relation(fields: [userId], references: [id])
+  id                    Int       @id @default(autoincrement())
+  userId                Int       @unique
+  specialization        String?
+  experience            Int?
+  education            String?
+  certifications       String[]
+  availability         DieticianAvailability[]
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?
+  user                 User      @relation(fields: [userId], references: [id])
 
   @@index([deletedAt])
 }
@@ -151,6 +190,9 @@ model DoctorAvailability {
   doctor       DoctorProfile @relation(fields: [userId], references: [userId])
 
   @@index([deletedAt])
+  @@index([date, userId])
+  @@index([status, date])
+  @@index([userId, date, status])
 }
 
 model DieticianAvailability {
@@ -177,44 +219,58 @@ model Appointment {
   mobile               String?
   email                String?
   isDietician          Boolean?
-  appointmentDate      DateTime?            @db.Date
   appointmentLink      String?
   subscriptionId       Int?
   status               String
+  doctorNotes          String?
   createdAt            DateTime?            @default(now())
   updatedAt            DateTime?            @updatedAt
   deletedAt            DateTime?
   doctorAvailability   DoctorAvailability   @relation(fields: [doctorAvailabilityId], references: [id])
-  doctor               User                 @relation("Doctor", fields: [userId], references: [id])
   patient              User                 @relation("Patient", fields: [patientId], references: [id])
   subscriptionTracker  SubscriptionTracker? @relation(fields: [subscriptionId], references: [subscriptionId])
+  doctor               User                 @relation("Doctor", fields: [userId], references: [id])
+  appointmentReports   AppointmentReport[]
+  labAssignments       LabAssignment[]
   payment              Payment?             @relation("AppointmentPayment")
+  prescription         Prescription?
+  prescriptionTexts    PrescriptionText[]
 
   @@index([deletedAt])
   @@index([patientId, isDietician])
+  @@index([status, createdAt])
+  @@index([userId, status])
+  @@index([consultationType])
+  @@index([doctorAvailabilityId, status])
 }
 
 model Medicine {
-  id          Int       @id @default(autoincrement())
-  name        String    @unique
-  category    String?
-  description String?
-  price       Int
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  id           Int       @id @default(autoincrement())
+  name         String    @unique
+  category     String?
+  description  String?
+  price        Int
+  frequency    String[]  @default([])
+  medicineTime String[]  @default([])
+  duration     String[]  @default([])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
   @@index([deletedAt])
 }
 
 model Complaint {
-  id        Int       @id @default(autoincrement())
-  text      String    @unique
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id        Int               @id @default(autoincrement())
+  text      String            @unique
+  category  String?
+  severity  ComplaintSeverity @default(MODERATE)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
   deletedAt DateTime?
 
   @@index([deletedAt])
+  @@index([category])
 }
 
 model Payment {
@@ -236,6 +292,10 @@ model Payment {
   subscription      SubscriptionTracker? @relation("SubscriptionPayment", fields: [subscriptionId], references: [subscriptionId])
 
   @@index([deletedAt])
+  @@index([paymentStatus, createdAt])
+  @@index([createdAt, paymentStatus])
+  @@index([appointmentId, paymentStatus])
+  @@index([labBookingId, paymentStatus])
 }
 
 model LabPackage {
@@ -256,28 +316,37 @@ model LabPackage {
 }
 
 model LabBooking {
-  id             Int        @id @default(autoincrement())
-  patientId      Int
-  labTechId      Int?
-  labPackageId   Int
-  appointmentFor String?
-  fullName       String?
-  mobile         String?
-  email          String?
-  address        String?
-  paymentOption  String?
-  status         String
-  labDate        DateTime   @db.Date
-  labResult      String[]   @default([])
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  deletedAt      DateTime?
-  labPackage     LabPackage @relation(fields: [labPackageId], references: [id])
-  labTech        User?      @relation("LabTech", fields: [labTechId], references: [id])
-  patient        User       @relation("LabPatient", fields: [patientId], references: [id])
-  payment        Payment?   @relation("LabBookingPayment")
+  id              Int                 @id @default(autoincrement())
+  patientId       Int
+  labTechId       Int?
+  labPackageId    Int
+  labAssignmentId Int?
+  appointmentFor  String?
+  fullName        String?
+  mobile          String?
+  email           String?
+  address         String?
+  paymentOption   String?
+  status          LabAssignmentStatus @default(PENDING)
+  labDate         DateTime            @db.Date
+  labResult       String[]            @default([])
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  deletedAt       DateTime?
+  labAssignments  LabAssignment[]
+  labPackage      LabPackage          @relation(fields: [labPackageId], references: [id])
+  labTech         User?               @relation("LabTech", fields: [labTechId], references: [id])
+  patient         User                @relation("LabPatient", fields: [patientId], references: [id])
+  reportAnalyses  LabReportAnalysis[] @relation("LabBookingAnalyses")
+  payment         Payment?            @relation("LabBookingPayment")
+  trendData       ReportTrendData[]
 
   @@index([deletedAt])
+  @@index([labAssignmentId])
+  @@index([status, labDate])
+  @@index([patientId, status])
+  @@index([labDate, status])
+  @@index([createdAt, status])
 }
 
 model Plan {
@@ -335,6 +404,9 @@ model SubscriptionTracker {
   plan                             Plan           @relation(fields: [planId], references: [id])
 
   @@index([deletedAt])
+  @@index([isActive, endDate])
+  @@index([patientId, isActive])
+  @@index([endDate, isActive])
 }
 
 model HealthMetric {
@@ -350,6 +422,566 @@ model HealthMetric {
 
   @@index([deletedAt])
   @@index([userId])
+  @@index([userId, metricName])
+  @@index([metricName, recordedAt])
+}
+
+model PatientPill {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  key       String
+  value     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([deletedAt])
+  @@index([userId])
+}
+
+model Prescription {
+  id                  Int                              @id @default(autoincrement())
+  appointmentId       Int                              @unique
+  patientId           Int
+  doctorId            Int
+  prescriptionNumber  String                           @unique
+  advice              String?
+  testsRequested      String?
+  nextVisitDate       DateTime?
+  nextVisitType       String?
+  nextVisitValue      Int?
+  isTemplate          Boolean                          @default(false)
+  templateName        String?
+  createdAt           DateTime                         @default(now())
+  updatedAt           DateTime                         @updatedAt
+  deletedAt           DateTime?
+  appointment         Appointment                      @relation(fields: [appointmentId], references: [id])
+  doctor              User                             @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
+  patient             User                             @relation("PatientPrescriptions", fields: [patientId], references: [id])
+  complaints          PrescriptionComplaint[]
+  history             PrescriptionHistory?
+  medicines           PrescriptionMedicine[]
+  systemicExamination PrescriptionSystemicExamination?
+  prescriptionText    PrescriptionText?
+  vitals              PrescriptionVitals?
+
+  @@index([deletedAt])
+  @@index([patientId])
+  @@index([doctorId])
+}
+
+model PrescriptionComplaint {
+  id             Int               @id @default(autoincrement())
+  prescriptionId Int
+  complaintText  String
+  severity       ComplaintSeverity @default(MODERATE)
+  daysSince      Int?
+  isFlagged      Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  prescription   Prescription      @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  @@index([prescriptionId])
+}
+
+model PrescriptionVitals {
+  id             Int          @id @default(autoincrement())
+  prescriptionId Int          @unique
+  bloodPressure  String?
+  pulse          Int?
+  height         Float?
+  weight         Float?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+}
+
+model PrescriptionHistory {
+  id                 Int          @id @default(autoincrement())
+  prescriptionId     Int          @unique
+  allergies          String?
+  personalHistory    String?
+  pastMedicalHistory String?
+  familyHistory      String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  prescription       Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+}
+
+model PrescriptionSystemicExamination {
+  id             Int          @id @default(autoincrement())
+  prescriptionId Int          @unique
+  general        String?
+  cvs            String?
+  rs             String?
+  cns            String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+}
+
+model PrescriptionMedicine {
+  id             Int          @id @default(autoincrement())
+  prescriptionId Int
+  medicineName   String
+  frequency      String?
+  medicineTime   String?
+  duration       String?
+  quantity       Int?
+  instructions   String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  @@index([prescriptionId])
+}
+
+model PrescriptionText {
+  id               Int              @id @default(autoincrement())
+  prescriptionId   Int              @unique
+  appointmentId    Int
+  patientId        Int
+  extractedText    String
+  textLength       Int
+  processingStatus ProcessingStatus @default(PENDING)
+  processingError  String?
+  processedAt      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  appointment      Appointment      @relation(fields: [appointmentId], references: [id])
+  patient          User             @relation("PatientPrescriptionTexts", fields: [patientId], references: [id])
+  prescription     Prescription     @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([processingStatus])
+  @@index([processingStatus, createdAt])
+  @@index([patientId, processingStatus])
+}
+
+model PatientAISummary {
+  id                Int      @id @default(autoincrement())
+  patientId         Int      @unique
+  summaryText       String
+  keyFindings       String[] @default([])
+  recommendations   String[] @default([])
+  urgency           String   @default("ROUTINE")
+  lastUpdated       DateTime @default(now())
+  prescriptionCount Int      @default(0)
+  llmModel          String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  patient           User     @relation("PatientAISummaries", fields: [patientId], references: [id])
+
+  @@index([patientId])
+  @@index([lastUpdated])
+}
+
+model PrescriptionTemplate {
+  id                  Int                 @id @default(autoincrement())
+  doctorId            Int
+  templateName        String
+  templateDescription String?
+  templateScope       TemplateScope?      @default(FULL)
+  advice              String?
+  testsRequested      String?
+  isActive            Boolean             @default(true)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  deletedAt           DateTime?
+  doctor              User                @relation("DoctorTemplates", fields: [doctorId], references: [id])
+  complaints          TemplateComplaint[]
+  medicines           TemplateMedicine[]
+
+  @@index([deletedAt])
+  @@index([doctorId])
+}
+
+enum TemplateScope {
+  FULL
+  COMPLAINTS
+  MEDICINES
+}
+
+model TemplateComplaint {
+  id            Int                  @id @default(autoincrement())
+  templateId    Int
+  complaintText String
+  severity      ComplaintSeverity    @default(MODERATE)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  template      PrescriptionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+}
+
+model TemplateMedicine {
+  id           Int                  @id @default(autoincrement())
+  templateId   Int
+  medicineName String
+  frequency    String?
+  medicineTime String?
+  duration     String?
+  quantity     Int?
+  instructions String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  template     PrescriptionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+}
+
+model CommonValue {
+  id         Int       @id @default(autoincrement())
+  type       String
+  value      String
+  category   String?
+  usageCount Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  @@unique([type, value])
+  @@index([deletedAt])
+  @@index([type, category])
+}
+
+model Phlebotomist {
+  id              Int             @id @default(autoincrement())
+  userId          Int             @unique
+  employeeId      String          @unique
+  specialization  String?
+  isAvailable     Boolean         @default(true)
+  currentLocation String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  labAssignments  LabAssignment[]
+  user            User            @relation(fields: [userId], references: [id])
+
+  @@index([deletedAt])
+}
+
+model PathologyLab {
+  id             Int             @id @default(autoincrement())
+  name           String
+  address        String
+  contactNumber  String
+  email          String?
+  licenseNumber  String          @unique
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+  labAssignments LabAssignment[]
+
+  @@index([deletedAt])
+}
+
+model LabAssignment {
+  id                Int                 @id @default(autoincrement())
+  patientId         Int
+  phlebotomistId    Int
+  labId             Int
+  labBookingId      Int?
+  appointmentId     Int?
+  assignedDate      DateTime            @db.Date
+  assignedTime      String
+  status            LabAssignmentStatus @default(PENDING)
+  sampleCollected   Boolean             @default(false)
+  sampleCollectedAt DateTime?
+  notes             String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  deletedAt         DateTime?
+  appointment       Appointment?        @relation(fields: [appointmentId], references: [id])
+  labBooking        LabBooking?         @relation(fields: [labBookingId], references: [id])
+  lab               PathologyLab        @relation(fields: [labId], references: [id])
+  patient           User                @relation("PatientLabAssignment", fields: [patientId], references: [id])
+  phlebotomist      Phlebotomist        @relation(fields: [phlebotomistId], references: [id])
+  testResults       TestResult[]
+
+  @@index([deletedAt])
+  @@index([patientId])
+  @@index([phlebotomistId])
+  @@index([status])
+  @@index([labBookingId])
+}
+
+model LabTest {
+  id          Int          @id @default(autoincrement())
+  name        String
+  code        String       @unique
+  description String?
+  parameters  Json?
+  normalRange Json?
+  unit        String?
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+  testResults TestResult[]
+
+  @@index([deletedAt])
+}
+
+model TestResult {
+  id              Int           @id @default(autoincrement())
+  labAssignmentId Int
+  labTestId       Int
+  result          String?
+  unit            String?
+  normalRange     String?
+  isAbnormal      Boolean       @default(false)
+  remarks         String?
+  reportedAt      DateTime?
+  reportedBy      Int?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+  labAssignment   LabAssignment @relation(fields: [labAssignmentId], references: [id])
+  labTest         LabTest       @relation(fields: [labTestId], references: [id])
+  reportedByUser  User?         @relation("TestResultReporter", fields: [reportedBy], references: [id])
+
+  @@index([deletedAt])
+  @@index([labAssignmentId])
+  @@index([labTestId])
+}
+
+model AppointmentReport {
+  id            Int         @id @default(autoincrement())
+  appointmentId Int
+  fileName      String
+  fileUrl       String
+  fileSize      Int?
+  mimeType      String?
+  uploadedAt    DateTime    @default(now())
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+
+  @@index([appointmentId])
+  @@index([deletedAt])
+}
+
+model LabReportAnalysis {
+  id               Int               @id @default(autoincrement())
+  labBookingId     Int
+  labResultIndex   Int               @default(0)  // Index of the specific lab result being analyzed
+  reportUrl        String?
+  extractedText    String?
+  llmSummary       String?
+  criticalValues   Json?
+  trendAnalysis    Json?
+  llmModel         String?
+  processingStatus ProcessingStatus  @default(PENDING)
+  processingError  String?
+  processedAt      DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+  allValues        Json?
+  labBooking       LabBooking        @relation("LabBookingAnalyses", fields: [labBookingId], references: [id])
+  trendDataEntries ReportTrendData[] @relation("SourceReportTrend")
+
+  @@unique([labBookingId, labResultIndex])  // Allow multiple analyses per booking, but unique per result index
+  @@index([labBookingId])
+  @@index([processingStatus])
+  @@index([deletedAt])
+  @@index([labBookingId, processingStatus])
+  @@index([processedAt])
+  @@index([createdAt, processingStatus])
+}
+
+model ReportTrendData {
+  id             Int                @id @default(autoincrement())
+  patientId      Int
+  parameter      String
+  value          String
+  unit           String?
+  normalRange    String?
+  isAbnormal     Boolean            @default(false)
+  severity       TrendSeverity?
+  reportDate     DateTime
+  labBookingId   Int
+  sourceReportId Int?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  deletedAt      DateTime?
+  labBooking     LabBooking         @relation(fields: [labBookingId], references: [id])
+  patient        User               @relation("PatientTrendData", fields: [patientId], references: [id])
+  sourceReport   LabReportAnalysis? @relation("SourceReportTrend", fields: [sourceReportId], references: [id])
+
+  @@index([patientId])
+  @@index([parameter])
+  @@index([reportDate])
+  @@index([labBookingId])
+  @@index([deletedAt])
+}
+
+// LLM Playground and profile management
+model LlmPlaygroundProfile {
+  id                    Int       @id @default(autoincrement())
+  name                  String
+  description           String?
+  provider              String    @default("groq")
+  model                 String
+  temperature           Float?    @default(0.2)
+  topP                  Float?
+  maxTokens             Int?
+  seed                  Int?
+  stop                  String[]  @default([])
+  systemPrompt          String?
+  userPrompt            String?
+  valuesPrompt          String?
+  summaryPrompt         String?
+  toolsConfig           Json?
+  isActive              Boolean   @default(true)
+  isProductionCandidate Boolean   @default(false)
+  version               Int       @default(1)
+  parentProfileId       Int?
+  createdByUserId       Int?
+  updatedByUserId       Int?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  parentProfile   LlmPlaygroundProfile? @relation("ProfileVersions", fields: [parentProfileId], references: [id])
+  versionedChildren LlmPlaygroundProfile[] @relation("ProfileVersions")
+  createdBy       User? @relation("LlmPlaygroundProfileCreatedBy", fields: [createdByUserId], references: [id])
+  updatedBy       User? @relation("LlmPlaygroundProfileUpdatedBy", fields: [updatedByUserId], references: [id])
+  runs            LlmPlaygroundRun[]
+  productionConfig LlmProductionConfig[] @relation("ActivePlaygroundProfile")
+
+  @@index([isActive])
+  @@index([isProductionCandidate])
+}
+
+model LlmPlaygroundRun {
+  id               Int       @id @default(autoincrement())
+  profileId        Int
+  inputType        String    // 'pdf' | 'text' | 'json' | 'prescriptionDraft'
+  status           String    // 'queued' | 'running' | 'completed' | 'failed'
+  sourceFileUrl    String?
+  rawInput         String?
+  finalOutput      String?
+  stageLogs        Json?
+  tokenUsage       Json?
+  costEstimate     Json?
+  meta             Json?
+  startedAt        DateTime  @default(now())
+  finishedAt       DateTime?
+  createdByUserId  Int?
+
+  profile          LlmPlaygroundProfile @relation(fields: [profileId], references: [id])
+  createdBy        User?                @relation("LlmPlaygroundRunCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([profileId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model LlmProductionConfig {
+  id              Int      @id @default(1)
+  activeProfileId Int?
+  updatedAt       DateTime @updatedAt
+
+  activeProfile   LlmPlaygroundProfile? @relation("ActivePlaygroundProfile", fields: [activeProfileId], references: [id])
+}
+
+model LlmDataset {
+  id              Int       @id @default(autoincrement())
+  name            String
+  description     String?
+  createdByUserId Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  items           LlmDatasetItem[]
+
+  createdBy       User?     @relation("LlmDatasetCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([name])
+}
+
+model LlmDatasetItem {
+  id           Int      @id @default(autoincrement())
+  datasetId    Int
+  inputType    String   // 'pdf' | 'text' | 'json'
+  inputText    String?
+  inputFileUrl String?
+  expected     Json?
+  createdAt    DateTime @default(now())
+
+  dataset      LlmDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId])
+}
+
+// Diet Plan workflow
+enum DietPlanRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CREATED
+}
+
+model DietPlanRequest {
+  id           Int       @id @default(autoincrement())
+  patientId    Int
+  dieticianId  Int
+  complaint    String
+  status       DietPlanRequestStatus @default(PENDING)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  patient      User      @relation("DietPlanRequestPatient", fields: [patientId], references: [id])
+  dietician    User      @relation("DietPlanRequestDietician", fields: [dieticianId], references: [id])
+
+  @@index([patientId, deletedAt])
+  @@index([dieticianId, deletedAt])
+  @@index([deletedAt])
+  @@index([status])
+  @@index([status, createdAt])
+}
+
+model DietPlan {
+  id           Int       @id @default(autoincrement())
+  patientId    Int
+  dieticianId  Int
+  title        String?
+  notes        String?
+  startDate    DateTime?
+  endDate      DateTime?
+  meals        Json
+  customMealTimings Json? // Store custom meal timing names and order
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  patient      User      @relation("DietPlanPatient", fields: [patientId], references: [id])
+  dietician    User      @relation("DietPlanDietician", fields: [dieticianId], references: [id])
+
+  @@index([patientId, deletedAt])
+  @@index([dieticianId, deletedAt])
+  @@index([deletedAt])
+}
+
+// Custom meal timing templates for dieticians
+model DietMealTimingTemplate {
+  id           Int       @id @default(autoincrement())
+  dieticianId  Int
+  name         String    // Template name
+  mealTimings  Json      // Array of meal timing objects with name, order, icon, etc.
+  isDefault    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  dietician    User      @relation("DietMealTimingTemplateDietician", fields: [dieticianId], references: [id])
+
+  @@index([dieticianId, deletedAt])
+  @@index([deletedAt])
 }
 
 enum UserRole {
@@ -357,6 +989,8 @@ enum UserRole {
   DOCTOR
   DIETICIAN
   LAB_TECH
+  PATHOLOGY
+  PHLEBOTOMIST
   ADMIN
   SUPER_ADMIN
   NOT_SET
@@ -367,4 +1001,159 @@ enum UserStatus {
   INACTIVE
   SUSPENDED
   DELETED
+}
+
+enum ComplaintSeverity {
+  PERFECT
+  GOOD
+  MODERATE
+  RISK
+  CRITICAL
+}
+
+enum LabAssignmentStatus {
+  PENDING
+  ASSIGNED
+  PHLEBOTOMIST_LEFT
+  SAMPLE_COLLECTED
+  IN_LAB
+  ANALYZING
+  COMPLETED
+  CANCELLED
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum TrendSeverity {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+// Standalone reports uploaded by doctors/patients (not tied to lab bookings)
+model StandaloneReport {
+  id               Int               @id @default(autoincrement())
+  patientId        Int
+  uploadedByUserId Int               // Who uploaded the report (doctor or patient)
+  reportType       String            // 'lab_report', 'prescription', 'medical_document'
+  fileName         String
+  fileUrl          String
+  fileSize         Int               // in bytes
+  mimeType         String
+  status           ReportStatus      @default(PENDING)
+  processingError  String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+
+  patient          User              @relation("StandaloneReportPatient", fields: [patientId], references: [id])
+  uploadedBy       User              @relation("StandaloneReportUploader", fields: [uploadedByUserId], references: [id])
+  reportAnalyses   StandaloneReportAnalysis[]
+
+  @@index([patientId, deletedAt])
+  @@index([uploadedByUserId, deletedAt])
+  @@index([status, deletedAt])
+  @@index([deletedAt])
+}
+
+// Analysis results for standalone reports
+model StandaloneReportAnalysis {
+  id               Int               @id @default(autoincrement())
+  reportId         Int
+  analysisType     String            // 'lab_analysis', 'prescription_analysis', 'document_summary'
+  extractedText    String?
+  llmSummary       String?
+  allValues        Json?             // For lab reports
+  criticalValues   Json?             // For lab reports
+  keyFindings      Json?             // For medical documents
+  recommendations  Json?             // For medical documents
+  urgency          String?           // For medical documents
+  trendAnalysis    Json?
+  llmModel         String?
+  processingStatus ProcessingStatus  @default(PENDING)
+  processingError  String?
+  processedAt      DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+
+  report           StandaloneReport  @relation(fields: [reportId], references: [id])
+
+  @@index([reportId, deletedAt])
+  @@index([processingStatus, deletedAt])
+  @@index([deletedAt])
+}
+
+enum ReportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// Push Notifications System
+model PatientNotification {
+  id          Int               @id @default(autoincrement())
+  patientId   Int
+  type        NotificationType
+  title       String
+  message     String
+  data        Json?             // Additional payload data
+  isRead      Boolean           @default(false)
+  sentAt      DateTime          @default(now())
+  readAt      DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?
+  
+  patient     User              @relation(fields: [patientId], references: [id])
+  
+  @@index([patientId, isRead])
+  @@index([type, sentAt])
+  @@index([deletedAt])
+}
+
+model PatientDeviceToken {
+  id          Int       @id @default(autoincrement())
+  patientId   Int
+  deviceToken String
+  platform    String    // 'ios', 'android', 'web'
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  patient     User      @relation(fields: [patientId], references: [id])
+  
+  @@unique([patientId, deviceToken])
+  @@index([patientId, isActive])
+}
+
+enum NotificationType {
+  APPOINTMENT_REMINDER
+  APPOINTMENT_CONFIRMED
+  APPOINTMENT_CANCELLED
+  DIET_PLAN_READY
+  DIET_PLAN_REQUEST_STATUS
+  DIET_PLAN_FOLLOW_UP
+  LAB_RESULTS_READY
+  LAB_SAMPLE_COLLECTION
+  PRESCRIPTION_READY
+  MEDICINE_REMINDER
+  PLAN_EXPIRY_WARNING
+  PLAN_RENEWED
+  PLAN_SUBSCRIBED
+  HEALTH_ALERT
+  AI_SUMMARY_READY
+  CONSULTATION_REMINDER
+  LAB_BOOKING_CONFIRMED
+  FOLLOW_UP_APPOINTMENT
+  FOLLOW_UP_LAB_TEST
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
 }

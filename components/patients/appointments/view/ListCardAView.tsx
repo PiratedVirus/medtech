@@ -3,19 +3,19 @@ import { Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
 import Link from "next/link";
+import { normalizeStatus } from "@/lib/utils/status";
 
 interface Appointment {
   id: number;
-  appointmentDate: string;
   status: string;
   consultationType: string;
   doctor: { name: string; doctorProfile: { specialty: string } };
-  doctorAvailability: { startTime: string };
+  doctorAvailability: { date: string; startTime: string };
   prescriptionLink: string;
 }
 
 export default function AppointmentListCard({ appointment }: { appointment: Appointment }) {
-  const appointmentDate = new Date(appointment.appointmentDate);
+  const appointmentDate = new Date(appointment.doctorAvailability.date);
   const formattedDate = appointmentDate.toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "2-digit",
@@ -52,8 +52,8 @@ export default function AppointmentListCard({ appointment }: { appointment: Appo
           </p>
           <p className="text-gray-500 text-sm">
             Status:{" "}
-            <span className={` ${appointment.status === "Completed" ? "text-green-600" : "text-gray-700"}`}>
-              {appointment.status}
+            <span className={` ${normalizeStatus(appointment.status) === "COMPLETED" ? "text-green-600" : "text-gray-700"}`}>
+              {normalizeStatus(appointment.status)}
             </span>
           </p>
         </div>
@@ -61,7 +61,7 @@ export default function AppointmentListCard({ appointment }: { appointment: Appo
         {/* Prescription Button */}
         {appointment?.prescriptionLink ? (
           <div className="text-right">
-            <Link href={appointment?.prescriptionLink || "/#"}>
+            <Link href={appointment.prescriptionLink} target="_blank">
               <p className="text-secondary font-medium cursor-pointer hover:underline">
                 Prescription
               </p>

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Clock, Users, DollarSign, FileText, Activity, Award, Building } from "lucide-react";
 import { format } from "date-fns";
+import CdLoader from "@/components/ui/custom/cd-loader";
 
 interface DoctorDetails {
   id: number;
@@ -95,7 +96,7 @@ export default function DoctorDetailsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <CdLoader height="200px" />
       </div>
     );
   }

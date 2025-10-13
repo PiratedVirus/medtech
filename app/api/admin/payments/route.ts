@@ -1,29 +1,71 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAdminClinicId, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        message: "Please log out and log back in to access your clinic data" 
+      }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
 
+    // Create clinic filter for payments
+    const paymentFilter = {
+      OR: [
+        { appointment: { doctor: { clinicId: clinicId } } },
+        { subscription: { user: { user: { clinicId: clinicId } } } },
+        { labBooking: { patient: { clinicId: clinicId } } }
+      ]
+    };
+
     const [payments, totalCount, labAgg, appointmentAgg, subscriptionAgg, totalAgg] = await prisma.$transaction([
       prisma.payment.findMany({
+        where: paymentFilter,
         skip: (page - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: "desc" },
       }),
-      prisma.payment.count(),
-      prisma.payment.aggregate({ where: { labBookingId: { not: null } }, _sum: { amount: true } }),
-      prisma.payment.aggregate({ where: { appointmentId: { not: null } }, _sum: { amount: true } }),
-      prisma.payment.aggregate({ where: { subscriptionId: { not: null } }, _sum: { amount: true } }),
-      prisma.payment.aggregate({ _sum: { amount: true } }),
+      prisma.payment.count({ where: paymentFilter }),
+      prisma.payment.aggregate({ 
+        where: { 
+          ...paymentFilter,
+          labBookingId: { not: null } 
+        }, 
+        _sum: { amount: true } 
+      }),
+      prisma.payment.aggregate({ 
+        where: { 
+          ...paymentFilter,
+          appointmentId: { not: null } 
+        }, 
+        _sum: { amount: true } 
+      }),
+      prisma.payment.aggregate({ 
+        where: { 
+          ...paymentFilter,
+          subscriptionId: { not: null } 
+        }, 
+        _sum: { amount: true } 
+      }),
+      prisma.payment.aggregate({ 
+        where: paymentFilter,
+        _sum: { amount: true } 
+      }),
     ]);
     const earnings = {
-      lab: labAgg._sum.amount ?? 0,
-      appointment: appointmentAgg._sum.amount ?? 0,
-      subscription: subscriptionAgg._sum.amount ?? 0,
-      total: totalAgg._sum.amount ?? 0,
+      lab: labAgg._sum?.amount ?? 0,
+      appointment: appointmentAgg._sum?.amount ?? 0,
+      subscription: subscriptionAgg._sum?.amount ?? 0,
+      total: totalAgg._sum?.amount ?? 0,
     };
 
     return NextResponse.json({

@@ -3,10 +3,15 @@ import { useRouter } from 'next/navigation';
 import axios from 'axios';
 
 interface AdminUser {
-  id: string;
+  id: number;
   name: string;
-  email: string;
+  email: string | null;
   role: string;
+  clinicId: number | null;
+  clinic?: {
+    id: number;
+    name: string;
+  } | null;
 }
 
 export function useAdminAuth() {

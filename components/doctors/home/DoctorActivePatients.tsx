@@ -1,7 +1,8 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useDecryptedProfile } from '@/hooks/use-profile';
+import { DoctorUpcomingSkeleton } from '@/components/ui/custom/cd-appointment-skeleton';
+import { useDecryptedProfile } from '@/hooks/use-centralized-profile';
 import { Calendar, Clock, User } from 'lucide-react';
 
 interface Appointment {
@@ -101,11 +102,13 @@ export default function DoctorActivePatients() {
   // Group appointments by date
   const grouped: { [date: string]: Appointment[] } = {};
   appointments.forEach((appt) => {
-    const date = appt.doctorAvailability.date.split('T')[0];
-    if (!grouped[date]) grouped[date] = [];
-    grouped[date].push(appt);
+    const dateStr = appt.doctorAvailability?.date;
+    const jsDate = new Date(dateStr);
+    const key = jsDate.toISOString().split('T')[0];
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(appt);
   });
-  const sortedDates = Object.keys(grouped).sort();
+  const sortedDates = Object.keys(grouped).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
 
   // Flatten appointments with date info for column distribution
   const flatAppointments: { appointment: Appointment; date: string }[] = [];
@@ -163,6 +166,11 @@ export default function DoctorActivePatients() {
                 {formatTime(item.appointment.doctorAvailability.startTime)} - {formatTime(item.appointment.doctorAvailability.endTime)}
               </p>
             </div>
+            <div className="absolute bottom-3 right-3">
+              <a href={`/doctor/appointments/${(item as any).appointment.id}`} className="inline-flex items-center gap-1 rounded-full bg-primary text-white px-3 py-1 text-xs font-semibold shadow hover:bg-primary/90">
+                Start
+              </a>
+            </div>
           </div>
         </React.Fragment>
       );
@@ -191,15 +199,20 @@ export default function DoctorActivePatients() {
         </div>
       </div>
       {isLoading ? (
-        <div className="text-center text-white">
-          <p>Loading appointments...</p>
-        </div>
+        <DoctorUpcomingSkeleton />
       ) : limitedAppointments.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {columns.map((col, idx) => (
-            <div key={idx}>{renderColumn(col, idx)}</div>
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {columns.map((col, idx) => (
+              <div key={idx}>{renderColumn(col, idx)}</div>
+            ))}
+          </div>
+          <div className="flex justify-end mt-6">
+            <a href="/doctor/appointments" className="bg-primary text-white px-6 py-2 rounded-lg font-semibold shadow hover:bg-primary/90 transition">
+              View All Appointments
+            </a>
+          </div>
+        </>
       ) : (
         <div className="text-center text-white">
           <div className="mb-4">

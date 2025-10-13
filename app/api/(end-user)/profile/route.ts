@@ -66,19 +66,41 @@ export async function PUT(request: Request) {
         status,
         patientProfile: patientProfile
           ? {
-              update: {
-                weight: patientProfile.weight,
-                height: patientProfile.height,
-                gender: patientProfile.gender,
-                bloodGroup: patientProfile.bloodGroup,
-                allergies: patientProfile.allergies,
-                medicalHistory: patientProfile.medicalHistory,
-                emergencyContact: patientProfile.emergencyContact,
-                address: patientProfile.address,
-                dateOfBirth: patientProfile.dateOfBirth
-                  ? new Date(patientProfile.dateOfBirth)
-                  : undefined,
-              },
+              upsert: {
+                update: {
+                  weight: patientProfile.weight,
+                  height: patientProfile.height,
+                  gender: patientProfile.gender,
+                  bloodGroup: patientProfile.bloodGroup,
+                  allergies: patientProfile.allergies,
+                  personalHistory: patientProfile.personalHistory,
+                  pastMedicalHistory: patientProfile.pastMedicalHistory,
+                  familyHistory: patientProfile.familyHistory,
+                  medicalHistory: patientProfile.medicalHistory,
+                  emergencyContact: patientProfile.emergencyContact,
+                  address: patientProfile.address,
+                  dateOfBirth: patientProfile.dateOfBirth
+                    ? new Date(patientProfile.dateOfBirth)
+                    : undefined,
+                },
+                create: {
+                  age: patientProfile.age ?? 0,
+                  weight: patientProfile.weight,
+                  height: patientProfile.height,
+                  gender: patientProfile.gender || 'Other',
+                  bloodGroup: patientProfile.bloodGroup,
+                  allergies: patientProfile.allergies,
+                  personalHistory: patientProfile.personalHistory,
+                  pastMedicalHistory: patientProfile.pastMedicalHistory,
+                  familyHistory: patientProfile.familyHistory,
+                  medicalHistory: patientProfile.medicalHistory,
+                  emergencyContact: patientProfile.emergencyContact,
+                  address: patientProfile.address,
+                  dateOfBirth: patientProfile.dateOfBirth
+                    ? new Date(patientProfile.dateOfBirth)
+                    : undefined,
+                }
+              }
             }
           : undefined,
       },
@@ -87,6 +109,17 @@ export async function PUT(request: Request) {
         doctorProfile: true,
       },
     });
+
+    // Invalidate user profile cache after profile update
+    try {
+      const { invalidateAllUserCaches, getUserPhoneNumber } = await import('@/lib/cache-invalidation');
+      const phoneNumber = await getUserPhoneNumber(Number(userId));
+      await invalidateAllUserCaches(Number(userId), phoneNumber || undefined);
+      console.log(`[PROFILE] Cache invalidated for user ${userId} after profile update`);
+    } catch (cacheError) {
+      console.error('[PROFILE] Error invalidating cache:', cacheError);
+      // Don't fail the request if cache invalidation fails
+    }
 
     return NextResponse.json({
       data: updatedUser,

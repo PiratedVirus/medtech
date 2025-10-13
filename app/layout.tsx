@@ -5,11 +5,19 @@ import "./globals.css";
 import { Provider } from "react-redux";
 import store from "@/store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastContainer } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { initializeUserProfile, fetchUserProfile } from "@/store/userSlice";
 import CdLoader from '@/components/ui/custom/cd-loader';
+import ProgressProvider from '@/components/common/ProgressProvider';
+import NavigationProgress from '@/components/common/NavigationProgress';
+import MiddlewareProgressHandler from '@/components/common/MiddlewareProgressHandler';
+import SmartProgressBar from '@/components/common/SmartProgressBar';
+import { suppressExtensionErrors } from '@/lib/error-suppression';
 
 const lato = Lato({
   subsets: ['latin'],
@@ -19,30 +27,64 @@ const lato = Lato({
 
 // Client-side only component to wrap children once localStorage is available
 function ClientSideWrapper({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const pathname = usePathname();
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 10 * 60 * 1000,       // 10 minutes - keep data fresh longer
+        gcTime: 30 * 60 * 1000,          // 30 minutes - keep in cache much longer
+        refetchOnWindowFocus: false,     // Prevent unnecessary refetches on tab focus
+        refetchOnMount: false,           // Use cached data when component mounts
+        refetchOnReconnect: false,       // Don't refetch on network reconnect for better UX
+        refetchInterval: false,          // No automatic refetching
+        networkMode: 'offlineFirst',     // Prioritize cache over network
+        retry: (failureCount, error: any) => {
+          // Smart retry logic - don't retry auth errors
+          if (error?.response?.status === 401 || error?.response?.status === 403) {
+            return false;
+          }
+          return failureCount < 1; // Reduce retry attempts for faster response
+        },
+        retryDelay: 1000, // Fixed 1 second delay instead of exponential backoff
+      },
+      mutations: {
+        retry: 1, // Retry mutations only once
+        retryDelay: 1000,
+      },
+    },
+  }));
   const [persister, setPersister] = useState<any>(null);
   const [isReady, setIsReady] = useState(false);
 
+  // Check if we're on a superadmin route
+  const isSuperAdminRoute = pathname?.startsWith('/superadmin');
+
   useEffect(() => {
+    // Suppress browser extension errors
+    suppressExtensionErrors();
+    
     // Only run once the component is mounted on the client
     setPersister(createSyncStoragePersister({ 
       storage: window.localStorage 
     }));
     setIsReady(true);
     
-    // Initialize user profile from sessionStorage if available
-    const initializeProfile = async () => {
-      const storedProfile = await store.dispatch(initializeUserProfile());
-      if (!storedProfile) {
-        // Only fetch if not in storage
-        await store.dispatch(fetchUserProfile());
-      }
-    };
+    // Register service worker for push notifications
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', {
+        scope: '/',
+      }).then((registration) => {
+        console.log('Service Worker registered successfully:', registration);
+      }).catch((error) => {
+        console.log('Service Worker registration failed:', error);
+      });
+    }
     
-    initializeProfile();
+    // Profile initialization is now handled by React Query in useCentralizedProfile
   }, []);
 
-  if (!isReady) {
+  // For superadmin routes, don't show loading spinner
+  if (!isReady && !isSuperAdminRoute) {
     return <CdLoader />;
   }
 
@@ -51,7 +93,12 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
       client={queryClient} 
       persistOptions={{ persister }}
     >
-      {children}
+      <ProgressProvider>
+        <NavigationProgress />
+        <MiddlewareProgressHandler />
+        <SmartProgressBar />
+        {children}
+      </ProgressProvider>
     </PersistQueryClientProvider>
   );
 }
@@ -79,6 +126,7 @@ export default function RootLayout({
       </head>
       <body className={`${lato.variable} antialiased min-h-screen flex flex-col`}>
         <Provider store={store}>
+          <ToastContainer position="bottom-right" autoClose={5000} hideProgressBar={false} newestOnTop pauseOnFocusLoss={false} draggable pauseOnHover theme="colored" />
           <ClientSideWrapper>
             {children}
           </ClientSideWrapper>

@@ -1,11 +1,15 @@
 // Doctor Home Page
 'use client'
+import { useEffect, useState } from 'react';
+import axios from 'axios';
 import DoctorUpcomingAppointment from '@/components/doctors/home/DoctorUpcomingAppointment';
 import DoctorQuickActions from '@/components/doctors/home/DoctorQuickActions';
 import DoctorActivePatients from '@/components/doctors/home/DoctorActivePatients';
 import DoctorDashboardActionCard from "@/components/ui/custom/cd-doctor-dashboard-action-card";
-import { BicepsFlexed, FileText, LineChart, Users } from "lucide-react"
-import { useDecryptedProfile } from '@/hooks/use-profile';
+import { BicepsFlexed, FileText, LineChart, Users, Video, VideoIcon, Videotape, VideotapeIcon } from "lucide-react"
+import { useDecryptedProfile } from '@/hooks/use-centralized-profile';
+import Link from 'next/link';
+import DieticianRequestsWidget from '../../../../components/doctors/home/DieticianRequestsWidget';
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -17,6 +21,28 @@ function getGreeting() {
 export default function DoctorDashboardPage() {
   const { profile } = useDecryptedProfile();
   const doctorName = profile?.name || 'Doctor';
+  const [meetingLink, setMeetingLink] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function ensureMeetingLink() {
+      if (!profile?.id) return;
+      // Prefer value from session profile if present
+      const inline = (profile as any)?.doctorProfile?.meetingRoomLink || (profile as any)?.doctorProfile?.meetRoomLink;
+      if (inline) {
+        setMeetingLink(inline);
+        return;
+      }
+      // Fallback: fetch full profile which includes doctorProfile.meetingRoomLink
+      try {
+        const res = await axios.get(`/api/(end-user)/profile?userId=${profile.id}`);
+        const link = res.data?.data?.doctorProfile?.meetingRoomLink || null;
+        setMeetingLink(link);
+      } catch (_) {
+        setMeetingLink(null);
+      }
+    }
+    ensureMeetingLink();
+  }, [profile?.id]);
 
   return (
     <div className="min-h-screen bg-[#F8FAF9] px-8 py-8">
@@ -34,7 +60,7 @@ export default function DoctorDashboardPage() {
             {/* wrap each card in a flex-item that can grow */}
             <div className="flex-1">
               <DoctorDashboardActionCard
-                href="/dashboard/insights"
+                href="/doctor/patients"
                 headerLabel="Patient Analytics"
                 cardTitle="View Patients Info"
                 cardDescription="Personalized analysis of your patients health"
@@ -45,14 +71,26 @@ export default function DoctorDashboardPage() {
 
             <div className="flex-1">
               <DoctorDashboardActionCard
-                href="/dashboard/dieticians"
-                headerLabel="Prescriptions Details"
-                cardTitle="View Prescriptions"
-                cardDescription="Create new prescriptions and Edit prescriptions"
-                PrimaryIcon={FileText}
-                OutlineIcon={FileText}
+                href={meetingLink || "/doctor/meet"}
+                headerLabel="Video Consultation"
+                cardTitle="Join meet room"
+                cardDescription="Single meet link for all video consultations"
+                PrimaryIcon={Video}
+                OutlineIcon={VideotapeIcon}
               />
             </div>
+            {((profile as any)?.doctorProfile?.isDietician || profile?.role === 'DIETICIAN') && (
+              <div className="flex-1">
+                <DoctorDashboardActionCard
+                  href="/doctor/diet-plans"
+                  headerLabel="Diet Plans"
+                  cardTitle="Manage Diet Plans"
+                  cardDescription="Create and manage patient diet plans"
+                  PrimaryIcon={LineChart}
+                  OutlineIcon={LineChart}
+                />
+              </div>
+            )}
           </div>
         </div>
         <div className="col-span-12 sm:col-span-6 md:col-span-3">
@@ -61,6 +99,11 @@ export default function DoctorDashboardPage() {
         <div className="col-span-12 sm:col-span-6 md:col-span-3">
           <DoctorQuickActions type="slots" />
         </div>
+        {((profile as any)?.doctorProfile?.isDietician || profile?.role === 'DIETICIAN') && (
+          <div className="col-span-12">
+            <DieticianRequestsWidget />
+          </div>
+        )}
       </div>
       {/* Active Patients */}
       <DoctorActivePatients />

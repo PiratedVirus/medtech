@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import CdLoader from "@/components/ui/custom/cd-loader";
+import { normalizeStatus } from "@/lib/utils/status";
 import TotalEarningsCard from "@/components/admin/TotalEarningsCard";
 import { PlanUsageMinimal } from "@/components/patients/plans/PlanUsage";
 import { HealthInsightsPanel } from "@/components/admin/HealthInsightsPanel";
@@ -69,6 +70,7 @@ interface LabBooking {
   date: string;
   status: string;
   reportLink?: string[] | null;
+  labResult?: string[] | null;
   payment?: Payment | null;
 }
 
@@ -145,10 +147,70 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
 
   const fetchPatientDetails = async () => {
     try {
-      const response = await axios.get(`/api/admin/dashboard/patients-details?patientId=${patientId}`);
-      setPatientDetails(response.data);
+      const response = await axios.get(`/api/admin/optimized/dashboard/patients-details?patientId=${patientId}`);
+      
+      // Transform the API response to match component expectations
+      const apiData = response.data;
+      const transformedData = {
+        id: apiData.id,
+        name: apiData.name,
+        email: apiData.email,
+        phoneNumber: apiData.phoneNumber,
+        joinedOn: apiData.createdAt, // API uses createdAt, component expects joinedOn
+        subscriptions: (apiData.subscriptions || []).map((sub: any) => ({
+          id: sub.subscriptionId,
+          planName: sub.plan?.name || 'Unknown',
+          startDate: sub.startDate,
+          endDate: sub.endDate,
+          isActive: sub.isActive,
+          payment: sub.payments
+        })),
+        profile: {
+          age: apiData.patientProfile?.age || 0,
+          weight: apiData.patientProfile?.weight || 0,
+          height: apiData.patientProfile?.height || 0,
+          gender: apiData.patientProfile?.gender || 'Unknown',
+          allergies: apiData.patientProfile?.allergies,
+          medicalHistory: apiData.patientProfile?.medicalHistory,
+          emergencyContact: apiData.patientProfile?.emergencyContact || '',
+          dateOfBirth: apiData.patientProfile?.dateOfBirth,
+          address: apiData.patientProfile?.address,
+          profilePicture: apiData.patientProfile?.profilePicture,
+          planTrackers: apiData.patientProfile?.planTrackers || []
+        },
+        labBookings: (apiData.labPatientBookings || []).map((booking: any) => ({
+          id: booking.id,
+          labPackageName: booking.labPackage?.name || 'Unknown',
+          date: booking.labDate,
+          status: booking.status,
+          reportLink: booking.labResult,
+          labResult: booking.labResult,
+          payment: booking.payment
+        })),
+        doctorAppointments: (apiData.doctorAppointments || []).map((appt: any) => ({
+          id: appt.id,
+          doctorName: appt.doctor?.name || 'Unknown',
+          date: appt.doctorAvailability?.date || new Date().toISOString(),
+          type: appt.consultationType,
+          status: appt.status,
+          prescriptionLink: appt.prescriptionLink,
+          payment: appt.payment
+        })),
+        dieticianAppointments: (apiData.dieticianAppointments || []).map((appt: any) => ({
+          id: appt.id,
+          date: appt.doctorAvailability?.date || new Date().toISOString(),
+          status: appt.status,
+          dietPlanLink: appt.prescriptionLink, // Assuming prescriptionLink is used for diet plans too
+          prescriptionLink: appt.prescriptionLink,
+          doctorName: appt.doctor?.name || 'Unknown',
+          payment: appt.payment
+        }))
+      };
+      
+      setPatientDetails(transformedData);
     } catch (error) {
       console.error("Failed to fetch patient details:", error);
+      setPatientDetails(null); // Set to null on error to prevent undefined access
     }
   };
 
@@ -180,8 +242,8 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
       });
 
       const endpoint = type === 'labReport'
-        ? `/api/admin/dashboard/patients-details`
-        : `/api/admin/dashboard/appointments`;
+        ? `/api/admin/optimized/dashboard/patients-details`
+        : `/api/admin/optimized/appointments`;
 
       const payload = type === 'labReport'
         ? { labBookingId: id, links: [url], status: "COMPLETED" }
@@ -226,7 +288,7 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
         uploadedLinks.push(url);
       }
 
-      await axios.put(`/api/admin/dashboard/patients-details`, {
+      await axios.put(`/api/admin/optimized/dashboard/patients-details`, {
         labBookingId: id,
         links: uploadedLinks,
         status: "COMPLETED"
@@ -307,19 +369,19 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
               Member since <b>{new Date(patientDetails?.joinedOn || '').toLocaleDateString()}</b>
             </p>
           </div>
-          {(patientDetails?.subscriptions ?? []).length > 0 && (
+          {patientDetails?.subscriptions && patientDetails.subscriptions.length > 0 && (
             <div className="text-lg px-3 py-1 mr-14">
-              Subscribed to <span className="text-secondary"><strong>{patientDetails?.subscriptions[0].planName}</strong></span> till{" "}
-              {patientDetails?.subscriptions?.[0]?.endDate ? new Date(patientDetails.subscriptions[0].endDate).toLocaleDateString() : 'N/A'}
+              Subscribed to <span className="text-secondary"><strong>{patientDetails.subscriptions[0]?.planName || 'Unknown'}</strong></span> till{" "}
+              {patientDetails.subscriptions[0]?.endDate ? new Date(patientDetails.subscriptions[0].endDate).toLocaleDateString() : 'N/A'}
             </div>
           )}
         </div>
         <div className="flex flex-wrap gap-2 mt-4">
-          {patientDetails && [
-            { icon: <Calendar className="h-4 w-4 flex-shrink-0" />, label: "Age", value: `${patientDetails.profile.age} yrs` },
-            { icon: <Scale className="h-4 w-4 flex-shrink-0" />, label: "Weight", value: `${patientDetails.profile.weight} kg` },
-            { icon: <Ruler className="h-4 w-4 flex-shrink-0" />, label: "Height", value: `${patientDetails.profile.height} cm` },
-            { icon: <Activity className="h-4 w-4 flex-shrink-0" />, label: "Gender", value: patientDetails.profile.gender },
+          {patientDetails && patientDetails.profile && [
+            { icon: <Calendar className="h-4 w-4 flex-shrink-0" />, label: "Age", value: `${patientDetails.profile.age || 0} yrs` },
+            { icon: <Scale className="h-4 w-4 flex-shrink-0" />, label: "Weight", value: `${patientDetails.profile.weight || 0} kg` },
+            { icon: <Ruler className="h-4 w-4 flex-shrink-0" />, label: "Height", value: `${patientDetails.profile.height || 0} cm` },
+            { icon: <Activity className="h-4 w-4 flex-shrink-0" />, label: "Gender", value: patientDetails.profile.gender || 'Unknown' },
             { icon: <Home className="h-4 w-4 flex-shrink-0" />, label: "Address", value: patientDetails.profile.address || "N/A" },
             {
               icon: <Calendar className="h-4 w-4 flex-shrink-0" />,
@@ -329,7 +391,7 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
             { icon: <Phone className="h-4 w-4 flex-shrink-0" />, label: "Mobile", value: patientDetails.phoneNumber || "N/A" },
             { icon: <Droplet className="h-4 w-4 flex-shrink-0" />, label: "Allergies", value: patientDetails.profile.allergies || 'None' },
             { icon: <Heart className="h-4 w-4 flex-shrink-0" />, label: "Medical History", value: patientDetails.profile.medicalHistory || 'N/A' },
-            { icon: <Phone className="h-4 w-4 flex-shrink-0" />, label: "Emergency Contact", value: patientDetails.profile.emergencyContact },
+            { icon: <Phone className="h-4 w-4 flex-shrink-0" />, label: "Emergency Contact", value: patientDetails.profile.emergencyContact || 'N/A' },
           ].map((item, idx) => (
             <div key={idx} className="flex items-center gap-1.5 rounded-full bg-custom-mutedgreen px-3 py-2 text-sm">
               {item.icon}
@@ -379,7 +441,7 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
     <Card className="rounded-lg p-4 bg-custom-mutedgreen">
       <h3 className="font-semibold text-xl mb-4">Lab Reports</h3>
       <div className="flex flex-wrap gap-4">
-        {patientDetails?.labBookings.map(labBooking => (
+        {(patientDetails?.labBookings || []).map(labBooking => (
           <Card
             key={labBooking.id}
             className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center"
@@ -387,8 +449,8 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
             <div className="absolute -right-4 -top-4 h-24 w-24 opacity-5">
               <FileText className="h-full w-full" />
             </div>
-            <h4 className="font-medium mb-2"><b>{labBooking.labPackageName}</b></h4>
-            <p className="text-sm mb-4">Booked on {new Date(labBooking.date).toLocaleDateString()}</p>
+            <h4 className="font-medium mb-2"><b>{labBooking.labPackageName || 'Unknown Package'}</b></h4>
+            <p className="text-sm mb-4">Booked on {labBooking.date ? new Date(labBooking.date).toLocaleDateString() : 'Unknown Date'}</p>
             <div className="mt-auto flex items-center justify-between">
               {Array.isArray(labBooking.reportLink) && labBooking.reportLink.length > 0 ? (
                 <Dialog>
@@ -437,15 +499,15 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
     <Card className="rounded-lg p-4 bg-custom-mutedgreen">
       <h3 className="font-semibold text-xl mb-4">Appointment Prescriptions</h3>
       <div className="flex flex-wrap gap-4">
-        {patientDetails?.doctorAppointments.map(appointment => (
+        {(patientDetails?.doctorAppointments || []).map(appointment => (
           <Card key={appointment.id}
             className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center">
             <Badge variant="outline" className="mb-2 text-secondary">
               # {appointment.id}
             </Badge>
-            <h4 className="font-medium mb-2">{appointment.doctorName}</h4>
+            <h4 className="font-medium mb-2">{appointment.doctorName || 'Unknown Doctor'}</h4>
             <p className="text-sm mb-2">
-              Date: {new Date(appointment.date).toLocaleDateString('en-GB')}
+              Date: {appointment.date ? new Date(appointment.date).toLocaleDateString('en-GB') : 'Unknown Date'}
             </p>
             <div className="mt-auto flex flex-col items-center gap-2">
               {appointment.prescriptionLink ? (
@@ -484,7 +546,7 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
     <Card className="rounded-lg p-4 bg-slate-50">
       <h3 className="font-semibold text-xl mb-4">Diet Plans</h3>
       <div className="flex flex-wrap gap-4">
-        {patientDetails?.dieticianAppointments.map(appointment => (
+        {(patientDetails?.dieticianAppointments || []).map(appointment => (
           <Card key={appointment.id}
             className="group relative overflow-hidden border border-gray-100 bg-custom-mutedgreen shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center">
             <Badge variant="outline" className="mb-2 text-primary bg-neutral-50">
@@ -530,7 +592,7 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
   // Manual payment collection handler
   const handleCollectPayment = async (paymentId: number) => {
     try {
-      await axios.put("/api/admin/dashboard/patients-details", { paymentId });
+      await axios.put("/api/admin/optimized/dashboard/patients-details", { paymentId });
       await fetchPatientDetails();
       toast.success("Payment marked as PAID.");
     } catch (err) {
@@ -556,14 +618,14 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
           </thead>
           <tbody>
             {/* Appointment Payments */}
-            {patientDetails?.doctorAppointments.map(appointment => (
+            {(patientDetails?.doctorAppointments || []).map(appointment => (
               appointment.payment ? (
                 <tr key={`appointment-${appointment.id}`} className="border-b">
                   <td className="px-4 py-2">Appointment</td>
                   <td className="px-4 py-2">{appointment.doctorName}</td>
                   <td className="px-4 py-2">{appointment.payment.currency} {(appointment.payment.amount / 100)}</td>
                   <td className="px-4 py-2 flex items-center gap-2">
-                    {appointment.payment.paymentStatus === "Pending" ? (
+                    {normalizeStatus(appointment.payment.paymentStatus) === "PENDING" ? (
                       <>
                         <Badge variant="destructive">Pending</Badge>
                         <Dialog>
@@ -592,14 +654,14 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
             ))}
 
             {/* Lab Bookings Payments */}
-            {patientDetails?.labBookings.map(labBooking => (
+            {(patientDetails?.labBookings || []).map(labBooking => (
               labBooking.payment ? (
                 <tr key={`lab-${labBooking.id}`} className="border-b">
                   <td className="px-4 py-2">Lab Booking</td>
                   <td className="px-4 py-2">{labBooking.labPackageName}</td>
                   <td className="px-4 py-2">{labBooking.payment?.currency ?? 'INR'} {(labBooking.payment?.amount ?? 0) / 100}</td>
                   <td className="px-4 py-2 flex items-center gap-2">
-                    {labBooking.payment.paymentStatus === "Pending" ? (
+                    {normalizeStatus(labBooking.payment.paymentStatus) === "PENDING" ? (
                       <>
                         <Badge variant="destructive">Pending</Badge>
                         <Dialog>
@@ -628,13 +690,13 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
             ))}
 
             {/* Subscription Payments */}
-            {patientDetails?.subscriptions.map(plan => (
+            {(patientDetails?.subscriptions || []).map(plan => (
               <tr key={`plan-${plan.id}`} className="border-b">
                 <td className="px-4 py-2">Subscription</td>
                 <td className="px-4 py-2">{plan.planName}</td>
                 <td className="px-4 py-2">{plan.payment?.currency ?? 'INR'} {(plan.payment?.amount ?? 0) / 100}</td>
                 <td className="px-4 py-2 flex items-center gap-2">
-                  {plan.payment?.paymentStatus === "Pending" ? (
+                  {normalizeStatus(plan.payment?.paymentStatus) === "PENDING" ? (
                     <>
                       <Badge variant="destructive">Pending</Badge>
                       <Dialog>
@@ -693,13 +755,13 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
           <TotalEarningsCard
             patientDetails={{
               doctorAppointments: patientDetails.doctorAppointments
-                .filter(a => a.payment?.paymentStatus.toLowerCase() === "paid")
+                .filter(a => a.payment?.paymentStatus?.toUpperCase() === "PAID")
                 .map(a => ({ payment: { amount: a.payment!.amount } })),
               plans: patientDetails.subscriptions
-                .filter(p => p.payment?.paymentStatus.toLowerCase() === "paid")
+                .filter(p => p.payment?.paymentStatus?.toUpperCase() === "PAID")
                 .map(p => ({ amount: p.payment!.amount })),
               labBookings: patientDetails.labBookings
-                .filter(lb => lb.payment?.paymentStatus.toLowerCase() === "paid")
+                .filter(lb => lb.payment?.paymentStatus?.toUpperCase() === "PAID")
                 .map(lb => ({ payment: { amount: lb.payment!.amount } })),
             }}
           />

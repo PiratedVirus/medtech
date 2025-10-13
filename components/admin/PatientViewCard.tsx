@@ -13,7 +13,7 @@ export function PatientViewCard() {
   useEffect(() => {
     const fetchNewPatients = async () => {
       try {
-        const response = await axios.get("/api/admin/dashboard/recent-patients");
+        const response = await axios.get("/api/admin/optimized/dashboard/recent-patients");
         console.log("New Patients Data:", response.data);
         setNewPatients(response.data);
       } catch (error) {
@@ -45,7 +45,7 @@ export function PatientViewCard() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {newPatients.map((patient) => (
+      {newPatients.slice(0, 3).map((patient) => (
         <Card
           key={patient.id}
           onClick={() => handleCardClick(patient.id)}

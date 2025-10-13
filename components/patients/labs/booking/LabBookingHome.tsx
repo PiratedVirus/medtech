@@ -3,10 +3,11 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import axios from "axios";
+import { PaymentMethod } from "@/lib/constants/enums";
 import { LabBookingForm } from "@/patients/labs/booking/LabBookingForm";
 import PaymentSelection from "@/appointment-book/PaymentABooking";
 import PackageInfo from "@/patients/labs/booking/PackageInfo";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import SuccessModal from "@/components/ui/custom/cd-success-modal";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
@@ -17,10 +18,12 @@ import { setSubscriptionData } from "@/store/subscriptionSlice";
 import { useDispatch } from "react-redux";
 import { EyeIcon } from "lucide-react";
 import ViewParametersDialog from "@/components/common/ViewParametersDialog";
+import { useSmartMutations } from "@/hooks/use-query-mutations";
 
 export default function LabBookingHome({ packageInfo, onBack }: any) {
   const router = useRouter();
-  const [paymentOption, setPaymentOption] = useState("online");
+  const [paymentOption, setPaymentOption] = useState(PaymentMethod.ONLINE);
+  const { useLabBooking } = useSmartMutations();
   const { profile } = useDecryptedProfile();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState(""); // Status messages
@@ -33,9 +36,33 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
   const [filteredlabTestsDatesDates, setFilteredlabTestsDatesDates] = useState<string[] | null>(null);
   const [isLabPlanBookable, setIsLabPlanBookable] = useState(false);
 
-  const parametersArray = labBbookingData.parameters
-    ? labBbookingData.parameters.split(",").map((p: string) => p.trim())
-    : [];
+  // Normalize parameters coming from DB: can be string (comma-separated), array, or JSON
+  let parametersArray: string[] = [];
+  try {
+    const raw = labBbookingData?.parameters;
+    if (Array.isArray(raw)) {
+      parametersArray = raw.map((p: any) => String(p).trim()).filter(Boolean);
+    } else if (typeof raw === "string") {
+      // If looks like JSON array, parse; else split by comma
+      const trimmed = raw.trim();
+      if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith("\"") && trimmed.endsWith("\""))) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          parametersArray = Array.isArray(parsed) ? parsed.map((p: any) => String(p).trim()).filter(Boolean) : [String(parsed).trim()];
+        } catch {
+          parametersArray = trimmed.split(",").map((p: string) => p.trim()).filter(Boolean);
+        }
+      } else {
+        parametersArray = trimmed.split(",").map((p: string) => p.trim()).filter(Boolean);
+      }
+    } else if (raw && typeof raw === "object") {
+      // Object/JSON from DB
+      const vals = Object.values(raw as Record<string, any>);
+      parametersArray = vals.map((v) => String(v).trim()).filter(Boolean);
+    }
+  } catch {
+    parametersArray = [];
+  }
 
   const fetchSubscriptionTracker = async (userId: string) => {
     try {
@@ -152,6 +179,8 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
     }
   };
 
+  const labBookingMutation = useLabBooking();
+
   const handleConfirmBooking = async (data: any, razorpayResponse?: any, labPackageFees?: number) => {
     if (!data) {
       alert("Please fill out the form.");
@@ -172,26 +201,25 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
       subscriptionId: subscriptionTracker?.subscriptionId || null, 
       labTestsDates: filteredlabTestsDatesDates,
       labPackageFees
-
     };
 
-    if (paymentOption === "online" && (!razorpayResponse || !razorpayResponse.success)) {
+    if (paymentOption === PaymentMethod.ONLINE && (!razorpayResponse || !razorpayResponse.success)) {
       alert("Payment not completed. Please try again.");
       setLoading(false);
       return;
     }
 
     try {
-      const response = await axios.post("/api/labs", bookingData);
-      if (response.data.success) {
+      const result = await labBookingMutation.mutateAsync(bookingData);
+      if (result.success) {
         setStatusMessage("Booking confirmed!");
         setShowSuccessModal(true);
+        // Cache invalidation now handled automatically by useLabBooking
         setTimeout(() => {
           setShowSuccessModal(false);
           setStatusMessage(""); // Reset status
           router.replace("/dashboard/labs");
         }, 3000);
-
       } else {
         alert("Failed to book lab package.");
       }
@@ -222,7 +250,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
             <div className="bg-white flex-grow flex justify-center p-6">
               <PaymentSelection
                 selectedOption={paymentOption}
-                onOptionChange={setPaymentOption}
+                onOptionChange={(option: string) => setPaymentOption(option as PaymentMethod)}
                 firstValidDate={firstValidDate}
                 consultationType={paymentOption || ""}
                 consultationFee={labBbookingData?.price}
@@ -240,7 +268,7 @@ export default function LabBookingHome({ packageInfo, onBack }: any) {
                   if (formRef.current) {
                     // @ts-expect-error
                     formRef.current.submitForm(async (data) => {
-                      if (paymentOption === "online") {
+                      if (paymentOption === PaymentMethod.ONLINE) {
                         await handlePayment(data);
                       } else {
                         await handleConfirmBooking(data, undefined, labBbookingData.price);

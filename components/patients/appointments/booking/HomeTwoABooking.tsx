@@ -3,10 +3,11 @@ import { useState, useRef, use, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import axios from "axios";
+import { ConsultationType, PaymentMethod } from "@/lib/constants/enums";
 import { PatientForm } from "@/appointment-book/PatientFormABooking";
 import PaymentSelection from "@/appointment-book/PaymentABooking";
 import DoctorInfoTwo from "@/appointment-book/DoctorInfoTwoABooking";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import SuccessModal from "@/components/ui/custom/cd-success-modal";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
@@ -15,12 +16,14 @@ import { useRouter } from "next/navigation";
 import { set } from "date-fns";
 import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSmartMutations } from "@/hooks/use-query-mutations";
 
 export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { useAppointmentBooking } = useSmartMutations();
 
-  const [paymentMethod, setPaymentMethod] = useState("online");
+  const [paymentMethod, setPaymentMethod] = useState(PaymentMethod.ONLINE);
   const { profile } = useDecryptedProfile();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState(""); // Status messages
@@ -126,6 +129,8 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
     }
   };
 
+  const appointmentMutation = useAppointmentBooking();
+
   const handleConfirmAppointment = async (data: any, razorpayResponse?: any, doctorConsultationFee?: number) => {
     if (!data) {
       alert("Please fill out the form.");
@@ -150,25 +155,23 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
       doctorConsultationDates: filteredDoctorConsultationDates, // update them
     };
     console.log("Appointment Data", appointmentData);
-    if (paymentMethod === "online" && (!razorpayResponse || !razorpayResponse.success)) {
+    if (paymentMethod === PaymentMethod.ONLINE && (!razorpayResponse || !razorpayResponse.success)) {
       alert("Payment not completed. Please try again.");
       setLoading(false);
       return;
     }
 
     try {
-      const response = await axios.post("/api/appointments", appointmentData);
-      if (response.data.success) {
+      const result = await appointmentMutation.mutateAsync(appointmentData);
+      if (result.success) {
         setStatusMessage("Appointment confirmed!");
         setShowSuccessModal(true);
-        queryClient.invalidateQueries({ queryKey: ["appointments"] });
+        // Cache invalidation now handled automatically by useAppointmentBooking
         setTimeout(() => {
           setShowSuccessModal(false);
           setStatusMessage(""); // Reset status
           router.replace("/dashboard/appointments");
-
         }, 3000);
-
       } else {
         alert("Failed to book appointment.");
       }
@@ -198,7 +201,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
             <div className="bg-white flex-grow flex items-center justify-center p-6">
               <PaymentSelection
                 selectedOption={paymentMethod}
-                onOptionChange={setPaymentMethod}
+                onOptionChange={(option: string) => setPaymentMethod(option as PaymentMethod)}
                 consultationType={consultationMode || ""}
                 firstValidDate={firstValidDate}
                 consultationFee={doctor?.doctorProfile.consultationFee}
@@ -215,7 +218,7 @@ export default function HomeTwoAppointmentBooking({ slot, doctor, onBack }: any)
                   if (formRef.current) {
                     // @ts-expect-error
                     formRef.current.submitForm(async (data) => {
-                      if (paymentMethod === "online") {
+                      if (paymentMethod === PaymentMethod.ONLINE) {
                         await handlePayment(data, doctor?.doctorProfile.consultationFee);
                       } else {
                         await handleConfirmAppointment(data, undefined, doctor?.doctorProfile.consultationFee);

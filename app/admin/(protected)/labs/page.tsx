@@ -61,6 +61,16 @@ interface Lab {
   isLabPackage?: boolean;
 }
 
+interface FormData {
+  name: string;
+  description?: string;
+  shortDescription?: string;
+  price: number;
+  parameters?: string;
+  criticalRequirements?: string;
+  isLabPackage?: boolean;
+}
+
 interface FetchLabsResponse {
   data: Lab[];
   total: number;
@@ -216,7 +226,7 @@ export default function LabsPage() {
       id: "parameters",
       header: "Parameters",
       cell: ({ row }) => {
-        const params: string[] = row.original.parameters
+        const params: string[] = row.original.parameters && typeof row.original.parameters === 'string'
         ? row.original.parameters.split(",").map((p: string) => p.trim())
         : [];
         return (
@@ -288,8 +298,13 @@ export default function LabsPage() {
   });
 
   const fetchData = async () => {
-    const { data, total } = await fetchLabs(pagination.pageIndex, pagination.pageSize);
-    setData({ labs: data, total });
+    try {
+      const { data, total } = await fetchLabs(pagination.pageIndex, pagination.pageSize);
+      setData({ labs: data || [], total: total || 0 });
+    } catch (error) {
+      console.error("Error fetching labs:", error);
+      setData({ labs: [], total: 0 });
+    }
   };
 
   useEffect(() => {
@@ -308,16 +323,6 @@ export default function LabsPage() {
       reset();
     }
   }, [selectedLab, setValue, reset]);
-
-  interface FormData {
-    name: string;
-    description?: string;
-    shortDescription?: string;
-    price: number;
-    parameters?: string;
-    criticalRequirements?: string;
-    isLabPackage?: boolean;
-  }
 
   const onSubmit = async (formData: FormData) => {
     try {
@@ -368,6 +373,22 @@ export default function LabsPage() {
     }
   };
 
+  // Safety check to ensure table is initialized and data is available
+  if (!table || !data.labs) {
+    return <div className="container mx-auto p-4">Loading...</div>;
+  }
+
+  // Debug logging to help identify the issue
+  if (process.env.NODE_ENV === 'development') {
+    console.log('LabsPage Debug:', {
+      table: !!table,
+      labsCount: data.labs?.length || 0,
+      total: data.total,
+      columns: table?.getAllColumns()?.map(col => col.id) || [],
+      firstLab: data.labs?.[0] || null
+    });
+  }
+
   return (
     <div className="container mx-auto p-4 space-y-4">
       <ToastContainer />
@@ -375,9 +396,9 @@ export default function LabsPage() {
         <div className="flex items-center gap-4">
           <Input
             placeholder="Search labs..."
-            value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+            value={(table?.getColumn("name")?.getFilterValue() as string) ?? ""}
             onChange={(event) =>
-              table.getColumn("name")?.setFilterValue(event.target.value)
+              table?.getColumn("name")?.setFilterValue(event.target.value)
             }
             className="max-w-sm"
           />
@@ -533,7 +554,7 @@ export default function LabsPage() {
         onOpenChange={setViewParametersOpen}
         // @ts-ignore
         parameters={
-          selectedLab?.parameters
+          selectedLab?.parameters && typeof selectedLab.parameters === 'string'
             ? selectedLab.parameters.split(",").map((p) => p.trim())
             : []
         }

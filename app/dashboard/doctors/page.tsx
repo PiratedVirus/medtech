@@ -3,23 +3,24 @@
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { setBookingData } from "@/store/appointmentSlice";
-import { useDecryptedProfile } from "@/hooks/use-profile";
+import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import axios from "axios";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { CircleCheckBig, CalendarIcon } from "lucide-react";
 import DoctorCard from "@/components/patients/doctors/DoctorCard";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
+import { useDoctors } from "@/hooks/use-smart-queries";
 
 export default function DoctorsPage() {
   const activeTab: 'doctors' | 'dieticians' = 'doctors';
 
   const router = useRouter();
   const dispatch = useDispatch();
-  const { clinicId, isLoading: profileLoading } = useDecryptedProfile();
+  const { clinicId, isLoading: profileLoading, profile } = useDecryptedProfile();
+
 
   const handleBookAppointment = (doctor: any, type: "video" | "clinic") => {
-    console.log("Booking appointment with doctor and type as ", type);
     dispatch(setBookingData({ doctor, type }));
     router.push(`/dashboard/appointments/${doctor.id}`);
   };
@@ -35,12 +36,9 @@ export default function DoctorsPage() {
       );
       return response.data.success ? response.data.doctors : [];
     },
-    staleTime: 1 * 1 * 1, // Keeps cache valid for 10 minutes
-    gcTime: 1 * 1 * 1, // Keeps cache for 1 hour
-    refetchOnWindowFocus: false, // Prevents re-fetching on tab switch
-    refetchOnMount: false, // Prevents re-fetching when navigating back
-    refetchOnReconnect: true, // Fetches only if internet reconnects
-    enabled: !!clinicId, // Runs only when clinicId exists
+    enabled: !!clinicId && !!profile?.id, // Only run when clinicId and profile.id exist
+    staleTime: 15 * 60 * 1000,  // 15 minutes - doctor list rarely changes
+    refetchOnMount: false,      // Use cached data when available
   });
 
   if (profileLoading || isLoading) {
@@ -54,7 +52,7 @@ export default function DoctorsPage() {
   return (
     <div className="bg-muted min-h-screen px-4 sm:px-8 md:px-12 lg:px-20 pb-10">
       {/* Mobile tab navigation */}
-      <div className="flex justify-center space-x-4 block md:hidden py-3">
+      <div className="flex justify-center space-x-4 md:hidden py-3">
         <button
           onClick={() => router.push('/dashboard/doctors')}
           className={`px-4 py-2 font-medium ${activeTab === 'doctors'

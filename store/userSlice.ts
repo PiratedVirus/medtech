@@ -126,6 +126,11 @@ const userSlice = createSlice({
         if (action.payload) {
           state.profile = action.payload;
         }
+      })
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.profile = null;
+        state.loading = false;
+        state.error = null;
       });
   },
 });
