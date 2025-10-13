@@ -18,11 +18,11 @@ import {
 
 interface Doctor {
   id: string;
-  name: string;
-  doctorProfile: {
-    doctorCode: string;
-    specialty: string;
+  user: {
+    name: string;
   };
+  specialty: string;
+  doctorCode: string;
 }
 
 export default function DoctorReferralLinks() {
@@ -37,7 +37,7 @@ export default function DoctorReferralLinks() {
 
   const fetchDoctors = async () => {
     try {
-      const response = await axios.get("/api/admin/doctors");
+      const response = await axios.get("/api/admin/optimized/doctors");
       if (response.data.success) {
         setDoctors(response.data.doctors);
       }
@@ -76,9 +76,9 @@ export default function DoctorReferralLinks() {
   };
 
   const filteredDoctors = doctors.filter(doctor => 
-    doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doctor.doctorProfile.doctorCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doctor.doctorProfile.specialty.toLowerCase().includes(searchTerm.toLowerCase())
+    doctor.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    doctor.doctorCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    doctor.specialty.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -113,21 +113,21 @@ export default function DoctorReferralLinks() {
           <TableBody>
             {filteredDoctors.map((doctor) => (
               <TableRow key={doctor.id}>
-                <TableCell>{doctor.name}</TableCell>
-                <TableCell>{doctor.doctorProfile.specialty}</TableCell>
-                <TableCell>{doctor.doctorProfile.doctorCode}</TableCell>
+                <TableCell>{doctor.user.name}</TableCell>
+                <TableCell>{doctor.specialty}</TableCell>
+                <TableCell>{doctor.doctorCode}</TableCell>
                 <TableCell>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={async () => {
-                      const link = await generateReferralLink(doctor.doctorProfile.doctorCode);
+                      const link = await generateReferralLink(doctor.doctorCode);
                       if (link) {
-                        copyToClipboard(link, doctor.doctorProfile.doctorCode);
+                        copyToClipboard(link, doctor.doctorCode);
                       }
                     }}
                   >
-                    {copiedCode === doctor.doctorProfile.doctorCode ? (
+                    {copiedCode === doctor.doctorCode ? (
                       <Check className="h-4 w-4 text-green-500 mr-2" />
                     ) : (
                       <Copy className="h-4 w-4 mr-2" />

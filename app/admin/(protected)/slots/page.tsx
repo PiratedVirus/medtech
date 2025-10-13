@@ -112,8 +112,8 @@ export default function SlotsPage() {
 
   const fetchDoctors = async () => {
     try {
-      const res = await axios.get("/api/admin/doctors", { params: { pageSize: 1000, showActiveOnly: true } });
-      return res.data?.data ?? [];
+      const res = await axios.get("/api/admin/optimized/doctors", { params: { pageSize: 1000, showActiveOnly: true } });
+      return res.data?.doctors ?? [];
     } catch (e) {
       console.error("Failed to fetch doctors", e);
       return [] as DoctorProfileLite[];
@@ -133,6 +133,8 @@ export default function SlotsPage() {
         }
       })();
 
+      console.log("Fetching slots with params:", { page: pageIndex + 1, pageSize, doctorId: doctorIdParam });
+
       const res = await axios.get("/api/admin/slots", {
         params: {
           page: pageIndex + 1,
@@ -140,6 +142,8 @@ export default function SlotsPage() {
           doctorId: doctorIdParam,
         },
       });
+      
+      console.log("Slots API response:", res.data);
       setDataState({ slots: res.data?.data ?? [], total: res.data?.total ?? 0 });
       return res.data;
     } catch (e) {
@@ -156,10 +160,13 @@ export default function SlotsPage() {
         try { data.doctorId = JSON.parse(data.doctorId)?.doctorId || Number(data.doctorId); } catch { /* noop */ }
       }
       data.doctorId = Number(data.doctorId);
-      await axios.post("/api/admin/slots", data);
+      
+      console.log("Creating slot with data:", data);
+      const response = await axios.post("/api/admin/slots", data);
+      console.log("Slot creation response:", response.data);
       toast.success("Slot created successfully");
     } catch (e) {
-      console.error(e);
+      console.error("Error creating slot:", e);
       toast.error("Failed to create slot");
     }
   };
@@ -231,12 +238,13 @@ export default function SlotsPage() {
       } else {
         await createSlot(form);
       }
-      await load();
+      // Refresh the data after successful operation
+      await fetchSlots(pagination.pageIndex, pagination.pageSize);
       setDialogOpen(false);
       reset({ status: DoctorAvailabilityStatus.AVAILABLE } as any);
       setSelectedSlot(null);
     } catch (e) {
-      console.error(e);
+      console.error("Error submitting slot form:", e);
     }
   };
 

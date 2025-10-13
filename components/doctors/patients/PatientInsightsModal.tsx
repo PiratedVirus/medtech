@@ -81,6 +81,9 @@ export default function PatientInsightsModal({ isOpen, onClose, patientId }: Pat
       return res.json()
     },
     enabled: isOpen && !!patientId,
+    staleTime: 0, // Always consider data stale
+    refetchOnMount: true, // Always refetch on mount
+    refetchOnWindowFocus: true, // Refetch when window gains focus
   })
 
   // Build metrics map like dashboard page

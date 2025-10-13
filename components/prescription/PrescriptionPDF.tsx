@@ -1,5 +1,5 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, pdf } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, pdf, Image, Font } from '@react-pdf/renderer';
 import jsPDF from 'jspdf';
 
 const formatDate = (date: Date) => {
@@ -18,8 +18,22 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.hospital}>{clinicInfo?.name || "Care Diabetics Hospital"}</Text>
-          <Text style={styles.subheading}>{clinicInfo?.subtitle || "AIIMS (NEW DELHI) ALUMNI INITIATIVE"}</Text>
+          <View style={styles.clinicInfoRow}>
+            {clinicInfo?.logo && (
+              <Image 
+                src={clinicInfo.logo} 
+                style={styles.clinicLogo}
+              />
+            )}
+            <View style={styles.clinicTextContainer}>
+              {clinicInfo?.name && (
+                <Text style={styles.hospital}>{clinicInfo.name}</Text>
+              )}
+              {clinicInfo?.subtitle && (
+                <Text style={styles.subheading}>{clinicInfo.subtitle}</Text>
+              )}
+            </View>
+          </View>
         </View>
         <View style={styles.headerRight}>
           <Text style={styles.dateTime}>Date & Time: {formatDate(new Date())}</Text>
@@ -30,47 +44,41 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
 
       {/* Patient Info */}
       <View style={styles.patientSection}>
-        <Text style={styles.sectionTitle}>Patient Information</Text>
         <Text style={styles.patientInfo}>
-          <Text style={styles.bold}>Patient Name:</Text> Mr. {patientInfo.name} (28 yrs, Male) - +91 {patientInfo.phone || '9949693659'}
+          <Text style={styles.bold}>Patient Name:</Text> Mr. {patientInfo.name} ({patientInfo.age || 0} yrs, {patientInfo.gender || 'Not specified'}) - {patientInfo.phone || 'Not provided'}
         </Text>
         <Text style={styles.patientInfo}>
-          <Text style={styles.bold}>BP:</Text> {prescriptionData.vitals?.bloodPressure || '120/80'} mmHg {"   "}
-          <Text style={styles.bold}>Pulse:</Text> {prescriptionData.vitals?.pulse || '72'} bpm {"   "}
-          <Text style={styles.bold}>Height:</Text> {prescriptionData.vitals?.height || '185'} cm {"   "}
-          <Text style={styles.bold}>Weight:</Text> {prescriptionData.vitals?.weight || '90'} kgs
+          <Text style={styles.bold}>BP:</Text> {prescriptionData.vitals?.bloodPressure || '-'} mmHg {"   "}
+          <Text style={styles.bold}>Pulse:</Text> {prescriptionData.vitals?.pulse || '-'} bpm {"   "}
+          <Text style={styles.bold}>Height:</Text> {prescriptionData.vitals?.height || '-'} cm {"   "}
+          <Text style={styles.bold}>Weight:</Text> {prescriptionData.vitals?.weight || '-'} kgs
         </Text>
-        <Text style={styles.patientInfo}>
-          <Text style={styles.bold}>Random Blood Sugar:</Text> 150 mg/dL
-        </Text>
+
         {/* Complaints with Timeline */}
         {visibleSections?.complaints !== false && prescriptionData.complaints?.length > 0 && (
           <View style={styles.complaintsSection}>
             <Text style={[styles.patientInfo, styles.bold]}>Chief Complaints:</Text>
             {prescriptionData.complaints.map((complaint: any, index: number) => {
               const getTimeAgo = (daysSince?: number) => {
-                if (!daysSince || daysSince === 0) return "recent";
-                if (daysSince === 1) return "1 day";
-                if (daysSince < 7) return `${daysSince} days`;
+                if (!daysSince || daysSince === 0) return "today";
+                if (daysSince === 1) return "1 day ago";
+                if (daysSince < 7) return `${daysSince} days ago`;
                 if (daysSince < 30) {
-                  const weeks = Math.floor(daysSince / 7);
-                  return `${weeks} week${weeks > 1 ? 's' : ''}`;
+                  const weeks = Math.round(daysSince / 7);
+                  return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
                 }
-                const months = Math.floor(daysSince / 30);
-                return `${months} month${months > 1 ? 's' : ''}`;
+                const months = Math.round(daysSince / 30);
+                return `${months} month${months > 1 ? 's' : ''} ago`;
               };
               
               return (
                 <Text key={index} style={styles.complaintItem}>
-                  • {complaint.text} (since {getTimeAgo(complaint.daysSince)})
+                  • {complaint.text} {complaint.daysSince !== null && complaint.daysSince !== undefined ? `(${getTimeAgo(complaint.daysSince)})` : ''}
                 </Text>
               );
             })}
           </View>
         )}
-        <Text style={styles.patientInfo}>
-          <Text style={styles.bold}>Diagnosis:</Text> {prescriptionData.diagnosis || 'Chronic Pulpitis'}
-        </Text>
       </View>
 
       {/* Prescription Symbol - Medical Style */}
@@ -142,14 +150,20 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
       </View>
 
       {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          {clinicInfo?.address || "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704"}
-        </Text>
-        <Text style={styles.footerText}>
-          {clinicInfo?.timings || "Mon - Sat (9:00 AM to 5:00 PM)"}
-        </Text>
-      </View>
+      {(clinicInfo?.address || clinicInfo?.timings) && (
+        <View style={styles.footer}>
+          {clinicInfo?.address && (
+            <Text style={styles.footerText}>
+              Address: {clinicInfo.address}
+            </Text>
+          )}
+          {clinicInfo?.timings && (
+            <Text style={styles.footerText}>
+              Timings: {clinicInfo.timings}
+            </Text>
+          )}
+        </View>
+      )}
 
       {/* Page Number */}
       <Text
@@ -177,13 +191,25 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
   },
+  clinicInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  clinicLogo: {
+    width: 60,
+    height: 60,
+    marginRight: 12,
+  },
+  clinicTextContainer: {
+    flex: 1,
+  },
   headerRight: {
     alignItems: "flex-end",
   },
   hospital: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#0C7C59",
+    color: "#000000",
     marginBottom: 4,
   },
   subheading: {
@@ -353,13 +379,30 @@ export const generatePDFWithJsPDF = async (
     doc.setFont("helvetica");
     
     // Header
-    doc.setFontSize(16);
-    doc.setTextColor(12, 124, 89); // Green color
-    doc.text(clinicInfo?.name || "Care Diabetics Hospital", 20, 20);
+    // Add clinic logo if available
+    if (clinicInfo?.logo) {
+      try {
+        // Note: jsPDF doesn't support direct image URLs, you'd need to convert to base64
+        // For now, we'll skip the logo in jsPDF version
+        console.log('Clinic logo available:', clinicInfo.logo);
+      } catch (error) {
+        console.log('Could not add clinic logo to jsPDF:', error);
+      }
+    }
     
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    doc.text(clinicInfo?.subtitle || "AIIMS (NEW DELHI) ALUMNI INITIATIVE", 20, 30);
+    // Clinic info in single row
+    let clinicY = 20;
+    if (clinicInfo?.name) {
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0); // Default black color
+      doc.text(clinicInfo.name, 20, clinicY);
+    }
+    
+    if (clinicInfo?.subtitle) {
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      doc.text(clinicInfo.subtitle, 20, clinicY + 8);
+    }
     
     // Date
     const currentDate = new Date().toLocaleDateString("en-GB", {
@@ -381,7 +424,7 @@ export const generatePDFWithJsPDF = async (
     
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(`Name: Mr. ${patientInfo.name} (28 yrs, Male) - +91 ${patientInfo.phone || '9949693659'}`, 20, 60);
+    doc.text(`Name: Mr. ${patientInfo.name} (${patientInfo.age || 0} yrs, ${patientInfo.gender || 'Not specified'}) - +91 ${patientInfo.phone || 'Not provided'}`, 20, 60);
     doc.text(`BP: ${prescriptionData.vitals?.bloodPressure || '120/80'} mmHg | Pulse: ${prescriptionData.vitals?.pulse || '72'} bpm`, 20, 70);
     doc.text(`Height: ${prescriptionData.vitals?.height || '185'} cm | Weight: ${prescriptionData.vitals?.weight || '90'} kgs`, 20, 80);
     doc.text(`Random Blood Sugar: 150 mg/dL`, 20, 90);
@@ -393,15 +436,15 @@ export const generatePDFWithJsPDF = async (
       
       prescriptionData.complaints.forEach((complaint: any, index: number) => {
         const getTimeAgo = (daysSince?: number) => {
-          if (!daysSince || daysSince === 0) return "recent";
-          if (daysSince === 1) return "1 day";
-          if (daysSince < 7) return `${daysSince} days`;
+          if (!daysSince || daysSince === 0) return "today";
+          if (daysSince === 1) return "1 day ago";
+          if (daysSince < 7) return `${daysSince} days ago`;
           if (daysSince < 30) {
-            const weeks = Math.floor(daysSince / 7);
-            return `${weeks} week${weeks > 1 ? 's' : ''}`;
+            const weeks = Math.round(daysSince / 7);
+            return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
           }
-          const months = Math.floor(daysSince / 30);
-          return `${months} month${months > 1 ? 's' : ''}`;
+          const months = Math.round(daysSince / 30);
+          return `${months} month${months > 1 ? 's' : ''} ago`;
         };
         
         doc.text(`• ${complaint.text} (since ${getTimeAgo(complaint.daysSince)})`, 20, 110 + (index * 5));
@@ -410,7 +453,6 @@ export const generatePDFWithJsPDF = async (
       doc.text("Complaints: None", 20, 100);
     }
     const diagnosisY = prescriptionData.complaints?.length > 0 ? 110 + (prescriptionData.complaints.length * 5) + 5 : 110;
-    doc.text(`Diagnosis: ${prescriptionData.diagnosis || 'Chronic Pulpitis'}`, 20, diagnosisY);
     
     // Prescription symbol - Medical Style
     const rxY = diagnosisY + 15;
@@ -494,10 +536,17 @@ export const generatePDFWithJsPDF = async (
     
     // Footer
     const footerY = 270;
+    let currentY = footerY;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text(clinicInfo?.address || "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704", 20, footerY);
-    doc.text(clinicInfo?.timings || "Mon - Sat (9:00 AM to 5:00 PM)", 20, footerY + 5);
+    
+    if (clinicInfo?.address) {
+      doc.text(`Address: ${clinicInfo.address}`, 20, currentY);
+      currentY += 5;
+    }
+    if (clinicInfo?.timings) {
+      doc.text(`Timings: ${clinicInfo.timings}`, 20, currentY);
+    }
     
     // Get PDF as base64
     const pdfBase64 = doc.output('datauristring').split(',')[1];

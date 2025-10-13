@@ -33,7 +33,7 @@ export function SuperAdminHeader() {
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Super Admin Panel</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">CareDiabetics Super Admin Panel</h1>
           <p className="text-sm text-gray-600">Manage your SaaS platform</p>
         </div>
 

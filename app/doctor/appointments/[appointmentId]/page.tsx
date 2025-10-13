@@ -309,36 +309,24 @@ export default function PrescriptionPage() {
             console.warn('Patient profile fetch failed for history prefill');
           }
 
-          // Fetch clinic information from the database
+          // Fetch clinic information from the database using doctor's clinic ID
           try {
-            const clinicRes = await fetch(`/api/admin/clinics/clinics-list`);
+            const clinicRes = await fetch(`/api/doctor/clinic-info`);
             if (clinicRes.ok) {
               const clinicData = await clinicRes.json();
-              if (clinicData.success && clinicData.clinics.length > 0) {
-                // Find the clinic associated with the doctor or use the first clinic
-                const doctorClinic = clinicData.clinics.find((clinic: any) => 
-                  clinic.id === appointment.doctorClinicId
-                ) || clinicData.clinics[0];
-                
+              if (clinicData.success && clinicData.clinic) {
                 setClinicInfo({
-                  name: doctorClinic.name || "Care Diabetics Hospital",
-                  logo: doctorClinic.logo || "",
-                  address: doctorClinic.address || "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
-                  timings: doctorClinic.timings || "Mon - Sat ( 9:00 AM to 5:00 PM )",
-                  subtitle: doctorClinic.subtitle || "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
+                  name: clinicData.clinic.name,
+                  logo: clinicData.clinic.logo,
+                  address: clinicData.clinic.address,
+                  timings: clinicData.clinic.timings,
+                  subtitle: clinicData.clinic.subtitle,
                 });
               }
             }
           } catch (error) {
             console.error("Error fetching clinic info:", error);
-            // Use default clinic info
-            setClinicInfo({
-              name: "Care Diabetics Hospital",
-              logo: "",
-              address: "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
-              timings: "Mon - Sat ( 9:00 AM to 5:00 PM )",
-              subtitle: "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
-            });
+            // Don't set default clinic info - let it remain empty
           }
         }
       } catch (error) {

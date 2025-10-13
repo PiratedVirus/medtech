@@ -23,6 +23,9 @@ export async function POST(request: Request) {
         role: "ADMIN",
         status: "ACTIVE",
       },
+      include: {
+        clinic: true
+      }
     });
 
     if (!admin) {
@@ -46,7 +49,8 @@ export async function POST(request: Request) {
       { 
         userId: admin.id,
         email: admin.email,
-        role: admin.role 
+        role: admin.role,
+        clinicId: admin.clinicId
       },
       process.env.JWT_SECRET!,
       { expiresIn: "24h" }
@@ -69,6 +73,8 @@ export async function POST(request: Request) {
         name: admin.name,
         email: admin.email,
         role: admin.role,
+        clinicId: admin.clinicId,
+        clinic: admin.clinic
       },
     });
   } catch (error) {

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { google } from "googleapis";
 import { normalizeStatus } from "@/lib/utils/status";
+import { getAdminClinicId, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
+import { invalidateAppointmentsCache } from "@/lib/data-cache";
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
@@ -58,14 +61,29 @@ async function createGoogleMeetLink(slot: any, doctorId: number, patientId: numb
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        message: "Please log out and log back in to access your clinic data" 
+      }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
 
+    // Create clinic filter
+    const userClinicFilter = createUserClinicFilter(clinicId);
+
     const [appointments, total] = await prisma.$transaction([
       prisma.appointment.findMany({
+        where: {
+          doctor: userClinicFilter.user
+        },
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: {
@@ -74,7 +92,11 @@ export async function GET(request: Request) {
         },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.appointment.count(),
+      prisma.appointment.count({
+        where: {
+          doctor: userClinicFilter.user
+        }
+      }),
     ]);
     
     // Extract unique doctor IDs for video consultations
@@ -187,6 +209,14 @@ export async function POST(request: Request) {
     where: { id: data.doctorAvailabilityId },
     data: { status: "BOOKED" }
   });
+
+  // Invalidate appointments cache for the patient
+  try {
+    await invalidateAppointmentsCache(data.patientId);
+    console.log(`[ADMIN-APPOINTMENT] Appointments cache invalidated for patient ${data.patientId} after appointment creation`);
+  } catch (cacheError) {
+    console.error('[ADMIN-APPOINTMENT] Error invalidating appointments cache:', cacheError);
+  }
 
     return NextResponse.json({ data: appointment, message: "Appointment created successfully" });
   } catch (error) {

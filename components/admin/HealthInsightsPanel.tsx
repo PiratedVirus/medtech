@@ -87,6 +87,9 @@ export function HealthInsightsPanel({ patientId }: HealthInsightsPanelProps) {
       // data.metrics is expected to be an array of { metricName, data: [...] }
       return data as { metrics: Array<{ metricName: string; data: { month: string; average: number }[] }> };
     },
+    staleTime: 0, // Always consider data stale
+    refetchOnMount: true, // Always refetch on mount
+    refetchOnWindowFocus: true, // Refetch when window gains focus
   });
 
   if (isLoading) {

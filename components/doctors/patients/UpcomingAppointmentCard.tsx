@@ -18,16 +18,22 @@ interface UpcomingAppointmentCardProps {
 
 export default function UpcomingAppointmentCard({ appointments, patientName, className }: UpcomingAppointmentCardProps) {
   const upcomingAppointments = appointments?.filter(apt => {
+    if (!apt.date) return false;
     const isScheduledLike = ["SCHEDULED", "PENDING", "CONFIRMED", "Scheduled", "Pending", "Confirmed"].includes(apt.status);
     const isFuture = new Date(apt.date).getTime() >= new Date().setHours(0,0,0,0);
     return isScheduledLike && isFuture;
   }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) || [];
   const pastAppointments = (appointments || [])
     .filter(a => {
+      if (!a.date) return false;
       const isPast = new Date(a.date).getTime() < Date.now();
       return isPast || a.status === 'COMPLETED';
     })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  // Debug logging
+  console.log('UpcomingAppointmentCard - appointments:', appointments);
+  console.log('UpcomingAppointmentCard - pastAppointments:', pastAppointments);
 
   return (
     <div className={`col-span-2 relative h-full ${className ?? ''}`}>
@@ -70,14 +76,14 @@ export default function UpcomingAppointmentCard({ appointments, patientName, cla
                         <div className="flex items-center gap-4 text-xs text-emerald-50">
                           <div className="flex items-center gap-1">
                             <CalendarDays className="h-3 w-3" />
-                            <span>{new Date(appointment.date).toLocaleDateString('en-GB')}</span>
+                            <span>{appointment.date ? new Date(appointment.date).toLocaleDateString('en-GB') : 'No date'}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock3 className="h-3 w-3" />
-                            <span>{new Date(appointment.date).toLocaleTimeString('en-GB', { 
+                            <span>{appointment.date ? new Date(appointment.date).toLocaleTimeString('en-GB', { 
                               hour: '2-digit', 
                               minute: '2-digit' 
-                            })}</span>
+                            }) : 'No time'}</span>
                           </div>
                         </div>
                       </div>
@@ -121,7 +127,7 @@ export default function UpcomingAppointmentCard({ appointments, patientName, cla
 
                       {/* Date line */}
                       <div className="mt-1 text-xs text-emerald-800/80">
-                        {apt ? `${new Date(apt.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} | ${new Date(apt.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : '—'}
+                        {apt && apt.date ? `${new Date(apt.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} | ${new Date(apt.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : '—'}
                       </div>
                     </div>
 

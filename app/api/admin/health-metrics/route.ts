@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { getAdminClinicId, createClinicFilter } from "@/lib/admin-clinic-middleware";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get("patientId");
     const page = parseInt(searchParams.get("page") || "1");
@@ -14,6 +22,25 @@ export async function GET(request: Request) {
       return NextResponse.json(
         { error: "Patient ID is required" },
         { status: 400 }
+      );
+    }
+
+    // Create clinic filter
+    const clinicFilter = createClinicFilter(clinicId);
+
+    // First verify the patient belongs to the admin's clinic
+    const patient = await prisma.user.findFirst({
+      where: {
+        id: parseInt(patientId),
+        ...clinicFilter,
+        deletedAt: null
+      }
+    });
+
+    if (!patient) {
+      return NextResponse.json(
+        { error: "Patient not found or access denied" },
+        { status: 404 }
       );
     }
 

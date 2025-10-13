@@ -1,17 +1,39 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAdminClinicId, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
 
 // Optimized payments API with single aggregated query for earnings
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        message: "Please log out and log back in to access your clinic data" 
+      }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
     const status = searchParams.get("status");
     const search = searchParams.get("search") || "";
 
-    // Build where clause
+    // Create clinic filter for payments
+    const userClinicFilter = createUserClinicFilter(clinicId);
+    const paymentFilter = {
+      OR: [
+        { appointment: { doctor: userClinicFilter.user } },
+        { subscription: { user: userClinicFilter.user } },
+        { labBooking: { patient: userClinicFilter.user } }
+      ]
+    };
+
+    // Build where clause with clinic filtering
     const whereClause = {
+      ...paymentFilter,
       deletedAt: null,
       ...(status && { paymentStatus: status }),
       ...(search && {

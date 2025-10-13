@@ -166,8 +166,8 @@ export default function PatientSummarySection({
   const flaggedLatestComplaints = latestComplaintsArray.filter(c => flaggedComplaintsRegex.test(c));
   const latestComplaintsToShow = showAllLatestComplaints ? latestComplaintsArray : flaggedLatestComplaints;
 
-  // Previous appointments with prescriptions for dropdown
-  const previousWithPrescription = previousCompletedAppointments.filter(apt => !!apt.prescriptionLink);
+  // Previous appointments for dropdown (all completed appointments)
+  const previousAppointments = previousCompletedAppointments;
 
   return (
     <div className="col-span-full">
@@ -417,7 +417,7 @@ export default function PatientSummarySection({
                       <Button variant="outline" size="sm" className="h-5 min-h-0 px-2 py-0 leading-none text-xs flex items-center gap-1 rounded-full">
                         <span>
                           {selectedAppointmentId
-                            ? `Selected: ${new Date((previousWithPrescription.find(a => a.id.toString() === selectedAppointmentId)?.date || '')).toLocaleDateString()}`
+                            ? `Selected: ${new Date((previousAppointments.find(a => a.id.toString() === selectedAppointmentId)?.date || '')).toLocaleDateString()}`
                             : 'All Previous'}
                         </span>
                         <ChevronDown className="h-3 w-3" />
@@ -425,7 +425,7 @@ export default function PatientSummarySection({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="bg-white" align="end">
                       <DropdownMenuItem onClick={() => setSelectedAppointmentId("")}>All Previous</DropdownMenuItem>
-                      {previousWithPrescription.map(apt => (
+                      {previousAppointments.map(apt => (
                         <DropdownMenuItem key={apt.id} onClick={() => setSelectedAppointmentId(apt.id.toString())}>
                           {new Date(apt.date).toLocaleDateString()}
                         </DropdownMenuItem>
@@ -433,7 +433,7 @@ export default function PatientSummarySection({
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Badge variant="outline" className="bg-secondary/10 text-secondary border-secondary/20 rounded-full px-2 py-0.5 text-xs">
-                    {selectedAppointmentId ? '1' : previousWithPrescription.length} appointment{selectedAppointmentId ? '' : 's'}
+                    {selectedAppointmentId ? '1' : previousAppointments.length} appointment{selectedAppointmentId ? '' : 's'}
                   </Badge>
                 </div>
                 
@@ -452,7 +452,6 @@ export default function PatientSummarySection({
                             ?.split(',')
                             .map(c => c.trim())
                             .filter(Boolean)
-                            .filter(c => /high|low|severe|critical|urgent|blood pressure|bp|sugar|glucose|pain|fever/i.test(c))
                             .map((complaint, index) => (
                               <span key={`complaint-${index}`} className="inline-flex items-center gap-1.5 rounded-full bg-secondary/10 px-2.5 py-1 text-xs text-secondary">
                                 {complaint}

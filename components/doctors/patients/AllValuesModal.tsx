@@ -13,8 +13,10 @@ interface ValueEntry {
   normalRange?: string;
   isAbnormal?: boolean;
   severity?: string;
-  reportDate: string;
-  reportId: number;
+  reportDate?: string;
+  labDate?: Date;
+  reportId?: number;
+  labBookingId?: number;
   source?: string;
 }
 
@@ -66,7 +68,7 @@ export default function AllValuesModal({ patientId, onClose, onChanged }: AllVal
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative z-10 w-[900px] max-w-[95vw] rounded-xl bg-white shadow-xl">
         <div className="flex items-center justify-between px-5 py-3 border-b">
-          <h3 className="text-lg font-semibold">All Lab Values</h3>
+          <h3 className="text-lg font-semibold">All Values (Lab Reports & Standalone Reports)</h3>
           <button className="text-gray-500 hover:text-gray-700" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="p-4 max-h-[70vh] overflow-y-auto">
@@ -93,16 +95,20 @@ export default function AllValuesModal({ patientId, onClose, onChanged }: AllVal
                     </td>
                     <td className="py-2 pr-2">
                       <div className="flex flex-wrap gap-1.5">
-                        {row.values.map((v, idx) => (
-                          <span key={idx} className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-[13px] text-gray-700">
-                            <span className="font-semibold">{v.value}</span>
-                            {v.unit && <span className="text-gray-500">{v.unit}</span>}
-                            <span className="text-gray-400">· {new Date(v.reportDate).toLocaleDateString()}</span>
-                            {v.severity && v.severity !== 'NORMAL' && (
-                              <span className="ml-1 rounded bg-orange-100 px-1.5 py-0.5 text-[11px] text-orange-700">{v.severity}</span>
-                            )}
-                          </span>
-                        ))}
+                        {row.values.map((v, idx) => {
+                          const date = v.labDate || new Date(v.reportDate || 0);
+                          const sourceColor = v.source === 'standalone_report' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700';
+                          return (
+                            <span key={idx} className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[13px] ${sourceColor}`}>
+                              <span className="font-semibold">{v.value}</span>
+                              {v.unit && <span className="text-gray-500">{v.unit}</span>}
+                              <span className="text-gray-400">· {date.toLocaleDateString()}</span>
+                              {v.severity && v.severity !== 'NORMAL' && (
+                                <span className="ml-1 rounded bg-orange-100 px-1.5 py-0.5 text-[11px] text-orange-700">{v.severity}</span>
+                              )}
+                            </span>
+                          );
+                        })}
                       </div>
                     </td>
                     <td className="py-2 pr-2">

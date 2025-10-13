@@ -46,6 +46,8 @@ interface Payment {
 interface EarningsData {
   paid: number;
   pending: number;
+  cash: number;
+  online: number;
   cashCount: number;
   onlineCount: number;
   total: number;
@@ -54,7 +56,7 @@ interface EarningsData {
 export default function DoctorEarningsPage() {
   const { profile, isLoading: profileLoading } = useDecryptedProfile();
   const [allPayments, setAllPayments] = useState<Payment[]>([]);
-  const [earnings, setEarnings] = useState<EarningsData>({ paid: 0, pending: 0, cashCount: 0, onlineCount: 0, total: 0 });
+  const [earnings, setEarnings] = useState<EarningsData>({ paid: 0, pending: 0, cash: 0, online: 0, cashCount: 0, onlineCount: 0, total: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([{ id: "createdAt", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -249,11 +251,11 @@ export default function DoctorEarningsPage() {
         </div>
         <div className="p-4 border rounded-lg bg-custom-mutedgreen flex flex-col items-end">
           <h3 className="text-lg font-semibold">Cash Payments</h3>
-          <p className="text-3xl text-primary">₹{(earnings.cashCount / 100).toFixed(2)}</p>
+          <p className="text-3xl text-primary">₹{(earnings.cash / 100).toFixed(2)}</p>
         </div>
         <div className="p-4 border rounded-lg bg-custom-mutedgreen flex flex-col items-end">
           <h3 className="text-lg font-semibold">Online Payments</h3>
-          <p className="text-3xl text-primary">₹{(earnings.onlineCount / 100).toFixed(2)}</p>
+          <p className="text-3xl text-primary">₹{(earnings.online / 100).toFixed(2)}</p>
         </div>
       </div>
 

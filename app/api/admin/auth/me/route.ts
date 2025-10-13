@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { getCachedAdminProfile } from "@/lib/auth-cache";
+import prisma from "@/lib/prisma";
 
 export async function GET() {
   try {
@@ -19,6 +20,7 @@ export async function GET() {
       userId: number;
       email: string;
       role: string;
+      clinicId: number;
     };
 
     if (!decoded || decoded.role !== "ADMIN") {
@@ -28,7 +30,33 @@ export async function GET() {
       );
     }
 
-    const admin = await getCachedAdminProfile(decoded.userId);
+    // Try to get from cache first, but if clinic data is missing, fetch fresh
+    let admin = await getCachedAdminProfile(decoded.userId);
+
+    // If cached admin doesn't have clinic data, fetch fresh from database
+    if (admin && !admin.clinic) {
+      console.log('Cached admin missing clinic data, fetching fresh...');
+      const freshAdmin = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          clinicId: true,
+          clinic: {
+            select: {
+              id: true,
+              name: true,
+            }
+          }
+        },
+      });
+      
+      if (freshAdmin) {
+        admin = freshAdmin;
+      }
+    }
 
     if (!admin) {
       return NextResponse.json(

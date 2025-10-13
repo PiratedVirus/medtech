@@ -67,6 +67,9 @@ export default function AppointmentPrescriptionPage() {
     patientId: "",
     prescriptionId: "",
     appointmentId: "",
+    phone: "",
+    age: 0,
+    gender: "",
   });
   const [doctorInfo, setDoctorInfo] = useState({
     name: "",
@@ -136,15 +139,51 @@ export default function AppointmentPrescriptionPage() {
 
       if (!appointment) throw new Error("Appointment not found");
 
-      // Set patient info from appointment data
-      setPatientInfo({
-        name: appointment.patientName,
-        patientId: appointment.patientId.toString(),
-        prescriptionId:
-          appointment.prescriptionNumber ||
-          `PRES-${appointment.patientName.split(" ").map((n: string) => n[0]).join("" ).toUpperCase()}-${appointmentId}`,
-        appointmentId: appointmentId,
-      });
+      // Fetch detailed patient information
+      try {
+        const patientRes = await fetch(`/api/doctor/patients/${appointment.patientId}`);
+        if (patientRes.ok) {
+          const patientData = await patientRes.json();
+          setPatientInfo({
+            name: patientData.name,
+            patientId: patientData.id.toString(),
+            phone: patientData.phoneNumber || "Not provided", // Use the actual phoneNumber field
+            age: patientData.profile?.age || 0,
+            gender: patientData.profile?.gender || "Not specified",
+            prescriptionId:
+              appointment.prescriptionNumber ||
+              `PRES-${appointment.patientName.split(" ").map((n: string) => n[0]).join("" ).toUpperCase()}-${appointmentId}`,
+            appointmentId: appointmentId,
+          });
+        } else {
+          // Fallback to basic info if patient details fetch fails
+          setPatientInfo({
+            name: appointment.patientName,
+            patientId: appointment.patientId.toString(),
+            phone: "Not provided", // fallback
+            age: 0,
+            gender: "Not specified",
+            prescriptionId:
+              appointment.prescriptionNumber ||
+              `PRES-${appointment.patientName.split(" ").map((n: string) => n[0]).join("" ).toUpperCase()}-${appointmentId}`,
+            appointmentId: appointmentId,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching patient details:", error);
+        // Fallback to basic info
+        setPatientInfo({
+          name: appointment.patientName,
+          patientId: appointment.patientId.toString(),
+          phone: "Not provided", // fallback
+          age: 0,
+          gender: "Not specified",
+          prescriptionId:
+            appointment.prescriptionNumber ||
+            `PRES-${appointment.patientName.split(" ").map((n: string) => n[0]).join("" ).toUpperCase()}-${appointmentId}`,
+          appointmentId: appointmentId,
+        });
+      }
 
       // Set doctor info from appointment data - use the actual doctor conducting the appointment
       setDoctorInfo({
@@ -152,36 +191,33 @@ export default function AppointmentPrescriptionPage() {
         id: appointment.doctorId?.toString() || "",
       });
 
-      // Fetch clinic information from the database
+      // Fetch clinic information from the database using doctor's clinic ID
       try {
-        const clinicRes = await fetch(`/api/admin/clinics/clinics-list`);
+        const clinicRes = await fetch(`/api/doctor/clinic-info`);
+        console.log("Clinic API response status:", clinicRes.status);
+        
         if (clinicRes.ok) {
           const clinicData = await clinicRes.json();
-          if (clinicData.success && clinicData.clinics.length > 0) {
-            // Find the clinic associated with the doctor or use the first clinic
-            const doctorClinic = clinicData.clinics.find((clinic: any) => 
-              clinic.id === appointment.doctorClinicId
-            ) || clinicData.clinics[0];
-            
-            setClinicInfo({
-              name: doctorClinic.name || "Care Diabetics Hospital",
-              logo: doctorClinic.logo || "",
-              address: doctorClinic.address || "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
-              timings: doctorClinic.timings || "Mon - Sat ( 9:00 AM to 5:00 PM )",
-              subtitle: doctorClinic.subtitle || "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
-            });
+          console.log("Clinic API response data:", clinicData);
+          
+          if (clinicData.success && clinicData.clinic) {
+            const clinicInfo = {
+              name: clinicData.clinic.name,
+              logo: clinicData.clinic.logo,
+              address: clinicData.clinic.address,
+              timings: clinicData.clinic.timings,
+              subtitle: clinicData.clinic.subtitle,
+            };
+            console.log("Setting clinic info:", clinicInfo);
+            setClinicInfo(clinicInfo);
           }
+        } else {
+          const errorData = await clinicRes.json();
+          console.log("Clinic API error:", errorData);
         }
       } catch (error) {
         console.error("Error fetching clinic info:", error);
-        // Use default clinic info
-        setClinicInfo({
-          name: "Care Diabetics Hospital",
-          logo: "",
-          address: "Care Diabetics Hospital, 123 Well Ave, Springfield, IL 62704",
-          timings: "Mon - Sat ( 9:00 AM to 5:00 PM )",
-          subtitle: "AIIMS (NEW DELHI) ALUMNI INITIATIVE",
-        });
+        // Don't set default clinic info - let it remain empty
       }
 
       // Then fetch prescription data

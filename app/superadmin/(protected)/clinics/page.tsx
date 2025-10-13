@@ -60,7 +60,6 @@ export default function ClinicsPage() {
 
   const filteredClinics = clinics.filter(clinic =>
     clinic.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    clinic.subdomain?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     clinic.domain?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -91,7 +90,7 @@ export default function ClinicsPage() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
         <Input
-          placeholder="Search clinics by name, subdomain, or domain..."
+          placeholder="Search clinics by name or domain..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10"
@@ -129,15 +128,6 @@ export default function ClinicsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {clinic.subdomain && (
-                <div className="flex items-center text-sm text-gray-600">
-                  <span className="font-medium">Subdomain:</span>
-                  <span className="ml-2 font-mono bg-gray-100 px-2 py-1 rounded">
-                    {clinic.subdomain}.yourdomain.com
-                  </span>
-                </div>
-              )}
-              
               {clinic.domain && (
                 <div className="flex items-center text-sm text-gray-600">
                   <span className="font-medium">Domain:</span>
@@ -175,13 +165,13 @@ export default function ClinicsPage() {
 
               <div className="flex space-x-2 pt-2">
                 <Button asChild variant="outline" size="sm" className="flex-1">
-                  <Link href={`/superadmin/clinics/${clinic.id}`}>
+                  <Link href={`/superadmin/clinics/${clinic.id}/edit`}>
                     <Edit className="h-4 w-4 mr-1" />
                     Edit
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="sm" className="flex-1">
-                  <Link href={`/superadmin/clinics/${clinic.id}/admins`}>
+                  <Link href="/superadmin/clinics/admins">
                     <Users className="h-4 w-4 mr-1" />
                     Admins
                   </Link>

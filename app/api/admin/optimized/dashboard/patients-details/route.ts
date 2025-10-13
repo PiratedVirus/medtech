@@ -1,18 +1,35 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { normalizeStatus, normalizeLabAssignmentStatus } from "@/lib/utils/status";
+import { getAdminClinicId, createClinicFilter } from "@/lib/admin-clinic-middleware";
 
 // Optimized patients details API 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const patientIdParam = searchParams.get("patientId");
-  const patientId = patientIdParam ? parseInt(patientIdParam) : null;
-
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = getAdminClinicId(request);
+    if (!clinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        message: "Please log out and log back in to access your clinic data" 
+      }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const patientIdParam = searchParams.get("patientId");
+    const patientId = patientIdParam ? parseInt(patientIdParam) : null;
+
+    // Create clinic filter
+    const clinicFilter = createClinicFilter(clinicId);
+
     if (patientId) {
-      // Single patient details with optimized includes
-      const patient = await prisma.user.findUnique({
-        where: { id: patientId },
+      // Single patient details with optimized includes - verify patient belongs to clinic
+      const patient = await prisma.user.findFirst({
+        where: { 
+          id: patientId,
+          ...clinicFilter
+        },
         select: {
           id: true,
           name: true,
@@ -117,11 +134,12 @@ export async function GET(request: Request) {
 
       return NextResponse.json(transformedPatient);
     } else {
-      // All patients list with optimized query
+      // All patients list with optimized query - filter by clinic
       const patients = await prisma.user.findMany({
         where: {
           role: 'PATIENT',
           deletedAt: null,
+          ...clinicFilter
         },
         select: {
           id: true,

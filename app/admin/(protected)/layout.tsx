@@ -11,6 +11,7 @@ import { SidebarNav } from "@/components/admin/AdminSidebarNav";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { useRouter } from 'next/navigation';
 import { useAdminAuth } from '@/hooks/use-admin-auth';
+import { clearAdminCache } from '@/lib/admin-api-client';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -28,6 +29,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       router.push('/admin/login');
     }
   }, [adminLoading, isAuthenticated, router]);
+
+  // Clear cache when admin is authenticated to prevent stale data
+  useEffect(() => {
+    if (isAuthenticated && admin) {
+      console.log('Admin authenticated, clearing cache for clinic:', admin.clinicId);
+      clearAdminCache();
+    }
+  }, [isAuthenticated, admin]);
 
   if (adminLoading) {
     return (

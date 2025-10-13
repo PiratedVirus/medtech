@@ -138,8 +138,8 @@ const updateAppointment = async (id: number, data: AppointmentsFormData) => {
 
 const fetchDoctors = async () => {
   try {
-    const response = await axios.get("/api/admin/doctors");
-    return response.data.data;
+    const response = await axios.get("/api/admin/optimized/doctors");
+    return response.data.doctors;
   } catch (error) {
     console.error("Failed to fetch doctors:", error);
     return [];

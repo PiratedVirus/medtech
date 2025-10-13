@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
-import { getCachedAppointments } from "@/lib/data-cache";
+import { getCachedAppointments, invalidateAppointmentsCache } from "@/lib/data-cache";
 import { AppointmentStatus, ConsultationType } from "@/lib/constants/enums";
 
 /**
@@ -311,13 +311,12 @@ export async function POST(request: Request) {
     });
     console.log("Transaction completed successfully, appointment ID:", newAppointment.id);
 
-    // Invalidate user profile cache after appointment creation
+    // Invalidate appointments cache after appointment creation
     try {
-      const { invalidateAppointmentCache } = await import('@/lib/cache-invalidation');
-      await invalidateAppointmentCache(patientId);
-      console.log(`[APPOINTMENT] Cache invalidated for user ${patientId} after appointment creation`);
+      await invalidateAppointmentsCache(patientId);
+      console.log(`[APPOINTMENT] Appointments cache invalidated for patient ${patientId} after appointment creation`);
     } catch (cacheError) {
-      console.error('[APPOINTMENT] Error invalidating cache:', cacheError);
+      console.error('[APPOINTMENT] Error invalidating appointments cache:', cacheError);
       // Don't fail the request if cache invalidation fails
     }
 

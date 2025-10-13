@@ -61,7 +61,7 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
                       {prescription.doctorName ? `Prescription - Dr. ${prescription.doctorName}` : 'Prescription'}
                     </h4>
                     <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
-                      {new Date(prescription.date || '').toLocaleDateString('en-GB')}
+                      {prescription.date ? new Date(prescription.date).toLocaleDateString('en-GB') : 'No date'}
                     </span>
                     <div className="ml-auto">
                       <Button
@@ -120,7 +120,7 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
                   const viewHref = apt.prescriptionLink || `/doctor/appointments/${apt.id}/prescription`;
                   return (
                     <li key={apt.id} className="py-2 flex items-center">
-                      <div className="text-sm text-gray-800">Appointment #{apt.id} · {new Date(apt.date || '').toLocaleString()}</div>
+                      <div className="text-sm text-gray-800">Appointment #{apt.id} · {apt.date ? new Date(apt.date).toLocaleString() : 'No date'}</div>
                       <div className="flex items-center gap-2 ml-auto">
                         {hasPrescription && (
                           <Button
