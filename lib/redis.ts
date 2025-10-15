@@ -14,14 +14,10 @@ if (redisEnabled && redisUrl && redisToken) {
       url: redisUrl,
       token: redisToken,
     });
-    console.log('✅ Redis client initialized successfully');
   } catch (error) {
     console.error('❌ Failed to initialize Redis client:', error);
     redis = null;
   }
-} else {
-  console.log('⚠️ Redis disabled or environment variables not set');
-  console.log('Set REDIS_ENABLED=true and provide UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to enable Redis caching');
 }
 
 export default redis

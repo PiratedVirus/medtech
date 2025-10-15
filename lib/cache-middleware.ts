@@ -26,7 +26,6 @@ export function withCacheInvalidation(
         if (userId) {
           const phoneNumber = await getUserPhoneNumber(Number(userId));
           await invalidateAllUserCaches(Number(userId), phoneNumber || undefined);
-          console.log(`[CACHE-MIDDLEWARE] Cache invalidated for user ${userId}`);
         }
       } catch (error) {
         console.error('[CACHE-MIDDLEWARE] Error invalidating cache:', error);

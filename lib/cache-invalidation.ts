@@ -14,18 +14,14 @@ import redis from './redis';
  */
 export async function invalidateUserProfileCache(userId: number, phoneNumber?: string) {
   try {
-    console.log(`[CACHE-INVALIDATION] Invalidating cache for user ${userId}`);
-    
     // Skip Redis operations if not available
     if (!redis) {
-      console.log(`[CACHE-INVALIDATION] Redis not available, skipping cache invalidation for user ${userId}`);
       return true;
     }
     
     // 1. Clear Redis cache (server-side)
     if (phoneNumber) {
       await redis.del(`user:${phoneNumber}`);
-      console.log(`[CACHE-INVALIDATION] Cleared Redis cache for phone: ${phoneNumber}`);
     }
     
     // 2. Clear any other user-related caches
@@ -33,7 +29,6 @@ export async function invalidateUserProfileCache(userId: number, phoneNumber?: s
     await redis.del(`profile:${userId}`);
     await redis.del(`subscription:${userId}`);
     
-    console.log(`[CACHE-INVALIDATION] Successfully invalidated cache for user ${userId}`);
     return true;
   } catch (error) {
     console.error(`[CACHE-INVALIDATION] Error invalidating cache for user ${userId}:`, error);
@@ -47,11 +42,8 @@ export async function invalidateUserProfileCache(userId: number, phoneNumber?: s
  */
 export async function invalidateSubscriptionCache(userId: number) {
   try {
-    console.log(`[CACHE-INVALIDATION] Invalidating subscription cache for user ${userId}`);
-    
     // Skip Redis operations if not available
     if (!redis) {
-      console.log(`[CACHE-INVALIDATION] Redis not available, skipping cache invalidation for user ${userId}`);
       return true;
     }
     
@@ -60,7 +52,6 @@ export async function invalidateSubscriptionCache(userId: number) {
     await redis.del(`plan:${userId}`);
     await redis.del(`user:${userId}`);
     
-    console.log(`[CACHE-INVALIDATION] Successfully invalidated subscription cache for user ${userId}`);
     return true;
   } catch (error) {
     console.error(`[CACHE-INVALIDATION] Error invalidating subscription cache for user ${userId}:`, error);
@@ -74,19 +65,14 @@ export async function invalidateSubscriptionCache(userId: number) {
  */
 export async function invalidateAppointmentCache(userId: number) {
   try {
-    console.log(`[CACHE-INVALIDATION] Invalidating appointment cache for user ${userId}`);
-    
     // Skip Redis operations if not available
     if (!redis) {
-      console.log(`[CACHE-INVALIDATION] Redis not available, skipping cache invalidation for user ${userId}`);
       return true;
     }
     
     // Clear appointment-related caches
     await redis.del(`appointments:${userId}`);
     await redis.del(`user:${userId}`);
-    
-    console.log(`[CACHE-INVALIDATION] Successfully invalidated appointment cache for user ${userId}`);
     return true;
   } catch (error) {
     console.error(`[CACHE-INVALIDATION] Error invalidating appointment cache for user ${userId}:`, error);
@@ -100,11 +86,8 @@ export async function invalidateAppointmentCache(userId: number) {
  */
 export async function invalidateLabResultsCache(userId: number) {
   try {
-    console.log(`[CACHE-INVALIDATION] Invalidating lab results cache for user ${userId}`);
-    
     // Skip Redis operations if not available
     if (!redis) {
-      console.log(`[CACHE-INVALIDATION] Redis not available, skipping cache invalidation for user ${userId}`);
       return true;
     }
     
@@ -112,8 +95,6 @@ export async function invalidateLabResultsCache(userId: number) {
     await redis.del(`lab-results:${userId}`);
     await redis.del(`lab-bookings:${userId}`);
     await redis.del(`user:${userId}`);
-    
-    console.log(`[CACHE-INVALIDATION] Successfully invalidated lab results cache for user ${userId}`);
     return true;
   } catch (error) {
     console.error(`[CACHE-INVALIDATION] Error invalidating lab results cache for user ${userId}:`, error);
@@ -127,15 +108,11 @@ export async function invalidateLabResultsCache(userId: number) {
  */
 export async function invalidateAllUserCaches(userId: number, phoneNumber?: string) {
   try {
-    console.log(`[CACHE-INVALIDATION] Invalidating all caches for user ${userId}`);
-    
     // Clear all user-related caches
     await invalidateUserProfileCache(userId, phoneNumber);
     await invalidateSubscriptionCache(userId);
     await invalidateAppointmentCache(userId);
     await invalidateLabResultsCache(userId);
-    
-    console.log(`[CACHE-INVALIDATION] Successfully invalidated all caches for user ${userId}`);
     return true;
   } catch (error) {
     console.error(`[CACHE-INVALIDATION] Error invalidating all caches for user ${userId}:`, error);
@@ -149,11 +126,8 @@ export async function invalidateAllUserCaches(userId: number, phoneNumber?: stri
  */
 export async function invalidateDoctorProfileCache(doctorId: number) {
   try {
-    console.log(`[CACHE-INVALIDATION] Invalidating doctor profile cache for doctor ${doctorId}`);
-    
     // Skip Redis operations if not available
     if (!redis) {
-      console.log(`[CACHE-INVALIDATION] Redis not available, skipping cache invalidation for doctor ${doctorId}`);
       return true;
     }
     
@@ -161,8 +135,6 @@ export async function invalidateDoctorProfileCache(doctorId: number) {
     await redis.del(`doctor:profile:${doctorId}`);
     await redis.del(`doctor:availability:${doctorId}`);
     await redis.del(`doctor:appointments:${doctorId}`);
-    
-    console.log(`[CACHE-INVALIDATION] Successfully invalidated doctor profile cache for doctor ${doctorId}`);
     return true;
   } catch (error) {
     console.error(`[CACHE-INVALIDATION] Error invalidating doctor profile cache for doctor ${doctorId}:`, error);
@@ -176,18 +148,13 @@ export async function invalidateDoctorProfileCache(doctorId: number) {
  */
 export async function invalidateDoctorListCache(clinicId: number) {
   try {
-    console.log(`[CACHE-INVALIDATION] Invalidating doctor list cache for clinic ${clinicId}`);
-    
     // Skip Redis operations if not available
     if (!redis) {
-      console.log(`[CACHE-INVALIDATION] Redis not available, skipping cache invalidation for clinic ${clinicId}`);
       return true;
     }
     
     // Clear doctor list cache for the clinic
     await redis.del(`doctors:list:${clinicId}`);
-    
-    console.log(`[CACHE-INVALIDATION] Successfully invalidated doctor list cache for clinic ${clinicId}`);
     return true;
   } catch (error) {
     console.error(`[CACHE-INVALIDATION] Error invalidating doctor list cache for clinic ${clinicId}:`, error);
@@ -201,8 +168,6 @@ export async function invalidateDoctorListCache(clinicId: number) {
  */
 export async function invalidateAllDoctorCaches(doctorId: number, clinicId?: number) {
   try {
-    console.log(`[CACHE-INVALIDATION] Invalidating all doctor caches for doctor ${doctorId}`);
-    
     // Clear doctor-specific caches
     await invalidateDoctorProfileCache(doctorId);
     
@@ -210,8 +175,6 @@ export async function invalidateAllDoctorCaches(doctorId: number, clinicId?: num
     if (clinicId) {
       await invalidateDoctorListCache(clinicId);
     }
-    
-    console.log(`[CACHE-INVALIDATION] Successfully invalidated all doctor caches for doctor ${doctorId}`);
     return true;
   } catch (error) {
     console.error(`[CACHE-INVALIDATION] Error invalidating all doctor caches for doctor ${doctorId}:`, error);

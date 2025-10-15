@@ -59,15 +59,12 @@ async function handleGetWithCache(
     // Try to get from cache first
     const cachedData = await cacheUtils.get(config.key);
     if (cachedData) {
-      console.log(`[CACHE-MIDDLEWARE] Cache hit for ${config.key}`);
       return NextResponse.json({
         success: true,
         data: cachedData,
         cached: true
       });
     }
-    
-    console.log(`[CACHE-MIDDLEWARE] Cache miss for ${config.key}, fetching from database`);
     
     // Cache miss - call the handler
     const response = await handler(request, ...args);
@@ -78,7 +75,6 @@ async function handleGetWithCache(
         const responseData = await response.clone().json();
         if (responseData.success && responseData.data) {
           await cacheUtils.set(config.key, responseData.data, config.ttl);
-          console.log(`[CACHE-MIDDLEWARE] Cached data for ${config.key}`);
         }
       } catch (error) {
         console.error(`[CACHE-MIDDLEWARE] Error caching response for ${config.key}:`, error);
@@ -134,12 +130,6 @@ async function invalidateCaches(request: NextRequest, config: CacheConfig): Prom
     const doctorId = body.doctorId;
     const clinicId = body.clinicId;
     
-    console.log(`[CACHE-MIDDLEWARE] Invalidating caches for ${config.entityType}`, {
-      entityId,
-      patientId,
-      doctorId,
-      clinicId
-    });
     
     // Invalidate primary cache
     await cacheUtils.invalidate(config.key);
@@ -153,8 +143,6 @@ async function invalidateCaches(request: NextRequest, config: CacheConfig): Prom
     
     // Emit appropriate events for event-driven invalidation
     await emitInvalidationEvents(config.entityType, entityId, patientId, doctorId, clinicId, body);
-    
-    console.log(`[CACHE-MIDDLEWARE] Successfully invalidated caches for ${config.entityType}`);
   } catch (error) {
     console.error(`[CACHE-MIDDLEWARE] Error invalidating caches:`, error);
   }
