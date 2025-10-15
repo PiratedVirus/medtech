@@ -3,19 +3,26 @@ import { Redis } from '@upstash/redis'
 // Check if environment variables are set
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+const redisEnabled = process.env.REDIS_ENABLED !== 'false';
 
-if (!redisUrl || !redisToken) {
-  console.error('❌ Redis environment variables not set!');
-  console.error('Please add to your .env.local:');
-  console.error('UPSTASH_REDIS_REST_URL=https://your-database.upstash.io');
-  console.error('UPSTASH_REDIS_REST_TOKEN=your_token_here');
+// Initialize Redis client only if environment variables are set
+let redis: Redis | null = null;
+
+if (redisEnabled && redisUrl && redisToken) {
+  try {
+    redis = new Redis({
+      url: redisUrl,
+      token: redisToken,
+    });
+    console.log('✅ Redis client initialized successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize Redis client:', error);
+    redis = null;
+  }
+} else {
+  console.log('⚠️ Redis disabled or environment variables not set');
+  console.log('Set REDIS_ENABLED=true and provide UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to enable Redis caching');
 }
-
-// Initialize Redis client for Upstash
-const redis = new Redis({
-  url: redisUrl!,
-  token: redisToken!,
-})
 
 export default redis
 
@@ -65,6 +72,11 @@ export const cacheUtils = {
     fallback: () => Promise<T>,
     ttl: number
   ): Promise<T> {
+    // If Redis is not available, just execute fallback
+    if (!redis) {
+      return await fallback()
+    }
+
     try {
       // Try to get from cache first
       const cached = await redis.get<T>(key)
@@ -85,6 +97,10 @@ export const cacheUtils = {
 
   // Invalidate cache
   async invalidate(pattern: string): Promise<void> {
+    if (!redis) {
+      return
+    }
+
     try {
       const keys = await redis.keys(pattern)
       if (keys.length > 0) {
@@ -97,6 +113,10 @@ export const cacheUtils = {
 
   // Set cache with TTL
   async set<T>(key: string, value: T, ttl: number): Promise<void> {
+    if (!redis) {
+      return
+    }
+
     try {
       await redis.setex(key, ttl, value)
     } catch (error) {
@@ -106,6 +126,10 @@ export const cacheUtils = {
 
   // Get from cache
   async get<T>(key: string): Promise<T | null> {
+    if (!redis) {
+      return null
+    }
+
     try {
       return await redis.get<T>(key)
     } catch (error) {

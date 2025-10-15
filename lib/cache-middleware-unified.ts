@@ -32,12 +32,12 @@ export function withUnifiedCache(config: CacheConfig) {
       
       // Handle GET requests with caching
       if (method === 'GET') {
-        return await handleGetWithCache(request, handler, config);
+        return await handleGetWithCache(request, handler, config, args);
       }
       
       // Handle modification requests with cache invalidation
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-        return await handleModificationWithInvalidation(request, handler, config);
+        return await handleModificationWithInvalidation(request, handler, config, args);
       }
       
       // For other methods, just call the handler
@@ -52,7 +52,8 @@ export function withUnifiedCache(config: CacheConfig) {
 async function handleGetWithCache(
   request: NextRequest,
   handler: (request: NextRequest, ...args: any[]) => Promise<NextResponse>,
-  config: CacheConfig
+  config: CacheConfig,
+  args: any[]
 ): Promise<NextResponse> {
   try {
     // Try to get from cache first
@@ -98,7 +99,8 @@ async function handleGetWithCache(
 async function handleModificationWithInvalidation(
   request: NextRequest,
   handler: (request: NextRequest, ...args: any[]) => Promise<NextResponse>,
-  config: CacheConfig
+  config: CacheConfig,
+  args: any[]
 ): Promise<NextResponse> {
   try {
     // Call the handler first
@@ -325,6 +327,20 @@ export const CACHE_CONFIGS = {
     ttl: CACHE_TTL.PLANS_DATA,
     entityType: 'plans' as const,
     dependencies: ['user:subscription:*']
+  },
+  
+  PLANS_USAGE: {
+    key: 'plans:usage',
+    ttl: CACHE_TTL.PLANS_DATA,
+    entityType: 'plans' as const,
+    dependencies: ['user:subscription:*', 'plans:data']
+  },
+  
+  DIET_PLAN: {
+    key: 'diet:plan',
+    ttl: CACHE_TTL.DIET_PLAN,
+    entityType: 'user' as const,
+    dependencies: ['user:profile:*']
   }
 };
 
@@ -352,7 +368,9 @@ export function getCacheConfig(endpoint: string, params: Record<string, any> = {
     '/api/admin/users': CACHE_CONFIGS.ADMIN_USERS,
     '/api/admin/patients': CACHE_CONFIGS.ADMIN_PATIENTS,
     '/api/pathology/upcoming-appointments': CACHE_CONFIGS.PATHOLOGY_APPOINTMENTS,
-    '/api/(end-user)/plans': CACHE_CONFIGS.PLANS_DATA
+    '/api/(end-user)/plans': CACHE_CONFIGS.PLANS_DATA,
+    '/api/(end-user)/plans/planUsage': CACHE_CONFIGS.PLANS_USAGE,
+    '/api/(end-user)/dieticians/diet': CACHE_CONFIGS.DIET_PLAN
   };
   
   const config = endpointMap[endpoint];

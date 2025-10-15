@@ -3,10 +3,10 @@
  * Automatically invalidates user profile cache when data changes
  */
 
-import { Redis } from 'ioredis';
+import redis from './redis';
 
-// Initialize Redis client for cache invalidation
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+// Use the Upstash Redis client from redis.ts
+// This file now uses the same Redis client as the rest of the application
 
 /**
  * Invalidate user profile cache for a specific user
@@ -15,6 +15,12 @@ const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 export async function invalidateUserProfileCache(userId: number, phoneNumber?: string) {
   try {
     console.log(`[CACHE-INVALIDATION] Invalidating cache for user ${userId}`);
+    
+    // Skip Redis operations if not available
+    if (!redis) {
+      console.log(`[CACHE-INVALIDATION] Redis not available, skipping cache invalidation for user ${userId}`);
+      return true;
+    }
     
     // 1. Clear Redis cache (server-side)
     if (phoneNumber) {
@@ -43,6 +49,12 @@ export async function invalidateSubscriptionCache(userId: number) {
   try {
     console.log(`[CACHE-INVALIDATION] Invalidating subscription cache for user ${userId}`);
     
+    // Skip Redis operations if not available
+    if (!redis) {
+      console.log(`[CACHE-INVALIDATION] Redis not available, skipping cache invalidation for user ${userId}`);
+      return true;
+    }
+    
     // Clear subscription-related caches
     await redis.del(`subscription:${userId}`);
     await redis.del(`plan:${userId}`);
@@ -64,6 +76,12 @@ export async function invalidateAppointmentCache(userId: number) {
   try {
     console.log(`[CACHE-INVALIDATION] Invalidating appointment cache for user ${userId}`);
     
+    // Skip Redis operations if not available
+    if (!redis) {
+      console.log(`[CACHE-INVALIDATION] Redis not available, skipping cache invalidation for user ${userId}`);
+      return true;
+    }
+    
     // Clear appointment-related caches
     await redis.del(`appointments:${userId}`);
     await redis.del(`user:${userId}`);
@@ -83,6 +101,12 @@ export async function invalidateAppointmentCache(userId: number) {
 export async function invalidateLabResultsCache(userId: number) {
   try {
     console.log(`[CACHE-INVALIDATION] Invalidating lab results cache for user ${userId}`);
+    
+    // Skip Redis operations if not available
+    if (!redis) {
+      console.log(`[CACHE-INVALIDATION] Redis not available, skipping cache invalidation for user ${userId}`);
+      return true;
+    }
     
     // Clear lab-related caches
     await redis.del(`lab-results:${userId}`);
@@ -127,6 +151,12 @@ export async function invalidateDoctorProfileCache(doctorId: number) {
   try {
     console.log(`[CACHE-INVALIDATION] Invalidating doctor profile cache for doctor ${doctorId}`);
     
+    // Skip Redis operations if not available
+    if (!redis) {
+      console.log(`[CACHE-INVALIDATION] Redis not available, skipping cache invalidation for doctor ${doctorId}`);
+      return true;
+    }
+    
     // Clear doctor-specific caches
     await redis.del(`doctor:profile:${doctorId}`);
     await redis.del(`doctor:availability:${doctorId}`);
@@ -147,6 +177,12 @@ export async function invalidateDoctorProfileCache(doctorId: number) {
 export async function invalidateDoctorListCache(clinicId: number) {
   try {
     console.log(`[CACHE-INVALIDATION] Invalidating doctor list cache for clinic ${clinicId}`);
+    
+    // Skip Redis operations if not available
+    if (!redis) {
+      console.log(`[CACHE-INVALIDATION] Redis not available, skipping cache invalidation for clinic ${clinicId}`);
+      return true;
+    }
     
     // Clear doctor list cache for the clinic
     await redis.del(`doctors:list:${clinicId}`);
