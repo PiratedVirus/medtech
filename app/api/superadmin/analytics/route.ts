@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
 
-export async function GET(request: Request) {
+const getAnalyticsHandler = async (request: Request) => {
   try {
     const { searchParams } = new URL(request.url);
     const range = searchParams.get('range') || '6months';
@@ -141,4 +142,7 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+};
+
+// ✅ UNIFIED CACHE: Apply cache middleware to GET endpoint
+export const GET = withUnifiedCache(getCacheConfig('/api/superadmin/analytics'))(getAnalyticsHandler);

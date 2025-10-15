@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
+import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
 
-export async function GET(request: Request) {
+const getEarningsHandler = async (request: Request) => {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
@@ -153,4 +154,7 @@ export async function GET(request: Request) {
     console.error("Error fetching earnings:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
-}
+};
+
+// ✅ UNIFIED CACHE: Apply cache middleware to GET endpoint
+export const GET = withUnifiedCache(getCacheConfig('/api/doctor/earnings'))(getEarningsHandler);

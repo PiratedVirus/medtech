@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
+import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
 
-export async function GET() {
+const getUpcomingAppointmentsHandler = async () => {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
@@ -111,4 +112,7 @@ export async function GET() {
     console.error("Error fetching upcoming appointments:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
-} 
+};
+
+// ✅ UNIFIED CACHE: Apply cache middleware to GET endpoint
+export const GET = withUnifiedCache(getCacheConfig('/api/doctor/appointments/upcoming'))(getUpcomingAppointmentsHandler); 

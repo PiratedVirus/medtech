@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { differenceInMonths } from "date-fns";
+import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
 
 const prisma = new PrismaClient();
 
@@ -17,7 +18,7 @@ const prisma = new PrismaClient();
  *   error?: string
  * }
  */
-export async function GET(request: Request) {
+const getPlanUsageHandler = async (request: Request) => {
   try {
     const { searchParams } = new URL(request.url);
     const subscription = searchParams.get("subscriptionId");
@@ -74,4 +75,7 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+};
+
+// ✅ UNIFIED CACHE: Apply cache middleware to GET endpoint
+export const GET = withUnifiedCache(getCacheConfig('/api/(end-user)/plans/planUsage'))(getPlanUsageHandler);

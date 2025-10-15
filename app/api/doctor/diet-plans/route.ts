@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
 
 // Create a diet plan and mark request as CREATED
 export async function POST(request: Request) {
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
 }
 
 // Get latest plan for a patient (doctor view)
-export async function GET(request: Request) {
+const getDietPlansHandler = async (request: Request) => {
   try {
     const { searchParams } = new URL(request.url);
     const patientId = Number(searchParams.get('patientId'));
@@ -44,6 +45,9 @@ export async function GET(request: Request) {
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || 'Server error' }, { status: 500 });
   }
-}
+};
+
+// ✅ UNIFIED CACHE: Apply cache middleware to GET endpoint
+export const GET = withUnifiedCache(getCacheConfig('/api/doctor/diet-plans'))(getDietPlansHandler);
 
 

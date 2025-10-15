@@ -322,3 +322,28 @@ export async function invalidateAppointmentsCache(patientId: number): Promise<vo
   await cacheUtils.invalidate(CACHE_KEYS.APPOINTMENTS(patientId, false))
 }
 
+export async function getCachedPathologyAppointments() {
+  return await cacheUtils.getOrSet(
+    CACHE_KEYS.PATHOLOGY_APPOINTMENTS,
+    async () => {
+      // This function should be implemented to fetch pathology appointments from database
+      // For now, returning null to indicate cache miss
+      return null;
+    },
+    CACHE_TTL.PATHOLOGY_APPOINTMENTS
+  );
+}
+
+export async function getCachedInsights(patientId: number) {
+  return await cacheUtils.getOrSet(
+    CACHE_KEYS.INSIGHTS(patientId),
+    async () => {
+      // This function should be implemented to fetch insights from database
+      // For now, returning null to indicate cache miss
+      return null;
+    },
+    CACHE_TTL.INSIGHTS
+  );
+}
+
+

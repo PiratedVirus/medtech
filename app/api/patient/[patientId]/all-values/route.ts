@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
 
-export async function GET(
+const getAllValuesHandler = async (
   _request: NextRequest,
   { params }: { params: Promise<{ patientId: string }> }
-) {
+) => {
   try {
     const { patientId: patientIdParam } = await params;
     const patientId = Number(patientIdParam);
@@ -267,4 +268,7 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+};
+
+// ✅ UNIFIED CACHE: Apply cache middleware to GET endpoint
+export const GET = withUnifiedCache(getCacheConfig('/api/patient/[patientId]/all-values'))(getAllValuesHandler);
