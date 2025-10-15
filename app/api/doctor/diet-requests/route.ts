@@ -10,7 +10,11 @@ export async function GET(request: Request) {
     const requests = await prisma.dietPlanRequest.findMany({
       where: { dieticianId, deletedAt: null },
       orderBy: { id: "desc" },
-      include: { patient: { select: { id: true, name: true } } },
+      include: { 
+        patient: { select: { id: true, name: true } },
+        dietPlan: true,
+        dietician: { select: { id: true, name: true } }
+      },
     });
     return NextResponse.json({ success: true, requests });
   } catch (e: any) {

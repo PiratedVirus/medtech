@@ -931,18 +931,21 @@ model DietPlanRequest {
   dieticianId  Int
   complaint    String
   status       DietPlanRequestStatus @default(PENDING)
+  planId       Int?      @unique
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
   patient      User      @relation("DietPlanRequestPatient", fields: [patientId], references: [id])
   dietician    User      @relation("DietPlanRequestDietician", fields: [dieticianId], references: [id])
+  dietPlan     DietPlan?
 
   @@index([patientId, deletedAt])
   @@index([dieticianId, deletedAt])
   @@index([deletedAt])
   @@index([status])
   @@index([status, createdAt])
+  @@index([planId])
 }
 
 model DietPlan {
@@ -955,16 +958,19 @@ model DietPlan {
   endDate      DateTime?
   meals        Json
   customMealTimings Json? // Store custom meal timing names and order
+  requestId    Int?      @unique
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
   patient      User      @relation("DietPlanPatient", fields: [patientId], references: [id])
   dietician    User      @relation("DietPlanDietician", fields: [dieticianId], references: [id])
+  request      DietPlanRequest? @relation(fields: [requestId], references: [id])
 
   @@index([patientId, deletedAt])
   @@index([dieticianId, deletedAt])
   @@index([deletedAt])
+  @@index([requestId])
 }
 
 // Custom meal timing templates for dieticians
