@@ -100,7 +100,8 @@ export async function GET(
               select: {
                 complaints: {
                   select: {
-                    complaintText: true
+                    complaintText: true,
+                    isFlagged: true
                   }
                 },
                 medicines: {

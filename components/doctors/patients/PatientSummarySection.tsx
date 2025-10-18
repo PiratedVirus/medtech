@@ -26,6 +26,12 @@ interface Appointment {
   medicines?: string;
   doctorNotes?: string;
   prescriptionLink?: string | null;
+  prescription?: {
+    complaints: Array<{
+      complaintText: string;
+      isFlagged: boolean;
+    }>;
+  };
 }
 
 interface PatientSummarySectionProps {
@@ -158,12 +164,21 @@ export default function PatientSummarySection({
     .join(", ") : "";
 
   // Latest appointment complaints: flagged vs all
-  const latestComplaintsArray = (latestCompletedAppointment?.complaints || "")
-    .split(',')
-    .map(c => c.trim())
-    .filter(Boolean);
-  const flaggedComplaintsRegex = /high|low|severe|critical|urgent|blood pressure|bp|sugar|glucose|pain|fever/i;
-  const flaggedLatestComplaints = latestComplaintsArray.filter(c => flaggedComplaintsRegex.test(c));
+  // Get complaints from prescription data if available, otherwise fallback to string parsing
+  const latestComplaintsArray = latestCompletedAppointment?.prescription?.complaints 
+    ? latestCompletedAppointment.prescription.complaints.map((c: any) => c.complaintText)
+    : (latestCompletedAppointment?.complaints || "")
+        .split(',')
+        .map(c => c.trim())
+        .filter(Boolean);
+  
+  // Use actual isFlagged field from database instead of regex
+  const flaggedLatestComplaints = latestCompletedAppointment?.prescription?.complaints 
+    ? latestCompletedAppointment.prescription.complaints
+        .filter((c: { complaintText: string; isFlagged: boolean }) => c.isFlagged)
+        .map((c: { complaintText: string; isFlagged: boolean }) => c.complaintText)
+    : latestComplaintsArray.filter((c: string) => /high|low|severe|critical|urgent|blood pressure|bp|sugar|glucose|pain|fever/i.test(c));
+  
   const latestComplaintsToShow = showAllLatestComplaints ? latestComplaintsArray : flaggedLatestComplaints;
 
   // Previous appointments for dropdown (all completed appointments)
@@ -290,7 +305,7 @@ export default function PatientSummarySection({
                       </div>
                       <div className="space-y-2">
                         {latestComplaintsToShow.length > 0 ? (
-                          latestComplaintsToShow.map((complaint, index) => (
+                          latestComplaintsToShow.map((complaint: string, index: number) => (
                             <div key={index} className="text-sm text-gray-700 flex items-start gap-2">
                               <span className="flex items-center gap-2 bg-secondary/10 p-2 rounded-lg">
                                 {complaint}
