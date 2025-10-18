@@ -3,10 +3,13 @@
  * Automatically invalidates user profile cache when data changes
  */
 
-import { Redis } from 'ioredis';
+import { Redis } from '@upstash/redis';
 
 // Initialize Redis client for cache invalidation
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 /**
  * Invalidate user profile cache for a specific user
