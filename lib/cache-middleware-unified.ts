@@ -279,6 +279,13 @@ export const CACHE_CONFIGS = {
     dependencies: ['doctor:profile:*', 'appointments:*']
   },
   
+  DOCTOR_CLINIC_INFO: {
+    key: 'doctor:clinic-info',
+    ttl: CACHE_TTL.ADMIN_PROFILE,
+    entityType: 'doctor' as const,
+    dependencies: ['doctor:profile:*']
+  },
+  
   // Admin-related endpoints
   ADMIN_DASHBOARD: {
     key: 'admin:dashboard',
@@ -352,6 +359,7 @@ export function getCacheConfig(endpoint: string, params: Record<string, any> = {
     '/api/admin/doctors': CACHE_CONFIGS.DOCTOR_PROFILE,
     '/api/doctor/appointments': CACHE_CONFIGS.DOCTOR_APPOINTMENTS,
     '/api/doctor/earnings': CACHE_CONFIGS.DOCTOR_EARNINGS,
+    '/api/doctor/clinic-info': CACHE_CONFIGS.DOCTOR_CLINIC_INFO,
     '/api/admin/dashboard/summary': CACHE_CONFIGS.ADMIN_DASHBOARD,
     '/api/admin/users': CACHE_CONFIGS.ADMIN_USERS,
     '/api/admin/patients': CACHE_CONFIGS.ADMIN_PATIENTS,
