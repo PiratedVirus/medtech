@@ -164,6 +164,25 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
         </View>
       )}
 
+      {/* Recommended Links */}
+      {(() => {
+        const links = Array.isArray(prescriptionData.recommendedLinks) 
+          ? prescriptionData.recommendedLinks 
+          : (typeof prescriptionData.recommendedLinks === 'string' && prescriptionData.recommendedLinks.trim() 
+              ? prescriptionData.recommendedLinks.split(',').filter((link: string) => link.trim() !== '')
+              : []);
+        return links.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recommended Links:</Text>
+            {links.map((link: string, index: number) => (
+              <Text key={index} style={styles.bulletPoint}>
+                • {link.trim()}
+              </Text>
+            ))}
+          </View>
+        );
+      })()}
+
       {/* Tests & Visit */}
       <View style={styles.testVisitSection}>
         {visibleSections?.testsRequested !== false && (
@@ -567,6 +586,24 @@ export const generatePDFWithJsPDF = async (
       });
       
       adviceY = adviceY + 10 + (adviceLines.length * 5) + 15;
+    }
+    
+    // Recommended Links
+    const links = Array.isArray(prescriptionData.recommendedLinks) 
+      ? prescriptionData.recommendedLinks 
+      : (typeof prescriptionData.recommendedLinks === 'string' && prescriptionData.recommendedLinks.trim() 
+          ? prescriptionData.recommendedLinks.split(',').filter((link: string) => link.trim() !== '')
+          : []);
+    if (links.length > 0) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Recommended Links:", 20, adviceY);
+      doc.setFont("helvetica", "normal");
+      
+      links.forEach((link: string, index: number) => {
+        doc.text(`• ${link.trim()}`, 20, adviceY + 10 + (index * 5));
+      });
+      
+      adviceY = adviceY + 10 + (links.length * 5) + 15;
     }
     
     // Tests and Next Visit

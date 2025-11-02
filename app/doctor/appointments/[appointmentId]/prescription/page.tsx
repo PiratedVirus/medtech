@@ -48,6 +48,7 @@ interface PrescriptionData {
   }>;
   advice: string;
   testsRequested: string;
+  recommendedLinks?: string[];
   nextVisit: {
     type: "days" | "weeks" | "months";
     value: number;
@@ -284,6 +285,7 @@ export default function AppointmentPrescriptionPage() {
           })) || [],
         advice: prescription.advice || "",
         testsRequested: prescription.testsRequested || "",
+        recommendedLinks: prescription.recommendedLinks ? prescription.recommendedLinks.split(',').filter((link: string) => link.trim() !== '') : [],
         nextVisit: {
           type: prescription.nextVisitType || "days",
           value: prescription.nextVisitValue || 7,

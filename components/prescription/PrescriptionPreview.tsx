@@ -199,6 +199,34 @@ export default function PrescriptionPreview({
         </div>
       )}
 
+      {/* Recommended Links Section */}
+      {(() => {
+        const links = Array.isArray(prescriptionData.recommendedLinks) 
+          ? prescriptionData.recommendedLinks 
+          : (typeof prescriptionData.recommendedLinks === 'string' && prescriptionData.recommendedLinks.trim() 
+              ? prescriptionData.recommendedLinks.split(',').filter((link: string) => link.trim() !== '')
+              : []);
+        return links.length > 0 && (
+          <div className="mb-4">
+            <p className="font-semibold mb-2">Recommended Links:</p>
+            <div className="space-y-2">
+              {links.map((link: string, index: number) => (
+                <div key={index} className="text-sm">
+                  <a 
+                    href={link.trim()} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    • {link.trim()}
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Tests Requested and Next Visit in 2 columns */}
       <div className="flex justify-between mb-6">
         <div>

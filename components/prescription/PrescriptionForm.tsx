@@ -1527,8 +1527,67 @@ export default function PrescriptionForm({
         </Card>
       </div>
 
+      {/* Recommended Links Section */}
+      <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <h3 className="text-lg font-semibold mb-4">Recommended Links</h3>
+        
+        <div className="space-y-3">
+          {/* Display existing links */}
+          {(prescriptionData.recommendedLinks || []).map((link: string, index: number) => (
+            <div key={index} className="flex items-center gap-2">
+              <Input
+                type="url"
+                value={link}
+                onChange={(e) => {
+                  const updatedLinks = [...(prescriptionData.recommendedLinks || [])];
+                  updatedLinks[index] = e.target.value;
+                  setPrescriptionData({
+                    ...prescriptionData,
+                    recommendedLinks: updatedLinks,
+                  });
+                }}
+                placeholder="https://example.com"
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  const updatedLinks = (prescriptionData.recommendedLinks || []).filter((_: string, i: number) => i !== index);
+                  setPrescriptionData({
+                    ...prescriptionData,
+                    recommendedLinks: updatedLinks,
+                  });
+                  toast({
+                    title: "Success",
+                    description: "Link removed successfully",
+                  });
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          
+          {/* Add new link button */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setPrescriptionData({
+                ...prescriptionData,
+                recommendedLinks: [...(prescriptionData.recommendedLinks || []), ""],
+              });
+            }}
+            className="w-full"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add New Link
+          </Button>
+        </div>
+      </div>
 
-      {/* it Section */}
       {/* Next Visit card – keep existing wrapper */}
       <div className="bg-white p-6 rounded-lg border border-gray-200">
         <h3 className="text-lg font-semibold mb-2">Next Visit</h3>

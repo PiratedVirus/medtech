@@ -48,6 +48,7 @@ interface PrescriptionData {
   }>;
   advice: string;
   testsRequested: string;
+  recommendedLinks: string[];
   nextVisit: {
     type: "days" | "weeks" | "months";
     value: number;
@@ -84,6 +85,7 @@ export default function PrescriptionPage() {
     medicines: [],
     advice: "",
     testsRequested: "",
+    recommendedLinks: [],
     nextVisit: {
       type: "days",
       value: 7,
@@ -233,6 +235,7 @@ export default function PrescriptionPage() {
             })),
             advice: prescription.advice || "",
             testsRequested: prescription.testsRequested || "",
+            recommendedLinks: prescription.recommendedLinks ? prescription.recommendedLinks.split(',').filter((link: string) => link.trim() !== '') : [],
             nextVisit: {
               type: prescription.nextVisitType || "days",
               value: prescription.nextVisitValue || 7,
@@ -522,6 +525,7 @@ export default function PrescriptionPage() {
             medicines: prescriptionData.medicines,
             advice: prescriptionData.advice,
             testsRequested: prescriptionData.testsRequested,
+            recommendedLinks: prescriptionData.recommendedLinks || [],
             nextVisitDate: prescriptionData.nextVisit.date || calculateNextVisitDate(prescriptionData.nextVisit.type, prescriptionData.nextVisit.value),
             nextVisitType: prescriptionData.nextVisit.type,
             nextVisitValue: prescriptionData.nextVisit.value,
@@ -538,6 +542,7 @@ export default function PrescriptionPage() {
             medicines: prescriptionData.medicines,
             advice: prescriptionData.advice,
             testsRequested: prescriptionData.testsRequested,
+            recommendedLinks: prescriptionData.recommendedLinks || [],
             nextVisitDate: prescriptionData.nextVisit.date || calculateNextVisitDate(prescriptionData.nextVisit.type, prescriptionData.nextVisit.value),
             nextVisitType: prescriptionData.nextVisit.type,
             nextVisitValue: prescriptionData.nextVisit.value,
@@ -701,6 +706,7 @@ export default function PrescriptionPage() {
                             })),
                             advice: prescription.advice || "",
                             testsRequested: prescription.testsRequested || "",
+                            recommendedLinks: prescription.recommendedLinks ? prescription.recommendedLinks.split(',').filter((link: string) => link.trim() !== '') : [],
                             nextVisit: {
                               type: prescription.nextVisitType || "days",
                               value: prescription.nextVisitValue || 7,
@@ -788,6 +794,7 @@ export default function PrescriptionPage() {
                       })),
                       advice: prescription.advice || "",
                       testsRequested: prescription.testsRequested || "",
+                      recommendedLinks: prescription.recommendedLinks ? prescription.recommendedLinks.split(',').filter((link: string) => link.trim() !== '') : [],
                       nextVisit: {
                         type: prescription.nextVisitType || "days",
                         value: prescription.nextVisitValue || 7,

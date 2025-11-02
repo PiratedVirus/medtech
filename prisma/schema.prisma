@@ -449,6 +449,7 @@ model Prescription {
   advice              String?
   testsRequested      String?
   historyOfCurrentIllness String?
+  recommendedLinks   String?
   nextVisitDate       DateTime?
   nextVisitType       String?
   nextVisitValue      Int?
