@@ -31,7 +31,6 @@ export async function POST(request: NextRequest) {
       include: {
         complaints: true,
         vitals: true,
-        history: true,
         systemicExamination: true,
         medicines: true,
         patient: {
