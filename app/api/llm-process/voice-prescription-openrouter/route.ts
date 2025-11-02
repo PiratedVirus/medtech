@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
 {
   "complaints": [{"text": "complaint", "severity": "MODERATE", "daysSince": 1}],
   "vitals": {"bloodPressure": "", "pulse": "", "height": "", "weight": ""},
-  "history": {"allergies": "", "personalHistory": "", "pastMedicalHistory": "", "familyHistory": ""},
+  "historyOfCurrentIllness": "",
+  "medicalHistory": {"allergies": "", "personalHistory": "", "pastMedicalHistory": "", "familyHistory": ""},
   "systemicExamination": {"general": "", "cvs": "NAD", "rs": "NAD", "cns": "NAD"},
   "medicines": [{"name": "medicine", "frequency": "1-0-0", "medicineTime": "Post-meal", "duration": 5, "quantity": ""}],
   "advice": "",
@@ -41,7 +42,9 @@ Rules:
 - Use "NAD" for normal examination
 - Extract only clearly mentioned information
 - If no specific date mentioned, use default nextVisit: {"type": "days", "value": 7}
-- Keep response concise and focused`;
+- Keep response concise and focused
+- historyOfCurrentIllness: Describe current illness, symptoms, duration, and progression
+- medicalHistory: Extract longitudinal patient data (allergies, personal history, past medical history, family history)`;
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',

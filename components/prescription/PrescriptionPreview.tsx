@@ -79,7 +79,6 @@ export default function PrescriptionPreview({
             <span><span className="font-semibold">Pulse</span> {prescriptionData.vitals?.pulse || '72'} bpm</span>
             <span><span className="font-semibold">Height</span> {prescriptionData.vitals?.height || '185'} cm</span>
             <span><span className="font-semibold">Weight</span> {prescriptionData.vitals?.weight || '90'} kgs</span>
-            <span><span className="font-semibold">Random Blood Sugar</span> 150 mg/dL</span>
           </div>
         )}
 
@@ -107,6 +106,49 @@ export default function PrescriptionPreview({
                   </p>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* History of Current Illness */}
+        {visibleSections.history && prescriptionData.historyOfCurrentIllness && (
+          <div className="mb-4">
+            <p className="font-semibold mb-2">History of Current Illness:</p>
+            <div className="ml-4 text-sm">
+              <p>{prescriptionData.historyOfCurrentIllness}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Medical History Section */}
+        {visibleSections.history && (
+          <div className="mb-4">
+            <p className="font-semibold mb-2">Medical History:</p>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              {prescriptionData.history?.allergies && (
+                <div>
+                  <span className="font-semibold">Allergies:</span>
+                  <p className="ml-2">{prescriptionData.history.allergies}</p>
+                </div>
+              )}
+              {prescriptionData.history?.personalHistory && (
+                <div>
+                  <span className="font-semibold">Personal History:</span>
+                  <p className="ml-2">{prescriptionData.history.personalHistory}</p>
+                </div>
+              )}
+              {prescriptionData.history?.pastMedicalHistory && (
+                <div>
+                  <span className="font-semibold">Past Medical History:</span>
+                  <p className="ml-2">{prescriptionData.history.pastMedicalHistory}</p>
+                </div>
+              )}
+              {prescriptionData.history?.familyHistory && (
+                <div>
+                  <span className="font-semibold">Family History:</span>
+                  <p className="ml-2">{prescriptionData.history.familyHistory}</p>
+                </div>
+              )}
             </div>
           </div>
         )}

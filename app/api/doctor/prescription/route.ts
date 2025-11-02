@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
       include: {
         complaints: true,
         vitals: true,
-        history: true,
         systemicExamination: true,
         medicines: true,
         patient: {
@@ -78,6 +77,8 @@ export async function POST(request: Request) {
       complaints,
       vitals,
       history,
+      historyOfCurrentIllness,
+      medicalHistory,
       systemicExamination,
       medicines,
       advice,
@@ -107,6 +108,7 @@ export async function POST(request: Request) {
           prescriptionNumber,
           advice,
           testsRequested,
+          historyOfCurrentIllness: historyOfCurrentIllness || history?.historyOfCurrentIllness || null,
           nextVisitDate: nextVisitDate ? new Date(nextVisitDate) : null,
           nextVisitType,
           nextVisitValue: nextVisitValue ? parseInt(nextVisitValue) : null,
@@ -139,19 +141,6 @@ export async function POST(request: Request) {
         });
       }
 
-      // Create history
-      if (history) {
-        await tx.prescriptionHistory.create({
-          data: {
-            prescriptionId: newPrescription.id,
-            allergies: history.allergies,
-            personalHistory: history.personalHistory,
-            pastMedicalHistory: history.pastMedicalHistory,
-            familyHistory: history.familyHistory,
-          },
-        });
-      }
-
       // Create systemic examination
       if (systemicExamination) {
         await tx.prescriptionSystemicExamination.create({
@@ -177,6 +166,19 @@ export async function POST(request: Request) {
             quantity: medicine.quantity ? parseInt(medicine.quantity) : null,
             instructions: medicine.instructions,
           })),
+        });
+      }
+
+      // Update patient profile with medical history if provided
+      if (medicalHistory) {
+        await tx.patientProfile.update({
+          where: { userId: parseInt(patientId) },
+          data: {
+            allergies: medicalHistory.allergies || null,
+            personalHistory: medicalHistory.personalHistory || null,
+            pastMedicalHistory: medicalHistory.pastMedicalHistory || null,
+            familyHistory: medicalHistory.familyHistory || null,
+          },
         });
       }
 
@@ -229,6 +231,8 @@ export async function PUT(request: Request) {
       complaints,
       vitals,
       history,
+      historyOfCurrentIllness,
+      medicalHistory,
       systemicExamination,
       medicines,
       advice,
@@ -288,6 +292,7 @@ export async function PUT(request: Request) {
         data: {
           advice: advice || null,
           testsRequested: testsRequested || null,
+          historyOfCurrentIllness: historyOfCurrentIllness || history?.historyOfCurrentIllness || null,
           nextVisitDate: nextVisitDate ? new Date(nextVisitDate) : null,
           nextVisitType: nextVisitType || null,
           nextVisitValue: safeParseInt(nextVisitValue),
@@ -341,34 +346,6 @@ export async function PUT(request: Request) {
         }
       }
 
-      // Update history - handle null vs undefined properly
-      if (history !== undefined) {
-        if (history === null) {
-          // Delete history record if null is explicitly sent
-          await tx.prescriptionHistory.deleteMany({
-            where: { prescriptionId: prescriptionIdNum },
-          });
-        } else {
-          // Upsert history record
-          await tx.prescriptionHistory.upsert({
-            where: { prescriptionId: prescriptionIdNum },
-            update: {
-              allergies: history.allergies || null,
-              personalHistory: history.personalHistory || null,
-              pastMedicalHistory: history.pastMedicalHistory || null,
-              familyHistory: history.familyHistory || null,
-            },
-            create: {
-              prescriptionId: prescriptionIdNum,
-              allergies: history.allergies || null,
-              personalHistory: history.personalHistory || null,
-              pastMedicalHistory: history.pastMedicalHistory || null,
-              familyHistory: history.familyHistory || null,
-            },
-          });
-        }
-      }
-
       // Update systemic examination - handle null vs undefined properly
       if (systemicExamination !== undefined) {
         if (systemicExamination === null) {
@@ -416,6 +393,19 @@ export async function PUT(request: Request) {
             })),
           });
         }
+      }
+
+      // Update patient profile with medical history if provided
+      if (medicalHistory) {
+        await tx.patientProfile.update({
+          where: { userId: updatedPrescription.patientId },
+          data: {
+            allergies: medicalHistory.allergies || null,
+            personalHistory: medicalHistory.personalHistory || null,
+            pastMedicalHistory: medicalHistory.pastMedicalHistory || null,
+            familyHistory: medicalHistory.familyHistory || null,
+          },
+        });
       }
 
       return updatedPrescription;

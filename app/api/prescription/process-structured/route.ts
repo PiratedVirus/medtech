@@ -94,12 +94,7 @@ export async function POST(request: NextRequest) {
         height: prescription.vitals.height,
         weight: prescription.vitals.weight
       } : undefined,
-      history: prescription.history ? {
-        allergies: prescription.history.allergies,
-        personalHistory: prescription.history.personalHistory,
-        pastMedicalHistory: prescription.history.pastMedicalHistory,
-        familyHistory: prescription.history.familyHistory
-      } : undefined,
+      historyOfCurrentIllness: prescription.historyOfCurrentIllness,
       systemicExamination: prescription.systemicExamination ? {
         general: prescription.systemicExamination.general,
         cvs: prescription.systemicExamination.cvs,

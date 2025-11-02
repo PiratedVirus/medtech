@@ -95,13 +95,10 @@ export class PrescriptionProcessor {
       lines.push('');
     }
     
-    // History
-    if (prescription.history) {
-      lines.push('MEDICAL HISTORY:');
-      if (prescription.history.allergies) lines.push(`Allergies: ${prescription.history.allergies}`);
-      if (prescription.history.personalHistory) lines.push(`Personal History: ${prescription.history.personalHistory}`);
-      if (prescription.history.pastMedicalHistory) lines.push(`Past Medical History: ${prescription.history.pastMedicalHistory}`);
-      if (prescription.history.familyHistory) lines.push(`Family History: ${prescription.history.familyHistory}`);
+    // History of Current Illness
+    if (prescription.historyOfCurrentIllness) {
+      lines.push('HISTORY OF CURRENT ILLNESS:');
+      lines.push(prescription.historyOfCurrentIllness);
       lines.push('');
     }
     

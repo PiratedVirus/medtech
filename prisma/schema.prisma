@@ -448,6 +448,7 @@ model Prescription {
   prescriptionNumber  String                           @unique
   advice              String?
   testsRequested      String?
+  historyOfCurrentIllness String?
   nextVisitDate       DateTime?
   nextVisitType       String?
   nextVisitValue      Int?
@@ -460,7 +461,6 @@ model Prescription {
   doctor              User                             @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
   patient             User                             @relation("PatientPrescriptions", fields: [patientId], references: [id])
   complaints          PrescriptionComplaint[]
-  history             PrescriptionHistory?
   medicines           PrescriptionMedicine[]
   systemicExamination PrescriptionSystemicExamination?
   prescriptionText    PrescriptionText?
@@ -495,18 +495,6 @@ model PrescriptionVitals {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-}
-
-model PrescriptionHistory {
-  id                 Int          @id @default(autoincrement())
-  prescriptionId     Int          @unique
-  allergies          String?
-  personalHistory    String?
-  pastMedicalHistory String?
-  familyHistory      String?
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
-  prescription       Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
 }
 
 model PrescriptionSystemicExamination {

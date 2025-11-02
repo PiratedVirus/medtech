@@ -74,6 +74,7 @@ export default function PrescriptionForm({
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [recognition, setRecognition] = useState<any>(null);
   const [isClearingVoice, setIsClearingVoice] = useState(false);
+  const [currentVoiceField, setCurrentVoiceField] = useState<string | null>(null);
   const { toast } = useToast();
   // Ref to hold accumulated transcript across interim/final results
   const finalTranscriptRef = useRef<string>("");
@@ -314,6 +315,7 @@ export default function PrescriptionForm({
           setVoiceTranscript(finalTranscriptRef.current.trim());
           processVoiceInput(finalTranscriptRef.current.trim());
         }
+        setCurrentVoiceField(null);
       };
 
       recognitionInstance.onerror = (event: any) => {
@@ -688,6 +690,8 @@ export default function PrescriptionForm({
       // Update advice and tests only if voice data has content
       advice: voiceData.advice?.trim() || prescriptionData.advice,
       testsRequested: voiceData.testsRequested?.trim() || prescriptionData.testsRequested,
+      historyOfCurrentIllness: voiceData.historyOfCurrentIllness?.trim() || prescriptionData.historyOfCurrentIllness,
+      medicalHistory: voiceData.medicalHistory || prescriptionData.medicalHistory,
       nextVisit: voiceData.nextVisit || prescriptionData.nextVisit,
     };
 
@@ -699,6 +703,8 @@ export default function PrescriptionForm({
     if (voiceData.medicines?.length) addedItems.push(`${voiceData.medicines.length} medicine(s)`);
     if (voiceData.advice?.trim()) addedItems.push("advice");
     if (voiceData.testsRequested?.trim()) addedItems.push("tests");
+    if (voiceData.historyOfCurrentIllness?.trim()) addedItems.push("history of current illness");
+    if (voiceData.medicalHistory?.allergies?.trim() || voiceData.medicalHistory?.personalHistory?.trim() || voiceData.medicalHistory?.pastMedicalHistory?.trim() || voiceData.medicalHistory?.familyHistory?.trim()) addedItems.push("medical history");
     
     // Only show success if we actually added meaningful data
     if (addedItems.length > 0) {
@@ -791,6 +797,37 @@ export default function PrescriptionForm({
     }
   };
 
+  const handleVoiceInput = async (fieldName: string) => {
+    if (isVoiceRecording) {
+      // Stop recording
+      if (recognition) {
+        recognition.stop();
+      }
+      setCurrentVoiceField(null);
+    } else {
+      // Start recording for specific field
+      setCurrentVoiceField(fieldName);
+      if (recognition) {
+        setVoiceTranscript("");
+        setIsVoiceRecording(true);
+        setIsClearingVoice(false);
+        finalTranscriptRef.current = "";
+        recordingCancelledRef.current = false;
+        recognition.start();
+        toast({
+          title: "🎤 Recording",
+          description: `Recording for ${fieldName.replace(/([A-Z])/g, ' $1').toLowerCase()}...`,
+        });
+      } else {
+        toast({
+          title: "Speech Recognition Not Available",
+          description: "Your browser doesn't support speech recognition.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   const clearAllVoiceData = () => {
     // Set clearing flag FIRST to prevent any onend events from processing
     setIsClearingVoice(true);
@@ -808,6 +845,7 @@ export default function PrescriptionForm({
     setIsProcessingVoice(false);
     setIsVoiceRecording(false);
     setIsFillingForm(false);
+    setCurrentVoiceField(null);
     finalTranscriptRef.current = "";
 
     // Clear all form data that could have been filled by voice
@@ -819,12 +857,7 @@ export default function PrescriptionForm({
         height: "",
         weight: "",
       },
-      history: {
-        allergies: "",
-        personalHistory: "",
-        pastMedicalHistory: "",
-        familyHistory: "",
-      },
+      historyOfCurrentIllness: "",
       systemicExamination: {
         general: "",
         cvs: "NAD",
@@ -1177,72 +1210,102 @@ export default function PrescriptionForm({
 
 
 
-      {/* History Section */}
+      {/* History of Current Illness Section - Visit Specific */}
+        <div className="bg-custom-mutedgreen p-6 rounded-lg border border-gray-200">
+          <h3 className="text-lg font-semibold mb-4">History of Current Illness</h3>
+          <Textarea
+            id="historyOfCurrentIllness"
+            value={prescriptionData.historyOfCurrentIllness || ""}
+            onChange={(e) =>
+              setPrescriptionData({
+                ...prescriptionData,
+                historyOfCurrentIllness: e.target.value,
+              })
+            }
+            placeholder="Describe the current illness, symptoms, duration, and progression..."
+            rows={4}
+            className="mt-1 bg-white"
+          />
+        </div>
+
+      {/* Medical History Section - Longitudinal Patient Data */}
       <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold mb-4">History</h3>
+        <h3 className="text-lg font-semibold mb-4">Medical History</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="allergies" className="text-sm font-medium text-gray-700">Allergies</Label>
+            <Label className="text-sm font-medium text-gray-700">Allergies</Label>
             <Textarea
               id="allergies"
-              value={prescriptionData.history?.allergies || ""}
+              value={prescriptionData.medicalHistory?.allergies || ""}
               onChange={(e) =>
                 setPrescriptionData({
                   ...prescriptionData,
-                  history: { ...prescriptionData.history || {}, allergies: e.target.value },
+                  medicalHistory: {
+                    ...prescriptionData.medicalHistory,
+                    allergies: e.target.value,
+                  },
                 })
               }
-              placeholder="Enter here..."
-              rows={2}
-              className="mt-1"
+              placeholder="Enter patient allergies..."
+              rows={3}
+              className="mt-1 bg-white"
             />
           </div>
           <div>
-            <Label htmlFor="personalHistory" className="text-sm font-medium text-gray-700">Personal History</Label>
+            <Label className="text-sm font-medium text-gray-700">Personal History</Label>
             <Textarea
               id="personalHistory"
-              value={prescriptionData.history?.personalHistory || ""}
+              value={prescriptionData.medicalHistory?.personalHistory || ""}
               onChange={(e) =>
                 setPrescriptionData({
                   ...prescriptionData,
-                  history: { ...prescriptionData.history || {}, personalHistory: e.target.value },
+                  medicalHistory: {
+                    ...prescriptionData.medicalHistory,
+                    personalHistory: e.target.value,
+                  },
                 })
               }
-              placeholder="Enter here..."
-              rows={2}
-              className="mt-1"
+              placeholder="Enter personal history..."
+              rows={3}
+              className="mt-1 bg-white"
             />
           </div>
           <div>
-            <Label htmlFor="pastMedicalHistory" className="text-sm font-medium text-gray-700">Past Medical History</Label>
+            <Label className="text-sm font-medium text-gray-700">Past Medical History</Label>
             <Textarea
               id="pastMedicalHistory"
-              value={prescriptionData.history?.pastMedicalHistory || ""}
+              value={prescriptionData.medicalHistory?.pastMedicalHistory || ""}
               onChange={(e) =>
                 setPrescriptionData({
                   ...prescriptionData,
-                  history: { ...prescriptionData.history || {}, pastMedicalHistory: e.target.value },
+                  medicalHistory: {
+                    ...prescriptionData.medicalHistory,
+                    pastMedicalHistory: e.target.value,
+                  },
                 })
               }
-              placeholder="Enter here..."
-              rows={2}
-              className="mt-1"
+              placeholder="Enter past medical history..."
+              rows={3}
+              className="mt-1 bg-white"
             />
           </div>
           <div>
-            <Label htmlFor="familyHistory" className="text-sm font-medium text-gray-700">Family History</Label>
+            <Label className="text-sm font-medium text-gray-700">Family History</Label>
             <Textarea
               id="familyHistory"
-              value={prescriptionData.history?.familyHistory || ""}
+              value={prescriptionData.medicalHistory?.familyHistory || ""}
               onChange={(e) =>
                 setPrescriptionData({
                   ...prescriptionData,
-                  history: { ...prescriptionData.history || {}, familyHistory: e.target.value },
+                  medicalHistory: {
+                    ...prescriptionData.medicalHistory,
+                    familyHistory: e.target.value,
+                  },
                 })
               }
-              placeholder="Enter family medical history..."
-              rows={2}
-              className="mt-1"
+              placeholder="Enter family history..."
+              rows={3}
+              className="mt-1 bg-white"
             />
           </div>
         </div>

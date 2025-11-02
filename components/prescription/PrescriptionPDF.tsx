@@ -79,6 +79,47 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
             })}
           </View>
         )}
+
+        {/* History of Current Illness */}
+        {visibleSections?.history !== false && prescriptionData.historyOfCurrentIllness && (
+          <View style={styles.historySection}>
+            <Text style={[styles.patientInfo, styles.bold]}>History of Current Illness:</Text>
+            <Text style={styles.historyValue}>{prescriptionData.historyOfCurrentIllness}</Text>
+          </View>
+        )}
+
+        {/* Medical History Section */}
+        {visibleSections?.history !== false && (
+          <View style={styles.historySection}>
+            <Text style={[styles.patientInfo, styles.bold]}>Medical History:</Text>
+            <View style={styles.historyGrid}>
+              {prescriptionData.medicalHistory?.allergies && (
+                <View style={styles.historyItem}>
+                  <Text style={styles.historyLabel}>Allergies:</Text>
+                  <Text style={styles.historyValue}>{prescriptionData.medicalHistory.allergies}</Text>
+                </View>
+              )}
+              {prescriptionData.medicalHistory?.personalHistory && (
+                <View style={styles.historyItem}>
+                  <Text style={styles.historyLabel}>Personal History:</Text>
+                  <Text style={styles.historyValue}>{prescriptionData.medicalHistory.personalHistory}</Text>
+                </View>
+              )}
+              {prescriptionData.medicalHistory?.pastMedicalHistory && (
+                <View style={styles.historyItem}>
+                  <Text style={styles.historyLabel}>Past Medical History:</Text>
+                  <Text style={styles.historyValue}>{prescriptionData.medicalHistory.pastMedicalHistory}</Text>
+                </View>
+              )}
+              {prescriptionData.medicalHistory?.familyHistory && (
+                <View style={styles.historyItem}>
+                  <Text style={styles.historyLabel}>Family History:</Text>
+                  <Text style={styles.historyValue}>{prescriptionData.medicalHistory.familyHistory}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
       </View>
 
       {/* Prescription Symbol - Medical Style */}
@@ -246,6 +287,29 @@ const styles = StyleSheet.create({
     marginBottom: 3,
     marginLeft: 10,
     lineHeight: 1.3,
+  },
+  historySection: {
+    marginBottom: 8,
+  },
+  historyGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 4,
+  },
+  historyItem: {
+    width: "48%",
+    marginBottom: 6,
+    marginRight: "2%",
+  },
+  historyLabel: {
+    fontSize: 9,
+    fontWeight: "bold",
+    marginBottom: 2,
+  },
+  historyValue: {
+    fontSize: 9,
+    lineHeight: 1.3,
+    marginLeft: 8,
   },
   bold: {
     fontWeight: "bold",
@@ -427,7 +491,6 @@ export const generatePDFWithJsPDF = async (
     doc.text(`Name: Mr. ${patientInfo.name} (${patientInfo.age || 0} yrs, ${patientInfo.gender || 'Not specified'}) - +91 ${patientInfo.phone || 'Not provided'}`, 20, 60);
     doc.text(`BP: ${prescriptionData.vitals?.bloodPressure || '120/80'} mmHg | Pulse: ${prescriptionData.vitals?.pulse || '72'} bpm`, 20, 70);
     doc.text(`Height: ${prescriptionData.vitals?.height || '185'} cm | Weight: ${prescriptionData.vitals?.weight || '90'} kgs`, 20, 80);
-    doc.text(`Random Blood Sugar: 150 mg/dL`, 20, 90);
     // Complaints with timeline
     if (visibleSections?.complaints !== false && prescriptionData.complaints?.length > 0) {
       doc.setFont("helvetica", "bold");
