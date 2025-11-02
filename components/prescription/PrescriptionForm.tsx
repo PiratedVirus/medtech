@@ -647,6 +647,19 @@ export default function PrescriptionForm({
   const handleVoiceTranscriptionComplete = (voiceData: any) => {
     setIsFillingForm(true);
     
+    // Helper function to append medical history fields with comma separator
+    const appendMedicalHistory = (existing: string | null | undefined, newValue: string | null | undefined): string => {
+      const existingStr = existing?.trim() || "";
+      const newStr = newValue?.trim() || "";
+      
+      if (!existingStr && !newStr) return "";
+      if (!existingStr) return newStr;
+      if (!newStr) return existingStr;
+      
+      // Append with comma separator
+      return `${existingStr}, ${newStr}`;
+    };
+    
     // Merge voice data with existing prescription data intelligently
     const updatedData = {
       ...prescriptionData,
@@ -691,7 +704,25 @@ export default function PrescriptionForm({
       advice: voiceData.advice?.trim() || prescriptionData.advice,
       testsRequested: voiceData.testsRequested?.trim() || prescriptionData.testsRequested,
       historyOfCurrentIllness: voiceData.historyOfCurrentIllness?.trim() || prescriptionData.historyOfCurrentIllness,
-      medicalHistory: voiceData.medicalHistory || prescriptionData.medicalHistory,
+      // Append medical history fields instead of replacing them
+      medicalHistory: {
+        allergies: appendMedicalHistory(
+          prescriptionData.medicalHistory?.allergies,
+          voiceData.medicalHistory?.allergies
+        ),
+        personalHistory: appendMedicalHistory(
+          prescriptionData.medicalHistory?.personalHistory,
+          voiceData.medicalHistory?.personalHistory
+        ),
+        pastMedicalHistory: appendMedicalHistory(
+          prescriptionData.medicalHistory?.pastMedicalHistory,
+          voiceData.medicalHistory?.pastMedicalHistory
+        ),
+        familyHistory: appendMedicalHistory(
+          prescriptionData.medicalHistory?.familyHistory,
+          voiceData.medicalHistory?.familyHistory
+        ),
+      },
       nextVisit: voiceData.nextVisit || prescriptionData.nextVisit,
     };
 
