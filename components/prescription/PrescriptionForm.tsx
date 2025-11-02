@@ -28,6 +28,7 @@ interface PrescriptionFormProps {
   isGenerating?: boolean;
   onBack?: () => void;
   existingPrescriptionId?: string | null;
+  isLoadingData?: boolean;
 }
 
 export default function PrescriptionForm({
@@ -41,6 +42,7 @@ export default function PrescriptionForm({
   isGenerating = false,
   onBack,
   existingPrescriptionId,
+  isLoadingData = false,
 }: PrescriptionFormProps) {
   const [newComplaint, setNewComplaint] = useState("");
   const [newMedicine, setNewMedicine] = useState("");
@@ -937,11 +939,11 @@ export default function PrescriptionForm({
               variant="outline"
               size="sm"
               onClick={handleAIMicClick}
-              disabled={isProcessingVoice || isFillingForm}
+              disabled={isLoadingData || isProcessingVoice || isFillingForm}
               className={`relative transition-all duration-500 ease-in-out ${
                 isVoiceRecording 
                   ? "bg-gradient-to-r from-pink-500 to-blue-500 text-white border-transparent shadow-lg shadow-pink-500/20" 
-                  : (isProcessingVoice || isFillingForm)
+                  : (isLoadingData || isProcessingVoice || isFillingForm)
                   ? "bg-gradient-to-r from-pink-400 to-blue-400 text-white border-transparent shadow-lg shadow-blue-500/20"
                   : "hover:bg-gradient-to-r hover:from-pink-50 hover:to-blue-50 hover:border-pink-200"
               }`}
@@ -978,7 +980,7 @@ export default function PrescriptionForm({
                   ? "text-white" 
                   : "bg-gradient-to-r from-pink-600 to-blue-600 bg-clip-text text-transparent"
               }`}>
-                {isVoiceRecording ? "Recording..." : isProcessingVoice ? "Thinking..." : isFillingForm ? "Filling..." : "AI Mic"}
+                {isLoadingData ? "Loading..." : isVoiceRecording ? "Recording..." : isProcessingVoice ? "Thinking..." : isFillingForm ? "Filling..." : "AI Mic"}
               </span>
             </Button>
             <Button

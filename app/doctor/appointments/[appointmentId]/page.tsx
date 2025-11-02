@@ -94,6 +94,7 @@ export default function PrescriptionPage() {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true); // Track initial data loading
   const [existingPrescriptionId, setExistingPrescriptionId] = useState<string | null>(null);
   const [activeCallFrame, setActiveCallFrame] = useState<DailyCall | null>(null);
   const [meetingRoomLink, setMeetingRoomLink] = useState<string | null>(null);
@@ -146,249 +147,207 @@ export default function PrescriptionPage() {
       }, 500);
     };
 
-    const fetchExistingPrescription = async () => {
+    // Consolidated data loading function - eliminates duplicate API calls and race conditions
+    const loadAllData = async () => {
+      if (!appointmentId) return;
+
+      setIsLoadingData(true);
+      
       try {
-        // Check existence first to avoid 404s
-        const existsRes = await fetch(`/api/doctor/prescription/exists?appointmentId=${appointmentId}`);
-        const existsJson = existsRes.ok ? await existsRes.json() : { exists: false };
-
-        if (existsJson?.exists && existsJson.id) {
-          const response = await fetch(`/api/doctor/prescription?prescriptionId=${existsJson.id}`);
-          if (!response.ok) return;
-          const data = await response.json();
-          if (!data.success || !data.data) return;
-
-          // Existing prescription → prefill
-          const prescription = data.data;
-          setExistingPrescriptionId(String(prescription.id));
-          
-          // Load patient profile for medical history
-          let patientProfileData = {
-            allergies: "",
-            personalHistory: "",
-            pastMedicalHistory: "",
-            familyHistory: "",
-          };
-          
-          try {
-            const profRes = await fetch(`/api/profile?userId=${prescription.patientId}`);
-            if (profRes.ok) {
-              const profJson = await profRes.json();
-              const pp = profJson?.data?.patientProfile;
-              if (pp) {
-                patientProfileData = {
-                  allergies: pp.allergies || "",
-                  personalHistory: pp.personalHistory || "",
-                  pastMedicalHistory: pp.pastMedicalHistory || "",
-                  familyHistory: pp.familyHistory || "",
-                };
-              }
-            }
-          } catch (e) {
-            console.warn('Patient profile fetch failed for existing prescription');
-          }
-          
-          setPatientInfo(prev => ({
-            ...prev,
-            prescriptionId: prescription.prescriptionNumber || `PRES-${prescription.id}`,
-            allergies: patientProfileData.allergies,
-            personalHistory: patientProfileData.personalHistory,
-            pastMedicalHistory: patientProfileData.pastMedicalHistory,
-            familyHistory: patientProfileData.familyHistory,
-          }));
-          
-          setPrescriptionData({
-            complaints: (prescription.complaints || []).map((c: any) => ({
-              id: String(c.id),
-              text: c.complaintText,
-              severity: c.severity,
-              daysSince: c.daysSince,
-              isFlagged: c.isFlagged || false,
-            })),
-            vitals: prescription.vitals ? {
-              bloodPressure: prescription.vitals.bloodPressure || "",
-              pulse: prescription.vitals.pulse?.toString() || "",
-              height: prescription.vitals.height?.toString() || "",
-              weight: prescription.vitals.weight?.toString() || "",
-            } : { bloodPressure: "", pulse: "", height: "", weight: "" },
-            historyOfCurrentIllness: prescription.historyOfCurrentIllness || "",
-            medicalHistory: {
-              allergies: patientProfileData.allergies,
-              personalHistory: patientProfileData.personalHistory,
-              pastMedicalHistory: patientProfileData.pastMedicalHistory,
-              familyHistory: patientProfileData.familyHistory,
-            },
-            systemicExamination: prescription.systemicExamination ? {
-              general: prescription.systemicExamination.general || "",
-              cvs: prescription.systemicExamination.cvs || "NAD",
-              rs: prescription.systemicExamination.rs || "NAD",
-              cns: prescription.systemicExamination.cns || "NAD",
-            } : { general: "", cvs: "NAD", rs: "NAD", cns: "NAD" },
-            medicines: (prescription.medicines || []).map((m: any) => ({
-              id: String(m.id),
-              name: m.medicineName,
-              frequency: m.frequency,
-              medicineTime: m.medicineTime,
-              duration: m.duration,
-              quantity: m.quantity?.toString() || "",
-              instructions: m.instructions || "",
-            })),
-            advice: prescription.advice || "",
-            testsRequested: prescription.testsRequested || "",
-            recommendedLinks: prescription.recommendedLinks ? prescription.recommendedLinks.split(',').filter((link: string) => link.trim() !== '') : [],
-            nextVisit: {
-              type: prescription.nextVisitType || "days",
-              value: prescription.nextVisitValue || 7,
-              date: prescription.nextVisitDate ? new Date(prescription.nextVisitDate) : undefined,
-            },
-          });
-
-          // History prefill from previous only if no history on current
-          try {
-            const hasHistory = Boolean(prescription.historyOfCurrentIllness);
-            if (!hasHistory) {
-              const prevRes = await fetch(`/api/doctor/prescription/previous?patientId=${prescription.patientId}&latest=true`);
-              if (prevRes.ok) {
-                const prevJson = await prevRes.json();
-                const prevHist = prevJson?.data?.history;
-                if (prevHist && prevHist.historyOfCurrentIllness) {
-                  setPrescriptionData(prev => ({
-                    ...prev,
-                    historyOfCurrentIllness: prevHist.historyOfCurrentIllness || "",
-                  }));
-                }
-              }
-            }
-          } catch {
-            // ignore
-          }
-        } else {
-          // No existing prescription; try latest previous for history
-          try {
-            const aptRes = await fetch(`/api/doctor/appointments/all`);
-            if (!aptRes.ok) return;
-            const aptJson = await aptRes.json();
-            const apt = aptJson.upcoming.find((a: any) => a.id.toString() === appointmentId) || aptJson.past.find((a: any) => a.id.toString() === appointmentId);
-            if (!apt?.patientId) return;
-            const prevRes = await fetch(`/api/doctor/prescription/previous?patientId=${apt.patientId}&latest=true`);
-            if (prevRes.ok) {
-              const prevJson = await prevRes.json();
-              const prevHist = prevJson?.data?.history;
-              if (prevHist && prevHist.historyOfCurrentIllness) {
-                setPrescriptionData(prev => ({
-                  ...prev,
-                  historyOfCurrentIllness: prevHist.historyOfCurrentIllness || "",
-                }));
-              }
-            }
-          } catch {
-            // ignore
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching existing prescription:", error);
-      }
-    };
-
-    const fetchAppointmentData = async () => {
-      try {
-        const response = await fetch(`/api/doctor/appointments/all`);
-        if (!response.ok) {
+        // Step 1: Fetch appointment data first (need patientId for subsequent calls)
+        const appointmentRes = await fetch(`/api/doctor/appointments/all`);
+        if (!appointmentRes.ok) {
           throw new Error("Failed to fetch appointment data");
         }
 
-        const data = await response.json();
-        const appointment = data.upcoming.find((apt: any) => apt.id.toString() === appointmentId) ||
-          data.past.find((apt: any) => apt.id.toString() === appointmentId);
+        const appointmentJson = await appointmentRes.json();
+        const appointment = appointmentJson.upcoming.find((apt: any) => apt.id.toString() === appointmentId) ||
+          appointmentJson.past.find((apt: any) => apt.id.toString() === appointmentId);
 
-        if (appointment) {
-          const prescriptionId = `PRES-${appointment.patientName.split(' ').map((n: string) => n[0]).join('').toUpperCase()}-${appointmentId}`;
-          setPatientInfo(prev => ({
-            ...prev,
-            name: appointment.patientName,
-            patientId: appointment.patientId.toString(),
-            appointmentId: appointmentId,
-            prescriptionId: prescriptionId,
-          }));
+        if (!appointment) {
+          throw new Error("Appointment not found");
+        }
 
-          // Set doctor info from appointment data
-          setDoctorInfo({
-            name: appointment.doctorName || "Unknown Doctor",
-            id: appointment.doctorId?.toString() || "",
-          });
+        const patientId = appointment.patientId;
 
-          // Set meeting room link, owner token, and appointment data for video consultation
-          setMeetingRoomLink(appointment.meetingRoomLink);
-          setOwnerToken(appointment.ownerToken1);
-          setAppointmentData(appointment);
+        // Step 2: Parallel fetch - Patient profile, Prescription exists check, Clinic info
+        const [profileRes, prescriptionExistsRes, clinicRes] = await Promise.all([
+          fetch(`/api/profile?userId=${patientId}`).catch(() => null),
+          fetch(`/api/doctor/prescription/exists?appointmentId=${appointmentId}`).catch(() => null),
+          fetch(`/api/doctor/clinic-info`).catch(() => null),
+        ]);
 
-          // Fetch patient profile to prefill longitudinal history
-          try {
-            const profRes = await fetch(`/api/profile?userId=${appointment.patientId}`);
-            if (profRes.ok) {
-              const profJson = await profRes.json();
-              const pp = profJson?.data?.patientProfile;
-              if (pp) {
-                // Update patientInfo with profile data for display
-                setPatientInfo(prev => ({
-                  ...prev,
-                  allergies: pp.allergies || "",
-                  personalHistory: pp.personalHistory || "",
-                  pastMedicalHistory: pp.pastMedicalHistory || "",
-                  familyHistory: pp.familyHistory || "",
-                }));
-                
-                // Update prescriptionData with medical history
-                setPrescriptionData(prev => ({
-                  ...prev,
-                  medicalHistory: {
-                    allergies: pp.allergies || "",
-                    personalHistory: pp.personalHistory || "",
-                    pastMedicalHistory: pp.pastMedicalHistory || "",
-                    familyHistory: pp.familyHistory || "",
-                  },
-                }));
-              }
-            }
-          } catch (e) {
-            console.warn('Patient profile fetch failed for history prefill');
-          }
+        // Parse patient profile (SINGLE FETCH - no duplication!)
+        let patientProfileData = {
+          allergies: "",
+          personalHistory: "",
+          pastMedicalHistory: "",
+          familyHistory: "",
+        };
 
-          // Fetch clinic information from the database using doctor's clinic ID
-          try {
-            const clinicRes = await fetch(`/api/doctor/clinic-info`);
-            if (clinicRes.ok) {
-              const clinicData = await clinicRes.json();
-              if (clinicData.success && clinicData.clinic) {
-                setClinicInfo({
-                  name: clinicData.clinic.name,
-                  logo: clinicData.clinic.logo,
-                  address: clinicData.clinic.address,
-                  timings: clinicData.clinic.timings,
-                  subtitle: clinicData.clinic.subtitle,
-                });
-              }
-            }
-          } catch (error) {
-            console.error("Error fetching clinic info:", error);
-            // Don't set default clinic info - let it remain empty
+        if (profileRes?.ok) {
+          const profileJson = await profileRes.json();
+          const pp = profileJson?.data?.patientProfile;
+          if (pp) {
+            patientProfileData = {
+              allergies: pp.allergies || "",
+              personalHistory: pp.personalHistory || "",
+              pastMedicalHistory: pp.pastMedicalHistory || "",
+              familyHistory: pp.familyHistory || "",
+            };
           }
         }
+
+        // Parse clinic info
+        if (clinicRes?.ok) {
+          const clinicData = await clinicRes.json();
+          if (clinicData.success && clinicData.clinic) {
+            setClinicInfo({
+              name: clinicData.clinic.name,
+              logo: clinicData.clinic.logo,
+              address: clinicData.clinic.address,
+              timings: clinicData.clinic.timings,
+              subtitle: clinicData.clinic.subtitle,
+            });
+          }
+        }
+
+        // Set appointment-related info
+        const prescriptionId = `PRES-${appointment.patientName.split(' ').map((n: string) => n[0]).join('').toUpperCase()}-${appointmentId}`;
+        setPatientInfo({
+          name: appointment.patientName,
+          patientId: patientId.toString(),
+          appointmentId: appointmentId,
+          prescriptionId: prescriptionId,
+          allergies: patientProfileData.allergies,
+          personalHistory: patientProfileData.personalHistory,
+          pastMedicalHistory: patientProfileData.pastMedicalHistory,
+          familyHistory: patientProfileData.familyHistory,
+        });
+
+        setDoctorInfo({
+          name: appointment.doctorName || "Unknown Doctor",
+          id: appointment.doctorId?.toString() || "",
+        });
+
+        setMeetingRoomLink(appointment.meetingRoomLink);
+        setOwnerToken(appointment.ownerToken1);
+        setAppointmentData(appointment);
+
+        // Step 3: Check if prescription exists for this appointment
+        const existsJson = prescriptionExistsRes?.ok ? await prescriptionExistsRes.json() : { exists: false };
+        
+        if (existsJson?.exists && existsJson.id) {
+          // Step 4a: Load existing prescription
+          const prescriptionRes = await fetch(`/api/doctor/prescription?prescriptionId=${existsJson.id}`);
+          if (prescriptionRes.ok) {
+            const prescriptionData = await prescriptionRes.json();
+            if (prescriptionData.success && prescriptionData.data) {
+              const prescription = prescriptionData.data;
+              setExistingPrescriptionId(String(prescription.id));
+
+              // Set prescription data with medical history from patient profile
+              setPrescriptionData({
+                complaints: (prescription.complaints || []).map((c: any) => ({
+                  id: String(c.id),
+                  text: c.complaintText,
+                  severity: c.severity,
+                  daysSince: c.daysSince,
+                  isFlagged: c.isFlagged || false,
+                })),
+                vitals: prescription.vitals ? {
+                  bloodPressure: prescription.vitals.bloodPressure || "",
+                  pulse: prescription.vitals.pulse?.toString() || "",
+                  height: prescription.vitals.height?.toString() || "",
+                  weight: prescription.vitals.weight?.toString() || "",
+                } : { bloodPressure: "", pulse: "", height: "", weight: "" },
+                historyOfCurrentIllness: prescription.historyOfCurrentIllness || "",
+                medicalHistory: patientProfileData, // Use profile data fetched once
+                systemicExamination: prescription.systemicExamination ? {
+                  general: prescription.systemicExamination.general || "",
+                  cvs: prescription.systemicExamination.cvs || "NAD",
+                  rs: prescription.systemicExamination.rs || "NAD",
+                  cns: prescription.systemicExamination.cns || "NAD",
+                } : { general: "", cvs: "NAD", rs: "NAD", cns: "NAD" },
+                medicines: (prescription.medicines || []).map((m: any) => ({
+                  id: String(m.id),
+                  name: m.medicineName,
+                  frequency: m.frequency,
+                  medicineTime: m.medicineTime,
+                  duration: m.duration,
+                  quantity: m.quantity?.toString() || "",
+                  instructions: m.instructions || "",
+                })),
+                advice: prescription.advice || "",
+                testsRequested: prescription.testsRequested || "",
+                recommendedLinks: prescription.recommendedLinks ? prescription.recommendedLinks.split(',').filter((link: string) => link.trim() !== '') : [],
+                nextVisit: {
+                  type: prescription.nextVisitType || "days",
+                  value: prescription.nextVisitValue || 7,
+                  date: prescription.nextVisitDate ? new Date(prescription.nextVisitDate) : undefined,
+                },
+              });
+
+              // If no historyOfCurrentIllness, try to load from previous prescription
+              if (!prescription.historyOfCurrentIllness) {
+                try {
+                  const prevRes = await fetch(`/api/doctor/prescription/previous?patientId=${patientId}&latest=true`);
+                  if (prevRes.ok) {
+                    const prevJson = await prevRes.json();
+                    const prevHist = prevJson?.data?.history;
+                    if (prevHist?.historyOfCurrentIllness) {
+                      setPrescriptionData(prev => ({
+                        ...prev,
+                        historyOfCurrentIllness: prevHist.historyOfCurrentIllness,
+                      }));
+                    }
+                  }
+                } catch {
+                  // Ignore errors
+                }
+              }
+            }
+          }
+        } else {
+          // Step 4b: No existing prescription - set initial data with medical history
+          setPrescriptionData(prev => ({
+            ...prev,
+            medicalHistory: patientProfileData, // Set medical history from profile
+          }));
+
+          // Try to load historyOfCurrentIllness from previous prescription
+          try {
+            const prevRes = await fetch(`/api/doctor/prescription/previous?patientId=${patientId}&latest=true`);
+            if (prevRes.ok) {
+              const prevJson = await prevRes.json();
+              const prevHist = prevJson?.data?.history;
+              if (prevHist?.historyOfCurrentIllness) {
+                setPrescriptionData(prev => ({
+                  ...prev,
+                  historyOfCurrentIllness: prevHist.historyOfCurrentIllness,
+                }));
+              }
+            }
+          } catch {
+            // Ignore errors
+          }
+        }
+
+        scrollToVitals(); // Auto-scroll to vitals
       } catch (error) {
-        console.error("Error fetching appointment data:", error);
+        console.error("Error loading data:", error);
         toast({
           title: "Error",
-          description: "Failed to load appointment data",
+          description: error instanceof Error ? error.message : "Failed to load appointment data",
           variant: "destructive",
         });
+      } finally {
+        // All data loaded - enable AI Mic
+        setIsLoadingData(false);
       }
     };
 
-    if (appointmentId) {
-      fetchAppointmentData();
-      fetchExistingPrescription();
-      scrollToVitals(); // Auto-scroll to vitals
-    }
+    loadAllData();
   }, [appointmentId, toast]);
 
   const joinVideoCall = async () => {
@@ -659,6 +618,7 @@ export default function PrescriptionPage() {
                   patientInfo={patientInfo}
                   onGeneratePrescription={handleGeneratePrescription}
                   isGenerating={isLoading}
+                  isLoadingData={isLoadingData}
                   onBack={handleBack}
                   existingPrescriptionId={existingPrescriptionId}
                   onLoadPrevious={async () => {
@@ -747,6 +707,7 @@ export default function PrescriptionPage() {
             patientInfo={patientInfo}
             onGeneratePrescription={handleGeneratePrescription}
             isGenerating={isLoading}
+            isLoadingData={isLoadingData}
             onBack={handleBack}
             existingPrescriptionId={existingPrescriptionId}
             onLoadPrevious={async () => {
