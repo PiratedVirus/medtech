@@ -13,21 +13,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing or too-short text' }, { status: 400 });
     }
     
-    const standaloneReportId = Number(reportId);
-    if (!standaloneReportId || Number.isNaN(standaloneReportId)) {
-      return NextResponse.json({ success: false, error: 'Missing or invalid reportId' }, { status: 400 });
-    }
-
-    // Verify that the standalone report exists
-    const standaloneReport = await prisma.standaloneReport.findFirst({
-      where: { 
-        id: standaloneReportId,
-        deletedAt: null
-      }
-    });
+    // reportId is optional - if not provided, skip caching/validation (used by lab booking regenerate)
+    const standaloneReportId = reportId ? Number(reportId) : null;
+    let standaloneReport = null;
     
-    if (!standaloneReport) {
-      return NextResponse.json({ success: false, error: 'Standalone report not found' }, { status: 404 });
+    if (standaloneReportId && !Number.isNaN(standaloneReportId)) {
+      // Verify that the standalone report exists (only if reportId is provided)
+      standaloneReport = await prisma.standaloneReport.findFirst({
+        where: { 
+          id: standaloneReportId,
+          deletedAt: null
+        }
+      });
+      
+      if (!standaloneReport) {
+        return NextResponse.json({ success: false, error: 'Standalone report not found' }, { status: 404 });
+      }
     }
 
     // Check text length to prevent context length exceeded errors
@@ -42,36 +43,39 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) return NextResponse.json({ success: false, error: 'GROQ_API_KEY not configured' }, { status: 500 });
 
-    // Check if we already have extracted values for this report
-    const existing = await prisma.standaloneReportAnalysis.findFirst({ 
-      where: { 
-        reportId: standaloneReportId,
-        analysisType: 'lab_analysis',
-        deletedAt: null
-      } 
-    });
-    
-    console.log('[EXTRACT-STANDALONE-VALUES] Existing:', existing);
-    if (existing) {
-      console.log('[EXTRACT-STANDALONE-VALUES] allValues type:', typeof existing.allValues, 'value:', existing.allValues);
-      console.log('[EXTRACT-STANDALONE-VALUES] criticalValues type:', typeof existing.criticalValues, 'value:', existing.criticalValues);
-      console.log('[EXTRACT-STANDALONE-VALUES] allValues length:', Array.isArray(existing.allValues) ? existing.allValues.length : 'not an array');
-      console.log('[EXTRACT-STANDALONE-VALUES] criticalValues length:', Array.isArray(existing.criticalValues) ? existing.criticalValues.length : 'not an array');
+    // Check if we already have extracted values for this report (only if reportId provided)
+    let existing = null;
+    if (standaloneReportId) {
+      existing = await prisma.standaloneReportAnalysis.findFirst({ 
+        where: { 
+          reportId: standaloneReportId,
+          analysisType: 'lab_analysis',
+          deletedAt: null
+        } 
+      });
       
-      if (!force && (Array.isArray(existing.allValues) && existing.allValues.length > 0) && (Array.isArray(existing.criticalValues) && existing.criticalValues.length > 0)) {
-        console.log('[EXTRACT-STANDALONE-VALUES] Returning cached data - values exist');
-        return NextResponse.json({
-          success: true,
-          cached: true,
-          data: {
-            allValues: existing.allValues || [],
-            criticalValues: existing.criticalValues || []
-          }
-        });
+      console.log('[EXTRACT-STANDALONE-VALUES] Existing:', existing);
+      if (existing) {
+        console.log('[EXTRACT-STANDALONE-VALUES] allValues type:', typeof existing.allValues, 'value:', existing.allValues);
+        console.log('[EXTRACT-STANDALONE-VALUES] criticalValues type:', typeof existing.criticalValues, 'value:', existing.criticalValues);
+        console.log('[EXTRACT-STANDALONE-VALUES] allValues length:', Array.isArray(existing.allValues) ? existing.allValues.length : 'not an array');
+        console.log('[EXTRACT-STANDALONE-VALUES] criticalValues length:', Array.isArray(existing.criticalValues) ? existing.criticalValues.length : 'not an array');
+        
+        if (!force && (Array.isArray(existing.allValues) && existing.allValues.length > 0) && (Array.isArray(existing.criticalValues) && existing.criticalValues.length > 0)) {
+          console.log('[EXTRACT-STANDALONE-VALUES] Returning cached data - values exist');
+          return NextResponse.json({
+            success: true,
+            cached: true,
+            data: {
+              allValues: existing.allValues || [],
+              criticalValues: existing.criticalValues || []
+            }
+          });
+        }
       }
     }
     
-    console.log('[EXTRACT-STANDALONE-VALUES] No cached data found, proceeding with LLM processing');
+    console.log('[EXTRACT-STANDALONE-VALUES] No cached data found or no reportId provided, proceeding with LLM processing');
 
     // Call Groq to extract values
     try {

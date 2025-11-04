@@ -258,6 +258,55 @@ export async function PUT(request: Request) {
       },
     });
 
+    // Trigger automatic AI processing for newly uploaded lab reports
+    if (links && links.length > 0) {
+      console.log(`[PATHOLOGY-UPLOAD] Triggering AI processing for ${links.length} new reports`);
+      
+      // Get the starting index for new reports
+      const existingCount = existing?.labResult?.length || 0;
+      
+      // Trigger processing for each new report
+      for (let i = 0; i < links.length; i++) {
+        const labResultIndex = existingCount + i;
+        const pdfUrl = links[i];
+        
+        try {
+          // Create or update analysis record
+          const analysis = await prisma.labReportAnalysis.upsert({
+            where: {
+              labBookingId_labResultIndex: {
+                labBookingId: labBookingId,
+                labResultIndex: labResultIndex
+              }
+            },
+            update: {
+              reportUrl: pdfUrl,
+              processingStatus: 'PENDING',
+              processingError: null,
+              processedAt: null,
+              deletedAt: null
+            },
+            create: {
+              labBookingId: labBookingId,
+              labResultIndex: labResultIndex,
+              reportUrl: pdfUrl,
+              processingStatus: 'PENDING'
+            }
+          });
+
+          // Import and trigger background AI processing
+          const { processWithOpenRouter } = await import('@/lib/llm/process-service');
+          processWithOpenRouter(analysis.id, pdfUrl, updated.patientId, labBookingId).catch((error: any) => {
+            console.error(`[PATHOLOGY-UPLOAD] AI processing failed for analysis ${analysis.id}:`, error);
+          });
+          
+          console.log(`[PATHOLOGY-UPLOAD] AI processing started for analysis ${analysis.id}, index ${labResultIndex}`);
+        } catch (error) {
+          console.error(`[PATHOLOGY-UPLOAD] Failed to trigger AI processing for report at index ${labResultIndex}:`, error);
+        }
+      }
+    }
+
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
     console.error("Lab report upload error:", error);

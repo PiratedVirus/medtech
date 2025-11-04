@@ -792,6 +792,9 @@ model LabReportAnalysis {
   updatedAt        DateTime          @updatedAt
   deletedAt        DateTime?
   allValues        Json?
+  keyFindings      Json?             // Array of key clinical findings
+  recommendations  Json?             // Array of actionable recommendations
+  urgency          String?           @default("ROUTINE") // ROUTINE, SOON, URGENT
   labBooking       LabBooking        @relation("LabBookingAnalyses", fields: [labBookingId], references: [id])
   trendDataEntries ReportTrendData[] @relation("SourceReportTrend")
 
