@@ -100,7 +100,8 @@ export async function GET(
               select: {
                 complaints: {
                   select: {
-                    complaintText: true
+                    complaintText: true,
+                    isFlagged: true
                   }
                 },
                 medicines: {
@@ -171,7 +172,7 @@ export async function GET(
         status: a.status,
         prescriptionLink: a.prescriptionLink,
         doctorName: a.doctor.name,
-        complaints: a.prescription?.complaints?.map((c: any) => c.complaintText).join(", ") || "",
+        complaints: a.prescription?.complaints || [],
         medicines: a.prescription?.medicines?.map((m: any) => `${m.medicineName} (${m.frequency || 'As prescribed'})`).join(", ") || "",
         tests: a.prescription?.testsRequested || "",
         doctorNotes: a.doctorNotes

@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Calendar, Clock, FileText, Link2, Pill, User, Building2, Video, CreditCard, Banknote, Play, Clock3 } from "lucide-react";
+import { Calendar, Clock, FileText, Link2, Pill, User, Building2, Video, CreditCard, Banknote, Play, Clock3, Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -142,18 +142,30 @@ export default function DoctorAppointmentsPage() {
           <div className="flex items-center justify-start mt-2 gap-2">
             {isPast ? (
               appt.prescriptionLink ? (
-                // Completed (has prescription) - view prescription
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-primary border-primary hover:bg-primary hover:text-white"
-                  onClick={() => {
-                    window.open(appt.prescriptionLink, '_blank');
-                  }}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  View Prescription
-                </Button>
+                // Completed (has prescription) - show both edit and view buttons
+                <>
+                  <Button
+                    size="sm"
+                    className="bg-primary hover:bg-primary/80 text-white"
+                    onClick={() => {
+                      window.location.href = `/doctor/appointments/${appt.id}`;
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Prescription
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-primary border-primary hover:bg-primary hover:text-white"
+                    onClick={() => {
+                      window.open(appt.prescriptionLink, '_blank');
+                    }}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    View PDF
+                  </Button>
+                </>
               ) : (
                 // Past and not completed - start now
                 <Button

@@ -168,12 +168,6 @@ export default function PrescriptionPage() {
           throw new Error("Appointment not found");
         }
 
-        // Redirect to prescription page if appointment is completed
-        if (appointment.status === 'COMPLETED') {
-          router.push(`/doctor/appointments/${appointmentId}/prescription`);
-          return;
-        }
-
         const patientId = appointment.patientId;
 
         // Step 2: Parallel fetch - Patient profile, Prescription exists check, Clinic info

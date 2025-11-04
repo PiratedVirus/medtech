@@ -148,7 +148,13 @@ export default function PatientSummarySection({
 
   // Aggregate data from previous appointments
   const aggregatedComplaints = !selectedAppointmentId ? previousCompletedAppointments
-    .map(apt => apt.complaints)
+    .map(apt => {
+      const complaints = apt.complaints;
+      if (Array.isArray(complaints)) {
+        return complaints.map((c: any) => typeof c === 'string' ? c : (c.complaintText || c.text || '')).join(", ");
+      }
+      return typeof complaints === 'string' ? complaints : '';
+    })
     .filter(Boolean)
     .join(", ") : "";
 
@@ -158,12 +164,19 @@ export default function PatientSummarySection({
     .join(", ") : "";
 
   // Latest appointment complaints: flagged vs all
-  const latestComplaintsArray = (latestCompletedAppointment?.complaints || "")
-    .split(',')
-    .map(c => c.trim())
-    .filter(Boolean);
-  const flaggedComplaintsRegex = /high|low|severe|critical|urgent|blood pressure|bp|sugar|glucose|pain|fever/i;
-  const flaggedLatestComplaints = latestComplaintsArray.filter(c => flaggedComplaintsRegex.test(c));
+  // Handle both array format (new) and string format (legacy) for backward compatibility
+  const latestComplaintsRaw = latestCompletedAppointment?.complaints || [];
+  const latestComplaintsArray = Array.isArray(latestComplaintsRaw)
+    ? latestComplaintsRaw.map((c: any) => ({
+        text: typeof c === 'string' ? c : (c.complaintText || c.text || ''),
+        isFlagged: typeof c === 'string' ? false : (c.isFlagged || false)
+      }))
+    : typeof latestComplaintsRaw === 'string'
+    ? latestComplaintsRaw.split(',').map(c => ({ text: c.trim(), isFlagged: false })).filter(c => c.text)
+    : [];
+  
+  // Filter by isFlagged property instead of regex
+  const flaggedLatestComplaints = latestComplaintsArray.filter(c => c.isFlagged === true);
   const latestComplaintsToShow = showAllLatestComplaints ? latestComplaintsArray : flaggedLatestComplaints;
 
   // Previous appointments for dropdown (all completed appointments)
@@ -290,18 +303,21 @@ export default function PatientSummarySection({
                       </div>
                       <div className="space-y-2">
                         {latestComplaintsToShow.length > 0 ? (
-                          latestComplaintsToShow.map((complaint, index) => (
-                            <div key={index} className="text-sm text-gray-700 flex items-start gap-2">
-                              <span className="flex items-center gap-2 bg-secondary/10 p-2 rounded-lg">
-                                {complaint}
-                                {complaint.toLowerCase().includes('blood pressure') && (
-                                  <svg className="h-3 w-3 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                                  </svg>
-                                )}
-                              </span>
-                            </div>
-                          ))
+                          latestComplaintsToShow.map((complaint, index) => {
+                            const complaintText = typeof complaint === 'string' ? complaint : complaint.text;
+                            return (
+                              <div key={index} className="text-sm text-gray-700 flex items-start gap-2">
+                                <span className="flex items-center gap-2 bg-secondary/10 p-2 rounded-lg">
+                                  {complaintText}
+                                  {complaintText.toLowerCase().includes('blood pressure') && (
+                                    <svg className="h-3 w-3 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                    </svg>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })
                         ) : (
                           <p className="text-sm text-gray-500">{showAllLatestComplaints ? 'No complaints recorded' : 'No flagged complaints for latest appointment'}</p>
                         )}
