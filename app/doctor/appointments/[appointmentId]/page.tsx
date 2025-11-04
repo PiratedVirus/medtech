@@ -168,6 +168,12 @@ export default function PrescriptionPage() {
           throw new Error("Appointment not found");
         }
 
+        // Redirect to prescription page if appointment is completed
+        if (appointment.status === 'COMPLETED') {
+          router.push(`/doctor/appointments/${appointmentId}/prescription`);
+          return;
+        }
+
         const patientId = appointment.patientId;
 
         // Step 2: Parallel fetch - Patient profile, Prescription exists check, Clinic info
@@ -523,57 +529,12 @@ export default function PrescriptionPage() {
       const result = await response.json();
       const prescriptionId = existingPrescriptionId || result.data.id;
 
-      // Generate PDF and upload to blob storage
-      try {
-        const pdfResult = await generatePDFBase64(
-          prescriptionData,
-          patientInfo,
-          doctorInfo,
-          clinicInfo,
-          appointmentId,
-          visibleSections
-        );
-        
-        if (pdfResult.success) {
-          console.log('PDF generated successfully');
-          
-          // Upload PDF to blob storage and update prescription link
-          const uploadResponse = await fetch('/api/doctor/prescription/upload', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              appointmentId: appointmentId,
-              pdf: pdfResult.pdfBase64
-            }),
-          });
-
-          if (uploadResponse.ok) {
-            console.log('PDF uploaded successfully');
-          }
-        }
-      } catch (pdfError) {
-        console.error('PDF generation error:', pdfError);
-        // Don't fail the entire operation if PDF generation fails
-      }
-
-      // Update appointment status to COMPLETED
-      try {
-        await fetch(`/api/doctor/appointments/${appointmentId}/mark-completed`, {
-          method: 'PUT',
-        });
-        console.log('Appointment marked as completed');
-      } catch (statusError) {
-        console.error('Failed to update appointment status:', statusError);
-      }
-
       toast({
         title: "Success",
         description: existingPrescriptionId ? "Prescription updated successfully!" : "Prescription saved successfully!",
       });
 
-      // Navigate to PDF view page
+      // Navigate to prescription preview page
       router.push(`/doctor/appointments/${appointmentId}/prescription`);
     } catch (error: any) {
       toast({
