@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,6 +83,11 @@ export default function PrescriptionForm({
   const finalTranscriptRef = useRef<string>("");
   // Ref to mark if recording was cancelled (e.g., via Clear All)
   const recordingCancelledRef = useRef<boolean>(false);
+  // Before/After images state
+  const [beforeImages, setBeforeImages] = useState<Array<{id?: number; url: string}>>([]);
+  const [afterImages, setAfterImages] = useState<Array<{id?: number; url: string}>>([]);
+  const [isUploadingBefore, setIsUploadingBefore] = useState(false);
+  const [isUploadingAfter, setIsUploadingAfter] = useState(false);
 
   const severityOptions = [
     { value: "PERFECT", label: "Perfect", color: "bg-green-100 text-green-800" },
@@ -234,6 +240,97 @@ export default function PrescriptionForm({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load appointment images (BEFORE/AFTER) once patientInfo is present
+  useEffect(() => {
+    const apptId = patientInfo?.appointmentId;
+    if (!apptId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/doctor/appointments/${apptId}/images`);
+        if (res.ok) {
+          const json = await res.json();
+          const imgs = Array.isArray(json?.data) ? json.data : [];
+          setBeforeImages(imgs.filter((i: any) => i.type === 'BEFORE').map((i: any) => ({ id: i.id, url: i.imageUrl })));
+          setAfterImages(imgs.filter((i: any) => i.type === 'AFTER').map((i: any) => ({ id: i.id, url: i.imageUrl })));
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, [patientInfo?.appointmentId]);
+
+  // Cloudinary upload using existing unsigned preset
+  const uploadImageToCloudinary = async (file: File): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "client-unsigned");
+    formData.append("cloud_name", "pirated-virus-cloud");
+    try {
+      const res = await fetch("https://api.cloudinary.com/v1_1/pirated-virus-cloud/image/upload", { method: "POST", body: formData });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.secure_url as string;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleUploadImages = async (e: React.ChangeEvent<HTMLInputElement>, type: 'BEFORE' | 'AFTER') => {
+    const files = e.target.files;
+    if (!files || !files.length) return;
+    const apptId = patientInfo?.appointmentId;
+    if (!apptId) return;
+    if (type === 'BEFORE') setIsUploadingBefore(true); else setIsUploadingAfter(true);
+    try {
+      const urls: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const url = await uploadImageToCloudinary(files[i]);
+        if (url) urls.push(url);
+      }
+      if (urls.length) {
+        const resp = await fetch(`/api/doctor/appointments/${apptId}/images`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ urls, type, uploadedById: doctorInfo?.id ? Number(doctorInfo.id) : undefined }),
+        });
+        if (resp.ok) {
+          const saved = await resp.json();
+          const items = Array.isArray(saved?.data) ? saved.data.map((i: any) => ({ id: i.id, url: i.imageUrl })) : urls.map(u => ({ url: u }));
+          if (type === 'BEFORE') setBeforeImages(prev => [...prev, ...items]);
+          else setAfterImages(prev => [...prev, ...items]);
+          toast({ title: "Uploaded", description: `${urls.length} image(s) saved` });
+        } else {
+          toast({ title: "Error", description: "Failed to save images", variant: "destructive" });
+        }
+      }
+    } finally {
+      if (type === 'BEFORE') setIsUploadingBefore(false); else setIsUploadingAfter(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDeleteImage = async (imageId: number | undefined, type: 'BEFORE' | 'AFTER', url: string) => {
+    const apptId = patientInfo?.appointmentId;
+    if (!apptId) return;
+    if (!imageId) {
+      if (type === 'BEFORE') setBeforeImages(prev => prev.filter(i => i.url !== url));
+      else setAfterImages(prev => prev.filter(i => i.url !== url));
+      return;
+    }
+    try {
+      const resp = await fetch(`/api/doctor/appointments/${apptId}/images`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageId }) });
+      if (resp.ok) {
+        if (type === 'BEFORE') setBeforeImages(prev => prev.filter(i => i.id !== imageId));
+        else setAfterImages(prev => prev.filter(i => i.id !== imageId));
+        toast({ title: "Removed", description: "Image removed" });
+      } else {
+        toast({ title: "Error", description: "Failed to remove image", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to remove image", variant: "destructive" });
+    }
+  };
 
   const processFrequencyInput = (input: string): string => {
     // Remove all non-numeric characters except dashes
@@ -1587,6 +1684,67 @@ export default function PrescriptionForm({
             <Plus className="h-4 w-4 mr-2" />
             Add New Link
           </Button>
+        </div>
+      </div>
+
+      {/* Before/After Images (Below Recommended Links) */}
+      <div className="bg-custom-mutedgreen p-6 rounded-lg border border-gray-200">
+        <h3 className="text-lg font-semibold mb-4">Before / After Images</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Before */}
+          <div className="p-3 bg-slate-50 rounded-md border-2 border-dashed border-gray-300">
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-medium text-gray-800">Before</div>
+              <label className="text-sm px-3 py-1 rounded bg-primary text-white cursor-pointer">
+                {isUploadingBefore ? 'Uploading…' : 'Upload'}
+                <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUploadImages(e, 'BEFORE')} />
+              </label>
+            </div>
+            <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+              {beforeImages.length === 0 && (
+                <div className="text-sm text-gray-500 col-span-3 md:col-span-4">No images</div>
+              )}
+              {beforeImages.map((img) => (
+                <div key={(img.id ?? img.url)} className="relative w-full aspect-square overflow-hidden rounded border">
+                  <Image src={img.url} alt="Before" fill className="object-cover" />
+                  <button
+                    type="button"
+                    className="absolute top-1 right-1 bg-white/80 text-red-600 text-xs px-1.5 py-0.5 rounded"
+                    onClick={() => handleDeleteImage(img.id, 'BEFORE', img.url)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* After */}
+          <div className="p-3 bg-slate-50 rounded-md border-2 border-dashed border-gray-300">
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-medium text-gray-800">After</div>
+              <label className="text-sm px-3 py-1 rounded bg-primary text-white cursor-pointer">
+                {isUploadingAfter ? 'Uploading…' : 'Upload'}
+                <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUploadImages(e, 'AFTER')} />
+              </label>
+            </div>
+            <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+              {afterImages.length === 0 && (
+                <div className="text-sm text-gray-500 col-span-3 md:col-span-4">No images</div>
+              )}
+              {afterImages.map((img) => (
+                <div key={(img.id ?? img.url)} className="relative w-full aspect-square overflow-hidden rounded border">
+                  <Image src={img.url} alt="After" fill className="object-cover" />
+                  <button
+                    type="button"
+                    className="absolute top-1 right-1 bg-white/80 text-red-600 text-xs px-1.5 py-0.5 rounded"
+                    onClick={() => handleDeleteImage(img.id, 'AFTER', img.url)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

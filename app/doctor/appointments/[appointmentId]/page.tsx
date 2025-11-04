@@ -356,6 +356,7 @@ export default function PrescriptionPage() {
     loadAllData();
   }, [appointmentId, toast]);
 
+
   const joinVideoCall = async () => {
     if (!meetingRoomLink) {
       toast({
