@@ -15,6 +15,7 @@ import {
   Sparkles,
   RefreshCw
 } from 'lucide-react';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { useToast } from '@/hooks/use-toast';
 import { toast } from "react-toastify";
 
@@ -118,6 +119,7 @@ export default function UnifiedAnalysisModal({
   const [showAllValues, setShowAllValues] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'lab-reports' | 'standalone-reports'>('lab-reports');
+  const [showFailedReports, setShowFailedReports] = useState(false);
 
   const selectedReport = labReports.find(r => r.id === selectedReportId);
   const selectedStandaloneReport = standaloneReports.find(r => r.id === selectedStandaloneReportId);
@@ -147,6 +149,20 @@ export default function UnifiedAnalysisModal({
 
   // Use provided standalone reports or fetched ones
   const allStandaloneReports = standaloneReports.length > 0 ? standaloneReports : fetchedStandaloneReports;
+  
+  // Filter reports based on showFailedReports state
+  const filteredLabReports = showFailedReports 
+    ? labReports 
+    : labReports.filter(report => report.status !== 'FAILED');
+  
+  const filteredStandaloneReports = showFailedReports
+    ? allStandaloneReports
+    : allStandaloneReports.filter(report => {
+        const hasFailedAnalysis = report.reportAnalyses?.some(
+          analysis => analysis.processingStatus === 'FAILED'
+        );
+        return !hasFailedAnalysis;
+      });
 
   // Handle pre-selection when modal opens
   useEffect(() => {
@@ -414,13 +430,13 @@ export default function UnifiedAnalysisModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden mx-auto my-auto">
+      <DialogContent className="max-w-[95vw] h-[95vh] p-0 overflow-hidden flex flex-col mx-auto my-auto">
         {/* Header */}
-        <DialogHeader className=" p-4 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-4">
-            <DialogTitle className="text-xl font-bold">Medical Reports Analysis</DialogTitle>
-            
-            {/* Tabs */}
+        <DialogHeader className="p-4 flex flex-row items-center justify-between">
+          <DialogTitle className="text-xl font-bold">Medical Reports Analysis</DialogTitle>
+          
+          {/* Centered Tabs */}
+          <div className="flex-1 flex justify-center">
             <div className="flex border rounded-lg p-1 bg-gray-100">
               <button
                 onClick={() => setActiveTab('lab-reports')}
@@ -430,7 +446,7 @@ export default function UnifiedAnalysisModal({
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                Lab Reports ({labReports.length})
+                Lab Reports ({filteredLabReports.length})
               </button>
               <button
                 onClick={() => setActiveTab('standalone-reports')}
@@ -440,50 +456,62 @@ export default function UnifiedAnalysisModal({
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                Uploaded Reports ({allStandaloneReports.length})
+                Uploaded Reports ({filteredStandaloneReports.length})
               </button>
             </div>
-            
-            {/* Refresh button for standalone reports */}
+          </div>
+
+          {/* Right side: Refresh and Show/Hide Failed toggle */}
+          <div className="flex items-center gap-2">
             {activeTab === 'standalone-reports' && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={fetchStandaloneReports}
-                className="ml-2"
               >
                 <RefreshCw className="h-4 w-4 mr-1" />
                 Refresh
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowFailedReports(!showFailedReports)}
+              className="text-xs"
+            >
+              {showFailedReports ? 'Hide Failed' : 'Show Failed'}
+            </Button>
           </div>
         </DialogHeader>
 
-        {/* Report Selection Buttons */}
-        <div className="px-4 pb-4">
-          <div className="flex flex-wrap gap-2 mb-6">
-            {activeTab === 'lab-reports' ? (
-              labReports.map((report) => {
+        {/* Report Selection Buttons - Carousel */}
+        <div className="px-4 pb-4 flex-shrink-0 relative">
+          <Carousel opts={{ align: "start", dragFree: true }} className="w-full">
+            <CarouselContent className="-ml-2">
+              {activeTab === 'lab-reports' ? (
+              filteredLabReports.map((report) => {
               // Use labResult if available, otherwise fall back to reportLink
               const results = report.labResult || report.reportLink || [];
               
               if (results.length === 0) {
                 // No results available
                 return (
-                  <div key={report.id} className="relative">
-                    <button
-                      disabled
-                      className="relative overflow-hidden rounded-xl border px-3 py-2 shadow-sm whitespace-nowrap transition-all border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
-                    >
-                      <span className="relative z-10 inline-flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-gray-400" />
-                        <span className="font-semibold">{report.labPackageName}</span>
-                        <span className="ml-2 text-xs rounded-full px-2 py-0.5 bg-gray-200 text-gray-500">
-                          {new Date(report.date).toLocaleDateString('en-GB')}
+                  <CarouselItem key={report.id} className="pl-2 basis-auto">
+                    <div className="relative">
+                      <button
+                        disabled
+                        className="relative overflow-hidden rounded-xl border px-3 py-2 shadow-sm whitespace-nowrap transition-all border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+                      >
+                        <span className="relative z-10 inline-flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-gray-400" />
+                          <span className="font-semibold">{report.labPackageName}</span>
+                          <span className="ml-2 text-xs rounded-full px-2 py-0.5 bg-gray-200 text-gray-500">
+                            {new Date(report.date).toLocaleDateString('en-GB')}
+                          </span>
                         </span>
-                      </span>
-                    </button>
-                  </div>
+                      </button>
+                    </div>
+                  </CarouselItem>
                 );
               }
 
@@ -491,34 +519,36 @@ export default function UnifiedAnalysisModal({
                 // Single result - show normally
                 const isActive = selectedReportId === report.id;
                 return (
-                  <div key={report.id} className="relative">
-                    {/* Blur edge effect - blue theme */}
-                    {isActive && (
-                      <div 
-                        aria-hidden="true" 
-                        className="absolute -inset-1 rounded-[16px] bg-[conic-gradient(at_70%_20%,#3b82f6_0deg,#1d4ed8_120deg,#1e40af_240deg,#3b82f6_360deg)] opacity-50 blur" 
-                      />
-                    )}
-                    <button
-                      onClick={() => {
-                        console.log('[UI][BUTTON_CLICK] Report button clicked:', report.id, 'Current selected:', selectedReportId);
-                        handleReportSelect(report.id);
-                      }}
-                      className={`relative overflow-hidden rounded-xl border px-3 py-2 shadow-sm whitespace-nowrap transition-all ${
-                        isActive
-                          ? 'border-sky-500 bg-blue-50 text-blue-800'
-                          : 'border-gray-300 text-gray-700 hover:border-blue-300 hover:bg-blue-50/50'
-                      }`}
-                    >
-                      <span className="relative z-10 inline-flex items-center gap-2">
-                        <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
-                        <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>{report.labPackageName}</span>
-                        <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
-                          {new Date(report.date).toLocaleDateString('en-GB')}
+                  <CarouselItem key={report.id} className="pl-2 basis-auto">
+                    <div className="relative">
+                      {/* Blur edge effect - blue theme */}
+                      {isActive && (
+                        <div 
+                          aria-hidden="true" 
+                          className="absolute -inset-1 rounded-[16px] bg-[conic-gradient(at_70%_20%,#3b82f6_0deg,#1d4ed8_120deg,#1e40af_240deg,#3b82f6_360deg)] opacity-50 blur" 
+                        />
+                      )}
+                      <button
+                        onClick={() => {
+                          console.log('[UI][BUTTON_CLICK] Report button clicked:', report.id, 'Current selected:', selectedReportId);
+                          handleReportSelect(report.id);
+                        }}
+                        className={`relative overflow-hidden rounded-xl border px-3 py-2 shadow-sm whitespace-nowrap transition-all ${
+                          isActive
+                            ? 'border-sky-500 bg-blue-50 text-blue-800'
+                            : 'border-gray-300 text-gray-700 hover:border-blue-300 hover:bg-blue-50/50'
+                        }`}
+                      >
+                        <span className="relative z-10 inline-flex items-center gap-2">
+                          <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
+                          <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>{report.labPackageName}</span>
+                          <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
+                            {new Date(report.date).toLocaleDateString('en-GB')}
+                          </span>
                         </span>
-                      </span>
-                    </button>
-                  </div>
+                      </button>
+                    </div>
+                  </CarouselItem>
                 );
               }
 
@@ -527,112 +557,119 @@ export default function UnifiedAnalysisModal({
                 const resultId = `${report.id}-${index}`;
                 const isActive = selectedReportId === report.id && selectedLabResultIndex === index;
                 return (
-                  <div key={resultId} className="relative">
-                    {/* Blur edge effect - blue theme */}
-                    {isActive && (
-                      <div 
-                        aria-hidden="true" 
-                        className="absolute -inset-1 rounded-[16px] bg-[conic-gradient(at_70%_20%,#3b82f6_0deg,#1d4ed8_120deg,#1e40af_240deg,#3b82f6_360deg)] opacity-50 blur" 
-                      />
-                    )}
-                    <button
-                      onClick={() => {
-                        console.log('[UI][BUTTON_CLICK] Lab result button clicked:', resultId, 'Current selected:', selectedReportId, 'Lab result index:', index);
-                        handleReportSelect(report.id, index);
-                      }}
-                      className={`relative overflow-hidden rounded-xl border px-3 py-2 shadow-sm whitespace-nowrap transition-all ${
-                        isActive
-                          ? 'border-sky-500 bg-blue-50 text-blue-800'
-                          : 'border-gray-300 text-gray-700 hover:border-blue-300 hover:bg-blue-50/50'
-                      }`}
-                    >
-                      <span className="relative z-10 inline-flex items-center gap-2">
-                        <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
-                        <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>
-                          {report.labPackageName}-{index + 1}
+                  <CarouselItem key={resultId} className="pl-2 basis-auto">
+                    <div className="relative">
+                      {/* Blur edge effect - blue theme */}
+                      {isActive && (
+                        <div 
+                          aria-hidden="true" 
+                          className="absolute -inset-1 rounded-[16px] bg-[conic-gradient(at_70%_20%,#3b82f6_0deg,#1d4ed8_120deg,#1e40af_240deg,#3b82f6_360deg)] opacity-50 blur" 
+                        />
+                      )}
+                      <button
+                        onClick={() => {
+                          console.log('[UI][BUTTON_CLICK] Lab result button clicked:', resultId, 'Current selected:', selectedReportId, 'Lab result index:', index);
+                          handleReportSelect(report.id, index);
+                        }}
+                        className={`relative overflow-hidden rounded-xl border px-3 py-2 shadow-sm whitespace-nowrap transition-all ${
+                          isActive
+                            ? 'border-sky-500 bg-blue-50 text-blue-800'
+                            : 'border-gray-300 text-gray-700 hover:border-blue-300 hover:bg-blue-50/50'
+                        }`}
+                      >
+                        <span className="relative z-10 inline-flex items-center gap-2">
+                          <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
+                          <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>
+                            {report.labPackageName}-{index + 1}
+                          </span>
+                          <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
+                            {new Date(report.date).toLocaleDateString('en-GB')}
+                          </span>
                         </span>
-                        <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
-                          {new Date(report.date).toLocaleDateString('en-GB')}
-                        </span>
-                      </span>
-                    </button>
-                  </div>
+                      </button>
+                    </div>
+                  </CarouselItem>
                 );
               });
               })
             ) : (
-              allStandaloneReports.map((report) => {
+              filteredStandaloneReports.map((report) => {
                 const isActive = selectedStandaloneReportId === report.id;
                 return (
-                  <div key={report.id} className="relative">
-                    {/* Blur edge effect - blue theme */}
-                    {isActive && (
-                      <div 
-                        aria-hidden="true" 
-                        className="absolute -inset-1 rounded-[16px] bg-[conic-gradient(at_70%_20%,#3b82f6_0deg,#1d4ed8_120deg,#1e40af_240deg,#3b82f6_360deg)] opacity-50 blur" 
-                      />
-                    )}
-                    <button
-                      onClick={() => {
-                        console.log('[UI][BUTTON_CLICK] Standalone report button clicked:', report.id, 'Current selected:', selectedStandaloneReportId);
-                        setSelectedStandaloneReportId(report.id);
-                        setSelectedReportId(null);
-                        setAnalysis(null); // Clear previous analysis
-                        setLoading(true);
-                        setIsProcessing(true);
-                        
-                        // Check if analysis already exists
-                        if (report.reportAnalyses && report.reportAnalyses.length > 0) {
-                          const completedAnalysis = report.reportAnalyses.find(a => a.processingStatus === 'COMPLETED');
-                          if (completedAnalysis) {
-                            setStandaloneAnalysis(completedAnalysis);
-                            setLoading(false);
-                            setIsProcessing(false);
-                            return;
+                  <CarouselItem key={report.id} className="pl-2 basis-auto">
+                    <div className="relative">
+                      {/* Blur edge effect - blue theme */}
+                      {isActive && (
+                        <div 
+                          aria-hidden="true" 
+                          className="absolute -inset-1 rounded-[16px] bg-[conic-gradient(at_70%_20%,#3b82f6_0deg,#1d4ed8_120deg,#1e40af_240deg,#3b82f6_360deg)] opacity-50 blur" 
+                        />
+                      )}
+                      <button
+                        onClick={() => {
+                          console.log('[UI][BUTTON_CLICK] Standalone report button clicked:', report.id, 'Current selected:', selectedStandaloneReportId);
+                          setSelectedStandaloneReportId(report.id);
+                          setSelectedReportId(null);
+                          setAnalysis(null); // Clear previous analysis
+                          setLoading(true);
+                          setIsProcessing(true);
+                          
+                          // Check if analysis already exists
+                          if (report.reportAnalyses && report.reportAnalyses.length > 0) {
+                            const completedAnalysis = report.reportAnalyses.find(a => a.processingStatus === 'COMPLETED');
+                            if (completedAnalysis) {
+                              setStandaloneAnalysis(completedAnalysis);
+                              setLoading(false);
+                              setIsProcessing(false);
+                              return;
+                            }
                           }
-                        }
-                        
-                        processStandaloneReport(report.id);
-                      }}
-                      className={`relative overflow-hidden rounded-xl border px-3 py-2 shadow-sm whitespace-nowrap transition-all ${
-                        isActive
-                          ? 'border-sky-500 bg-blue-50 text-blue-800'
-                          : 'border-gray-300 text-gray-700 hover:border-blue-300 hover:bg-blue-50/50'
-                      }`}
-                    >
-                      <span className="relative z-10 inline-flex items-center gap-2">
-                        <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
-                        <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>{report.fileName}</span>
-                        <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
-                          {new Date(report.createdAt).toLocaleDateString('en-GB')}
-                        </span>
-                        {/* Status indicator */}
-                        {report.reportAnalyses && report.reportAnalyses.length > 0 && (
-                          <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${
-                            report.reportAnalyses[0].processingStatus === 'COMPLETED' 
-                              ? 'bg-green-100 text-green-700 border border-green-200'
-                              : report.reportAnalyses[0].processingStatus === 'PROCESSING'
-                              ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                              : report.reportAnalyses[0].processingStatus === 'FAILED'
-                              ? 'bg-red-100 text-red-700 border border-red-200'
-                              : 'bg-gray-100 text-gray-700 border border-gray-200'
-                          }`}>
-                            {report.reportAnalyses[0].processingStatus}
+                          
+                          processStandaloneReport(report.id);
+                        }}
+                        className={`relative overflow-hidden rounded-xl border px-3 py-2 shadow-sm whitespace-nowrap transition-all ${
+                          isActive
+                            ? 'border-sky-500 bg-blue-50 text-blue-800'
+                            : 'border-gray-300 text-gray-700 hover:border-blue-300 hover:bg-blue-50/50'
+                        }`}
+                      >
+                        <span className="relative z-10 inline-flex items-center gap-2">
+                          <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
+                          <span className={`font-semibold truncate max-w-[200px] ${isActive ? 'text-sky-600' : 'text-gray-700'}`} title={report.fileName}>
+                            {report.fileName}
                           </span>
-                        )}
-                        
-                      </span>
-                    </button>
-                    
-                  </div>
+                          <span className={`ml-2 text-xs rounded-full px-2 py-0.5 flex-shrink-0 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
+                            {new Date(report.createdAt).toLocaleDateString('en-GB')}
+                          </span>
+                          {/* Status indicator */}
+                          {report.reportAnalyses && report.reportAnalyses.length > 0 && (
+                            <span className={`ml-2 text-xs rounded-full px-2 py-0.5 flex-shrink-0 ${
+                              report.reportAnalyses[0].processingStatus === 'COMPLETED' 
+                                ? 'bg-green-100 text-green-700 border border-green-200'
+                                : report.reportAnalyses[0].processingStatus === 'PROCESSING'
+                                ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                : report.reportAnalyses[0].processingStatus === 'FAILED'
+                                ? 'bg-red-100 text-red-700 border border-red-200'
+                                : 'bg-gray-100 text-gray-700 border border-gray-200'
+                            }`}>
+                              {report.reportAnalyses[0].processingStatus}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    </div>
+                  </CarouselItem>
                 );
               })
             )}
-          </div>
+            </CarouselContent>
+            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2" />
+            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2" />
+          </Carousel>
         </div>
 
-        {/* Main Content */}
-        <div key={`content-${selectedReportId || selectedStandaloneReportId || 'none'}`} className="h-[70vh] overflow-y-auto p-4 space-y-4">
+        {/* Main Content - Scrollable */}
+        <div key={`content-${selectedReportId || selectedStandaloneReportId || 'none'}`} className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
           {!selectedReportId && !selectedStandaloneReportId ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
