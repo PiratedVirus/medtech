@@ -93,30 +93,30 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
           <View style={styles.historySection}>
             <Text style={[styles.patientInfo, styles.bold]}>Medical History:</Text>
             <View style={styles.historyGrid}>
-              {prescriptionData.medicalHistory?.allergies && (
-                <View style={styles.historyItem}>
-                  <Text style={styles.historyLabel}>Allergies:</Text>
-                  <Text style={styles.historyValue}>{prescriptionData.medicalHistory.allergies}</Text>
-                </View>
-              )}
-              {prescriptionData.medicalHistory?.personalHistory && (
-                <View style={styles.historyItem}>
-                  <Text style={styles.historyLabel}>Personal History:</Text>
-                  <Text style={styles.historyValue}>{prescriptionData.medicalHistory.personalHistory}</Text>
-                </View>
-              )}
-              {prescriptionData.medicalHistory?.pastMedicalHistory && (
-                <View style={styles.historyItem}>
-                  <Text style={styles.historyLabel}>Past Medical History:</Text>
-                  <Text style={styles.historyValue}>{prescriptionData.medicalHistory.pastMedicalHistory}</Text>
-                </View>
-              )}
-              {prescriptionData.medicalHistory?.familyHistory && (
-                <View style={styles.historyItem}>
-                  <Text style={styles.historyLabel}>Family History:</Text>
-                  <Text style={styles.historyValue}>{prescriptionData.medicalHistory.familyHistory}</Text>
-                </View>
-              )}
+              <View style={styles.historyItem}>
+                <Text style={styles.historyLabel}>Allergies:</Text>
+                <Text style={styles.historyValue}>
+                  {(prescriptionData.medicalHistory?.allergies || '').toString().trim() || '—'}
+                </Text>
+              </View>
+              <View style={styles.historyItem}>
+                <Text style={styles.historyLabel}>Personal History:</Text>
+                <Text style={styles.historyValue}>
+                  {(prescriptionData.medicalHistory?.personalHistory || '').toString().trim() || '—'}
+                </Text>
+              </View>
+              <View style={styles.historyItem}>
+                <Text style={styles.historyLabel}>Past Medical History:</Text>
+                <Text style={styles.historyValue}>
+                  {(prescriptionData.medicalHistory?.pastMedicalHistory || '').toString().trim() || '—'}
+                </Text>
+              </View>
+              <View style={styles.historyItem}>
+                <Text style={styles.historyLabel}>Family History:</Text>
+                <Text style={styles.historyValue}>
+                  {(prescriptionData.medicalHistory?.familyHistory || '').toString().trim() || '—'}
+                </Text>
+              </View>
             </View>
           </View>
         )}
