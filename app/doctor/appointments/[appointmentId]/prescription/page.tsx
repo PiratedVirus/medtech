@@ -443,6 +443,59 @@ export default function AppointmentPrescriptionPage() {
     }
   };
 
+  const handleWhatsAppShare = async () => {
+    try {
+      if (!prescriptionData || !patientInfo || !doctorInfo || !clinicInfo) {
+        toast({ title: "Error", description: "Missing prescription data", variant: "destructive" });
+        return;
+      }
+
+      if (!patientInfo.phone || patientInfo.phone === "Not provided") {
+        toast({ title: "Error", description: "Patient phone number is not available", variant: "destructive" });
+        return;
+      }
+
+      // Prepare template variables (2 variables as required)
+      // Variable 1: Patient name ({{1}} in template)
+      // Variable 2: Doctor name ({{2}} in template)
+      const templateVariables = [
+        patientInfo.name,
+        doctorInfo.name || "Doctor"
+      ];
+
+      // Call WhatsApp sharing API
+      // Uses existing prescriptionLink from database (no need to regenerate PDF)
+      const response = await fetch('/api/doctor/prescription/share-whatsapp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          appointmentId: appointmentId,
+          templateVariables: templateVariables,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to share prescription via WhatsApp');
+      }
+
+      toast({ 
+        title: "Success", 
+        description: `Prescription shared via WhatsApp to ${patientInfo.phone}` 
+      });
+    } catch (error) {
+      console.error("WhatsApp sharing error", error);
+      toast({ 
+        title: "Error", 
+        description: error instanceof Error ? error.message : "Failed to share prescription via WhatsApp", 
+        variant: "destructive" 
+      });
+    }
+  };
+
   const checkAndExecuteAction = (action: 'download' | 'whatsapp' | 'share') => {
     if (appointmentStatus !== 'COMPLETED') {
       setPendingAction(action);
@@ -458,7 +511,7 @@ export default function AppointmentPrescriptionPage() {
         await handleDownload();
         break;
       case 'whatsapp':
-        toast({ title: "Success", description: "Sharing via WhatsApp..." });
+        await handleWhatsAppShare();
         break;
       case 'share':
         // Generate shareable link
@@ -823,13 +876,17 @@ export default function AppointmentPrescriptionPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Appointment Not Completed</AlertDialogTitle>
             <AlertDialogDescription>
-              This appointment has not been marked as completed yet. Would you like to mark it as completed before proceeding with this action?
+              {pendingAction === 'whatsapp' 
+                ? "To share via WhatsApp, the prescription PDF must be generated first. Please complete the appointment to generate the PDF."
+                : "This appointment has not been marked as completed yet. Would you like to mark it as completed before proceeding with this action?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDialogProceedWithoutCompleting}>
-              Proceed Without Completing
-            </AlertDialogCancel>
+            {pendingAction !== 'whatsapp' && (
+              <AlertDialogCancel onClick={handleDialogProceedWithoutCompleting}>
+                Proceed Without Completing
+              </AlertDialogCancel>
+            )}
             <AlertDialogAction onClick={handleDialogCompleteAndProceed}>
               Mark as Completed and Proceed
             </AlertDialogAction>
