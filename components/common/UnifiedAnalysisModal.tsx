@@ -861,7 +861,7 @@ export default function UnifiedAnalysisModal({
                         {showAllValues ? (
                           <span>All: {(analysis?.allValues || standaloneAnalysis?.allValues)?.length ?? 0}</span>
                         ) : (
-                          <span>Critical: {(analysis?.criticalValues || standaloneAnalysis?.criticalValues)?.length ?? 0}</span>
+                          <span>Abnormal: {(analysis?.criticalValues || standaloneAnalysis?.criticalValues)?.length ?? 0}</span>
                         )}
                       </div>
                       {/* Search Bar */}
