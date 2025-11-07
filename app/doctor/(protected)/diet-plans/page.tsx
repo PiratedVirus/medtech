@@ -17,6 +17,7 @@ interface DietPlanRequest {
   complaint: string;
   status: string;
   patient?: { id: number; name: string };
+  dietPlan?: any;
 }
 
 interface MealTiming {
@@ -42,6 +43,8 @@ export default function DietPlansPage() {
 
   const [requests, setRequests] = useState<DietPlanRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<DietPlanRequest | null>(null);
+  const [incomingRequests, setIncomingRequests] = useState<DietPlanRequest[]>([]);
+  const [completedRequests, setCompletedRequests] = useState<DietPlanRequest[]>([]);
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -54,7 +57,15 @@ export default function DietPlansPage() {
   useEffect(() => {
     if (!dieticianId) return;
     axios.get(`/api/doctor/diet-requests?dieticianId=${dieticianId}`).then(res => {
-      setRequests(res.data.requests || []);
+      const allRequests = res.data.requests || [];
+      setRequests(allRequests);
+      
+      // Split into incoming and completed
+      const incoming = allRequests.filter((r: DietPlanRequest) => r.status === 'PENDING' || r.status === 'APPROVED');
+      const completed = allRequests.filter((r: DietPlanRequest) => r.status === 'CREATED' && r.dietPlan);
+      
+      setIncomingRequests(incoming);
+      setCompletedRequests(completed);
     });
   }, [dieticianId]);
 
@@ -135,7 +146,15 @@ export default function DietPlansPage() {
         setSelectedTemplate(null);
         // Refresh requests
         const next = await axios.get(`/api/doctor/diet-requests?dieticianId=${dieticianId}`);
-        setRequests(next.data.requests || []);
+        const allRequests = next.data.requests || [];
+        setRequests(allRequests);
+        
+        // Split into incoming and completed
+        const incoming = allRequests.filter((r: DietPlanRequest) => r.status === 'PENDING' || r.status === 'APPROVED');
+        const completed = allRequests.filter((r: DietPlanRequest) => r.status === 'CREATED' && r.dietPlan);
+        
+        setIncomingRequests(incoming);
+        setCompletedRequests(completed);
       } else {
         toast({ variant: 'destructive', title: 'Failed to create plan', description: res.data.error });
       }
@@ -155,11 +174,11 @@ export default function DietPlansPage() {
         </TabsList>
 
         <TabsContent value="requests" className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card className="p-4">
               <h2 className="font-semibold mb-2">Incoming Requests</h2>
               <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                {requests.map((r) => (
+                {incomingRequests.map((r) => (
                   <button 
                     key={r.id} 
                     onClick={() => setSelectedRequest(r)} 
@@ -169,16 +188,112 @@ export default function DietPlansPage() {
                   >
                     <div className="text-sm font-medium">{r.patient?.name || `Patient #${r.patientId}`}</div>
                     <div className="text-xs text-gray-600 line-clamp-2">{r.complaint}</div>
+                    <div className="text-xs text-yellow-600 mt-1">{r.status}</div>
                   </button>
                 ))}
-                {requests.length===0 && <div className="text-sm text-gray-500">No requests</div>}
+                {incomingRequests.length===0 && <div className="text-sm text-gray-500">No incoming requests</div>}
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <h2 className="font-semibold mb-2">Completed Plans</h2>
+              <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                {completedRequests.map((r) => (
+                  <button 
+                    key={r.id} 
+                    onClick={() => setSelectedRequest(r)} 
+                    className={`w-full text-left p-3 rounded border ${
+                      selectedRequest?.id===r.id?'border-primary bg-primary/5':'border-gray-200'
+                    }`}
+                  >
+                    <div className="text-sm font-medium">{r.patient?.name || `Patient #${r.patientId}`}</div>
+                    <div className="text-xs text-gray-600 line-clamp-2">{r.complaint}</div>
+                    <div className="text-xs text-green-600 mt-1"> {r.dietPlan?.title || 'Diet Plan'}</div>
+                  </button>
+                ))}
+                {completedRequests.length===0 && <div className="text-sm text-gray-500">No completed plans</div>}
               </div>
             </Card>
 
             <Card className="p-4 md:col-span-2">
-              <h2 className="font-semibold mb-4">Create Diet Plan</h2>
+              <h2 className="font-semibold mb-4">
+                {selectedRequest?.dietPlan ? 'View Diet Plan' : 'Create Diet Plan'}
+              </h2>
               {selectedRequest ? (
-                <div className="space-y-4">
+                selectedRequest.dietPlan ? (
+                  // Show completed plan details
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs text-gray-600">Plan Title</label>
+                        <p className="text-sm font-medium">{selectedRequest.dietPlan.title}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600">Status</label>
+                        <p className="text-sm text-green-600"> Completed</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs text-gray-600">Start Date</label>
+                        <p className="text-sm">{selectedRequest.dietPlan.startDate ? new Date(selectedRequest.dietPlan.startDate).toLocaleDateString() : 'Not set'}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600">End Date</label>
+                        <p className="text-sm">{selectedRequest.dietPlan.endDate ? new Date(selectedRequest.dietPlan.endDate).toLocaleDateString() : 'Not set'}</p>
+                      </div>
+                    </div>
+                    {selectedRequest.dietPlan.notes && (
+                      <div>
+                        <label className="text-xs text-gray-600">Notes</label>
+                        <p className="text-sm mt-1 p-3 bg-gray-50 rounded-lg">{selectedRequest.dietPlan.notes}</p>
+                      </div>
+                    )}
+                    <div>
+                      <label className="text-xs text-gray-600">Meal Schedule</label>
+                      <div className="mt-2 space-y-2">
+                        {selectedRequest.dietPlan.meals && typeof selectedRequest.dietPlan.meals === 'object' ? (
+                          (() => {
+                            // Get custom meal timings if available
+                            const customTimings = selectedRequest.dietPlan.customMealTimings || [];
+                            const meals = selectedRequest.dietPlan.meals;
+                            
+                            // Sort meals by custom order if available
+                            const mealEntries = Object.entries(meals);
+                            if (customTimings.length > 0) {
+                              mealEntries.sort(([a], [b]) => {
+                                const aInfo = customTimings.find((t: any) => t.id === a);
+                                const bInfo = customTimings.find((t: any) => t.id === b);
+                                return (aInfo?.order || 0) - (bInfo?.order || 0);
+                              });
+                            }
+                            
+                            return mealEntries.map(([mealId, mealData]: [string, any]) => {
+                              // Get meal display info
+                              const customTiming = customTimings.find((t: any) => t.id === mealId);
+                              const mealName = customTiming?.name || mealId;
+                              const mealIcon = customTiming?.icon || '🍽️';
+                              
+                              return (
+                                <div key={mealId} className="border rounded-lg p-3 bg-gray-50">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-lg">{mealIcon}</span>
+                                    <h4 className="font-medium text-sm">{mealName}</h4>
+                                  </div>
+                                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{String(mealData)}</p>
+                                </div>
+                              );
+                            });
+                          })()
+                        ) : (
+                          <p className="text-sm text-gray-500">No meal details available</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Show create plan form for incoming requests
+                  <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-gray-600">Title</label>
@@ -313,7 +428,8 @@ export default function DietPlansPage() {
                       Save Plan
                     </Button>
                   </div>
-                </div>
+                  </div>
+                )
               ) : (
                 <div className="text-sm text-gray-500">Select a request to start creating a plan</div>
               )}

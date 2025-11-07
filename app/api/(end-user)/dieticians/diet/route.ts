@@ -18,20 +18,20 @@ const getDietHandler = async (request: Request) => {
         const patientId = Number(searchParams.get('id'));
     
         if (!patientId) {
-        return NextResponse.json(
-            { success: false, error: "Patient ID is required" },
-            { status: 400 }
-        );
+            return NextResponse.json(
+                { success: false, error: "Patient ID is required" },
+                { status: 400 }
+            );
         }
-        const appt = await getDietPlan(patientId) as any;
+        const appt = await getCachedDietPlan(patientId) as any;
         const dietLink = appt?.prescriptionLink;
         const dietPlan = appt?.dietPlan || null;
         return NextResponse.json({ success: true, dietLink, dietPlan });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Diet plan fetch error:', error);
         return NextResponse.json(
-        { success: false, error: "Failed to fetch diet plan" },
-        { status: 500 }
+            { success: false, error: error?.message || "Failed to fetch diet plan" },
+            { status: 500 }
         );
     }
 };
