@@ -331,6 +331,13 @@ export const CACHE_CONFIGS = {
     dependencies: ['user:subscription:*', 'plans:data']
   },
   
+  ADMIN_PLANS: {
+    key: 'admin:plans',
+    ttl: CACHE_TTL.PLANS_DATA,
+    entityType: 'plans' as const,
+    dependencies: ['plans:data', 'user:subscription:*']
+  },
+  
   DIET_PLAN: {
     key: 'diet:plan',
     ttl: CACHE_TTL.DIET_PLAN,
@@ -366,6 +373,7 @@ export function getCacheConfig(endpoint: string, params: Record<string, any> = {
     '/api/pathology/upcoming-appointments': CACHE_CONFIGS.PATHOLOGY_APPOINTMENTS,
     '/api/(end-user)/plans': CACHE_CONFIGS.PLANS_DATA,
     '/api/(end-user)/plans/planUsage': CACHE_CONFIGS.PLANS_USAGE,
+    '/api/admin/plans': CACHE_CONFIGS.ADMIN_PLANS,
     '/api/(end-user)/dieticians/diet': CACHE_CONFIGS.DIET_PLAN
   };
   
