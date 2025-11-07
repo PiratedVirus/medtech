@@ -12,10 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, X, Edit2, Clock, Calendar, User, FileText, Save, Download, Loader2, ArrowLeft, Mic, MicOff, Bot, Sparkles } from "lucide-react";
+import { Plus, X, Edit2, Clock, Calendar, User, FileText, Save, Download, Loader2, ArrowLeft, Mic, MicOff, Bot, Sparkles, Eye, TestTube, TestTube2 } from "lucide-react";
 import TypeAheadInput from "./TypeAheadInput";
 import ComplaintCard from "./ComplaintCard";
 import MedicineCard from "./MedicineCard";
+import UnifiedAnalysisModal from "@/components/common/UnifiedAnalysisModal";
 // VoiceRecorder import removed - using original UI with robust logic
 
 interface PrescriptionFormProps {
@@ -88,6 +89,14 @@ export default function PrescriptionForm({
   const [afterImages, setAfterImages] = useState<Array<{id?: number; url: string}>>([]);
   const [isUploadingBefore, setIsUploadingBefore] = useState(false);
   const [isUploadingAfter, setIsUploadingAfter] = useState(false);
+  
+  // Investigation section state
+  const [prescriptionModalOpen, setPrescriptionModalOpen] = useState(false);
+  const [reportsModalOpen, setReportsModalOpen] = useState(false);
+  const [patientAppointments, setPatientAppointments] = useState<any[]>([]);
+  const [labBookings, setLabBookings] = useState<any[]>([]);
+  const [standaloneReports, setStandaloneReports] = useState<any[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
 
   const severityOptions = [
     { value: "PERFECT", label: "Perfect", color: "bg-green-100 text-green-800" },
@@ -259,6 +268,38 @@ export default function PrescriptionForm({
       }
     })();
   }, [patientInfo?.appointmentId]);
+
+  // Fetch patient appointments and lab reports for Investigation section
+  useEffect(() => {
+    const patientId = patientInfo?.patientId || patientInfo?.id;
+    if (!patientId) return;
+    
+    setLoadingAppointments(true);
+    (async () => {
+      try {
+        // Fetch patient details which includes appointments and lab bookings
+        const res = await fetch(`/api/doctor/patients/${patientId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPatientAppointments(data.doctorAppointments || []);
+          setLabBookings(data.labBookings || []);
+        }
+        
+        // Fetch standalone reports
+        const reportsRes = await fetch(`/api/reports/upload?patientId=${patientId}`);
+        if (reportsRes.ok) {
+          const reportsData = await reportsRes.json();
+          if (reportsData.success) {
+            setStandaloneReports(reportsData.reports || []);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch patient data:', error);
+      } finally {
+        setLoadingAppointments(false);
+      }
+    })();
+  }, [patientInfo?.patientId, patientInfo?.id]);
 
   // Cloudinary upload using existing unsigned preset
   const uploadImageToCloudinary = async (file: File): Promise<string | null> => {
@@ -1282,6 +1323,33 @@ export default function PrescriptionForm({
         </div>
       </div>
 
+      {/* Investigation Section */}
+      <div className="bg-custom-mutedgreen p-6 rounded-lg border border-gray-200">
+        <h3 className="text-lg font-semibold mb-4">Past Investigations</h3>
+        <div className="flex gap-4">
+          <Button
+            variant="outline"
+            size="lg"
+            className="flex-1 bg-white hover:bg-gray-50 border-gray-300"
+            onClick={() => setPrescriptionModalOpen(true)}
+            disabled={loadingAppointments}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            View Prescriptions
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            className="flex-1 bg-white hover:bg-gray-50 border-gray-300"
+            onClick={() => setReportsModalOpen(true)}
+            disabled={loadingAppointments}
+          >
+            <TestTube2 className="h-4 w-4 mr-2" />
+            View Reports
+          </Button>
+        </div>
+      </div>
+
       {/* Complaints Section */}
       <div className="bg-white p-6 rounded-lg border border-gray-200">
         <div className="flex items-center justify-between mb-4">
@@ -2018,6 +2086,104 @@ export default function PrescriptionForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Prescription Modal */}
+      <Dialog open={prescriptionModalOpen} onOpenChange={setPrescriptionModalOpen}>
+        <DialogContent className="sm:max-w-[720px] max-h-[70vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>View Prescriptions</DialogTitle>
+            <DialogDescription>Select an appointment to view its prescription</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {loadingAppointments ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                <p className="text-sm text-gray-500">Loading prescriptions...</p>
+              </div>
+            ) : patientAppointments.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">No appointments found</div>
+            ) : (
+              <ul className="divide-y">
+                {patientAppointments.map((apt: any) => {
+                  const hasPrescription = Boolean(apt.prescriptionLink);
+                  const viewHref = apt.prescriptionLink || `/doctor/appointments/${apt.id}/prescription`;
+                  return (
+                    <li key={apt.id} className="py-3 flex items-center">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-800">
+                          Appointment #{apt.id}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {apt.doctorAvailability?.date 
+                            ? new Date(apt.doctorAvailability.date).toLocaleString() 
+                            : apt.date 
+                            ? new Date(apt.date).toLocaleString() 
+                            : 'No date'}
+                        </div>
+                        {apt.doctor?.name && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Dr. {apt.doctor.name}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 ml-auto">
+                        {hasPrescription && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(viewHref, '_blank')}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                        )}
+                        {hasPrescription ? (
+                          <Button
+                            size="sm"
+                            className="w-44 shrink-0"
+                            onClick={() => window.open(`/doctor/appointments/${apt.id}`, '_blank')}
+                          >
+                            Edit Prescription
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="w-44 shrink-0"
+                            onClick={() => window.open(`/doctor/appointments/${apt.id}`, '_blank')}
+                          >
+                            Generate Prescription
+                          </Button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPrescriptionModalOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reports Modal - Unified Analysis Modal */}
+      <UnifiedAnalysisModal
+        isOpen={reportsModalOpen}
+        onClose={() => setReportsModalOpen(false)}
+        patientId={String(patientInfo?.patientId || patientInfo?.id || '')}
+        labReports={labBookings.map((booking: any) => ({
+          id: booking.id,
+          labPackageName: booking.labPackageName || booking.labPackage?.name || 'Unknown',
+          date: booking.date || booking.labDate || new Date().toISOString(),
+          status: booking.status || "COMPLETED",
+          labResult: booking.labResult,
+          reportLink: booking.reportLink
+        }))}
+        standaloneReports={standaloneReports}
+        preSelectedStandaloneReportId={null}
+        hideAIAnalysis={true}
+      />
       </div>
     </>
   );

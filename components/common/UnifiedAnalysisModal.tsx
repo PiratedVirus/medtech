@@ -98,6 +98,7 @@ interface UnifiedAnalysisModalProps {
   labReports: LabReport[];
   standaloneReports?: StandaloneReport[];
   preSelectedStandaloneReportId?: number | null;
+  hideAIAnalysis?: boolean; // When true, only shows lab values section
 }
 
 export default function UnifiedAnalysisModal({
@@ -106,7 +107,8 @@ export default function UnifiedAnalysisModal({
   patientId,
   labReports,
   standaloneReports = [],
-  preSelectedStandaloneReportId = null
+  preSelectedStandaloneReportId = null,
+  hideAIAnalysis = false
 }: UnifiedAnalysisModalProps) {
   
   const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
@@ -688,7 +690,8 @@ export default function UnifiedAnalysisModal({
             </div>
           ) : (analysis || standaloneAnalysis) ? (
             <div className="space-y-4">
-              {/* Combined AI Analysis Card with modern gradient background */}
+              {/* Combined AI Analysis Card with modern gradient background - Only show if not hidden */}
+              {!hideAIAnalysis && (
               <div className="relative rounded-xl overflow-hidden border border-blue-200/50 shadow-lg">
                 {/* Clean Gradient Background - whitish to bluish */}
                 <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-blue-50/70 to-blue-100/80" />
@@ -849,6 +852,7 @@ export default function UnifiedAnalysisModal({
 
                 </div>
               </div>
+              )}
 
               {/* Lab Values Card */}
               <Card>
@@ -856,6 +860,58 @@ export default function UnifiedAnalysisModal({
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-lg font-semibold">Laboratory Values</h3>
                     <div className="flex items-center gap-4">
+                      {/* View Report buttons - Show when hideAIAnalysis is true or always visible */}
+                      {hideAIAnalysis && selectedReport && (() => {
+                        const results = selectedReport.labResult || selectedReport.reportLink || [];
+                        if (results.length === 0) return null;
+                        
+                        if (results.length === 1) {
+                          return (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(results[0], '_blank')}
+                              className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View Report
+                            </Button>
+                          );
+                        }
+                        
+                        // Multiple results - show each as separate button
+                        return (
+                          <div className="flex items-center gap-2">
+                            {results.map((result: string, index: number) => (
+                              <Button
+                                key={index}
+                                variant={selectedLabResultIndex === index ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => window.open(result, '_blank')}
+                                className={`${
+                                  selectedLabResultIndex === index 
+                                    ? "bg-blue-600 text-white border-blue-600" 
+                                    : "text-blue-600 border-blue-300 hover:bg-blue-50"
+                                }`}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Result {index + 1}
+                              </Button>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                      {hideAIAnalysis && selectedStandaloneReport && selectedStandaloneReport.fileUrl && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(selectedStandaloneReport.fileUrl, '_blank')}
+                          className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View File
+                        </Button>
+                      )}
                       {/* Counts (left of search) */}
                       <div className="text-xs text-gray-600 whitespace-nowrap">
                         {showAllValues ? (
@@ -891,7 +947,7 @@ export default function UnifiedAnalysisModal({
                           onClick={() => setShowAllValues(false)}
                           className={`${!showAllValues ? 'bg-red-600 text-white' : 'text-red-700 border-red-300'}`}
                         >
-                          <AlertTriangle className="h-4 w-4 mr-1" /> Critical
+                          <AlertTriangle className="h-4 w-4 mr-1" /> Abnormal
                         </Button>
                       </div>
                     </div>

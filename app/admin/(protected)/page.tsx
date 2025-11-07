@@ -14,7 +14,7 @@ import { LabBookingsTable } from "@/components/admin/LabBookingsTable"
 import { PatientViewCard } from "@/components/admin/PatientViewCard"
 import { NotificationsList } from "@/components/admin/NotificationsList"
 import { SummaryCard } from "@/components/admin/SummaryCard"
-import NotificationTestPanel from "@/components/admin/NotificationTestPanel"
+// import NotificationTestPanel from "@/components/admin/NotificationTestPanel" // Component not found
 
 
 

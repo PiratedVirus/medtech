@@ -17,6 +17,7 @@ export interface StructuredPrescriptionData {
   advice?: string;
   testsRequested?: string;
   nextVisitDate?: Date;
+  historyOfCurrentIllness?: string;
   complaints?: Array<{
     complaintText: string;
     severity: string;
