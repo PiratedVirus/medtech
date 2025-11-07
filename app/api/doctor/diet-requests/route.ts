@@ -12,11 +12,33 @@ export async function GET(request: Request) {
       orderBy: { id: "desc" },
       include: { 
         patient: { select: { id: true, name: true } },
-        dietPlan: true,
         dietician: { select: { id: true, name: true } }
       },
     });
-    return NextResponse.json({ success: true, requests });
+    
+    // Fetch diet plans for requests that have planId
+    const requestsWithPlans = await Promise.all(
+      requests.map(async (request) => {
+        let dietPlan = null;
+        if (request.planId) {
+          try {
+            dietPlan = await prisma.dietPlan.findFirst({
+              where: { 
+                id: request.planId, 
+                deletedAt: null 
+              }
+            });
+          } catch (error) {
+            console.error(`Error fetching diet plan ${request.planId}:`, error);
+          }
+        }
+        return {
+          ...request,
+          dietPlan
+        };
+      })
+    );
+    return NextResponse.json({ success: true, requests: requestsWithPlans });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || "Server error" }, { status: 500 });
   }

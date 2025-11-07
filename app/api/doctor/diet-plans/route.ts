@@ -24,10 +24,15 @@ export async function POST(request: Request) {
           requestId: requestId ? Number(requestId) : null,
         }
       });
+      
+      // Update request status if requestId was provided
       if (requestId) {
         await tx.dietPlanRequest.update({ 
           where: { id: Number(requestId) }, 
-          data: { status: 'CREATED', planId: created.id } 
+          data: { 
+            status: 'CREATED', 
+            planId: created.id 
+          } 
         });
       }
       return created;

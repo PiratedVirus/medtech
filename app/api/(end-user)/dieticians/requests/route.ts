@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       }
     });
     
-    // Manually fetch diet plans for requests that have planId
+    // Fetch diet plans for requests that have planId
     const requestsWithPlans = await Promise.all(
       requests.map(async (request) => {
         let dietPlan = null;
