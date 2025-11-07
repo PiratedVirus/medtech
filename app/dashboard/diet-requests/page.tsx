@@ -38,21 +38,38 @@ export default function DietRequestsPage() {
         if (!profile?.id) return;
         
         // Load plans
-        const plansRes = await axios.get(`/api/dieticians/diet/history?patientId=${profile.id}`);
-        const plansList = plansRes.data?.plans || [];
-        setPlans(plansList);
-        if (plansList.length > 0) setSelectedPlan(plansList[0]);
+        let plansList: any[] = [];
+        try {
+          const plansRes = await axios.get(`/api/dieticians/diet/history?patientId=${profile.id}`);
+          plansList = plansRes.data?.plans || [];
+          setPlans(plansList);
+          if (plansList.length > 0) setSelectedPlan(plansList[0]);
+        } catch (error: any) {
+          console.error('Error loading plans:', error);
+          toast({ title: "Warning", description: "Failed to load diet plans", variant: "destructive" });
+        }
 
         // Load dieticians
         if (clinicId) {
-          const dieticiansRes = await axios.get(`/api/dieticians/get-dieticians?clinicId=${clinicId}`);
-          setDieticians(dieticiansRes.data?.dieticians || []);
+          try {
+            const dieticiansRes = await axios.get(`/api/dieticians/get-dieticians?clinicId=${clinicId}`);
+            setDieticians(dieticiansRes.data?.dieticians || []);
+          } catch (error: any) {
+            console.error('Error loading dieticians:', error);
+            toast({ title: "Warning", description: "Failed to load dieticians", variant: "destructive" });
+          }
         }
 
         // Load requests
-        const requestsRes = await axios.get(`/api/dieticians/requests?patientId=${profile.id}`);
-        const requests = requestsRes.data?.requests || [];
-        setPendingRequests(requests);
+        let requests: any[] = [];
+        try {
+          const requestsRes = await axios.get(`/api/dieticians/requests?patientId=${profile.id}`);
+          requests = requestsRes.data?.requests || [];
+          setPendingRequests(requests);
+        } catch (error: any) {
+          console.error('Error loading requests:', error);
+          toast({ title: "Warning", description: "Failed to load diet requests", variant: "destructive" });
+        }
 
         // Build sidebar items using the new linked structure
         const groupedItems: any[] = [];
