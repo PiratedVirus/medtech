@@ -20,10 +20,14 @@ export async function POST(request: Request) {
           endDate: endDate ? new Date(endDate) : null,
           meals,
           customMealTimings: customMealTimings || null,
+          requestId: requestId ? Number(requestId) : null,
         }
       });
       if (requestId) {
-        await tx.dietPlanRequest.update({ where: { id: Number(requestId) }, data: { status: 'CREATED' } });
+        await tx.dietPlanRequest.update({ 
+          where: { id: Number(requestId) }, 
+          data: { status: 'CREATED', planId: created.id } 
+        });
       }
       return created;
     });
