@@ -1,10 +1,16 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useImperativeHandle, forwardRef, useMemo } from "react";
+import { Input } from "@/components/ui/input";
+import { Search, X } from "lucide-react";
 
 interface AllValuesModalProps {
   patientId: string;
   onClose: () => void;
   onChanged?: () => void;
+}
+
+export interface AllValuesModalRef {
+  refresh: () => void;
 }
 
 interface ValueEntry {
@@ -26,51 +32,124 @@ interface Row {
   values: ValueEntry[];
 }
 
-export default function AllValuesModal({ patientId, onClose, onChanged }: AllValuesModalProps) {
-  const [rows, setRows] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const AllValuesModal = forwardRef<AllValuesModalRef, AllValuesModalProps>(
+  ({ patientId, onClose, onChanged }, ref) => {
+    const [rows, setRows] = useState<Row[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
 
-  const fetchRows = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/patient/${patientId}/all-values`);
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to load');
-      setRows(data.data.rows as Row[]);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchRows = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/patient/${patientId}/all-values`);
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || 'Failed to load');
+        setRows(data.data.rows as Row[]);
+      } catch (e: any) {
+        setError(e?.message || 'Failed to load');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  useEffect(() => {
-    fetchRows();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    useImperativeHandle(ref, () => ({
+      refresh: fetchRows
+    }));
 
-  const handleToggle = async (parameter: string, makeTracked: boolean) => {
-    try {
-      await fetch(`/api/patient/${patientId}/tracked-values/track`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parameter, isTracked: makeTracked })
+    useEffect(() => {
+      fetchRows();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const handleToggle = async (parameter: string, makeTracked: boolean) => {
+      try {
+        const response = await fetch(`/api/patient/${patientId}/tracked-values/track`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parameter, isTracked: makeTracked })
+        });
+        
+        if (response.ok) {
+          // Immediately update the UI optimistically
+          setRows(prevRows => 
+            prevRows.map(row => 
+              row.parameter.toLowerCase() === parameter.toLowerCase()
+                ? { ...row, isTracked: makeTracked }
+                : row
+            )
+          );
+          
+          // Refresh data from server
+          await fetchRows();
+          
+          // Notify parent to refresh pills
+          onChanged?.();
+        }
+      } catch (error) {
+        console.error('Error toggling track status:', error);
+        // Revert on error by refreshing
+        await fetchRows();
+      }
+    };
+
+    // Filter rows based on search term
+    const filteredRows = useMemo(() => {
+      if (!searchTerm.trim()) {
+        return rows;
+      }
+      
+      const searchLower = searchTerm.toLowerCase().trim();
+      return rows.filter(row => {
+        // Search in parameter name
+        if (row.parameter.toLowerCase().includes(searchLower)) {
+          return true;
+        }
+        
+        // Search in values
+        return row.values.some(v => {
+          const valueStr = String(v.value).toLowerCase();
+          const unitStr = (v.unit || '').toLowerCase();
+          return valueStr.includes(searchLower) || unitStr.includes(searchLower);
+        });
       });
-      await fetchRows();
-      onChanged?.();
-    } catch {}
-  };
+    }, [rows, searchTerm]);
 
-  return (
+    return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative z-10 w-[900px] max-w-[95vw] rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between px-5 py-3 border-b">
-          <h3 className="text-lg font-semibold">All Values (Lab Reports & Standalone Reports)</h3>
-          <button className="text-gray-500 hover:text-gray-700" onClick={onClose} aria-label="Close">✕</button>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b">
+          <h3 className="text-lg font-semibold">All Values</h3>
+          <div className="flex items-center gap-3 w-full sm:w-auto sm:min-w-[320px]">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search parameters or values..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-10"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <button className="text-gray-500 hover:text-gray-700" onClick={onClose} aria-label="Close">✕</button>
+          </div>
         </div>
+        {searchTerm && (
+          <div className="px-5 pt-2 text-sm text-gray-500">
+            Showing {filteredRows.length} of {rows.length} parameters
+          </div>
+        )}
         <div className="p-4 max-h-[70vh] overflow-y-auto">
           {loading ? (
             <div className="text-sm text-gray-500">Loading...</div>
@@ -78,6 +157,10 @@ export default function AllValuesModal({ patientId, onClose, onChanged }: AllVal
             <div className="text-sm text-red-600">{error}</div>
           ) : rows.length === 0 ? (
             <div className="text-sm text-gray-500">No values available.</div>
+          ) : filteredRows.length === 0 ? (
+            <div className="text-sm text-gray-500 text-center py-8">
+              No parameters match your search "{searchTerm}"
+            </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
@@ -88,10 +171,12 @@ export default function AllValuesModal({ patientId, onClose, onChanged }: AllVal
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {filteredRows.map((row) => (
                   <tr key={row.parameter} className="border-b last:border-b-0">
                     <td className="py-2 pr-2">
-                      <div className="font-medium text-gray-800">{row.parameter}</div>
+                      <div className="font-medium text-gray-800">
+                        {row.parameter.charAt(0).toUpperCase() + row.parameter.slice(1)}
+                      </div>
                     </td>
                     <td className="py-2 pr-2">
                       <div className="flex flex-wrap gap-1.5">
@@ -126,5 +211,10 @@ export default function AllValuesModal({ patientId, onClose, onChanged }: AllVal
         </div>
       </div>
     </div>
-  );
-}
+    );
+  }
+);
+
+AllValuesModal.displayName = 'AllValuesModal';
+
+export default AllValuesModal;

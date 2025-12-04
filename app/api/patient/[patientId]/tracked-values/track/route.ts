@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { cacheUtils } from "@/lib/redis";
+import { CacheEvents } from "@/lib/cache-events";
 
 export async function POST(
   request: NextRequest,
@@ -26,17 +28,36 @@ export async function POST(
       return NextResponse.json({ success: false, error: "parameter and isTracked required" }, { status: 400 });
     }
 
+    // Normalize parameter for comparison
+    const parameterLc = String(parameter).toLowerCase();
+
+    // Helper to update all matching values in a list
+    const updateValues = (values: any[]) => {
+      let touched = false;
+      const updated = values.map((v) => {
+        if (v?.parameter && String(v.parameter).toLowerCase() === parameterLc) {
+          touched = true;
+          return { ...v, isTracked };
+        }
+        return v;
+      });
+      return { updated, touched };
+    };
+
     // Find latest booking that contains this parameter in analysis
     const bookings = await prisma.labBooking.findMany({
       where: {
         patientId,
         status: "COMPLETED",
         labResult: { isEmpty: false },
-        reportAnalyses: { some: {} },
       },
-      include: { reportAnalyses: true },
+      include: { 
+        reportAnalyses: {
+          where: { deletedAt: null }
+        }
+      },
       orderBy: { labDate: "desc" },
-      take: 10,
+      take: 50, // Increased to ensure we find the parameter
     });
 
     // Also find standalone reports that contain this parameter
@@ -52,126 +73,118 @@ export async function POST(
         }
       },
       orderBy: { createdAt: "desc" },
-      take: 10,
+      take: 20, // Increased to ensure we find the parameter
     });
     
     // Filter for reports with lab analysis (relaxed filtering)
-    const standaloneReports = allStandaloneReports.filter(report => 
+    let standaloneReports = allStandaloneReports.filter(report => 
       report.reportAnalyses.some(analysis => 
         analysis.analysisType === "lab_analysis" && 
         (analysis.allValues || analysis.criticalValues)
       )
     );
+    
+    // Fallback: use relaxed filtering if no reports found
+    if (standaloneReports.length === 0) {
+      standaloneReports = allStandaloneReports.filter(report => 
+        report.reportAnalyses.some(analysis => 
+          analysis.allValues || analysis.criticalValues
+        )
+      );
+    }
 
     console.log('[TRACKED-VALUES][POST] Searched recent bookings count:', bookings.length);
     console.log('[TRACKED-VALUES][POST] Searched standalone reports count:', standaloneReports.length);
 
     let updated = false;
 
-    // Process lab bookings
+    // Process lab bookings (update ALL occurrences)
     for (const booking of bookings) {
-      const analysis: any = booking.reportAnalyses;
-      if (!analysis) continue;
-      const criticalValues: any[] = Array.isArray(analysis.criticalValues) ? analysis.criticalValues : [];
-      const allValues: any[] = Array.isArray(analysis.allValues) ? analysis.allValues : [];
-      const idx = criticalValues.findIndex((v) => v?.parameter?.toLowerCase() === String(parameter).toLowerCase());
-      const idxAll = allValues.findIndex((v) => v?.parameter?.toLowerCase() === String(parameter).toLowerCase());
+      const analyses: any[] = Array.isArray(booking.reportAnalyses) ? booking.reportAnalyses : [];
+      
       console.log('[TRACKED-VALUES][POST] Checking booking', {
         bookingId: booking.id,
         labDate: booking.labDate,
-        criticalFound: criticalValues.map(v => v?.parameter).filter(Boolean),
-        allFound: allValues.map(v => v?.parameter).filter(Boolean)
+        analysesCount: analyses.length
       });
-      if (idx >= 0 || idxAll >= 0) {
-        if (idx >= 0) {
-          const before = criticalValues[idx];
-          criticalValues[idx] = { ...criticalValues[idx], isTracked };
-          console.log('[TRACKED-VALUES][POST] Updating parameter (critical)', {
-            bookingId: booking.id,
-            parameter: before?.parameter,
-            previousIsTracked: before?.isTracked,
-            newIsTracked: isTracked
+      
+      for (const analysis of analyses) {
+        if (!analysis) continue;
+        
+        const criticalValues: any[] = Array.isArray(analysis.criticalValues) ? analysis.criticalValues : [];
+        const allValues: any[] = Array.isArray(analysis.allValues) ? analysis.allValues : [];
+
+        const { updated: updatedCritical, touched: touchedCritical } = updateValues(criticalValues);
+        const { updated: updatedAll, touched: touchedAll } = updateValues(allValues);
+
+        if (touchedCritical || touchedAll) {
+          await prisma.labReportAnalysis.update({
+            where: { id: analysis.id },
+            data: {
+              criticalValues: updatedCritical as any,
+              allValues: updatedAll as any,
+            }
           });
-        }
-        if (idxAll >= 0) {
-          const beforeAll = allValues[idxAll];
-          allValues[idxAll] = { ...allValues[idxAll], isTracked };
-          console.log('[TRACKED-VALUES][POST] Updating parameter (all)', {
-            bookingId: booking.id,
-            parameter: beforeAll?.parameter,
-            previousIsTracked: beforeAll?.isTracked,
-            newIsTracked: isTracked
+          
+          console.log('[TRACKED-VALUES][POST] Updated analysis', {
+            analysisId: analysis.id,
+            touchedCritical,
+            touchedAll,
+            parameter
           });
+
+          updated = true;
         }
-        await prisma.labReportAnalysis.upsert({
-          where: { 
-            labBookingId_labResultIndex: { 
-              labBookingId: booking.id, 
-              labResultIndex: 0 
-            } 
-          },
-          create: {
-            labBookingId: booking.id,
-            labResultIndex: 0,
-            criticalValues: criticalValues as any,
-            allValues: allValues as any,
-            processingStatus: 'COMPLETED',
-            processedAt: new Date(),
-          },
-          update: { 
-            criticalValues: criticalValues as any, 
-            allValues: allValues as any 
-          },
-        });
-        console.log('[TRACKED-VALUES][POST] Update saved for booking', booking.id);
-        updated = true;
-        break;
       }
     }
 
-    // Process standalone reports if not updated from lab bookings
-    if (!updated) {
-      console.log('[TRACKED-VALUES][POST] Searching in standalone reports...');
-      for (const report of standaloneReports) {
-        console.log(`[TRACKED-VALUES][POST] Checking standalone report ${report.id} with ${report.reportAnalyses.length} analyses`);
-        for (const analysis of report.reportAnalyses) {
-          const criticalValues: any[] = Array.isArray(analysis.criticalValues) ? analysis.criticalValues : [];
-          const allValues: any[] = Array.isArray(analysis.allValues) ? analysis.allValues : [];
-          const idx = criticalValues.findIndex((v) => v?.parameter?.toLowerCase() === String(parameter).toLowerCase());
-          const idxAll = allValues.findIndex((v) => v?.parameter?.toLowerCase() === String(parameter).toLowerCase());
-          
-          console.log(`[TRACKED-VALUES][POST] Analysis ${analysis.id}: criticalValues count: ${criticalValues.length}, allValues count: ${allValues.length}`);
-          console.log(`[TRACKED-VALUES][POST] Parameter search: ${parameter}, found in critical: ${idx >= 0}, found in all: ${idxAll >= 0}`);
-          
-          if (idx >= 0 || idxAll >= 0) {
-            if (idx >= 0) {
-              criticalValues[idx] = { ...criticalValues[idx], isTracked };
-              console.log(`[TRACKED-VALUES][POST] Updated critical value for parameter: ${parameter}, isTracked: ${isTracked}`);
+    // Process standalone reports (update ALL occurrences)
+    console.log('[TRACKED-VALUES][POST] Searching in standalone reports...');
+    for (const report of standaloneReports) {
+      console.log(`[TRACKED-VALUES][POST] Checking standalone report ${report.id} with ${report.reportAnalyses.length} analyses`);
+      for (const analysis of report.reportAnalyses) {
+        const criticalValues: any[] = Array.isArray(analysis.criticalValues) ? analysis.criticalValues : [];
+        const allValues: any[] = Array.isArray(analysis.allValues) ? analysis.allValues : [];
+
+        const { updated: updatedCritical, touched: touchedCritical } = updateValues(criticalValues);
+        const { updated: updatedAll, touched: touchedAll } = updateValues(allValues);
+        
+        if (touchedCritical || touchedAll) {
+          await prisma.standaloneReportAnalysis.update({
+            where: { id: analysis.id },
+            data: {
+              criticalValues: updatedCritical as any,
+              allValues: updatedAll as any,
             }
-            if (idxAll >= 0) {
-              allValues[idxAll] = { ...allValues[idxAll], isTracked };
-              console.log(`[TRACKED-VALUES][POST] Updated all value for parameter: ${parameter}, isTracked: ${isTracked}`);
-            }
-            
-            await prisma.standaloneReportAnalysis.update({
-              where: { id: analysis.id },
-              data: {
-                criticalValues: criticalValues as any,
-                allValues: allValues as any,
-              }
-            });
-            console.log('[TRACKED-VALUES][POST] Update saved for standalone report', report.id);
-            updated = true;
-            break;
-          }
+          });
+          console.log('[TRACKED-VALUES][POST] Update saved for standalone report analysis', {
+            reportId: report.id,
+            analysisId: analysis.id,
+            touchedCritical,
+            touchedAll,
+            parameter
+          });
+          updated = true;
         }
-        if (updated) break;
       }
     }
 
     if (!updated) {
       console.warn('[TRACKED-VALUES][POST] Parameter not found in recent reports', { parameter });
       return NextResponse.json({ success: false, error: "Parameter not found in recent reports" }, { status: 404 });
+    }
+
+    // Invalidate caches
+    try {
+      // Invalidate all-values cache for this patient
+      await cacheUtils.invalidate(`patient:all-values:${patientId}`);
+      // Invalidate tracked-values cache
+      await cacheUtils.invalidate(`patient:${patientId}:tracked-values`);
+      // Emit lab result updated event to invalidate related caches
+      await CacheEvents.labResultUpdated(patientId);
+    } catch (cacheError) {
+      console.error('[TRACKED-VALUES][POST] Error invalidating cache:', cacheError);
+      // Don't fail the request if cache invalidation fails
     }
 
     return NextResponse.json({ success: true });

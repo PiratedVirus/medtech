@@ -47,6 +47,27 @@ export function withUnifiedCache(config: CacheConfig) {
 }
 
 /**
+ * Extract path parameters from URL for dynamic routes
+ */
+function extractPathParams(url: string, endpoint: string): Record<string, string> {
+  const params: Record<string, string> = {};
+  const urlPath = new URL(url).pathname;
+  const urlSegments = urlPath.split('/').filter(Boolean);
+  const endpointSegments = endpoint.split('/').filter(Boolean);
+  
+  // Match dynamic segments like [patientId]
+  for (let i = 0; i < endpointSegments.length && i < urlSegments.length; i++) {
+    const endpointSegment = endpointSegments[i];
+    if (endpointSegment.startsWith('[') && endpointSegment.endsWith(']')) {
+      const paramName = endpointSegment.slice(1, -1);
+      params[paramName] = urlSegments[i];
+    }
+  }
+  
+  return params;
+}
+
+/**
  * Handle GET requests with caching
  */
 async function handleGetWithCache(
@@ -56,8 +77,20 @@ async function handleGetWithCache(
   args: any[]
 ): Promise<NextResponse> {
   try {
+    // Extract path parameters from URL if this is a dynamic route
+    const url = request.url;
+    let cacheKey = config.key;
+    
+    // Check if this is a dynamic route and extract parameters
+    if (config.key.includes('patient:all-values')) {
+      const pathParams = extractPathParams(url, '/api/patient/[patientId]/all-values');
+      if (pathParams.patientId) {
+        cacheKey = `${config.key}:${pathParams.patientId}`;
+      }
+    }
+    
     // Try to get from cache first
-    const cachedData = await cacheUtils.get(config.key);
+    const cachedData = await cacheUtils.get(cacheKey);
     if (cachedData) {
       return NextResponse.json({
         success: true,
@@ -74,10 +107,10 @@ async function handleGetWithCache(
       try {
         const responseData = await response.clone().json();
         if (responseData.success && responseData.data) {
-          await cacheUtils.set(config.key, responseData.data, config.ttl);
+          await cacheUtils.set(cacheKey, responseData.data, config.ttl);
         }
       } catch (error) {
-        console.error(`[CACHE-MIDDLEWARE] Error caching response for ${config.key}:`, error);
+        console.error(`[CACHE-MIDDLEWARE] Error caching response for ${cacheKey}:`, error);
       }
     }
     
@@ -257,6 +290,13 @@ export const CACHE_CONFIGS = {
     dependencies: ['user:profile:*', 'pathology:*']
   },
   
+  PATIENT_ALL_VALUES: {
+    key: 'patient:all-values',
+    ttl: CACHE_TTL.APPOINTMENTS, // Same TTL as appointments
+    entityType: 'lab' as const,
+    dependencies: ['user:labs:*', 'pathology:*', 'lab:*']
+  },
+  
   // Doctor-related endpoints
   DOCTOR_PROFILE: {
     key: 'doctor:profile',
@@ -363,6 +403,7 @@ export function getCacheConfig(endpoint: string, params: Record<string, any> = {
     '/api/(end-user)/insights': CACHE_CONFIGS.USER_INSIGHTS,
     '/api/(end-user)/appointments': CACHE_CONFIGS.USER_APPOINTMENTS,
     '/api/(end-user)/labs': CACHE_CONFIGS.USER_LABS,
+    '/api/patient/[patientId]/all-values': CACHE_CONFIGS.PATIENT_ALL_VALUES,
     '/api/admin/doctors': CACHE_CONFIGS.DOCTOR_PROFILE,
     '/api/doctor/appointments': CACHE_CONFIGS.DOCTOR_APPOINTMENTS,
     '/api/doctor/earnings': CACHE_CONFIGS.DOCTOR_EARNINGS,

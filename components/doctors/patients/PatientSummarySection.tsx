@@ -1,7 +1,7 @@
 'use client'
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import AllValuesModal from "./AllValuesModal";
+import AllValuesModal, { AllValuesModalRef } from "./AllValuesModal";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
@@ -52,18 +52,66 @@ export default function PatientSummarySection({
   const [loadingCheckups, setLoadingCheckups] = useState(false);
   const [showAllValuesModal, setShowAllValuesModal] = useState(false);
   const [showAllLatestComplaints, setShowAllLatestComplaints] = useState(false);
+  const allValuesModalRef = useRef<AllValuesModalRef>(null);
+
+  const refreshCheckups = async () => {
+    setLoadingCheckups(true);
+    try {
+      const response = await fetch(`/api/patient/${patientId}/tracked-values`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data.criticalValues) {
+          const transformedCheckups: Checkup[] = data.data.criticalValues.map((cv: any) => ({
+            name: cv.parameter,
+            value: cv.value.toString(),
+            unit: cv.unit || '',
+            normalRange: cv.normalRange,
+            isAbnormal: cv.isAbnormal,
+            severity: cv.severity,
+            category: cv.category,
+            reportDate: cv.reportDate
+          }));
+          setCheckups(transformedCheckups);
+        } else {
+          setCheckups([]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching tracked values:', error);
+    } finally {
+      setLoadingCheckups(false);
+    }
+  };
 
   const handleUntrack = async (parameter: string) => {
     const previous = [...checkups];
+    // Optimistically update UI
     setCheckups((current) => current.filter((c) => c.name.toLowerCase() !== parameter.toLowerCase()));
+    
     try {
-      await fetch(`/api/patient/${patientId}/tracked-values/track`, {
+      const response = await fetch(`/api/patient/${patientId}/tracked-values/track`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ parameter, isTracked: false })
       });
+      
+      if (!response.ok) {
+        // Revert on error
+        setCheckups(previous);
+        return;
+      }
+      
+      // Refresh modal if it's open
+      if (showAllValuesModal && allValuesModalRef.current) {
+        allValuesModalRef.current.refresh();
+      }
+      
+      // Refresh checkups to ensure consistency
+      await refreshCheckups();
     } catch (e) {
+      // Revert on error
       setCheckups(previous);
+      console.error('Error untracking parameter:', e);
     }
   };
 
@@ -106,39 +154,9 @@ export default function PatientSummarySection({
 
   // Fetch critical values from lab reports
   useEffect(() => {
-    const fetchLabAnalysis = async () => {
-      if (!patientId) return;
-      
-      setLoadingCheckups(true);
-      try {
-        const response = await fetch(`/api/patient/${patientId}/tracked-values`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data.criticalValues) {
-            // Transform critical values to Checkup format
-            const transformedCheckups: Checkup[] = data.data.criticalValues.map((cv: any) => ({
-              name: cv.parameter,
-              value: cv.value.toString(),
-              unit: cv.unit || '',
-              normalRange: cv.normalRange,
-              isAbnormal: cv.isAbnormal,
-              severity: cv.severity,
-              category: cv.category,
-              reportDate: cv.reportDate
-            }));
-            setCheckups(transformedCheckups);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching lab analysis:', error);
-        // Fallback to empty array if API fails
-        setCheckups([]);
-      } finally {
-        setLoadingCheckups(false);
-      }
-    };
-
-    fetchLabAnalysis();
+    if (!patientId) return;
+    refreshCheckups();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId]);
 
   // Get selected appointment or aggregate all previous
@@ -362,35 +380,10 @@ export default function PatientSummarySection({
           </Card>
           {showAllValuesModal && (
             <AllValuesModal 
+              ref={allValuesModalRef}
               patientId={patientId} 
               onClose={() => setShowAllValuesModal(false)} 
-              onChanged={() => {
-                // Refresh tracked values after a change
-                (async () => {
-                  setLoadingCheckups(true);
-                  try {
-                    const response = await fetch(`/api/patient/${patientId}/tracked-values`);
-                    if (response.ok) {
-                      const data = await response.json();
-                      if (data.success && data.data.criticalValues) {
-                        const transformedCheckups: Checkup[] = data.data.criticalValues.map((cv: any) => ({
-                          name: cv.parameter,
-                          value: cv.value.toString(),
-                          unit: cv.unit || '',
-                          normalRange: cv.normalRange,
-                          isAbnormal: cv.isAbnormal,
-                          severity: cv.severity,
-                          category: cv.category,
-                          reportDate: cv.reportDate
-                        }));
-                        setCheckups(transformedCheckups);
-                      }
-                    }
-                  } finally {
-                    setLoadingCheckups(false);
-                  }
-                })();
-              }}
+              onChanged={refreshCheckups}
             />
           )}
 
