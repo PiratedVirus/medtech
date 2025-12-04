@@ -26,10 +26,17 @@ const getUpcomingAppointmentsHandler = async () => {
 
     const user = await prisma.user.findFirst({
       where: { phoneNumber },
-      include: { doctorProfile: true },
+      include: { 
+        doctorProfile: true,
+        dieticianProfile: true 
+      },
     });
 
-    if (!user?.doctorProfile?.id) {
+    // Allow doctors and dietitians (dietitians can have doctorProfile with isDietician: true, or dieticianProfile, or role: DIETICIAN)
+    const isDoctor = user?.doctorProfile?.id;
+    const isDietician = user?.dieticianProfile?.id || user?.role === 'DIETICIAN' || user?.doctorProfile?.isDietician;
+    
+    if (!isDoctor && !isDietician) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -43,7 +50,8 @@ const getUpcomingAppointmentsHandler = async () => {
       where: {
         userId: doctorId,
         doctorAvailability: {
-          date: { gte: todayStart }
+          date: { gte: todayStart },
+          deletedAt: null, // Ensure availability is not deleted
         },
         // Only scheduled-like statuses; exclude completed/cancelled
         status: {
@@ -87,30 +95,43 @@ const getUpcomingAppointmentsHandler = async () => {
     });
 
     // Transform the appointments to match the expected interface
-    const transformedAppointments = appointments.map((appointment) => ({
-      id: appointment.id,
-      patientId: appointment.patientId,
-      patient: appointment.patient,
-      doctor: { name: user.name }, // Add doctor info
-      // Use doctorAvailability.date as source of truth for date
-      date: appointment.doctorAvailability.date.toISOString(),
-      startTime: appointment.doctorAvailability.startTime,
-      endTime: appointment.doctorAvailability.endTime,
-      status: appointment.status,
-      consultationType: appointment.consultationType,
-      doctorAvailability: appointment.doctorAvailability,
-      payment: appointment.payment
-        ? {
-            amount: appointment.payment.amount,
-            status: appointment.payment.paymentStatus,
-          }
-        : null,
-    }));
+    const transformedAppointments = appointments
+      .filter((appointment) => appointment.doctorAvailability !== null) // Filter out appointments without availability
+      .map((appointment) => ({
+        id: appointment.id,
+        patientId: appointment.patientId,
+        patient: appointment.patient,
+        doctor: { name: user.name }, // Add doctor info
+        // Use doctorAvailability.date as source of truth for date
+        date: appointment.doctorAvailability!.date.toISOString(),
+        startTime: appointment.doctorAvailability!.startTime,
+        endTime: appointment.doctorAvailability!.endTime,
+        status: appointment.status,
+        consultationType: appointment.consultationType,
+        doctorAvailability: appointment.doctorAvailability!,
+        payment: appointment.payment
+          ? {
+              amount: appointment.payment.amount,
+              status: appointment.payment.paymentStatus,
+            }
+          : null,
+      }));
 
     return NextResponse.json({ appointments: transformedAppointments });
   } catch (error) {
     console.error("Error fetching upcoming appointments:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    // Log more details for debugging
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
+    return new NextResponse(
+      JSON.stringify({ 
+        error: "Internal Server Error",
+        message: error instanceof Error ? error.message : "Unknown error"
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 };
 

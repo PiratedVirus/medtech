@@ -17,6 +17,7 @@ import TypeAheadInput from "./TypeAheadInput";
 import ComplaintCard from "./ComplaintCard";
 import MedicineCard from "./MedicineCard";
 import UnifiedAnalysisModal from "@/components/common/UnifiedAnalysisModal";
+import ImageGallery from "@/components/common/ImageGallery";
 // VoiceRecorder import removed - using original UI with robust logic
 
 interface PrescriptionFormProps {
@@ -84,11 +85,13 @@ export default function PrescriptionForm({
   const finalTranscriptRef = useRef<string>("");
   // Ref to mark if recording was cancelled (e.g., via Clear All)
   const recordingCancelledRef = useRef<boolean>(false);
-  // Before/After images state
-  const [beforeImages, setBeforeImages] = useState<Array<{id?: number; url: string}>>([]);
-  const [afterImages, setAfterImages] = useState<Array<{id?: number; url: string}>>([]);
-  const [isUploadingBefore, setIsUploadingBefore] = useState(false);
-  const [isUploadingAfter, setIsUploadingAfter] = useState(false);
+  // Current images state
+  const [currentImages, setCurrentImages] = useState<Array<{id?: number; url: string}>>([]);
+  const [isUploadingCurrent, setIsUploadingCurrent] = useState(false);
+  // Historical images from all appointments (for gallery)
+  const [historicalImages, setHistoricalImages] = useState<Array<{id: number; imageUrl: string; type: 'BEFORE' | 'AFTER'; createdAt: string; appointmentId: number}>>([]);
+  const [patientAppointmentsForGallery, setPatientAppointmentsForGallery] = useState<Array<{id: number; date: string; status: string}>>([]);
+  const [loadingHistoricalImages, setLoadingHistoricalImages] = useState(false);
   
   // Investigation section state
   const [prescriptionModalOpen, setPrescriptionModalOpen] = useState(false);
@@ -250,7 +253,7 @@ export default function PrescriptionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load appointment images (BEFORE/AFTER) once patientInfo is present
+  // Load current appointment images once patientInfo is present
   useEffect(() => {
     const apptId = patientInfo?.appointmentId;
     if (!apptId) return;
@@ -260,14 +263,73 @@ export default function PrescriptionForm({
         if (res.ok) {
           const json = await res.json();
           const imgs = Array.isArray(json?.data) ? json.data : [];
-          setBeforeImages(imgs.filter((i: any) => i.type === 'BEFORE').map((i: any) => ({ id: i.id, url: i.imageUrl })));
-          setAfterImages(imgs.filter((i: any) => i.type === 'AFTER').map((i: any) => ({ id: i.id, url: i.imageUrl })));
+          // Load all images as current images (no before/after distinction)
+          setCurrentImages(imgs.map((i: any) => ({ id: i.id, url: i.imageUrl })));
         }
       } catch {
         // ignore
       }
     })();
   }, [patientInfo?.appointmentId]);
+
+  // Load historical images from all patient appointments for gallery
+  useEffect(() => {
+    const patientId = patientInfo?.patientId || patientInfo?.id;
+    if (!patientId) return;
+    
+    setLoadingHistoricalImages(true);
+    (async () => {
+      try {
+        // Fetch patient appointments
+        const res = await fetch(`/api/doctor/patients/${patientId}`);
+        if (res.ok) {
+          const data = await res.json();
+          const appointments = data.doctorAppointments || [];
+          setPatientAppointmentsForGallery(
+            appointments
+              .filter((apt: any) => apt.status === 'COMPLETED')
+              .map((apt: any) => ({
+                id: apt.id,
+                date: apt.date || apt.doctorAvailability?.date || new Date().toISOString(),
+                status: apt.status,
+              }))
+          );
+
+          // Fetch images from all completed appointments
+          const completedAppointments = appointments.filter(
+            (apt: any) => apt.status === 'COMPLETED'
+          );
+
+          const imagePromises = completedAppointments.map(async (apt: any) => {
+            try {
+              const imgRes = await fetch(`/api/doctor/appointments/${apt.id}/images`);
+              if (imgRes.ok) {
+                const imgData = await imgRes.json();
+                if (imgData.success && Array.isArray(imgData.data)) {
+                  return imgData.data.map((img: any) => ({
+                    ...img,
+                    appointmentId: apt.id,
+                  }));
+                }
+              }
+              return [];
+            } catch (error) {
+              console.error(`Error fetching images for appointment ${apt.id}:`, error);
+              return [];
+            }
+          });
+
+          const imageArrays = await Promise.all(imagePromises);
+          const flattened = imageArrays.flat();
+          setHistoricalImages(flattened);
+        }
+      } catch (error) {
+        console.error('Error fetching historical images:', error);
+      } finally {
+        setLoadingHistoricalImages(false);
+      }
+    })();
+  }, [patientInfo?.patientId, patientInfo?.id]);
 
   // Fetch patient appointments and lab reports for Investigation section
   useEffect(() => {
@@ -317,12 +379,12 @@ export default function PrescriptionForm({
     }
   };
 
-  const handleUploadImages = async (e: React.ChangeEvent<HTMLInputElement>, type: 'BEFORE' | 'AFTER') => {
+  const handleUploadCurrentImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || !files.length) return;
     const apptId = patientInfo?.appointmentId;
     if (!apptId) return;
-    if (type === 'BEFORE') setIsUploadingBefore(true); else setIsUploadingAfter(true);
+    setIsUploadingCurrent(true);
     try {
       const urls: string[] = [];
       for (let i = 0; i < files.length; i++) {
@@ -330,40 +392,54 @@ export default function PrescriptionForm({
         if (url) urls.push(url);
       }
       if (urls.length) {
+        // Use 'AFTER' type for current images (maintaining backward compatibility)
         const resp = await fetch(`/api/doctor/appointments/${apptId}/images`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ urls, type, uploadedById: doctorInfo?.id ? Number(doctorInfo.id) : undefined }),
+          body: JSON.stringify({ urls, type: 'AFTER', uploadedById: doctorInfo?.id ? Number(doctorInfo.id) : undefined }),
         });
         if (resp.ok) {
           const saved = await resp.json();
           const items = Array.isArray(saved?.data) ? saved.data.map((i: any) => ({ id: i.id, url: i.imageUrl })) : urls.map(u => ({ url: u }));
-          if (type === 'BEFORE') setBeforeImages(prev => [...prev, ...items]);
-          else setAfterImages(prev => [...prev, ...items]);
+          setCurrentImages(prev => [...prev, ...items]);
+          // Also update historical images to include the new ones (deduplicate by id)
+          if (Array.isArray(saved?.data)) {
+            const newHistoricalItems = saved.data.map((i: any) => ({
+              id: i.id,
+              imageUrl: i.imageUrl,
+              type: 'AFTER' as const,
+              createdAt: i.createdAt || new Date().toISOString(),
+              appointmentId: apptId,
+            }));
+            setHistoricalImages(prev => {
+              const existingIds = new Set(prev.map(img => img.id));
+              const uniqueNewItems = newHistoricalItems.filter(item => !existingIds.has(item.id));
+              return [...prev, ...uniqueNewItems];
+            });
+          }
           toast({ title: "Uploaded", description: `${urls.length} image(s) saved` });
         } else {
           toast({ title: "Error", description: "Failed to save images", variant: "destructive" });
         }
       }
     } finally {
-      if (type === 'BEFORE') setIsUploadingBefore(false); else setIsUploadingAfter(false);
+      setIsUploadingCurrent(false);
       e.target.value = '';
     }
   };
 
-  const handleDeleteImage = async (imageId: number | undefined, type: 'BEFORE' | 'AFTER', url: string) => {
+  const handleDeleteImage = async (imageId: number) => {
     const apptId = patientInfo?.appointmentId;
     if (!apptId) return;
-    if (!imageId) {
-      if (type === 'BEFORE') setBeforeImages(prev => prev.filter(i => i.url !== url));
-      else setAfterImages(prev => prev.filter(i => i.url !== url));
-      return;
-    }
     try {
-      const resp = await fetch(`/api/doctor/appointments/${apptId}/images`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageId }) });
+      const resp = await fetch(`/api/doctor/appointments/${apptId}/images`, { 
+        method: 'DELETE', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ imageId }) 
+      });
       if (resp.ok) {
-        if (type === 'BEFORE') setBeforeImages(prev => prev.filter(i => i.id !== imageId));
-        else setAfterImages(prev => prev.filter(i => i.id !== imageId));
+        setCurrentImages(prev => prev.filter(i => i.id !== imageId));
+        setHistoricalImages(prev => prev.filter(i => i.id !== imageId));
         toast({ title: "Removed", description: "Image removed" });
       } else {
         toast({ title: "Error", description: "Failed to remove image", variant: "destructive" });
@@ -1755,65 +1831,54 @@ export default function PrescriptionForm({
         </div>
       </div>
 
-      {/* Before/After Images (Below Recommended Links) */}
+      {/* Current Images Upload Section */}
       <div className="bg-custom-mutedgreen p-6 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold mb-4">Before / After Images</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Before */}
-          <div className="p-3 bg-slate-50 rounded-md border-2 border-dashed border-gray-300">
-            <div className="flex items-center justify-between mb-2">
-              <div className="font-medium text-gray-800">Before</div>
-              <label className="text-sm px-3 py-1 rounded bg-primary text-white cursor-pointer">
-                {isUploadingBefore ? 'Uploading…' : 'Upload'}
-                <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUploadImages(e, 'BEFORE')} />
-              </label>
-            </div>
-            <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
-              {beforeImages.length === 0 && (
-                <div className="text-sm text-gray-500 col-span-3 md:col-span-4">No images</div>
-              )}
-              {beforeImages.map((img) => (
-                <div key={(img.id ?? img.url)} className="relative w-full aspect-square overflow-hidden rounded border">
-                  <Image src={img.url} alt="Before" fill className="object-cover" />
-                  <button
-                    type="button"
-                    className="absolute top-1 right-1 bg-white/80 text-red-600 text-xs px-1.5 py-0.5 rounded"
-                    onClick={() => handleDeleteImage(img.id, 'BEFORE', img.url)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
+        <h3 className="text-lg font-semibold mb-4">Current Images</h3>
+        <div className="p-3 bg-slate-50 rounded-md border-2 border-dashed border-gray-300 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="font-medium text-gray-800">Upload Current Images</div>
+            <label className="text-sm px-3 py-1 rounded bg-primary text-white cursor-pointer">
+              {isUploadingCurrent ? 'Uploading…' : 'Upload'}
+              <input 
+                type="file" 
+                accept="image/*" 
+                multiple 
+                className="hidden" 
+                onChange={handleUploadCurrentImages} 
+              />
+            </label>
           </div>
-          {/* After */}
-          <div className="p-3 bg-slate-50 rounded-md border-2 border-dashed border-gray-300">
-            <div className="flex items-center justify-between mb-2">
-              <div className="font-medium text-gray-800">After</div>
-              <label className="text-sm px-3 py-1 rounded bg-primary text-white cursor-pointer">
-                {isUploadingAfter ? 'Uploading…' : 'Upload'}
-                <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUploadImages(e, 'AFTER')} />
-              </label>
-            </div>
-            <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
-              {afterImages.length === 0 && (
-                <div className="text-sm text-gray-500 col-span-3 md:col-span-4">No images</div>
-              )}
-              {afterImages.map((img) => (
-                <div key={(img.id ?? img.url)} className="relative w-full aspect-square overflow-hidden rounded border">
-                  <Image src={img.url} alt="After" fill className="object-cover" />
-                  <button
-                    type="button"
-                    className="absolute top-1 right-1 bg-white/80 text-red-600 text-xs px-1.5 py-0.5 rounded"
-                    onClick={() => handleDeleteImage(img.id, 'AFTER', img.url)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
+          <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+            {currentImages.length === 0 && (
+              <div className="text-sm text-gray-500 col-span-3 md:col-span-4">No images uploaded yet</div>
+            )}
+            {currentImages.map((img) => (
+              <div key={(img.id ?? img.url)} className="relative w-full aspect-square overflow-hidden rounded border">
+                <Image src={img.url} alt="Current" fill className="object-cover" />
+                <button
+                  type="button"
+                  className="absolute top-1 right-1 bg-white/80 text-red-600 text-xs px-1.5 py-0.5 rounded"
+                  onClick={() => img.id && handleDeleteImage(img.id)}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
           </div>
         </div>
+
+        {/* Historical Images Gallery */}
+        {historicalImages.length > 0 && (
+          <div className="mt-4">
+            <ImageGallery
+              images={historicalImages}
+              appointments={patientAppointmentsForGallery}
+              loading={loadingHistoricalImages}
+              showUpload={false}
+              allowDelete={false}
+            />
+          </div>
+        )}
       </div>
 
       {/* Next Visit card – keep existing wrapper */}
