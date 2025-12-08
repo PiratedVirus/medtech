@@ -12,14 +12,15 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, X, Edit2, Clock, Calendar, User, FileText, Save, Download, Loader2, ArrowLeft, Mic, MicOff, Bot, Sparkles, Eye, TestTube, TestTube2 } from "lucide-react";
+import { Plus, X, Edit2, Clock, Calendar, User, Save, Download, Loader2, ArrowLeft, Mic, MicOff, Bot, Sparkles, Eye, TestTube, FileText } from "lucide-react";
 import TypeAheadInput from "./TypeAheadInput";
 import ComplaintCard from "./ComplaintCard";
 import MedicineCard from "./MedicineCard";
 import UnifiedAnalysisModal from "@/components/common/UnifiedAnalysisModal";
 import ImageGallery from "@/components/common/ImageGallery";
-import AllValuesModal, { ValueEntry } from "@/components/doctors/patients/AllValuesModal";
+import AllValuesModal, { ValueEntry, AllValuesModalRef } from "@/components/doctors/patients/AllValuesModal";
 import TrackedValuesList from "@/components/doctors/patients/TrackedValuesList";
+import ReportUploadButton from "@/components/common/ReportUploadButton";
 // VoiceRecorder import removed - using original UI with robust logic
 
 interface PrescriptionFormProps {
@@ -99,6 +100,7 @@ export default function PrescriptionForm({
   const [prescriptionModalOpen, setPrescriptionModalOpen] = useState(false);
   const [reportsModalOpen, setReportsModalOpen] = useState(false);
   const [showInvestigationsModal, setShowInvestigationsModal] = useState(false);
+  const labValuesModalRef = useRef<AllValuesModalRef>(null);
   const [patientAppointments, setPatientAppointments] = useState<any[]>([]);
   const [labBookings, setLabBookings] = useState<any[]>([]);
   const [standaloneReports, setStandaloneReports] = useState<any[]>([]);
@@ -470,7 +472,13 @@ export default function PrescriptionForm({
           setCurrentImages(prev => [...prev, ...items]);
           // Also update historical images to include the new ones (deduplicate by id)
           if (Array.isArray(saved?.data)) {
-            const newHistoricalItems = saved.data.map((i: any) => ({
+            const newHistoricalItems: Array<{
+              id: number;
+              imageUrl: string;
+              type: 'AFTER';
+              createdAt: string;
+              appointmentId: number;
+            }> = saved.data.map((i: any) => ({
               id: i.id,
               imageUrl: i.imageUrl,
               type: 'AFTER' as const,
@@ -479,7 +487,7 @@ export default function PrescriptionForm({
             }));
             setHistoricalImages(prev => {
               const existingIds = new Set(prev.map(img => img.id));
-              const uniqueNewItems = newHistoricalItems.filter(item => !existingIds.has(item.id));
+              const uniqueNewItems = newHistoricalItems.filter((item) => !existingIds.has(item.id));
               return [...prev, ...uniqueNewItems];
             });
           }
@@ -1465,42 +1473,35 @@ export default function PrescriptionForm({
         </div>
       </div>
 
-      {/* Investigation Section */}
+      {/* Lab Parameters Section */}
       <div className="bg-custom-mutedgreen p-6 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold mb-4">Past Investigations</h3>
-        <div className="flex gap-4">
-          <Button
-            variant="outline"
-            size="lg"
-            className="flex-1 bg-white hover:bg-gray-50 border-gray-300"
-            onClick={() => setPrescriptionModalOpen(true)}
-            disabled={loadingAppointments}
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            View Prescriptions
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="flex-1 bg-white hover:bg-gray-50 border-gray-300"
-            onClick={() => setReportsModalOpen(true)}
-            disabled={loadingAppointments}
-          >
-            <TestTube2 className="h-4 w-4 mr-2" />
-            View Reports
-          </Button>
-        </div>
-        <div className="mt-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-gray-800">Tracked values for this prescription</span>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Lab Parameters</h3>
+          <div className="flex items-center gap-3">
+            <ReportUploadButton
+              patientId={parseInt(patientInfo?.patientId || patientInfo?.id || "0", 10)}
+              variant="outline"
+              size="sm"
+              onUploadSuccess={() => {
+                setShowInvestigationsModal(true);
+                labValuesModalRef.current?.refresh();
+              }}
+            >
+              Upload report
+            </ReportUploadButton>
             <Button
               size="sm"
-              variant="secondary"
+              className="bg-primary text-white"
               onClick={() => setShowInvestigationsModal(true)}
               disabled={loadingAppointments}
             >
-              Manage / Add
+              Add lab parameters
             </Button>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-gray-800">Tracked values for this prescription</span>
           </div>
           <TrackedValuesList
             values={investigationChips}
@@ -2320,6 +2321,7 @@ export default function PrescriptionForm({
 
       {showInvestigationsModal && (
         <AllValuesModal
+          ref={labValuesModalRef}
           patientId={String(patientInfo?.patientId || patientInfo?.id || '')}
           onClose={() => setShowInvestigationsModal(false)}
           trackedParameters={investigationValues.map((v: any) => v.parameter || "")}

@@ -167,7 +167,10 @@ export async function GET(
       doctorAppointments: (patient as any).patientAppointments.map((a: any) => ({
         id: a.id,
         // Use the underlying doctorAvailability.date for a reliable appointment date
-        date: a.doctorAvailability?.date,
+        // Convert to ISO string to ensure proper serialization
+        date: a.doctorAvailability?.date ? (a.doctorAvailability.date instanceof Date 
+          ? a.doctorAvailability.date.toISOString() 
+          : new Date(a.doctorAvailability.date).toISOString()) : null,
         type: a.consultationType,
         status: a.status,
         prescriptionLink: a.prescriptionLink,

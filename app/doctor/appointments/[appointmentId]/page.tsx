@@ -92,6 +92,7 @@ export default function PrescriptionPage() {
       value: 7,
       date: new Date(new Date().setDate(new Date().getDate() + 7)),
     },
+    investigationValues: [],
   });
 
   const [isLoading, setIsLoading] = useState(false);

@@ -8,9 +8,10 @@ interface UpcomingAppointmentCardProps {
   appointments: Array<{
     id: number;
     doctorName: string;
-    date: string;
+    date: string | null;
     type: string;
     status: string;
+    prescriptionLink?: string | null;
   }>;
   patientName: string;
   className?: string;
@@ -22,14 +23,47 @@ export default function UpcomingAppointmentCard({ appointments, patientName, cla
     const isScheduledLike = ["SCHEDULED", "PENDING", "CONFIRMED", "Scheduled", "Pending", "Confirmed"].includes(apt.status);
     const isFuture = new Date(apt.date).getTime() >= new Date().setHours(0,0,0,0);
     return isScheduledLike && isFuture;
-  }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) || [];
+  }).sort((a, b) => {
+    if (!a.date && !b.date) return 0;
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  }) || [];
   const pastAppointments = (appointments || [])
     .filter(a => {
+      // Include if status is COMPLETED (regardless of date)
+      if (a.status === 'COMPLETED') return true;
+      
+      // Include if appointment has a prescription link (completed appointment)
+      if (a.prescriptionLink) return true;
+      
+      // If no date, exclude unless COMPLETED or has prescription
       if (!a.date) return false;
-      const isPast = new Date(a.date).getTime() < Date.now();
-      return isPast || a.status === 'COMPLETED';
+      
+      // Check if date is in the past
+      try {
+        const appointmentDate = new Date(a.date);
+        const now = new Date();
+        // Set time to start of day for fair comparison
+        appointmentDate.setHours(0, 0, 0, 0);
+        now.setHours(0, 0, 0, 0);
+        return appointmentDate.getTime() < now.getTime();
+      } catch (e) {
+        console.error('Error parsing date:', a.date, e);
+        return false;
+      }
     })
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => {
+      // Sort by date descending (most recent first)
+      if (!a.date && !b.date) return 0;
+      if (!a.date) return 1;
+      if (!b.date) return -1;
+      try {
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      } catch (e) {
+        return 0;
+      }
+    });
 
   // Debug logging
   console.log('UpcomingAppointmentCard - appointments:', appointments);
@@ -48,8 +82,9 @@ export default function UpcomingAppointmentCard({ appointments, patientName, cla
         {/* Header removed as requested */}
         <div className="mb-1" />
         
-        {upcomingAppointments.length > 0 ? (
-          <div className="space-y-3 h-full flex flex-col">
+        <div className="space-y-3 h-full flex flex-col">
+          {/* Upcoming Appointments Section */}
+          {upcomingAppointments.length > 0 ? (
             <div className="space-y-3">
               {upcomingAppointments.slice(0, 1).map(appointment => (
                 <div key={appointment.id} className="group relative overflow-hidden rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-300">
@@ -107,67 +142,55 @@ export default function UpcomingAppointmentCard({ appointments, patientName, cla
                 </div>
               ))}
             </div>
-            
-            {/* Past Appointments - Now positioned at bottom */}
-            <div className="mt-auto pt-4">
-              <h6 className="text-xs font-medium text-emerald-700 mb-3 uppercase tracking-wide">Past Appointments</h6>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {(pastAppointments.length > 0 ? pastAppointments.slice(0, 2) : [null, null]).map((apt, idx) => (
-                  <div key={idx} className={`relative rounded-xl border ${apt ? 'border-emerald-200' : 'border-emerald-100'} bg-emerald-50/40 p-3 ${apt ? '' : 'opacity-60'}`}>
+          ) : (
+            <div className="text-center text-gray-500 py-4">
+              <CalendarDays className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+              <p className="text-xs font-medium text-gray-600">No upcoming appointments</p>
+              <p className="text-[10px] text-gray-500 mt-1">All clear for now!</p>
+            </div>
+          )}
+          
+          {/* Past Appointments - Always shown if they exist, positioned at bottom */}
+          <div className="mt-auto pt-4">
+            <h6 className="text-xs font-medium text-emerald-700 mb-3 uppercase tracking-wide">Past Appointments</h6>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {pastAppointments.length > 0 ? (
+                pastAppointments.slice(0, 2).map((apt, idx) => (
+                  <div key={apt.id || idx} className="relative rounded-xl border border-emerald-200 bg-emerald-50/40 p-3">
                     {/* Top-right Completed pill */}
-                    <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-medium ${apt ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>Completed</span>
+                    <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700">Completed</span>
 
                     <div className="pr-20">
                       {/* ID pill above name */}
                       <div className="mb-1">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${apt ? 'border-emerald-300 text-emerald-800' : 'border-gray-300 text-gray-500'}`}>{apt ? `ID: ${apt.id}` : 'ID: —'}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium border border-emerald-300 text-emerald-800">ID: {apt.id}</span>
                       </div>
 
-                      <h5 className={`text-sm font-semibold ${apt ? 'text-emerald-900' : 'text-emerald-900/50'}`}>{apt ? patientName : 'No past appointment'}</h5>
+                      <h5 className="text-sm font-semibold text-emerald-900">{patientName}</h5>
 
                       {/* Date line */}
                       <div className="mt-1 text-xs text-emerald-800/80">
-                        {apt && apt.date ? `${new Date(apt.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} | ${new Date(apt.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : '—'}
+                        {apt.date ? `${new Date(apt.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} | ${new Date(apt.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : '—'}
                       </div>
                     </div>
-
-                    {/* View button removed from past appointments */}
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="h-full flex flex-col">
-            <div className="text-center text-gray-500 py-8">
-              <CalendarDays className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-              <p className="text-sm font-medium text-gray-600">No upcoming appointments</p>
-              <p className="text-xs text-gray-500 mt-1">All clear for now!</p>
-            </div>
-            
-            {/* Past Appointments - Also positioned at bottom when no upcoming */}
-            <div className="mt-auto pt-4">
-              <h6 className="text-xs font-medium text-emerald-700 mb-3 uppercase tracking-wide">Past Appointments</h6>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {[0,1].map(i => (
+                ))
+              ) : (
+                [0, 1].map(i => (
                   <div key={`empty-past-${i}`} className="relative rounded-xl border border-gray-200 bg-gray-100/70 p-3">
-                    {/* <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-200 text-gray-600">Completed</span> */}
                     <div className="pr-20">
                       <div className="mb-1">
-                        {/* <span className="px-2 py-0.5 rounded-full text-[10px] font-medium border border-gray-300 text-gray-500">ID</span> */}
+                        {/* Empty space for ID pill */}
                       </div>
                       <h5 className="text-sm font-semibold text-gray-700">No past appointment</h5>
                       <div className="mt-1 text-xs text-gray-600">Past appointments will appear here with their details.</div>
                     </div>
-                    <div className="absolute bottom-2 right-2">
-                      {/* <button className="px-2.5 py-1 rounded-md text-xs font-medium bg-gray-200 text-gray-500 cursor-not-allowed">View</button> */}
-                    </div>
                   </div>
-                ))}
-              </div>
+                ))
+              )}
             </div>
           </div>
-        )}
+        </div>
       </div>
     </Card>
     </div>
