@@ -523,6 +523,44 @@ export default function PrescriptionForm({
     }
   };
 
+  const handleDeleteHistoricalImage = async (imageId: number) => {
+    // Find the image to get its appointmentId
+    const imageToDelete = historicalImages.find(img => img.id === imageId);
+    if (!imageToDelete) {
+      toast({ title: "Error", description: "Image not found", variant: "destructive" });
+      return;
+    }
+
+    const appointmentId = imageToDelete.appointmentId;
+
+    try {
+      const resp = await fetch(`/api/doctor/appointments/${appointmentId}/images`, { 
+        method: 'DELETE', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ imageId }) 
+      });
+      if (resp.ok) {
+        setHistoricalImages(prev => prev.filter(i => i.id !== imageId));
+        setCurrentImages(prev => prev.filter(i => i.id !== imageId));
+        toast({ title: "Removed", description: "Image removed successfully" });
+      } else {
+        const errorData = await resp.json().catch(() => ({ error: 'Failed to remove image' }));
+        toast({ 
+          title: "Error", 
+          description: errorData.error || "Failed to remove image", 
+          variant: "destructive" 
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting historical image:', error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to remove image", 
+        variant: "destructive" 
+      });
+    }
+  };
+
   const processFrequencyInput = (input: string): string => {
     // Remove all non-numeric characters except dashes
     const cleanInput = input.replace(/[^0-9-]/g, '');
@@ -1962,7 +2000,8 @@ export default function PrescriptionForm({
               appointments={patientAppointmentsForGallery}
               loading={loadingHistoricalImages}
               showUpload={false}
-              allowDelete={false}
+              allowDelete={true}
+              onDelete={handleDeleteHistoricalImage}
             />
           </div>
         )}
