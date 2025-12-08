@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 
 interface PrescriptionPreviewProps {
   prescriptionData: any;
@@ -39,6 +40,35 @@ export default function PrescriptionPreview({
       minute: "2-digit",
     });
   };
+
+  const [qrLinks, setQrLinks] = useState<{ link: string; dataUrl: string }[]>([]);
+
+  const recommendedLinks = Array.isArray(prescriptionData.recommendedLinks) 
+    ? prescriptionData.recommendedLinks 
+    : (typeof prescriptionData.recommendedLinks === 'string' && prescriptionData.recommendedLinks.trim() 
+        ? prescriptionData.recommendedLinks.split(',').map((link: string) => link.trim()).filter(Boolean)
+        : []);
+
+  useEffect(() => {
+    const generateQRCodes = async () => {
+      try {
+        const results: { link: string; dataUrl: string }[] = [];
+        for (const link of recommendedLinks) {
+          const dataUrl = await QRCode.toDataURL(link, { margin: 1, width: 120 });
+          results.push({ link, dataUrl });
+        }
+        setQrLinks(results);
+      } catch (error) {
+        console.error("Failed to generate QR codes", error);
+        setQrLinks([]);
+      }
+    };
+    if (recommendedLinks.length) {
+      generateQRCodes();
+    } else {
+      setQrLinks([]);
+    }
+  }, [recommendedLinks]);
 
   return (
     <div className="bg-white p-8 font-sans text-sm text-gray-800">
@@ -215,33 +245,19 @@ export default function PrescriptionPreview({
         </div>
       )}
 
-      {/* Recommended Links Section */}
-      {(() => {
-        const links = Array.isArray(prescriptionData.recommendedLinks) 
-          ? prescriptionData.recommendedLinks 
-          : (typeof prescriptionData.recommendedLinks === 'string' && prescriptionData.recommendedLinks.trim() 
-              ? prescriptionData.recommendedLinks.split(',').filter((link: string) => link.trim() !== '')
-              : []);
-        return links.length > 0 && (
-          <div className="mb-4">
-            <p className="font-semibold mb-2">Recommended Links:</p>
-            <div className="space-y-2">
-              {links.map((link: string, index: number) => (
-                <div key={index} className="text-sm">
-                  <a 
-                    href={link.trim()} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
-                  >
-                    • {link.trim()}
-                  </a>
-                </div>
-              ))}
-            </div>
+      {/* Recommended Links as QR Codes */}
+      {qrLinks.length > 0 && (
+        <div className="mb-4">
+          <p className="font-semibold mb-2">Recommended Links:</p>
+          <div className="flex flex-wrap gap-4">
+            {qrLinks.map(({ link, dataUrl }, index) => (
+              <div key={index} className="flex flex-col items-center gap-1">
+                <Image src={dataUrl} alt={`QR ${index + 1}`} width={90} height={90} />
+              </div>
+            ))}
           </div>
-        );
-      })()}
+        </div>
+      )}
 
       {/* Tests Requested and Next Visit in 2 columns */}
       <div className="flex justify-between mb-6">

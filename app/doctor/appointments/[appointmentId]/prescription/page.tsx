@@ -752,10 +752,16 @@ export default function AppointmentPrescriptionPage() {
                     <Button
                       variant="outline"
                       className="w-full justify-start gap-3 h-12"
-                      onClick={() => checkAndExecuteAction('whatsapp')}
+                      disabled
+                      onClick={() => {}}
                     >
                       <MessageCircle className="h-5 w-5 text-primary" />
-                      <span>Share via WhatsApp</span>
+                      <div className="flex items-center justify-between w-full">
+                        <span>Share via WhatsApp</span>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">
+                          Coming soon
+                        </span>
+                      </div>
                     </Button>
 
                     <Button
