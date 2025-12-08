@@ -53,6 +53,7 @@ export default function TypeAheadInput({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const [newMedicineComposition, setNewMedicineComposition] = useState("");
 
   // Mock suggestions for demo - replace with actual API calls
   const mockSuggestions: Record<string, Suggestion[]> = {
@@ -176,19 +177,16 @@ export default function TypeAheadInput({
   };
 
   const createNewItem = async (text: string) => {
+    // Medicine creation is handled separately to capture composition input
+    if (type === "medicines") return;
+
     try {
-      // Use Algolia API for medicines, regular API for other types
-      const apiEndpoint = type === "medicines" 
-        ? "/api/doctor/prescription/algolia-medicines"
-        : "/api/doctor/prescription/typeahead";
-      
-      const response = await fetch(apiEndpoint, {
+      const response = await fetch("/api/doctor/prescription/typeahead", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           type, 
           value: text,
-          name: type === "medicines" ? text : undefined,
           category: "General"
         }),
       });
@@ -207,15 +205,6 @@ export default function TypeAheadInput({
           text: text,
           category: "General",
           severity: "MODERATE",
-        };
-      } else if (type === "medicines") {
-        newItem = {
-          id: data.data.objectID || data.data.id.toString(),
-          name: text,
-          category: "General",
-          frequency: [],
-          medicineTime: [],
-          duration: [],
         };
       } else {
         newItem = {
@@ -239,6 +228,71 @@ export default function TypeAheadInput({
       toast({
         title: "Error",
         description: `Failed to add "${text}" to ${type} catalogue`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddMedicine = async () => {
+    const nameToAdd = value.trim();
+    const compositionToAdd = newMedicineComposition.trim();
+
+    if (!nameToAdd) {
+      toast({
+        title: "Name is required",
+        description: "Enter a medicine name to add it.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!compositionToAdd) {
+      toast({
+        title: "Composition required",
+        description: "Please add short composition before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/doctor/prescription/algolia-medicines", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: nameToAdd,
+          short_composition1: compositionToAdd,
+          category: "General",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to add medicine");
+      }
+
+      const data = await response.json();
+      const newItem = {
+        id: data.data.objectID || nameToAdd,
+        name: nameToAdd,
+        category: compositionToAdd || "General",
+        frequency: [],
+        medicineTime: [],
+        duration: [],
+        composition: compositionToAdd,
+        composition2: "",
+      };
+
+      setSuggestions(prev => [newItem, ...prev]);
+      setNewMedicineComposition("");
+      toast({
+        title: "Added to Algolia",
+        description: `"${nameToAdd}" was added successfully.`,
+      });
+    } catch (error) {
+      console.error("Error adding medicine:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add medicine to Algolia",
         variant: "destructive",
       });
     }
@@ -286,7 +340,7 @@ export default function TypeAheadInput({
         onChange(displayValue);
         setShowSuggestions(false);
         setSelectedIndex(-1);
-      } else if (value.trim() && value.trim().length >= 2) {
+      } else if (type !== "medicines" && value.trim() && value.trim().length >= 2) {
         createNewItem(value.trim());
         setShowSuggestions(false);
       }
@@ -325,6 +379,7 @@ export default function TypeAheadInput({
   };
 
   const handleAddNew = () => {
+    if (type === "medicines") return;
     if (value.trim() && value.trim().length >= 2) {
       createNewItem(value.trim());
       setShowSuggestions(false);
@@ -419,18 +474,44 @@ export default function TypeAheadInput({
                   </div>
                 ) : null}
                 
-                {value.trim() && value.trim().length >= 2 && !suggestions.some(suggestion => {
-                  const suggestionText = suggestion.text || suggestion.name || suggestion.value || "";
-                  return suggestionText.toLowerCase() === value.trim().toLowerCase();
-                }) && (
-                  <div
-                    className="p-3 rounded-lg cursor-pointer bg-primary"
-                    onClick={handleAddNew}
-                  >
-                    <div className="flex items-center justify-center text-white font-bold">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add "{value}" to {type} catalogue
-                    </div>
+                {value.trim() && value.trim().length >= 2 && (
+                  <div className="space-y-2">
+                    {type !== "medicines" && !suggestions.some(suggestion => {
+                      const suggestionText = suggestion.text || suggestion.name || suggestion.value || "";
+                      return suggestionText.toLowerCase() === value.trim().toLowerCase();
+                    }) && (
+                      <div
+                        className="p-3 rounded-lg cursor-pointer bg-primary"
+                        onClick={handleAddNew}
+                      >
+                        <div className="flex items-center justify-center text-white font-bold">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Quick add "{value}" to {type} catalogue
+                        </div>
+                      </div>
+                    )}
+
+                    {type === "medicines" && (
+                      <div className="p-3 rounded-lg border border-blue-200 bg-custom-mutedgreen text-green-900 space-y-2">
+                        <div className="font-semibold text-sm">Add medicine to Catalogue</div>
+                        <div className="text-sm text-gray-700">Medicine name: <b>{value.trim()}</b></div>
+                        <Input
+                          value={newMedicineComposition}
+                          onChange={(e) => setNewMedicineComposition(e.target.value)}
+                          placeholder="Enter composition here"
+                          className="bg-white text-gray-500"
+                        />
+                        <Button
+                          className="w-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddMedicine();
+                          }}
+                        >
+                          Add to Catalogue
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </>
