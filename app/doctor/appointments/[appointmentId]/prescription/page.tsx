@@ -71,6 +71,16 @@ interface PrescriptionData {
     value: number;
     date?: Date;
   };
+  investigationValues?: Array<{
+    parameter?: string;
+    value: string | number;
+    unit?: string;
+    normalRange?: string;
+    isAbnormal?: boolean;
+    severity?: string;
+    reportDate?: string;
+    source?: string;
+  }>;
 }
 
 export default function AppointmentPrescriptionPage() {
@@ -319,6 +329,7 @@ export default function AppointmentPrescriptionPage() {
           value: prescription.nextVisitValue || 7,
           date: prescription.nextVisitDate ? new Date(prescription.nextVisitDate) : undefined,
         },
+        investigationValues: prescription.investigationValues || [],
       });
 
       // Prefill longitudinal history from patient profile

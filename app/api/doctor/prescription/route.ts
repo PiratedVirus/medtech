@@ -87,6 +87,7 @@ export async function POST(request: Request) {
       nextVisitDate,
       nextVisitType,
       nextVisitValue,
+      investigationValues,
     } = body;
 
     if (!appointmentId || !patientId || !doctorId) {
@@ -114,6 +115,7 @@ export async function POST(request: Request) {
           nextVisitDate: nextVisitDate ? new Date(nextVisitDate) : null,
           nextVisitType,
           nextVisitValue: nextVisitValue ? parseInt(nextVisitValue) : null,
+          investigationValues: investigationValues ?? [],
         },
       });
 
@@ -243,6 +245,7 @@ export async function PUT(request: Request) {
       nextVisitDate,
       nextVisitType,
       nextVisitValue,
+      investigationValues,
     } = body;
 
     if (!prescriptionId || prescriptionId === "" || prescriptionId === null || prescriptionId === undefined) {
@@ -300,6 +303,7 @@ export async function PUT(request: Request) {
           nextVisitDate: nextVisitDate ? new Date(nextVisitDate) : null,
           nextVisitType: nextVisitType || null,
           nextVisitValue: safeParseInt(nextVisitValue),
+          investigationValues: investigationValues ?? [],
         },
       });
 

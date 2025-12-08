@@ -54,6 +54,7 @@ interface PrescriptionData {
     value: number;
     date?: Date;
   };
+  investigationValues: any[];
 }
 
 export default function PrescriptionPage() {
@@ -286,6 +287,7 @@ export default function PrescriptionPage() {
                   value: prescription.nextVisitValue || 7,
                   date: prescription.nextVisitDate ? new Date(prescription.nextVisitDate) : undefined,
                 },
+        investigationValues: prescription.investigationValues || [],
               });
 
               // If no historyOfCurrentIllness, try to load from previous prescription
@@ -489,6 +491,7 @@ export default function PrescriptionPage() {
             nextVisitDate: prescriptionData.nextVisit.date || calculateNextVisitDate(prescriptionData.nextVisit.type, prescriptionData.nextVisit.value),
             nextVisitType: prescriptionData.nextVisit.type,
             nextVisitValue: prescriptionData.nextVisit.value,
+            investigationValues: prescriptionData.investigationValues || [],
           }
         : {
             appointmentId: parseInt(appointmentId),
@@ -506,6 +509,7 @@ export default function PrescriptionPage() {
             nextVisitDate: prescriptionData.nextVisit.date || calculateNextVisitDate(prescriptionData.nextVisit.type, prescriptionData.nextVisit.value),
             nextVisitType: prescriptionData.nextVisit.type,
             nextVisitValue: prescriptionData.nextVisit.value,
+            investigationValues: prescriptionData.investigationValues || [],
           };
 
       const response = await fetch(url, {
@@ -628,6 +632,7 @@ export default function PrescriptionPage() {
                               value: prescription.nextVisitValue || 7,
                               date: prescription.nextVisitDate ? new Date(prescription.nextVisitDate) : undefined,
                             },
+                            investigationValues: prescription.investigationValues || [],
                           });
 
                           toast({
@@ -717,6 +722,7 @@ export default function PrescriptionPage() {
                         value: prescription.nextVisitValue || 7,
                         date: prescription.nextVisitDate ? new Date(prescription.nextVisitDate) : undefined,
                       },
+                      investigationValues: prescription.investigationValues || [],
                     });
 
                     toast({

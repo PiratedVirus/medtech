@@ -455,6 +455,7 @@ model Prescription {
   nextVisitDate       DateTime?
   nextVisitType       String?
   nextVisitValue      Int?
+  investigationValues Json?
   isTemplate          Boolean                          @default(false)
   templateName        String?
   createdAt           DateTime                         @default(now())

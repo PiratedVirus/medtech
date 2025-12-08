@@ -82,6 +82,22 @@ export default function PrescriptionPreview({
           </div>
         )}
 
+        {Array.isArray(prescriptionData.investigationValues) && prescriptionData.investigationValues.length > 0 && (
+          <div className="mb-3">
+            <p className="font-semibold mb-2">Tracked Values:</p>
+            <div className="space-y-1 text-sm">
+              {prescriptionData.investigationValues.map((v: any, idx: number) => (
+                <div key={idx} className="text-gray-800">
+                  <span className="font-semibold">{v.parameter || "Value"}:</span>{" "}
+                  <span>
+                    {`${v.value}${v.unit ? ` ${v.unit}` : ""}`}{v.severity ? ` (${v.severity})` : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Complaints with Timeline */}
         {visibleSections.complaints && prescriptionData.complaints?.length > 0 && (
           <div className="mb-3">

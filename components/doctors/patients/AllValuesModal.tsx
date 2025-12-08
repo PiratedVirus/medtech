@@ -7,13 +7,16 @@ interface AllValuesModalProps {
   patientId: string;
   onClose: () => void;
   onChanged?: () => void;
+  trackedParameters?: string[];
+  onToggleOverride?: (parameter: string, makeTracked: boolean, values?: ValueEntry[]) => Promise<void> | void;
 }
 
 export interface AllValuesModalRef {
   refresh: () => void;
 }
 
-interface ValueEntry {
+export interface ValueEntry {
+  parameter?: string;
   value: string | number;
   unit?: string;
   normalRange?: string;
@@ -33,7 +36,7 @@ interface Row {
 }
 
 const AllValuesModal = forwardRef<AllValuesModalRef, AllValuesModalProps>(
-  ({ patientId, onClose, onChanged }, ref) => {
+  ({ patientId, onClose, onChanged, onToggleOverride, trackedParameters }, ref) => {
     const [rows, setRows] = useState<Row[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -46,7 +49,14 @@ const AllValuesModal = forwardRef<AllValuesModalRef, AllValuesModalProps>(
         const res = await fetch(`/api/patient/${patientId}/all-values`);
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.error || 'Failed to load');
-        setRows(data.data.rows as Row[]);
+        const incomingRows = (data.data.rows as Row[]).map((row) => ({
+          ...row,
+          values: (row.values || []).map((v) => ({
+            ...v,
+            parameter: v.parameter || row.parameter,
+          })),
+        }));
+        setRows(incomingRows);
       } catch (e: any) {
         setError(e?.message || 'Failed to load');
       } finally {
@@ -64,6 +74,22 @@ const AllValuesModal = forwardRef<AllValuesModalRef, AllValuesModalProps>(
     }, []);
 
     const handleToggle = async (parameter: string, makeTracked: boolean) => {
+      // If consumer wants to manage tracking, delegate to them and sync UI optimistically
+      if (onToggleOverride) {
+        try {
+          await onToggleOverride(parameter, makeTracked, rows.find(r => r.parameter.toLowerCase() === parameter.toLowerCase())?.values);
+          setRows(prev =>
+            prev.map(row =>
+              row.parameter.toLowerCase() === parameter.toLowerCase()
+                ? { ...row, isTracked: makeTracked }
+                : row
+            )
+          );
+        } catch (error) {
+          console.error('Error in toggle override:', error);
+        }
+        return;
+      }
       try {
         const response = await fetch(`/api/patient/${patientId}/tracked-values/track`, {
           method: 'POST',
@@ -171,7 +197,11 @@ const AllValuesModal = forwardRef<AllValuesModalRef, AllValuesModalProps>(
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map((row) => (
+                {filteredRows.map((row) => {
+                  const computedIsTracked = trackedParameters
+                    ? trackedParameters.some(p => p.toLowerCase() === row.parameter.toLowerCase())
+                    : row.isTracked;
+                  return (
                   <tr key={row.parameter} className="border-b last:border-b-0">
                     <td className="py-2 pr-2">
                       <div className="font-medium text-gray-800">
@@ -197,14 +227,15 @@ const AllValuesModal = forwardRef<AllValuesModalRef, AllValuesModalProps>(
                       </div>
                     </td>
                     <td className="py-2 pr-2">
-                      {row.isTracked ? (
+                      {computedIsTracked ? (
                         <button onClick={() => handleToggle(row.parameter, false)} className="rounded-md bg-red-100 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-200">Untrack</button>
                       ) : (
                         <button onClick={() => handleToggle(row.parameter, true)} className="rounded-md bg-emerald-100 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-200">Track</button>
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           )}

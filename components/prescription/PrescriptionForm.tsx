@@ -18,6 +18,8 @@ import ComplaintCard from "./ComplaintCard";
 import MedicineCard from "./MedicineCard";
 import UnifiedAnalysisModal from "@/components/common/UnifiedAnalysisModal";
 import ImageGallery from "@/components/common/ImageGallery";
+import AllValuesModal, { ValueEntry } from "@/components/doctors/patients/AllValuesModal";
+import TrackedValuesList from "@/components/doctors/patients/TrackedValuesList";
 // VoiceRecorder import removed - using original UI with robust logic
 
 interface PrescriptionFormProps {
@@ -96,6 +98,7 @@ export default function PrescriptionForm({
   // Investigation section state
   const [prescriptionModalOpen, setPrescriptionModalOpen] = useState(false);
   const [reportsModalOpen, setReportsModalOpen] = useState(false);
+  const [showInvestigationsModal, setShowInvestigationsModal] = useState(false);
   const [patientAppointments, setPatientAppointments] = useState<any[]>([]);
   const [labBookings, setLabBookings] = useState<any[]>([]);
   const [standaloneReports, setStandaloneReports] = useState<any[]>([]);
@@ -108,6 +111,69 @@ export default function PrescriptionForm({
     { value: "RISK", label: "Risk", color: "bg-orange-100 text-orange-800" },
     { value: "CRITICAL", label: "Critical", color: "bg-red-100 text-red-800" },
   ];
+
+  const investigationValues = prescriptionData?.investigationValues || [];
+
+  const handleToggleInvestigation = async (parameter: string, makeTracked: boolean, values?: ValueEntry[]) => {
+    if (!prescriptionData) return;
+
+    if (makeTracked) {
+      const latest = values?.[0];
+      if (!latest) return;
+
+      const normalized = {
+        parameter: parameter,
+        value: latest.value,
+        unit: latest.unit,
+        normalRange: latest.normalRange,
+        isAbnormal: latest.isAbnormal,
+        severity: latest.severity,
+        source: latest.source,
+        reportDate: latest.labDate
+          ? new Date(latest.labDate).toISOString()
+          : latest.reportDate
+          ? new Date(latest.reportDate).toISOString()
+          : undefined,
+        labBookingId: latest.labBookingId,
+        reportId: latest.reportId,
+      };
+
+      setPrescriptionData({
+        ...prescriptionData,
+        investigationValues: [
+          ...investigationValues.filter((v: any) => v.parameter?.toLowerCase() !== parameter.toLowerCase()),
+          normalized,
+        ],
+      });
+    } else {
+      setPrescriptionData({
+        ...prescriptionData,
+        investigationValues: investigationValues.filter(
+          (v: any) => v.parameter?.toLowerCase() !== parameter.toLowerCase()
+        ),
+      });
+    }
+  };
+
+  const handleUntrackInvestigation = (name: string) => {
+    if (!prescriptionData) return;
+    setPrescriptionData({
+      ...prescriptionData,
+      investigationValues: investigationValues.filter(
+        (v: any) => v.parameter?.toLowerCase() !== name.toLowerCase()
+      ),
+    });
+  };
+
+  const investigationChips = investigationValues.map((v: any) => ({
+    name: v.parameter || "",
+    value: v.value,
+    unit: v.unit,
+    normalRange: v.normalRange,
+    isAbnormal: v.isAbnormal,
+    severity: v.severity,
+    reportDate: v.reportDate,
+  }));
 
   const addComplaint = () => {
     if (newComplaint.trim()) {
@@ -1424,6 +1490,26 @@ export default function PrescriptionForm({
             View Reports
           </Button>
         </div>
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-gray-800">Tracked values for this prescription</span>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setShowInvestigationsModal(true)}
+              disabled={loadingAppointments}
+            >
+              Manage / Add
+            </Button>
+          </div>
+          <TrackedValuesList
+            values={investigationChips}
+            loading={false}
+            onUntrack={handleUntrackInvestigation}
+            showUntrack
+            emptyText="No values tracked for this prescription yet"
+          />
+        </div>
       </div>
 
       {/* Complaints Section */}
@@ -2231,6 +2317,15 @@ export default function PrescriptionForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {showInvestigationsModal && (
+        <AllValuesModal
+          patientId={String(patientInfo?.patientId || patientInfo?.id || '')}
+          onClose={() => setShowInvestigationsModal(false)}
+          trackedParameters={investigationValues.map((v: any) => v.parameter || "")}
+          onToggleOverride={handleToggleInvestigation}
+        />
+      )}
 
       {/* Reports Modal - Unified Analysis Modal */}
       <UnifiedAnalysisModal

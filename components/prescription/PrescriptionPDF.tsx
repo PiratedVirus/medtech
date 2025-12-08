@@ -54,6 +54,20 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
           <Text style={styles.bold}>Weight:</Text> {prescriptionData.vitals?.weight || '-'} kgs
         </Text>
 
+        {Array.isArray(prescriptionData.investigationValues) && prescriptionData.investigationValues.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.patientInfo, styles.bold]}>Tracked Values:</Text>
+            {prescriptionData.investigationValues.map((v: any, idx: number) => {
+              const unitText = v.unit ? ` ${v.unit}` : "";
+              return (
+                <Text key={idx} style={styles.bulletPoint}>
+                  • {v.parameter}: {v.value}{unitText} {v.severity ? `(${v.severity})` : ""}
+                </Text>
+              );
+            })}
+          </View>
+        )}
+
         {/* Complaints with Timeline */}
         {visibleSections?.complaints !== false && prescriptionData.complaints?.length > 0 && (
           <View style={styles.complaintsSection}>
@@ -96,25 +110,25 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
               <View style={styles.historyItem}>
                 <Text style={styles.historyLabel}>Allergies:</Text>
                 <Text style={styles.historyValue}>
-                  {(prescriptionData.medicalHistory?.allergies || '').toString().trim() || '—'}
+                  {(prescriptionData.history?.allergies || '').toString().trim() || '—'}
                 </Text>
               </View>
               <View style={styles.historyItem}>
                 <Text style={styles.historyLabel}>Personal History:</Text>
                 <Text style={styles.historyValue}>
-                  {(prescriptionData.medicalHistory?.personalHistory || '').toString().trim() || '—'}
+                  {(prescriptionData.history?.personalHistory || '').toString().trim() || '—'}
                 </Text>
               </View>
               <View style={styles.historyItem}>
                 <Text style={styles.historyLabel}>Past Medical History:</Text>
                 <Text style={styles.historyValue}>
-                  {(prescriptionData.medicalHistory?.pastMedicalHistory || '').toString().trim() || '—'}
+                  {(prescriptionData.history?.pastMedicalHistory || '').toString().trim() || '—'}
                 </Text>
               </View>
               <View style={styles.historyItem}>
                 <Text style={styles.historyLabel}>Family History:</Text>
                 <Text style={styles.historyValue}>
-                  {(prescriptionData.medicalHistory?.familyHistory || '').toString().trim() || '—'}
+                  {(prescriptionData.history?.familyHistory || '').toString().trim() || '—'}
                 </Text>
               </View>
             </View>
