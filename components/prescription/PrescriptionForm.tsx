@@ -95,6 +95,8 @@ export default function PrescriptionForm({
   const [historicalImages, setHistoricalImages] = useState<Array<{id: number; imageUrl: string; type: 'BEFORE' | 'AFTER'; createdAt: string; appointmentId: number}>>([]);
   const [patientAppointmentsForGallery, setPatientAppointmentsForGallery] = useState<Array<{id: number; date: string; status: string}>>([]);
   const [loadingHistoricalImages, setLoadingHistoricalImages] = useState(false);
+  // Toggle for showing/hiding all images
+  const [showAllImages, setShowAllImages] = useState(false);
   
   // Investigation section state
   const [prescriptionModalOpen, setPrescriptionModalOpen] = useState(false);
@@ -1958,7 +1960,21 @@ export default function PrescriptionForm({
 
       {/* Current Images Upload Section */}
       <div className="bg-custom-mutedgreen p-6 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold mb-4">Current Images</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Current Images</h3>
+          {historicalImages.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="bg-white text-gray-900 border-gray-200 hover:bg-gray-100"
+              onClick={() => setShowAllImages(!showAllImages)}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              {showAllImages ? 'Hide Previous Images' : 'Show Previous Images'}
+            </Button>
+          )}
+        </div>
         <div className="p-3 bg-slate-50 rounded-md border-2 border-dashed border-gray-300 mb-4">
           <div className="flex items-center justify-between mb-2">
             <div className="font-medium text-gray-800">Upload Current Images</div>
@@ -1993,7 +2009,7 @@ export default function PrescriptionForm({
         </div>
 
         {/* Historical Images Gallery */}
-        {historicalImages.length > 0 && (
+        {showAllImages && historicalImages.length > 0 && (
           <div className="mt-4">
             <ImageGallery
               images={historicalImages}

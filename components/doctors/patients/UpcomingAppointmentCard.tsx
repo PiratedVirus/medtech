@@ -128,7 +128,7 @@ export default function UpcomingAppointmentCard({ appointments, patientName, cla
                         <span className="px-2 py-1 rounded-full text-xs font-medium border-white/20 bg-white/25 p-2 backdrop-blur-sm text-emerald-50 border">Upcoming</span>
                         <Button
                           size="sm"
-                          className="bg-green-100 hover:bg-green-100 text-green-900"
+                          className="bg-white hover:bg-gray-100 text-gray-900 border border-gray-200"
                           onClick={() => {
                             window.location.href = `/doctor/appointments/${appointment.id}`;
                           }}

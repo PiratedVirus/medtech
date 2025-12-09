@@ -230,7 +230,7 @@ export default function PatientSummarySection({
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-5 min-h-0 px-2 py-0 leading-none text-secondary border-secondary/30 hover:bg-secondary/10 text-xs rounded-full"
+                        className="h-5 min-h-0 px-2 py-0 leading-none bg-white text-gray-900 border-gray-200 hover:bg-gray-100 text-xs rounded-full"
                         onClick={() => window.open(latestCompletedAppointment.prescriptionLink as string, '_blank')}
                       >
                         <Eye className="h-3 w-3 mr-1" /> View Prescription
@@ -239,7 +239,7 @@ export default function PatientSummarySection({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-5 min-h-0 px-2 py-0 leading-none text-secondary border-secondary/30 hover:bg-secondary/10 text-xs rounded-full"
+                      className="h-5 min-h-0 px-2 py-0 leading-none bg-white text-gray-900 border-gray-200 hover:bg-gray-100 text-xs rounded-full"
                       onClick={onSaveNotes}
                       disabled={savingNotes}
                     >
@@ -259,7 +259,7 @@ export default function PatientSummarySection({
                     {/* Checkups */}
                     <div className="flex justify-between">
                       <h5 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">Tracked Values</h5>
-                      <button onClick={() => setShowAllValuesModal(true)} className="w-8 h-8 bg-secondary text-white rounded-full flex mr-10 items-center justify-center hover:bg-secondary/90 transition-colors">
+                      <button onClick={() => setShowAllValuesModal(true)} className="w-8 h-8 bg-white text-gray-900 border border-gray-200 rounded-full flex mr-10 items-center justify-center hover:bg-gray-100 transition-colors">
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
@@ -330,15 +330,29 @@ export default function PatientSummarySection({
                     <div>
                       <h5 className="font-bold text-gray-800 mb-3">Medicines</h5>
                       <div className="space-y-2">
-                        {latestCompletedAppointment?.medicines ? (
-                          latestCompletedAppointment.medicines.split(',').map((medicine, index) => (
+                        {(() => {
+                          const medicinesData = latestCompletedAppointment?.medicines;
+                          if (!medicinesData) {
+                            return <p className="text-sm text-gray-500">No medicines prescribed</p>;
+                          }
+                          
+                          // Handle both array and string formats
+                          const medicinesArray = Array.isArray(medicinesData)
+                            ? medicinesData.map((m: any) => typeof m === 'string' ? m : (m.name || m.text || '')).filter(Boolean)
+                            : typeof medicinesData === 'string'
+                            ? medicinesData.split(',').map(m => m.trim()).filter(Boolean)
+                            : [];
+                          
+                          if (medicinesArray.length === 0) {
+                            return <p className="text-sm text-gray-500">No medicines prescribed</p>;
+                          }
+                          
+                          return medicinesArray.map((medicine, index) => (
                             <div key={index} className="text-sm text-gray-700 bg-secondary/10 p-3 rounded">
-                              <div className="font-semibold">{medicine.trim()}</div>
+                              <div className="font-semibold">{medicine}</div>
                             </div>
-                          ))
-                        ) : (
-                          <p className="text-sm text-gray-500">No medicines prescribed</p>
-                        )}
+                          ));
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -379,7 +393,7 @@ export default function PatientSummarySection({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-5 min-h-0 px-2 py-0 leading-none text-xs rounded-full"
+                    className="h-5 min-h-0 px-2 py-0 leading-none bg-white text-gray-900 border-gray-200 hover:bg-gray-100 text-xs rounded-full"
                     disabled={!selectedAppointment || !selectedAppointment?.prescriptionLink}
                     onClick={() => {
                       if (selectedAppointment?.prescriptionLink) {
@@ -391,7 +405,7 @@ export default function PatientSummarySection({
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-5 min-h-0 px-2 py-0 leading-none text-xs flex items-center gap-1 rounded-full">
+                      <Button variant="outline" size="sm" className="h-5 min-h-0 px-2 py-0 leading-none bg-white text-gray-900 border-gray-200 hover:bg-gray-100 text-xs flex items-center gap-1 rounded-full">
                         <span>
                           {selectedAppointmentId
                             ? `Selected: ${new Date((previousAppointments.find(a => a.id.toString() === selectedAppointmentId)?.date || '')).toLocaleDateString()}`
@@ -425,11 +439,24 @@ export default function PatientSummarySection({
                       </h5>
                       <div className="max-h-28 overflow-y-auto pr-1 custom-scrollbar">
                         <div className="flex flex-wrap gap-2">
-                          {(selectedAppointment ? selectedAppointment.complaints : aggregatedComplaints)
-                            ?.split(',')
-                            .map(c => c.trim())
-                            .filter(Boolean)
-                            .map((complaint, index) => (
+                          {(() => {
+                            const complaintsData = selectedAppointment ? selectedAppointment.complaints : aggregatedComplaints;
+                            if (!complaintsData) {
+                              return <span className="text-sm text-gray-500">No complaints recorded</span>;
+                            }
+                            
+                            // Handle both array and string formats
+                            const complaintsArray = Array.isArray(complaintsData)
+                              ? complaintsData.map((c: any) => typeof c === 'string' ? c : (c.complaintText || c.text || '')).filter(Boolean)
+                              : typeof complaintsData === 'string'
+                              ? complaintsData.split(',').map(c => c.trim()).filter(Boolean)
+                              : [];
+                            
+                            if (complaintsArray.length === 0) {
+                              return <span className="text-sm text-gray-500">No complaints recorded</span>;
+                            }
+                            
+                            return complaintsArray.map((complaint, index) => (
                               <span key={`complaint-${index}`} className="inline-flex items-center gap-1.5 rounded-full bg-secondary/10 px-2.5 py-1 text-xs text-secondary">
                                 {complaint}
                                 {complaint.toLowerCase().includes('blood pressure') && (
@@ -438,10 +465,8 @@ export default function PatientSummarySection({
                                   </svg>
                                 )}
                               </span>
-                            ))
-                          || (
-                            <span className="text-sm text-gray-500">No complaints recorded</span>
-                          )}
+                            ));
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -457,18 +482,29 @@ export default function PatientSummarySection({
                         <div>
                           <div className="text-xs font-semibold text-gray-600 mb-1">Medicines</div>
                           <div className="flex flex-wrap gap-2">
-                            {(selectedAppointment ? selectedAppointment.medicines : aggregatedMedicines)
-                              ?.split(',')
-                              .map(m => m.trim())
-                              .filter(Boolean)
-                              .map((medicine, index) => (
+                            {(() => {
+                              const medicinesData = selectedAppointment ? selectedAppointment.medicines : aggregatedMedicines;
+                              if (!medicinesData) {
+                                return <span className="text-sm text-gray-500">No medicines prescribed</span>;
+                              }
+                              
+                              // Handle both array and string formats
+                              const medicinesArray = Array.isArray(medicinesData)
+                                ? medicinesData.map((m: any) => typeof m === 'string' ? m : (m.name || m.text || '')).filter(Boolean)
+                                : typeof medicinesData === 'string'
+                                ? medicinesData.split(',').map(m => m.trim()).filter(Boolean)
+                                : [];
+                              
+                              if (medicinesArray.length === 0) {
+                                return <span className="text-sm text-gray-500">No medicines prescribed</span>;
+                              }
+                              
+                              return medicinesArray.map((medicine, index) => (
                                 <span key={`medicine-${index}`} className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-1 text-xs text-secondary">
                                   {medicine}
                                 </span>
-                              ))
-                            || (
-                              <span className="text-sm text-gray-500">No medicines prescribed</span>
-                            )}
+                              ));
+                            })()}
                           </div>
                         </div>
                         {/* Notes for selected appointment */}

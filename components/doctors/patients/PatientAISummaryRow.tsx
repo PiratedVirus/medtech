@@ -133,6 +133,7 @@ export default function PatientAISummaryRow({ patientId, summary: fallbackSummar
           <Button 
             size="sm" 
             variant="outline" 
+            className="bg-white text-gray-900 border-gray-200 hover:bg-gray-100"
             onClick={fetchAISummary}
             disabled={loading}
           >
@@ -164,7 +165,7 @@ export default function PatientAISummaryRow({ patientId, summary: fallbackSummar
                 variant="outline"
                 onClick={regenerateSummary}
                 disabled={loading}
-                className="text-xs"
+                className="text-xs bg-white text-gray-900 border-gray-200 hover:bg-gray-100"
               >
                 {loading ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : null}
                 Regenerate

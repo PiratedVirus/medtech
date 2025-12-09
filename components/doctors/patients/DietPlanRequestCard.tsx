@@ -54,7 +54,7 @@ export default function DietPlanRequestCard({ patient }: DietPlanRequestCardProp
               </div>
               <p className="text-xs text-gray-500 italic leading-relaxed">{dietPlanRequest.description}</p>
             </div>
-            <Button className="w-full mt-4 bg-secondary hover:bg-secondary/90 text-white rounded-lg py-2 shadow-sm hover:shadow-md transition-all duration-300 group text-xs">
+            <Button className="w-full mt-4 bg-white hover:bg-gray-100 text-gray-900 border border-gray-200 rounded-lg py-2 shadow-sm hover:shadow-md transition-all duration-300 group text-xs">
               <span className="font-semibold">Create Plan</span>
             </Button>
           </div>

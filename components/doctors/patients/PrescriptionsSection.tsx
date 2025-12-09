@@ -36,7 +36,7 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
               <Button
                 variant="outline"
                 size="sm"
-                className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs"
+                className="bg-white text-gray-900 border-gray-200 hover:bg-gray-100 rounded-lg text-xs"
                 onClick={() => {
                   setShowOnlyWithPrescription(true);
                   setOpen(true);
@@ -98,7 +98,7 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
               setShowOnlyWithPrescription(false);
               setOpen(true);
             }}
-            className="w-full bg-secondary hover:bg-secondary/90 text-white rounded-xl py-2 shadow-lg hover:shadow-xl transition-all duration-300 group text-sm"
+            className="w-full bg-white hover:bg-gray-100 text-gray-900 border border-gray-200 rounded-xl py-2 shadow-sm hover:shadow-md transition-all duration-300 group text-sm"
           >
             <Plus className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
             <span className="font-semibold">Create New Prescription</span>
@@ -126,6 +126,7 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
                           <Button
                             size="sm"
                             variant="outline"
+                            className="bg-white text-gray-900 border-gray-200 hover:bg-gray-100"
                             onClick={() => window.open(viewHref, '_blank')}
                           >
                             View
@@ -134,7 +135,7 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
                         {hasPrescription ? (
                           <Button
                             size="sm"
-                            className="w-44 shrink-0"
+                            className="w-44 shrink-0 bg-primary hover:bg-primary/90 text-white"
                             onClick={() => window.open(`/doctor/appointments/${apt.id}`, '_blank')}
                           >
                             Edit Prescription
@@ -142,7 +143,7 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
                         ) : (
                           <Button
                             size="sm"
-                            className="w-44 shrink-0"
+                            className="w-44 shrink-0 bg-primary hover:bg-primary/90 text-white"
                             onClick={() => window.open(`/doctor/appointments/${apt.id}`, '_blank')}
                           >
                             Generate Prescription

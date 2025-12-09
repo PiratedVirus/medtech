@@ -425,12 +425,14 @@ export default function ReportUploadButton({
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
+                className="bg-white text-gray-900 border-gray-200 hover:bg-gray-100"
                 onClick={() => setIsOpen(false)}
                 disabled={uploading}
               >
                 Cancel
               </Button>
               <Button
+                className="bg-primary hover:bg-primary/90 text-white"
                 onClick={handleUpload}
                 disabled={!reportType || !file || uploading}
               >

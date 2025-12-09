@@ -174,23 +174,27 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-bold text-gray-900">Lab Reports</h3>
             <div className="flex items-center gap-2">
-              {/* View Analysis Button - Top Right */}
-              {allReports.length > 0 && (
-                <Button
+              {/* Upload Report Button - Top Right */}
+              {patientId && (
+                <ReportUploadButton
+                  patientId={Number(patientId)}
+                  onUploadSuccess={() => {
+                    fetchStandaloneReports();
+                    onUploadSuccess?.();
+                  }}
                   variant="outline"
                   size="sm"
-                  className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs"
-                  onClick={() => setAnalysisModalOpen(true)}
+                  className="bg-white text-gray-900 border-gray-200 hover:bg-gray-100 rounded-lg text-xs"
                 >
-                  <BarChart3 className="h-3 w-3 mr-1" />
-                  View Analysis
-                </Button>
+                  <Upload className="h-3 w-3 mr-1" />
+                  Upload Report
+                </ReportUploadButton>
               )}
               {allReports.length > 3 && (
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="text-secondary border-secondary/30 hover:bg-secondary/10 rounded-lg text-xs"
+                  className="bg-white text-gray-900 border-gray-200 hover:bg-gray-100 rounded-lg text-xs"
                   onClick={onViewMore}
                 >
                   <Eye className="h-3 w-3 mr-1" />
@@ -247,24 +251,22 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
                   onClick={() => window.open(`/doctor/parameter-trends?patientId=${patientId}`, '_blank')}
                   variant="outline"
                   size="sm"
-                  className="flex-1"
+                  className="flex-1 bg-white text-gray-900 border-gray-200 hover:bg-gray-100"
                 >
                   <BarChart3 className="h-4 w-4 mr-2" />
                   View Trends
                 </Button>
-                <ReportUploadButton
-                  patientId={Number(patientId)}
-                  onUploadSuccess={() => {
-                    fetchStandaloneReports();
-                    onUploadSuccess?.();
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Report
-                </ReportUploadButton>
+                {allReports.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 bg-white text-gray-900 border-gray-200 hover:bg-gray-100"
+                    onClick={() => setAnalysisModalOpen(true)}
+                  >
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    View Analysis
+                  </Button>
+                )}
               </div>
             </div>
           )}
