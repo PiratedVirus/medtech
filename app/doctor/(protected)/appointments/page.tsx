@@ -50,7 +50,8 @@ export default function DoctorAppointmentsPage() {
       setLoading(true);
       try {
         const res = await axios.get("/api/doctor/appointments/all");
-        setData(res.data);
+        const data = res.data.data || res.data; // Support both formats during transition
+        setData(data);
         // After fetching, auto-mark any appointments with a prescription as COMPLETED
         const all = [...(res.data.upcoming || []), ...(res.data.past || [])];
         const toMark = all.filter((a: any) => a.prescriptionLink && String(a.status).toUpperCase() !== "COMPLETED");

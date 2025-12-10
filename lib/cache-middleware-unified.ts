@@ -4,6 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
 import { cacheUtils, CACHE_KEYS, CACHE_TTL } from './redis';
 import { CacheEvents } from './cache-events';
 import { SmartCacheInvalidation } from './cache-dependencies';
@@ -70,6 +72,23 @@ function extractPathParams(url: string, endpoint: string): Record<string, string
 /**
  * Handle GET requests with caching
  */
+/**
+ * Extract doctor identifier from JWT token for doctor-specific endpoints
+ * Uses phoneNumber as unique identifier since each doctor has unique phone
+ */
+async function extractDoctorIdentifier(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+    if (!token) return null;
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    return decoded?.plusAddedPhoneNumber || null;
+  } catch {
+    return null;
+  }
+}
+
 async function handleGetWithCache(
   request: NextRequest,
   handler: (request: NextRequest, ...args: any[]) => Promise<NextResponse>,
@@ -89,14 +108,47 @@ async function handleGetWithCache(
       }
     }
     
+    // Extract appointmentId from URL for doctor appointment detail endpoint
+    if (config.key.includes('doctor:appointments') && url.includes('/appointments/')) {
+      const pathParams = extractPathParams(url, '/api/doctor/appointments/[appointmentId]');
+      if (pathParams.appointmentId) {
+        cacheKey = `${config.key}:${pathParams.appointmentId}`;
+      }
+    }
+    
+    // For doctor-specific endpoints, extract doctor identifier from token
+    if (config.entityType === 'doctor' || config.key.startsWith('doctor:')) {
+      const doctorIdentifier = await extractDoctorIdentifier();
+      if (doctorIdentifier) {
+        // Use phoneNumber as unique identifier for cache key
+        cacheKey = `${config.key}:${doctorIdentifier}`;
+      }
+    }
+    
     // Try to get from cache first
     const cachedData = await cacheUtils.get(cacheKey);
     if (cachedData) {
-      return NextResponse.json({
-        success: true,
-        data: cachedData,
-        cached: true
-      });
+      // Validate cached appointment data has required fields
+      if (config.key.includes('doctor:appointments') && cacheKey.includes(':')) {
+        // For appointment detail endpoint, ensure patientId exists
+        if (!cachedData.patientId) {
+          console.warn(`[CACHE-MIDDLEWARE] Invalid cached appointment data (missing patientId) for ${cacheKey}, refetching...`);
+          await cacheUtils.invalidate(cacheKey);
+          // Fall through to fetch fresh data
+        } else {
+          return NextResponse.json({
+            success: true,
+            data: cachedData,
+            cached: true
+          });
+        }
+      } else {
+        return NextResponse.json({
+          success: true,
+          data: cachedData,
+          cached: true
+        });
+      }
     }
     
     // Cache miss - call the handler
@@ -108,6 +160,21 @@ async function handleGetWithCache(
         const responseData = await response.clone().json();
         if (responseData.success && responseData.data) {
           await cacheUtils.set(cacheKey, responseData.data, config.ttl);
+          
+          // Warm related caches after successful cache miss
+          if (config.entityType === 'doctor' || config.key.startsWith('doctor:')) {
+            const doctorIdentifier = await extractDoctorIdentifier();
+            if (doctorIdentifier) {
+              // Import and call warmRelatedCaches (non-blocking)
+              import('@/lib/cache-warming').then(({ warmRelatedCaches }) => {
+                warmRelatedCaches(request.url, doctorIdentifier, responseData.data).catch(() => {
+                  // Silently fail - cache warming is best effort
+                });
+              }).catch(() => {
+                // Silently fail if import fails
+              });
+            }
+          }
         }
       } catch (error) {
         console.error(`[CACHE-MIDDLEWARE] Error caching response for ${cacheKey}:`, error);
@@ -406,7 +473,9 @@ export function getCacheConfig(endpoint: string, params: Record<string, any> = {
     '/api/patient/[patientId]/all-values': CACHE_CONFIGS.PATIENT_ALL_VALUES,
     '/api/admin/doctors': CACHE_CONFIGS.DOCTOR_PROFILE,
     '/api/doctor/appointments': CACHE_CONFIGS.DOCTOR_APPOINTMENTS,
+    '/api/doctor/appointments/all': CACHE_CONFIGS.DOCTOR_APPOINTMENTS,
     '/api/doctor/appointments/upcoming': CACHE_CONFIGS.DOCTOR_APPOINTMENTS,
+    '/api/doctor/appointments/[appointmentId]': CACHE_CONFIGS.DOCTOR_APPOINTMENTS,
     '/api/doctor/earnings': CACHE_CONFIGS.DOCTOR_EARNINGS,
     '/api/doctor/clinic-info': CACHE_CONFIGS.DOCTOR_CLINIC_INFO,
     '/api/admin/dashboard/summary': CACHE_CONFIGS.ADMIN_DASHBOARD,

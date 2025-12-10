@@ -164,16 +164,16 @@ export default function AppointmentPrescriptionPage() {
 
   const fetchPrescription = async () => {
     try {
-      // First fetch appointment data to get patient info
-      const appointmentRes = await fetch(`/api/doctor/appointments/all`);
+      // Fetch single appointment directly (much faster than fetching all)
+      const appointmentRes = await fetch(`/api/doctor/appointments/${appointmentId}`);
       if (!appointmentRes.ok) throw new Error("Failed to fetch appointment data");
       const appointmentData = await appointmentRes.json();
-
-      const appointment =
-        appointmentData.upcoming.find((apt: any) => apt.id.toString() === appointmentId) ||
-        appointmentData.past.find((apt: any) => apt.id.toString() === appointmentId);
-
-      if (!appointment) throw new Error("Appointment not found");
+      
+      if (!appointmentData.success || !appointmentData.data) {
+        throw new Error("Appointment not found");
+      }
+      
+      const appointment = appointmentData.data;
 
       // Set appointment status
       setAppointmentStatus(appointment.status);
@@ -239,13 +239,14 @@ export default function AppointmentPrescriptionPage() {
           const clinicData = await clinicRes.json();
           console.log("Clinic API response data:", clinicData);
           
-          if (clinicData.success && clinicData.clinic) {
+          if (clinicData.success && (clinicData.data?.clinic || clinicData.clinic)) {
+            const clinic = clinicData.data?.clinic || clinicData.clinic;
             const clinicInfo = {
-              name: clinicData.clinic.name,
-              logo: clinicData.clinic.logo,
-              address: clinicData.clinic.address,
-              timings: clinicData.clinic.timings,
-              subtitle: clinicData.clinic.subtitle,
+              name: clinic.name,
+              logo: clinic.logo,
+              address: clinic.address,
+              timings: clinic.timings,
+              subtitle: clinic.subtitle,
             };
             console.log("Setting clinic info:", clinicInfo);
             setClinicInfo(clinicInfo);
@@ -334,6 +335,12 @@ export default function AppointmentPrescriptionPage() {
 
       // Prefill longitudinal history from patient profile
       try {
+        // Validate patientId exists before fetching
+        if (!appointment.patientId) {
+          console.warn('[PRESCRIPTION] Patient ID not found in appointment data, skipping profile fetch');
+          return;
+        }
+        
         const profRes = await fetch(`/api/profile?userId=${appointment.patientId}`);
         if (profRes.ok) {
           const profJson = await profRes.json();
@@ -565,14 +572,14 @@ export default function AppointmentPrescriptionPage() {
 
   const checkProcessingStatus = async () => {
     try {
-      // Get appointment details to find the prescription ID
-      const appointmentRes = await fetch(`/api/doctor/appointments/all`);
+      // Get appointment details to find the prescription ID (use direct endpoint)
+      const appointmentRes = await fetch(`/api/doctor/appointments/${appointmentId}`);
       if (!appointmentRes.ok) return;
       const appointmentData = await appointmentRes.json();
-
-      const appointment =
-        appointmentData.upcoming.find((apt: any) => apt.id.toString() === appointmentId) ||
-        appointmentData.past.find((apt: any) => apt.id.toString() === appointmentId);
+      
+      if (!appointmentData.success || !appointmentData.data) return;
+      
+      const appointment = appointmentData.data;
 
       if (!appointment?.prescriptionId) return;
 
@@ -593,44 +600,64 @@ export default function AppointmentPrescriptionPage() {
     try {
       setIsProcessing(true);
       
-      // Get appointment details to find the patient id
-      const appointmentRes = await fetch(`/api/doctor/appointments/all`);
+      // Get appointment details to find the patient id (use direct endpoint)
+      const appointmentRes = await fetch(`/api/doctor/appointments/${appointmentId}`);
       if (!appointmentRes.ok) throw new Error("Failed to fetch appointment data");
       const appointmentData = await appointmentRes.json();
+      
+      if (!appointmentData.success || !appointmentData.data) {
+        throw new Error("Appointment not found");
+      }
+      
+      const appointment = appointmentData.data;
 
-      const appointment =
-        appointmentData.upcoming.find((apt: any) => apt.id.toString() === appointmentId) ||
-        appointmentData.past.find((apt: any) => apt.id.toString() === appointmentId);
-
-      if (!appointment) throw new Error("Appointment not found");
-
-      // Trigger processing for ALL prescriptions for this patient
-      const processRes = await fetch(`/api/prescription/process-all/${appointment.patientId}`, {
-        method: 'POST',
+      // Trigger processing asynchronously (don't block UI)
+      toast({
+        title: 'Processing started',
+        description: 'Prescription processing has started in the background. This may take a few minutes.',
+        variant: 'default',
       });
-
-      if (!processRes.ok) {
-        const errorData = await processRes.json();
-        throw new Error(errorData.error || 'Failed to process prescription');
-      }
-
-      const result = await processRes.json();
-      if (result.success) {
-        toast({
-          title: 'Success',
-          description: `Processed ${result.totals.completed}/${result.totals.total} prescriptions. Summary updated with ${result.summary?.count || 0} texts.`,
-          variant: 'success',
+      
+      // Fire and forget - process in background
+      fetch(`/api/prescription/process-all/${appointment.patientId}`, {
+        method: 'POST',
+      })
+        .then(async (processRes) => {
+          if (!processRes.ok) {
+            const errorData = await processRes.json();
+            throw new Error(errorData.error || 'Failed to process prescription');
+          }
+          return processRes.json();
+        })
+        .then((result) => {
+          if (result.success) {
+            toast({
+              title: 'Processing complete',
+              description: `Processed ${result.totals.completed}/${result.totals.total} prescriptions. Summary updated with ${result.summary?.count || 0} texts.`,
+              variant: 'success',
+            });
+            setProcessingStatus('COMPLETED');
+          } else {
+            throw new Error(result.error || 'Processing failed');
+          }
+        })
+        .catch((error) => {
+          console.error("Prescription processing error:", error);
+          toast({ 
+            title: "Processing error", 
+            description: error instanceof Error ? error.message : "Failed to process prescription", 
+            variant: "destructive" 
+          });
+          setProcessingStatus('FAILED');
         });
-        // We can set status to completed for this appointment if its PDF existed and processed.
-        setProcessingStatus('COMPLETED');
-      } else {
-        throw new Error(result.error || 'Processing failed');
-      }
+      
+      // Set status to processing immediately
+      setProcessingStatus('PROCESSING');
     } catch (error) {
-      console.error("Prescription processing error:", error);
+      console.error("Error starting prescription processing:", error);
       toast({ 
         title: "Error", 
-        description: error instanceof Error ? error.message : "Failed to process prescription", 
+        description: error instanceof Error ? error.message : "Failed to start processing", 
         variant: "destructive" 
       });
       setProcessingStatus('FAILED');

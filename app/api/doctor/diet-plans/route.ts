@@ -50,7 +50,7 @@ const getDietPlansHandler = async (request: Request) => {
     const patientId = Number(searchParams.get('patientId'));
     if (!patientId) return NextResponse.json({ success: false, error: 'patientId required' }, { status: 400 });
     const plan = await prisma.dietPlan.findFirst({ where: { patientId, deletedAt: null }, orderBy: { id: 'desc' } });
-    return NextResponse.json({ success: true, plan });
+    return NextResponse.json({ success: true, data: { plan } });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || 'Server error' }, { status: 500 });
   }

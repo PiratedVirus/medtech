@@ -327,6 +327,15 @@ export async function POST(request: Request) {
       }
     }
 
+    // ✅ CACHE WARMING: Warm the new appointment cache for doctor (non-blocking)
+    import('@/lib/cache-warming').then(({ warmAppointmentCache }) => {
+      warmAppointmentCache(newAppointment.id, doctorId).catch((error) => {
+        console.error('[APPOINTMENT] Cache warming failed (non-critical):', error);
+      });
+    }).catch(() => {
+      // Silently fail if import fails
+    });
+
     return NextResponse.json({ success: true, data: newAppointment });
 
   } catch (error) {

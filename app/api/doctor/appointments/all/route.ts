@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
+import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
 
-export async function GET(request: Request) {
+const getAllAppointmentsHandler = async (request: NextRequest) => {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
@@ -79,57 +81,72 @@ export async function GET(request: Request) {
       take: pageSize,
     });
 
-    // Helper to check if this is the patient's first appointment with this doctor
-    async function isFirstAppointment(patientId: number) {
-      const count = await prisma.appointment.count({
-        where: {
-          userId: doctorId,
-          patientId,
-          deletedAt: null,
-        },
+    // Optimize: Get all unique patient IDs and check first appointments in a single query
+    const allPatientIds = [...new Set([...upcoming, ...past].map(a => a.patient.id))];
+    
+    // Single query to get appointment counts per patient (to determine if first appointment)
+    const appointmentCounts = await prisma.appointment.groupBy({
+      by: ['patientId'],
+      where: {
+        userId: doctorId,
+        patientId: { in: allPatientIds },
+        deletedAt: null,
+      },
+      _count: {
+        id: true,
+      },
+    });
+    
+    // Create a map for O(1) lookup
+    const patientAppointmentCountMap = new Map(
+      appointmentCounts.map(item => [item.patientId, item._count.id])
+    );
+
+    // Add extra info to each appointment (no async needed now)
+    function enrichAppointments(list: any[], isPast: boolean) {
+      return list.map((appt) => {
+        const appointmentCount = patientAppointmentCountMap.get(appt.patient.id) || 0;
+        const isFirst = appointmentCount === 1;
+        
+        return {
+          id: appt.id,
+          patientName: appt.patient.name,
+          patientId: appt.patient.id,
+          doctorName: user?.name || "Unknown Doctor", // Add doctor name from the logged-in user
+          doctorId: user?.id || 0, // Add doctor ID
+          date: appt.doctorAvailability?.date,
+          startTime: appt.doctorAvailability?.startTime,
+          endTime: appt.doctorAvailability?.endTime,
+          status: appt.status,
+          paymentType: appt.payment?.paymentMethod || null,
+          consultationType: appt.consultationType,
+          isFirst: isFirst,
+          prescriptionLink: isPast ? appt.prescriptionLink : undefined,
+          prescriptionId: appt.prescription?.id || null, // Add prescription ID
+          meetingRoomLink: user?.doctorProfile?.meetingRoomLink || null, // Add meetingRoomLink
+          ownerToken1: user?.doctorProfile?.ownerToken1 || null, // Add ownerToken1
+        };
       });
-      // console.log("count", count);
-      return count === 1;
     }
 
-    // Add extra info to each appointment
-    async function enrichAppointments(list: any[], isPast: boolean) {
-      return Promise.all(
-        list.map(async (appt) => {
-          const first = await isFirstAppointment(appt.patient.id);
-          return {
-            id: appt.id,
-            patientName: appt.patient.name,
-            patientId: appt.patient.id,
-            doctorName: user?.name || "Unknown Doctor", // Add doctor name from the logged-in user
-            doctorId: user?.id || 0, // Add doctor ID
-            date: appt.doctorAvailability?.date,
-            startTime: appt.doctorAvailability?.startTime,
-            endTime: appt.doctorAvailability?.endTime,
-            status: appt.status,
-            paymentType: appt.payment?.paymentMethod || null,
-            consultationType: appt.consultationType,
-            isFirst: first,
-            prescriptionLink: isPast ? appt.prescriptionLink : undefined,
-            prescriptionId: appt.prescription?.id || null, // Add prescription ID
-            meetingRoomLink: user?.doctorProfile?.meetingRoomLink || null, // Add meetingRoomLink
-            ownerToken1: user?.doctorProfile?.ownerToken1 || null, // Add ownerToken1
-          };
-        })
-      );
-    }
-
-    const [upcomingEnriched, pastEnriched] = await Promise.all([
-      enrichAppointments(upcoming, false),
-      enrichAppointments(past, true),
-    ]);
+    const upcomingEnriched = enrichAppointments(upcoming, false);
+    const pastEnriched = enrichAppointments(past, true);
 
     return NextResponse.json({
-      upcoming: upcomingEnriched,
-      past: pastEnriched,
+      success: true,
+      data: {
+        upcoming: upcomingEnriched,
+        past: pastEnriched,
+      },
     });
   } catch (error) {
     console.error("Error fetching all doctor appointments:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
-} 
+};
+
+// ✅ UNIFIED CACHE: Apply cache middleware to GET endpoint
+export const GET = withUnifiedCache(getCacheConfig('/api/doctor/appointments/all'))(getAllAppointmentsHandler); 

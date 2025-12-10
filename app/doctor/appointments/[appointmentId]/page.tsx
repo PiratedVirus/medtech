@@ -156,21 +156,25 @@ export default function PrescriptionPage() {
       setIsLoadingData(true);
       
       try {
-        // Step 1: Fetch appointment data first (need patientId for subsequent calls)
-        const appointmentRes = await fetch(`/api/doctor/appointments/all`);
+        // Step 1: Fetch appointment data directly (much faster than fetching all)
+        const appointmentRes = await fetch(`/api/doctor/appointments/${appointmentId}`);
         if (!appointmentRes.ok) {
           throw new Error("Failed to fetch appointment data");
         }
 
         const appointmentJson = await appointmentRes.json();
-        const appointment = appointmentJson.upcoming.find((apt: any) => apt.id.toString() === appointmentId) ||
-          appointmentJson.past.find((apt: any) => apt.id.toString() === appointmentId);
-
-        if (!appointment) {
+        if (!appointmentJson.success || !appointmentJson.data) {
           throw new Error("Appointment not found");
         }
+        
+        const appointment = appointmentJson.data;
 
         const patientId = appointment.patientId;
+
+        // Validate patientId exists
+        if (!patientId) {
+          throw new Error("Patient ID not found in appointment data");
+        }
 
         // Step 2: Parallel fetch - Patient profile, Prescription exists check, Clinic info
         const [profileRes, prescriptionExistsRes, clinicRes] = await Promise.all([

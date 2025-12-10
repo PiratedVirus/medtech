@@ -45,7 +45,7 @@ const getClinicInfoHandler = async (request: NextRequest) => {
 
     return NextResponse.json({
       success: true,
-      clinic: clinic
+      data: { clinic: clinic }
     });
   } catch (error) {
     console.error("Error fetching clinic info:", error);

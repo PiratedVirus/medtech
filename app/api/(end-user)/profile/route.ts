@@ -7,15 +7,26 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
-    if (!userId) {
+    
+    // Validate userId is provided and not "undefined" string
+    if (!userId || userId === "undefined" || userId === "null") {
       return NextResponse.json(
         { error: "User ID is required" },
         { status: 400 }
       );
     }
 
+    // Validate userId is a valid number
+    const userIdNum = Number(userId);
+    if (isNaN(userIdNum) || userIdNum <= 0) {
+      return NextResponse.json(
+        { error: "Invalid User ID" },
+        { status: 400 }
+      );
+    }
+
     const user = await prisma.user.findUnique({
-      where: { id: Number(userId) },
+      where: { id: userIdNum },
       include: {
         patientProfile: true,  // include patient profile details if available
         doctorProfile: true,   // include doctor profile details if available

@@ -139,16 +139,19 @@ const getEarningsHandler = async (request: Request) => {
     }));
 
     return NextResponse.json({
-      payments: simplified,
-      earnings: { 
-        paid: paidEarnings, 
-        pending: pendingEarnings, 
-        cash: cashEarnings,
-        online: onlineEarnings,
-        cashCount: cashCount,
-        onlineCount: onlineCount,
-        total: paidEarnings + pendingEarnings 
-      },
+      success: true,
+      data: {
+        payments: simplified,
+        earnings: { 
+          paid: paidEarnings, 
+          pending: pendingEarnings, 
+          cash: cashEarnings,
+          online: onlineEarnings,
+          cashCount: cashCount,
+          onlineCount: onlineCount,
+          total: paidEarnings + pendingEarnings 
+        },
+      }
     });
   } catch (error) {
     console.error("Error fetching earnings:", error);

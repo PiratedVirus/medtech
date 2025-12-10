@@ -61,7 +61,7 @@ const getUpcomingAppointmentsHandler = async () => {
     const availabilityIds = availableSlots.map(slot => slot.id);
 
     if (availabilityIds.length === 0) {
-      return NextResponse.json({ appointments: [] });
+      return NextResponse.json({ success: true, data: { appointments: [] } });
     }
 
     const appointments = await prisma.appointment.findMany({
@@ -149,7 +149,10 @@ const getUpcomingAppointmentsHandler = async () => {
         };
       });
 
-    return NextResponse.json({ appointments: transformedAppointments });
+    return NextResponse.json({ 
+      success: true, 
+      data: { appointments: transformedAppointments } 
+    });
   } catch (error) {
     console.error("Error fetching upcoming appointments:", error);
     // Log more details for debugging
