@@ -406,6 +406,7 @@ export function getCacheConfig(endpoint: string, params: Record<string, any> = {
     '/api/patient/[patientId]/all-values': CACHE_CONFIGS.PATIENT_ALL_VALUES,
     '/api/admin/doctors': CACHE_CONFIGS.DOCTOR_PROFILE,
     '/api/doctor/appointments': CACHE_CONFIGS.DOCTOR_APPOINTMENTS,
+    '/api/doctor/appointments/upcoming': CACHE_CONFIGS.DOCTOR_APPOINTMENTS,
     '/api/doctor/earnings': CACHE_CONFIGS.DOCTOR_EARNINGS,
     '/api/doctor/clinic-info': CACHE_CONFIGS.DOCTOR_CLINIC_INFO,
     '/api/admin/dashboard/summary': CACHE_CONFIGS.ADMIN_DASHBOARD,

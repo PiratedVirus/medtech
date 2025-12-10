@@ -46,12 +46,29 @@ const getUpcomingAppointmentsHandler = async () => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
+    // First, get available doctor availability IDs for today and future dates
+    const availableSlots = await prisma.doctorAvailability.findMany({
+      where: {
+        userId: doctorId,
+        date: { gte: todayStart },
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const availabilityIds = availableSlots.map(slot => slot.id);
+
+    if (availabilityIds.length === 0) {
+      return NextResponse.json({ appointments: [] });
+    }
+
     const appointments = await prisma.appointment.findMany({
       where: {
         userId: doctorId,
-        doctorAvailability: {
-          date: { gte: todayStart },
-          deletedAt: null, // Ensure availability is not deleted
+        doctorAvailabilityId: {
+          in: availabilityIds,
         },
         // Only scheduled-like statuses; exclude completed/cancelled
         status: {
@@ -96,26 +113,41 @@ const getUpcomingAppointmentsHandler = async () => {
 
     // Transform the appointments to match the expected interface
     const transformedAppointments = appointments
-      .filter((appointment) => appointment.doctorAvailability !== null) // Filter out appointments without availability
-      .map((appointment) => ({
-        id: appointment.id,
-        patientId: appointment.patientId,
-        patient: appointment.patient,
-        doctor: { name: user.name }, // Add doctor info
-        // Use doctorAvailability.date as source of truth for date
-        date: appointment.doctorAvailability!.date.toISOString(),
-        startTime: appointment.doctorAvailability!.startTime,
-        endTime: appointment.doctorAvailability!.endTime,
-        status: appointment.status,
-        consultationType: appointment.consultationType,
-        doctorAvailability: appointment.doctorAvailability!,
-        payment: appointment.payment
-          ? {
-              amount: appointment.payment.amount,
-              status: appointment.payment.paymentStatus,
-            }
-          : null,
-      }));
+      .filter((appointment) => {
+        // Safely check if doctorAvailability exists and has required fields
+        return appointment.doctorAvailability !== null && 
+               appointment.doctorAvailability.date !== null &&
+               appointment.doctorAvailability.date !== undefined;
+      })
+      .map((appointment) => {
+        const availability = appointment.doctorAvailability;
+        if (!availability || !availability.date) {
+          // This should not happen due to filter, but TypeScript needs this
+          throw new Error('Invalid appointment: missing doctorAvailability');
+        }
+        
+        return {
+          id: appointment.id,
+          patientId: appointment.patientId,
+          patient: appointment.patient,
+          doctor: { name: user.name || 'Doctor' }, // Add doctor info with fallback
+          // Use doctorAvailability.date as source of truth for date
+          date: availability.date instanceof Date 
+            ? availability.date.toISOString() 
+            : new Date(availability.date).toISOString(),
+          startTime: availability.startTime,
+          endTime: availability.endTime,
+          status: appointment.status,
+          consultationType: appointment.consultationType,
+          doctorAvailability: availability,
+          payment: appointment.payment
+            ? {
+                amount: appointment.payment.amount,
+                status: appointment.payment.paymentStatus,
+              }
+            : null,
+        };
+      });
 
     return NextResponse.json({ appointments: transformedAppointments });
   } catch (error) {
