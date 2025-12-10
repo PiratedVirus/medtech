@@ -174,21 +174,7 @@ export const useCentralizedProfile = () => {
     };
   }, [queryClient]);
 
-  // Debug logging (temporarily enabled for debugging login issue)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[useCentralizedProfile] Debug:', {
-      queryIsLoading: queryResult.isLoading,
-      queryIsError: queryResult.isError,
-      queryIsFetching: queryResult.isFetching,
-      queryStatus: queryResult.status,
-      queryData: profile,
-      cachedProfileExists: !!cachedProfile,
-      effectiveProfileExists: !!effectiveProfile,
-      effectiveProfileName: effectiveProfile?.name,
-      queryError: queryResult.error?.message,
-      queryErrorStatus: queryResult.error?.response?.status,
-    });
-  }
+
 
   
   return {
