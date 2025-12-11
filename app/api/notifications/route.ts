@@ -39,24 +39,41 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Find patient by phone number
-    const patient = await prisma.user.findFirst({
+    // Find user by phone number
+    const user = await prisma.user.findFirst({
       where: { 
-        phoneNumber,
-        role: 'PATIENT'
+        phoneNumber
       },
     });
 
-    if (!patient) {
+    if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Patient not found' },
+        { success: false, error: 'User not found' },
         { status: 404 }
       );
     }
 
-    // Build where clause
+    // If user is not a patient, return empty notifications
+    // (Notifications are currently only supported for patients)
+    if (user.role !== 'PATIENT') {
+      return NextResponse.json({
+        success: true,
+        data: {
+          notifications: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 0,
+          },
+          unreadCount: 0,
+        },
+      });
+    }
+
+    // Build where clause for patient notifications
     const whereClause: any = {
-      patientId: patient.id,
+      patientId: user.id,
       deletedAt: null,
     };
 
@@ -80,7 +97,7 @@ export async function GET(request: NextRequest) {
     // Get unread count
     const unreadCount = await prisma.patientNotification.count({
       where: {
-        patientId: patient.id,
+        patientId: user.id,
         isRead: false,
         deletedAt: null,
       },
@@ -148,19 +165,26 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Find patient by phone number
-    const patient = await prisma.user.findFirst({
+    // Find user by phone number
+    const user = await prisma.user.findFirst({
       where: { 
-        phoneNumber,
-        role: 'PATIENT'
+        phoneNumber
       },
     });
 
-    if (!patient) {
+    if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Patient not found' },
+        { success: false, error: 'User not found' },
         { status: 404 }
       );
+    }
+
+    // If user is not a patient, return success without doing anything
+    if (user.role !== 'PATIENT') {
+      return NextResponse.json({
+        success: true,
+        message: 'No notifications to update',
+      });
     }
 
     // Update notifications
@@ -176,7 +200,7 @@ export async function PUT(request: NextRequest) {
     await prisma.patientNotification.updateMany({
       where: {
         id: { in: notificationIds },
-        patientId: patient.id,
+        patientId: user.id,
       },
       data: updateData,
     });
@@ -234,26 +258,33 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Find patient by phone number
-    const patient = await prisma.user.findFirst({
+    // Find user by phone number
+    const user = await prisma.user.findFirst({
       where: { 
-        phoneNumber,
-        role: 'PATIENT'
+        phoneNumber
       },
     });
 
-    if (!patient) {
+    if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Patient not found' },
+        { success: false, error: 'User not found' },
         { status: 404 }
       );
+    }
+
+    // If user is not a patient, return success without doing anything
+    if (user.role !== 'PATIENT') {
+      return NextResponse.json({
+        success: true,
+        message: 'No notifications to delete',
+      });
     }
 
     // Soft delete notifications
     await prisma.patientNotification.updateMany({
       where: {
         id: { in: notificationIds },
-        patientId: patient.id,
+        patientId: user.id,
       },
       data: {
         deletedAt: new Date(),

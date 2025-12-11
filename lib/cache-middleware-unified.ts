@@ -131,7 +131,7 @@ async function handleGetWithCache(
       // Validate cached appointment data has required fields
       if (config.key.includes('doctor:appointments') && cacheKey.includes(':')) {
         // For appointment detail endpoint, ensure patientId exists
-        if (!cachedData.patientId) {
+        if (!(cachedData as any).patientId) {
           console.warn(`[CACHE-MIDDLEWARE] Invalid cached appointment data (missing patientId) for ${cacheKey}, refetching...`);
           await cacheUtils.invalidate(cacheKey);
           // Fall through to fetch fresh data

@@ -114,7 +114,7 @@ export default function AppointmentPrescriptionPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processingStatus, setProcessingStatus] = useState<'PENDING' | 'COMPLETED' | 'FAILED' | null>(null);
+  const [processingStatus, setProcessingStatus] = useState<'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | null>(null);
   const [appointmentStatus, setAppointmentStatus] = useState<string | null>(null);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<'download' | 'whatsapp' | 'share' | null>(null);
