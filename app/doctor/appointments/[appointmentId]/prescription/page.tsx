@@ -83,6 +83,8 @@ interface PrescriptionData {
   }>;
 }
 
+type ProcessingStatusType = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | null;
+
 export default function AppointmentPrescriptionPage() {
   const params = useParams();
   const { toast } = useToast();
@@ -114,7 +116,7 @@ export default function AppointmentPrescriptionPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processingStatus, setProcessingStatus] = useState<'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | null>(null);
+  const [processingStatus, setProcessingStatus] = useState<ProcessingStatusType>(null);
   const [appointmentStatus, setAppointmentStatus] = useState<string | null>(null);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<'download' | 'whatsapp' | 'share' | null>(null);
@@ -588,7 +590,7 @@ export default function AppointmentPrescriptionPage() {
       if (statusRes.ok) {
         const statusData = await statusRes.json();
         if (statusData.success) {
-          setProcessingStatus(statusData.data.processingStatus);
+          setProcessingStatus(statusData.data.processingStatus as ProcessingStatusType);
         }
       }
     } catch (error) {
