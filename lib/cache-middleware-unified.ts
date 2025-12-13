@@ -457,6 +457,35 @@ export const CACHE_CONFIGS = {
     ttl: CACHE_TTL.DIET_PLAN,
     entityType: 'user' as const,
     dependencies: ['user:profile:*']
+  },
+  
+  DOCTOR_DIET_PLANS: {
+    key: 'doctor:diet-plans',
+    ttl: CACHE_TTL.DIET_PLAN,
+    entityType: 'user' as const,
+    dependencies: ['diet:plan:*', 'user:profile:*', 'doctor:profile:*']
+  },
+  
+  // Superadmin-related endpoints
+  SUPERADMIN_ADMINS: {
+    key: 'superadmin:admins',
+    ttl: CACHE_TTL.ADMIN_PROFILE,
+    entityType: 'user' as const,
+    dependencies: ['admin:dashboard:*', 'user:profile:*']
+  },
+  
+  SUPERADMIN_DASHBOARD_STATS: {
+    key: 'superadmin:dashboard:stats',
+    ttl: CACHE_TTL.DASHBOARD_SUMMARY,
+    entityType: 'dashboard' as const,
+    dependencies: ['admin:dashboard:*', 'user:profile:*', 'clinic:*']
+  },
+  
+  SUPERADMIN_ANALYTICS: {
+    key: 'superadmin:analytics',
+    ttl: CACHE_TTL.DASHBOARD_SUMMARY,
+    entityType: 'dashboard' as const,
+    dependencies: ['superadmin:dashboard:stats', 'admin:dashboard:*', 'user:profile:*', 'clinic:*']
   }
 };
 
@@ -493,7 +522,11 @@ export function getCacheConfig(endpoint: string, params: Record<string, any> = {
     '/api/(end-user)/plans': CACHE_CONFIGS.PLANS_DATA,
     '/api/(end-user)/plans/planUsage': CACHE_CONFIGS.PLANS_USAGE,
     '/api/admin/plans': CACHE_CONFIGS.ADMIN_PLANS,
-    '/api/(end-user)/dieticians/diet': CACHE_CONFIGS.DIET_PLAN
+    '/api/(end-user)/dieticians/diet': CACHE_CONFIGS.DIET_PLAN,
+    '/api/doctor/diet-plans': CACHE_CONFIGS.DOCTOR_DIET_PLANS,
+    '/api/superadmin/admins': CACHE_CONFIGS.SUPERADMIN_ADMINS,
+    '/api/superadmin/dashboard/stats': CACHE_CONFIGS.SUPERADMIN_DASHBOARD_STATS,
+    '/api/superadmin/analytics': CACHE_CONFIGS.SUPERADMIN_ANALYTICS
   };
   
   const config = endpointMap[endpoint];
