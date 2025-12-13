@@ -117,10 +117,15 @@ export default function TypeAheadInput({
     setIsLoading(true);
     
     try {
-      // Use Algolia search for medicines, fallback to regular API for other types
-      const apiEndpoint = type === "medicines" 
-        ? `/api/doctor/prescription/algolia-medicines?query=${encodeURIComponent(query)}`
-        : `/api/doctor/prescription/typeahead?type=${type}&query=${encodeURIComponent(query)}`;
+      // Use Algolia search for medicines and tests, fallback to regular API for other types
+      let apiEndpoint: string;
+      if (type === "medicines") {
+        apiEndpoint = `/api/doctor/prescription/algolia-medicines?query=${encodeURIComponent(query)}`;
+      } else if (type === "tests") {
+        apiEndpoint = `/api/doctor/prescription/algolia-pathology-tests?query=${encodeURIComponent(query)}`;
+      } else {
+        apiEndpoint = `/api/doctor/prescription/typeahead?type=${type}&query=${encodeURIComponent(query)}`;
+      }
       
       const response = await fetch(apiEndpoint);
       
@@ -149,6 +154,14 @@ export default function TypeAheadInput({
             duration: item.duration || [],
             composition: item.composition || "",
             composition2: item.composition2 || "",
+          };
+        } else if (type === "tests") {
+          return {
+            id: item.id.toString(),
+            name: item.name,
+            value: item.name,
+            text: item.name,
+            category: item.category || item.package_name || 'General',
           };
         } else {
           return {
@@ -434,6 +447,10 @@ export default function TypeAheadInput({
                                   {[suggestion.composition, suggestion.composition2]
                                     .filter(Boolean)
                                     .join(', ') || 'No composition data'}
+                                </>
+                              ) : type === "tests" ? (
+                                <>
+                                  {suggestion.category || 'Package not specified'}
                                 </>
                               ) : (
                                 <>

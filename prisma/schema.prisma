@@ -38,56 +38,56 @@ model ClinicSpecialization {
 }
 
 model User {
-  id                   Int                    @id @default(autoincrement())
-  clinicId             Int?
-  phoneNumber          String
-  email                String?                @unique
-  password             String?
-  name                 String
-  role                 UserRole
-  status               UserStatus             @default(ACTIVE)
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  deletedAt            DateTime?
-  userProfilePicture   String?
-  doctorCode           String?
-  patientAppointments  Appointment[]          @relation("Patient")
-  doctorAppointments   Appointment[]          @relation("Doctor")
-  dieticianProfile     DieticianProfile?
-  doctorProfile        DoctorProfile?
-  healthMetrics        HealthMetric[]
-  labAssignments       LabAssignment[]        @relation("PatientLabAssignment")
-  labTechBookings      LabBooking[]           @relation("LabTech")
-  labPatientBookings   LabBooking[]           @relation("LabPatient")
-  labTechProfile       LabTechProfile?
-  aiSummaries          PatientAISummary?      @relation("PatientAISummaries")
-  patientPills         PatientPill[]
-  patientProfile       PatientProfile?
-  phlebotomistProfile  Phlebotomist?
-  doctorPrescriptions  Prescription[]         @relation("DoctorPrescriptions")
-  patientPrescriptions Prescription[]         @relation("PatientPrescriptions")
-  doctorTemplates      PrescriptionTemplate[] @relation("DoctorTemplates")
-  prescriptionTexts    PrescriptionText[]     @relation("PatientPrescriptionTexts")
-  patientTrendData     ReportTrendData[]      @relation("PatientTrendData")
-  testResultsReported  TestResult[]           @relation("TestResultReporter")
+  id                           Int                      @id @default(autoincrement())
+  clinicId                     Int?
+  phoneNumber                  String
+  email                        String?                  @unique
+  password                     String?
+  name                         String
+  role                         UserRole
+  status                       UserStatus               @default(ACTIVE)
+  createdAt                    DateTime                 @default(now())
+  updatedAt                    DateTime                 @updatedAt
+  deletedAt                    DateTime?
+  userProfilePicture           String?
+  doctorCode                   String?
+  patientAppointments          Appointment[]            @relation("Patient")
+  doctorAppointments           Appointment[]            @relation("Doctor")
+  dieticianProfile             DieticianProfile?
+  doctorProfile                DoctorProfile?
+  healthMetrics                HealthMetric[]
+  labAssignments               LabAssignment[]          @relation("PatientLabAssignment")
+  labTechBookings              LabBooking[]             @relation("LabTech")
+  labPatientBookings           LabBooking[]             @relation("LabPatient")
+  labTechProfile               LabTechProfile?
+  aiSummaries                  PatientAISummary?        @relation("PatientAISummaries")
+  patientPills                 PatientPill[]
+  patientProfile               PatientProfile?
+  phlebotomistProfile          Phlebotomist?
+  doctorPrescriptions          Prescription[]           @relation("DoctorPrescriptions")
+  patientPrescriptions         Prescription[]           @relation("PatientPrescriptions")
+  doctorTemplates              PrescriptionTemplate[]   @relation("DoctorTemplates")
+  prescriptionTexts            PrescriptionText[]       @relation("PatientPrescriptionTexts")
+  patientTrendData             ReportTrendData[]        @relation("PatientTrendData")
+  testResultsReported          TestResult[]             @relation("TestResultReporter")
   // LLM playground back-relations
-  llmPlaygroundProfilesCreated LlmPlaygroundProfile[] @relation("LlmPlaygroundProfileCreatedBy")
-  llmPlaygroundProfilesUpdated LlmPlaygroundProfile[] @relation("LlmPlaygroundProfileUpdatedBy")
-  llmPlaygroundRunsCreated     LlmPlaygroundRun[]     @relation("LlmPlaygroundRunCreatedBy")
-  llmDatasetsCreated           LlmDataset[]           @relation("LlmDatasetCreatedBy")
-  clinic               Clinic?                @relation(fields: [clinicId], references: [id])
+  llmPlaygroundProfilesCreated LlmPlaygroundProfile[]   @relation("LlmPlaygroundProfileCreatedBy")
+  llmPlaygroundProfilesUpdated LlmPlaygroundProfile[]   @relation("LlmPlaygroundProfileUpdatedBy")
+  llmPlaygroundRunsCreated     LlmPlaygroundRun[]       @relation("LlmPlaygroundRunCreatedBy")
+  llmDatasetsCreated           LlmDataset[]             @relation("LlmDatasetCreatedBy")
+  clinic                       Clinic?                  @relation(fields: [clinicId], references: [id])
   // Diet Plan relations
-  dietPlanRequestsAsPatient   DietPlanRequest[] @relation("DietPlanRequestPatient")
-  dietPlanRequestsAsDietician DietPlanRequest[] @relation("DietPlanRequestDietician")
-  dietPlansAsPatient          DietPlan[]        @relation("DietPlanPatient")
-  dietPlansAsDietician        DietPlan[]        @relation("DietPlanDietician")
-  dietMealTimingTemplates    DietMealTimingTemplate[] @relation("DietMealTimingTemplateDietician")
-  standaloneReportsAsPatient  StandaloneReport[] @relation("StandaloneReportPatient")
-  standaloneReportsUploaded   StandaloneReport[] @relation("StandaloneReportUploader")
+  dietPlanRequestsAsPatient    DietPlanRequest[]        @relation("DietPlanRequestPatient")
+  dietPlanRequestsAsDietician  DietPlanRequest[]        @relation("DietPlanRequestDietician")
+  dietPlansAsPatient           DietPlan[]               @relation("DietPlanPatient")
+  dietPlansAsDietician         DietPlan[]               @relation("DietPlanDietician")
+  dietMealTimingTemplates      DietMealTimingTemplate[] @relation("DietMealTimingTemplateDietician")
+  standaloneReportsAsPatient   StandaloneReport[]       @relation("StandaloneReportPatient")
+  standaloneReportsUploaded    StandaloneReport[]       @relation("StandaloneReportUploader")
   // Notifications
-  notifications              PatientNotification[]
-  deviceTokens              PatientDeviceToken[]
-  uploadedAppointmentImages AppointmentImage[] @relation("UploadedAppointmentImages")
+  notifications                PatientNotification[]
+  deviceTokens                 PatientDeviceToken[]
+  uploadedAppointmentImages    AppointmentImage[]       @relation("UploadedAppointmentImages")
 
   @@unique([phoneNumber, deletedAt])
   @@index([deletedAt])
@@ -98,29 +98,29 @@ model User {
 }
 
 model PatientProfile {
-  id               Int                   @id @default(autoincrement())
-  userId           Int                   @unique
-  subscriptionId   Int?
-  planId           Int?
-  age              Int
-  weight           Float?
-  height           Float?
-  gender           String
-  bloodGroup       String?
-  allergies        String?
-  personalHistory  String?
+  id                 Int                   @id @default(autoincrement())
+  userId             Int                   @unique
+  subscriptionId     Int?
+  planId             Int?
+  age                Int
+  weight             Float?
+  height             Float?
+  gender             String
+  bloodGroup         String?
+  allergies          String?
+  personalHistory    String?
   pastMedicalHistory String?
-  familyHistory    String?
-  medicalHistory   String?
-  emergencyContact String?
-  dateOfBirth      DateTime?             @db.Date
-  address          String?
-  profilePicture   String?
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
-  deletedAt        DateTime?
-  user             User                  @relation(fields: [userId], references: [id])
-  planTrackers     SubscriptionTracker[]
+  familyHistory      String?
+  medicalHistory     String?
+  emergencyContact   String?
+  dateOfBirth        DateTime?             @db.Date
+  address            String?
+  profilePicture     String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  deletedAt          DateTime?
+  user               User                  @relation(fields: [userId], references: [id])
+  planTrackers       SubscriptionTracker[]
 
   @@index([deletedAt])
 }
@@ -152,17 +152,17 @@ model DoctorProfile {
 }
 
 model DieticianProfile {
-  id                    Int       @id @default(autoincrement())
-  userId                Int       @unique
-  specialization        String?
-  experience            Int?
-  education            String?
-  certifications       String[]
-  availability         DieticianAvailability[]
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  deletedAt            DateTime?
-  user                 User      @relation(fields: [userId], references: [id])
+  id             Int                     @id @default(autoincrement())
+  userId         Int                     @unique
+  specialization String?
+  experience     Int?
+  education      String?
+  certifications String[]
+  availability   DieticianAvailability[]
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  deletedAt      DateTime?
+  user           User                    @relation(fields: [userId], references: [id])
 
   @@index([deletedAt])
 }
@@ -236,7 +236,7 @@ model Appointment {
   payment              Payment?             @relation("AppointmentPayment")
   prescription         Prescription?
   prescriptionTexts    PrescriptionText[]
-  images               AppointmentImage[] @relation("AppointmentImages")
+  images               AppointmentImage[]   @relation("AppointmentImages")
 
   @@index([deletedAt])
   @@index([patientId, isDietician])
@@ -443,32 +443,32 @@ model PatientPill {
 }
 
 model Prescription {
-  id                  Int                              @id @default(autoincrement())
-  appointmentId       Int                              @unique
-  patientId           Int
-  doctorId            Int
-  prescriptionNumber  String                           @unique
-  advice              String?
-  testsRequested      String?
+  id                      Int                              @id @default(autoincrement())
+  appointmentId           Int                              @unique
+  patientId               Int
+  doctorId                Int
+  prescriptionNumber      String                           @unique
+  advice                  String?
+  testsRequested          String?
   historyOfCurrentIllness String?
-  recommendedLinks   String?
-  nextVisitDate       DateTime?
-  nextVisitType       String?
-  nextVisitValue      Int?
-  investigationValues Json?
-  isTemplate          Boolean                          @default(false)
-  templateName        String?
-  createdAt           DateTime                         @default(now())
-  updatedAt           DateTime                         @updatedAt
-  deletedAt           DateTime?
-  appointment         Appointment                      @relation(fields: [appointmentId], references: [id])
-  doctor              User                             @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
-  patient             User                             @relation("PatientPrescriptions", fields: [patientId], references: [id])
-  complaints          PrescriptionComplaint[]
-  medicines           PrescriptionMedicine[]
-  systemicExamination PrescriptionSystemicExamination?
-  prescriptionText    PrescriptionText?
-  vitals              PrescriptionVitals?
+  recommendedLinks        String?
+  nextVisitDate           DateTime?
+  nextVisitType           String?
+  nextVisitValue          Int?
+  investigationValues     Json?
+  isTemplate              Boolean                          @default(false)
+  templateName            String?
+  createdAt               DateTime                         @default(now())
+  updatedAt               DateTime                         @updatedAt
+  deletedAt               DateTime?
+  appointment             Appointment                      @relation(fields: [appointmentId], references: [id])
+  doctor                  User                             @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
+  patient                 User                             @relation("PatientPrescriptions", fields: [patientId], references: [id])
+  complaints              PrescriptionComplaint[]
+  medicines               PrescriptionMedicine[]
+  systemicExamination     PrescriptionSystemicExamination?
+  prescriptionText        PrescriptionText?
+  vitals                  PrescriptionVitals?
 
   @@index([deletedAt])
   @@index([patientId])
@@ -593,6 +593,7 @@ enum TemplateScope {
   FULL
   COMPLAINTS
   MEDICINES
+  ADVICE
 }
 
 model TemplateComplaint {
@@ -759,17 +760,17 @@ model AppointmentReport {
 
 // Images captured for an appointment, categorized as BEFORE or AFTER
 model AppointmentImage {
-  id             Int                  @id @default(autoincrement())
-  appointmentId  Int
-  uploadedById   Int?
-  imageUrl       String
-  type           AppointmentImageType
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  deletedAt      DateTime?
+  id            Int                  @id @default(autoincrement())
+  appointmentId Int
+  uploadedById  Int?
+  imageUrl      String
+  type          AppointmentImageType
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  deletedAt     DateTime?
 
-  appointment    Appointment          @relation("AppointmentImages", fields: [appointmentId], references: [id])
-  uploadedBy     User?                @relation("UploadedAppointmentImages", fields: [uploadedById], references: [id])
+  appointment Appointment @relation("AppointmentImages", fields: [appointmentId], references: [id])
+  uploadedBy  User?       @relation("UploadedAppointmentImages", fields: [uploadedById], references: [id])
 
   @@index([appointmentId, type])
   @@index([uploadedById])
@@ -779,7 +780,7 @@ model AppointmentImage {
 model LabReportAnalysis {
   id               Int               @id @default(autoincrement())
   labBookingId     Int
-  labResultIndex   Int               @default(0)  // Index of the specific lab result being analyzed
+  labResultIndex   Int               @default(0) // Index of the specific lab result being analyzed
   reportUrl        String?
   extractedText    String?
   llmSummary       String?
@@ -793,13 +794,13 @@ model LabReportAnalysis {
   updatedAt        DateTime          @updatedAt
   deletedAt        DateTime?
   allValues        Json?
-  keyFindings      Json?             // Array of key clinical findings
-  recommendations  Json?             // Array of actionable recommendations
+  keyFindings      Json? // Array of key clinical findings
+  recommendations  Json? // Array of actionable recommendations
   urgency          String?           @default("ROUTINE") // ROUTINE, SOON, URGENT
   labBooking       LabBooking        @relation("LabBookingAnalyses", fields: [labBookingId], references: [id])
   trendDataEntries ReportTrendData[] @relation("SourceReportTrend")
 
-  @@unique([labBookingId, labResultIndex])  // Allow multiple analyses per booking, but unique per result index
+  @@unique([labBookingId, labResultIndex]) // Allow multiple analyses per booking, but unique per result index
   @@index([labBookingId])
   @@index([processingStatus])
   @@index([deletedAt])
@@ -836,59 +837,59 @@ model ReportTrendData {
 
 // LLM Playground and profile management
 model LlmPlaygroundProfile {
-  id                    Int       @id @default(autoincrement())
+  id                    Int      @id @default(autoincrement())
   name                  String
   description           String?
-  provider              String    @default("groq")
+  provider              String   @default("groq")
   model                 String
-  temperature           Float?    @default(0.2)
+  temperature           Float?   @default(0.2)
   topP                  Float?
   maxTokens             Int?
   seed                  Int?
-  stop                  String[]  @default([])
+  stop                  String[] @default([])
   systemPrompt          String?
   userPrompt            String?
   valuesPrompt          String?
   summaryPrompt         String?
   toolsConfig           Json?
-  isActive              Boolean   @default(true)
-  isProductionCandidate Boolean   @default(false)
-  version               Int       @default(1)
+  isActive              Boolean  @default(true)
+  isProductionCandidate Boolean  @default(false)
+  version               Int      @default(1)
   parentProfileId       Int?
   createdByUserId       Int?
   updatedByUserId       Int?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  parentProfile   LlmPlaygroundProfile? @relation("ProfileVersions", fields: [parentProfileId], references: [id])
+  parentProfile     LlmPlaygroundProfile?  @relation("ProfileVersions", fields: [parentProfileId], references: [id])
   versionedChildren LlmPlaygroundProfile[] @relation("ProfileVersions")
-  createdBy       User? @relation("LlmPlaygroundProfileCreatedBy", fields: [createdByUserId], references: [id])
-  updatedBy       User? @relation("LlmPlaygroundProfileUpdatedBy", fields: [updatedByUserId], references: [id])
-  runs            LlmPlaygroundRun[]
-  productionConfig LlmProductionConfig[] @relation("ActivePlaygroundProfile")
+  createdBy         User?                  @relation("LlmPlaygroundProfileCreatedBy", fields: [createdByUserId], references: [id])
+  updatedBy         User?                  @relation("LlmPlaygroundProfileUpdatedBy", fields: [updatedByUserId], references: [id])
+  runs              LlmPlaygroundRun[]
+  productionConfig  LlmProductionConfig[]  @relation("ActivePlaygroundProfile")
 
   @@index([isActive])
   @@index([isProductionCandidate])
 }
 
 model LlmPlaygroundRun {
-  id               Int       @id @default(autoincrement())
-  profileId        Int
-  inputType        String    // 'pdf' | 'text' | 'json' | 'prescriptionDraft'
-  status           String    // 'queued' | 'running' | 'completed' | 'failed'
-  sourceFileUrl    String?
-  rawInput         String?
-  finalOutput      String?
-  stageLogs        Json?
-  tokenUsage       Json?
-  costEstimate     Json?
-  meta             Json?
-  startedAt        DateTime  @default(now())
-  finishedAt       DateTime?
-  createdByUserId  Int?
+  id              Int       @id @default(autoincrement())
+  profileId       Int
+  inputType       String // 'pdf' | 'text' | 'json' | 'prescriptionDraft'
+  status          String // 'queued' | 'running' | 'completed' | 'failed'
+  sourceFileUrl   String?
+  rawInput        String?
+  finalOutput     String?
+  stageLogs       Json?
+  tokenUsage      Json?
+  costEstimate    Json?
+  meta            Json?
+  startedAt       DateTime  @default(now())
+  finishedAt      DateTime?
+  createdByUserId Int?
 
-  profile          LlmPlaygroundProfile @relation(fields: [profileId], references: [id])
-  createdBy        User?                @relation("LlmPlaygroundRunCreatedBy", fields: [createdByUserId], references: [id])
+  profile   LlmPlaygroundProfile @relation(fields: [profileId], references: [id])
+  createdBy User?                @relation("LlmPlaygroundRunCreatedBy", fields: [createdByUserId], references: [id])
 
   @@index([profileId])
   @@index([status])
@@ -900,19 +901,19 @@ model LlmProductionConfig {
   activeProfileId Int?
   updatedAt       DateTime @updatedAt
 
-  activeProfile   LlmPlaygroundProfile? @relation("ActivePlaygroundProfile", fields: [activeProfileId], references: [id])
+  activeProfile LlmPlaygroundProfile? @relation("ActivePlaygroundProfile", fields: [activeProfileId], references: [id])
 }
 
 model LlmDataset {
-  id              Int       @id @default(autoincrement())
+  id              Int              @id @default(autoincrement())
   name            String
   description     String?
   createdByUserId Int?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   items           LlmDatasetItem[]
 
-  createdBy       User?     @relation("LlmDatasetCreatedBy", fields: [createdByUserId], references: [id])
+  createdBy User? @relation("LlmDatasetCreatedBy", fields: [createdByUserId], references: [id])
 
   @@index([name])
 }
@@ -920,13 +921,13 @@ model LlmDataset {
 model LlmDatasetItem {
   id           Int      @id @default(autoincrement())
   datasetId    Int
-  inputType    String   // 'pdf' | 'text' | 'json'
+  inputType    String // 'pdf' | 'text' | 'json'
   inputText    String?
   inputFileUrl String?
   expected     Json?
   createdAt    DateTime @default(now())
 
-  dataset      LlmDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  dataset LlmDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
 
   @@index([datasetId])
 }
@@ -940,19 +941,19 @@ enum DietPlanRequestStatus {
 }
 
 model DietPlanRequest {
-  id           Int       @id @default(autoincrement())
-  patientId    Int
-  dieticianId  Int
-  complaint    String
-  status       DietPlanRequestStatus @default(PENDING)
-  planId       Int?      @unique
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
+  id          Int                   @id @default(autoincrement())
+  patientId   Int
+  dieticianId Int
+  complaint   String
+  status      DietPlanRequestStatus @default(PENDING)
+  planId      Int?                  @unique
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  deletedAt   DateTime?
 
-  patient      User      @relation("DietPlanRequestPatient", fields: [patientId], references: [id])
-  dietician    User      @relation("DietPlanRequestDietician", fields: [dieticianId], references: [id])
-  dietPlan     DietPlan?
+  patient   User      @relation("DietPlanRequestPatient", fields: [patientId], references: [id])
+  dietician User      @relation("DietPlanRequestDietician", fields: [dieticianId], references: [id])
+  dietPlan  DietPlan?
 
   @@index([patientId, deletedAt])
   @@index([dieticianId, deletedAt])
@@ -963,23 +964,23 @@ model DietPlanRequest {
 }
 
 model DietPlan {
-  id           Int       @id @default(autoincrement())
-  patientId    Int
-  dieticianId  Int
-  title        String?
-  notes        String?
-  startDate    DateTime?
-  endDate      DateTime?
-  meals        Json
+  id                Int       @id @default(autoincrement())
+  patientId         Int
+  dieticianId       Int
+  title             String?
+  notes             String?
+  startDate         DateTime?
+  endDate           DateTime?
+  meals             Json
   customMealTimings Json? // Store custom meal timing names and order
-  requestId    Int?      @unique
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
+  requestId         Int?      @unique
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
 
-  patient      User      @relation("DietPlanPatient", fields: [patientId], references: [id])
-  dietician    User      @relation("DietPlanDietician", fields: [dieticianId], references: [id])
-  request      DietPlanRequest? @relation(fields: [requestId], references: [id])
+  patient   User             @relation("DietPlanPatient", fields: [patientId], references: [id])
+  dietician User             @relation("DietPlanDietician", fields: [dieticianId], references: [id])
+  request   DietPlanRequest? @relation(fields: [requestId], references: [id])
 
   @@index([patientId, deletedAt])
   @@index([dieticianId, deletedAt])
@@ -989,16 +990,16 @@ model DietPlan {
 
 // Custom meal timing templates for dieticians
 model DietMealTimingTemplate {
-  id           Int       @id @default(autoincrement())
-  dieticianId  Int
-  name         String    // Template name
-  mealTimings  Json      // Array of meal timing objects with name, order, icon, etc.
-  isDefault    Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
+  id          Int       @id @default(autoincrement())
+  dieticianId Int
+  name        String // Template name
+  mealTimings Json // Array of meal timing objects with name, order, icon, etc.
+  isDefault   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 
-  dietician    User      @relation("DietMealTimingTemplateDietician", fields: [dieticianId], references: [id])
+  dietician User @relation("DietMealTimingTemplateDietician", fields: [dieticianId], references: [id])
 
   @@index([dieticianId, deletedAt])
   @@index([deletedAt])
@@ -1058,23 +1059,23 @@ enum TrendSeverity {
 
 // Standalone reports uploaded by doctors/patients (not tied to lab bookings)
 model StandaloneReport {
-  id               Int               @id @default(autoincrement())
+  id               Int          @id @default(autoincrement())
   patientId        Int
-  uploadedByUserId Int               // Who uploaded the report (doctor or patient)
-  reportType       String            // 'lab_report', 'prescription', 'medical_document'
+  uploadedByUserId Int // Who uploaded the report (doctor or patient)
+  reportType       String // 'lab_report', 'prescription', 'medical_document'
   fileName         String
   fileUrl          String
-  fileSize         Int               // in bytes
+  fileSize         Int // in bytes
   mimeType         String
-  status           ReportStatus      @default(PENDING)
+  status           ReportStatus @default(PENDING)
   processingError  String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
   deletedAt        DateTime?
 
-  patient          User              @relation("StandaloneReportPatient", fields: [patientId], references: [id])
-  uploadedBy       User              @relation("StandaloneReportUploader", fields: [uploadedByUserId], references: [id])
-  reportAnalyses   StandaloneReportAnalysis[]
+  patient        User                       @relation("StandaloneReportPatient", fields: [patientId], references: [id])
+  uploadedBy     User                       @relation("StandaloneReportUploader", fields: [uploadedByUserId], references: [id])
+  reportAnalyses StandaloneReportAnalysis[]
 
   @@index([patientId, deletedAt])
   @@index([uploadedByUserId, deletedAt])
@@ -1084,26 +1085,26 @@ model StandaloneReport {
 
 // Analysis results for standalone reports
 model StandaloneReportAnalysis {
-  id               Int               @id @default(autoincrement())
+  id               Int              @id @default(autoincrement())
   reportId         Int
-  analysisType     String            // 'lab_analysis', 'prescription_analysis', 'document_summary'
+  analysisType     String // 'lab_analysis', 'prescription_analysis', 'document_summary'
   extractedText    String?
   llmSummary       String?
-  allValues        Json?             // For lab reports
-  criticalValues   Json?             // For lab reports
-  keyFindings      Json?             // For medical documents
-  recommendations  Json?             // For medical documents
-  urgency          String?           // For medical documents
+  allValues        Json? // For lab reports
+  criticalValues   Json? // For lab reports
+  keyFindings      Json? // For medical documents
+  recommendations  Json? // For medical documents
+  urgency          String? // For medical documents
   trendAnalysis    Json?
   llmModel         String?
-  processingStatus ProcessingStatus  @default(PENDING)
+  processingStatus ProcessingStatus @default(PENDING)
   processingError  String?
   processedAt      DateTime?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
   deletedAt        DateTime?
 
-  report           StandaloneReport  @relation(fields: [reportId], references: [id])
+  report StandaloneReport @relation(fields: [reportId], references: [id])
 
   @@index([reportId, deletedAt])
   @@index([processingStatus, deletedAt])
@@ -1124,37 +1125,37 @@ enum AppointmentImageType {
 
 // Push Notifications System
 model PatientNotification {
-  id          Int               @id @default(autoincrement())
-  patientId   Int
-  type        NotificationType
-  title       String
-  message     String
-  data        Json?             // Additional payload data
-  isRead      Boolean           @default(false)
-  sentAt      DateTime          @default(now())
-  readAt      DateTime?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  deletedAt   DateTime?
-  
-  patient     User              @relation(fields: [patientId], references: [id])
-  
+  id        Int              @id @default(autoincrement())
+  patientId Int
+  type      NotificationType
+  title     String
+  message   String
+  data      Json? // Additional payload data
+  isRead    Boolean          @default(false)
+  sentAt    DateTime         @default(now())
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  deletedAt DateTime?
+
+  patient User @relation(fields: [patientId], references: [id])
+
   @@index([patientId, isRead])
   @@index([type, sentAt])
   @@index([deletedAt])
 }
 
 model PatientDeviceToken {
-  id          Int       @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   patientId   Int
   deviceToken String
-  platform    String    // 'ios', 'android', 'web'
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
-  patient     User      @relation(fields: [patientId], references: [id])
-  
+  platform    String // 'ios', 'android', 'web'
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  patient User @relation(fields: [patientId], references: [id])
+
   @@unique([patientId, deviceToken])
   @@index([patientId, isActive])
 }

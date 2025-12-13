@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       );
     }
     const { searchParams } = new URL(request.url);
-    const type = (searchParams.get('type') || 'all').toLowerCase(); // 'complaints' | 'medicines' | 'all'
+    const type = (searchParams.get('type') || 'all').toLowerCase(); // 'complaints' | 'medicines' | 'advice' | 'all'
     
     const whereBase: any = {
       doctorId: doctorId,
@@ -50,6 +50,9 @@ export async function GET(request: NextRequest) {
     } else if (type === 'medicines') {
       // Only medicines templates based on scope
       whereBase.templateScope = 'MEDICINES';
+    } else if (type === 'advice') {
+      // Only advice templates based on scope
+      whereBase.templateScope = 'ADVICE';
     }
 
     const templates = await prisma.prescriptionTemplate.findMany({
@@ -107,10 +110,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine scope based on which arrays are present
+    // Determine scope based on which arrays/data are present
     const hasComplaints = complaintsArr.length > 0;
     const hasMedicines = medicinesArr.length > 0;
-    const templateScope = hasComplaints && hasMedicines ? 'FULL' : hasComplaints ? 'COMPLAINTS' : hasMedicines ? 'MEDICINES' : 'FULL';
+    const hasAdvice = templateData.advice && templateData.advice.trim().length > 0;
+    
+    let templateScope: string;
+    if (hasComplaints && hasMedicines && hasAdvice) {
+      templateScope = 'FULL';
+    } else if (hasComplaints && hasMedicines) {
+      templateScope = 'FULL';
+    } else if (hasComplaints) {
+      templateScope = 'COMPLAINTS';
+    } else if (hasMedicines) {
+      templateScope = 'MEDICINES';
+    } else if (hasAdvice) {
+      templateScope = 'ADVICE';
+    } else {
+      templateScope = 'FULL';
+    }
 
     const template = await prisma.prescriptionTemplate.create({
       data: {
