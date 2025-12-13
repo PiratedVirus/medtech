@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
 import { cacheUtils, CACHE_KEYS, CACHE_TTL } from "@/lib/redis";
+import { getCachedPathologyAppointments } from "@/lib/data-cache";
 
 export async function GET(request: Request) {
   try {
@@ -26,6 +27,17 @@ export async function GET(request: Request) {
     });
     if (!user || user.role !== "PATHOLOGY") {
       return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    // ✅ CACHE: Try to get pathology appointments from cache first
+    try {
+      const cachedAppointments = await getCachedPathologyAppointments();
+      if (cachedAppointments) {
+        console.log('[PATHOLOGY] Returning cached appointments');
+        return NextResponse.json(cachedAppointments);
+      }
+    } catch (cacheError) {
+      console.log('[PATHOLOGY] Cache miss or error, fetching from database:', cacheError);
     }
 
     // Use Redis cache for pathology appointments (3-minute TTL)

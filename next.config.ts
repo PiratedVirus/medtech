@@ -73,7 +73,6 @@ const nextConfig: NextConfig = {
         '@react-pdf/renderer': 'commonjs @react-pdf/renderer',
         'firebase-admin': 'commonjs firebase-admin',
         'web-push': 'commonjs web-push',
-        'ioredis': 'commonjs ioredis',
         '@upstash/redis': 'commonjs @upstash/redis',
         'axios': 'commonjs axios',
         'bottleneck': 'commonjs bottleneck',
@@ -160,7 +159,6 @@ const nextConfig: NextConfig = {
     'web-push',
     
     // Database & Caching
-    'ioredis',
     '@upstash/redis',
     
     // HTTP & Rate Limiting

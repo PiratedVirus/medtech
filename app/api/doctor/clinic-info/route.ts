@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getDoctorClinicId } from "@/lib/doctor-clinic-middleware";
+import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
 
-export async function GET(request: NextRequest) {
+const getClinicInfoHandler = async (request: NextRequest) => {
   try {
     // Get doctor's clinic ID
     const clinicId = await getDoctorClinicId(request);
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      clinic: clinic
+      data: { clinic: clinic }
     });
   } catch (error) {
     console.error("Error fetching clinic info:", error);
@@ -52,4 +53,7 @@ export async function GET(request: NextRequest) {
       error: "Failed to fetch clinic information" 
     }, { status: 500 });
   }
-}
+};
+
+// ✅ UNIFIED CACHE: Apply cache middleware to GET endpoint
+export const GET = withUnifiedCache(getCacheConfig('/api/doctor/clinic-info'))(getClinicInfoHandler);

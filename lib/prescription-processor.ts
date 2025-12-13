@@ -17,6 +17,7 @@ export interface StructuredPrescriptionData {
   advice?: string;
   testsRequested?: string;
   nextVisitDate?: Date;
+  historyOfCurrentIllness?: string;
   complaints?: Array<{
     complaintText: string;
     severity: string;
@@ -95,13 +96,10 @@ export class PrescriptionProcessor {
       lines.push('');
     }
     
-    // History
-    if (prescription.history) {
-      lines.push('MEDICAL HISTORY:');
-      if (prescription.history.allergies) lines.push(`Allergies: ${prescription.history.allergies}`);
-      if (prescription.history.personalHistory) lines.push(`Personal History: ${prescription.history.personalHistory}`);
-      if (prescription.history.pastMedicalHistory) lines.push(`Past Medical History: ${prescription.history.pastMedicalHistory}`);
-      if (prescription.history.familyHistory) lines.push(`Family History: ${prescription.history.familyHistory}`);
+    // History of Presenting Illness
+    if (prescription.historyOfCurrentIllness) {
+      lines.push('History of Presenting Illness:');
+      lines.push(prescription.historyOfCurrentIllness);
       lines.push('');
     }
     

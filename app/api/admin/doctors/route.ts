@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAdminClinicId, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
+import { invalidateAllDoctorCaches } from "@/lib/cache-invalidation";
+import { SmartCacheInvalidation } from "@/lib/cache-dependencies";
+import { CacheEvents } from "@/lib/cache-events";
 
 export async function GET(request: NextRequest) {
   try {
@@ -187,6 +190,16 @@ export async function POST(request: Request) {
         user: { connect: { id: Number(data.userId) } },
       },
     });
+
+    // ✅ HIGH PRIORITY: Invalidate doctor list cache after creating new doctor
+    try {
+      await invalidateAllDoctorCaches(Number(doctor.id), data.clinicId ? Number(data.clinicId) : undefined);
+      console.log(`[DOCTOR-CREATE] Cache invalidated for new doctor ${doctor.id}`);
+    } catch (cacheError) {
+      console.error('[DOCTOR-CREATE] Error invalidating doctor cache:', cacheError);
+      // Don't fail the request if cache invalidation fails
+    }
+
     return NextResponse.json(doctor);
   } catch (error: any) {
     console.error("Error creating doctor:", error);
@@ -263,6 +276,39 @@ export async function PUT(request: Request) {
       });
     });
 
+    // ✅ EVENT-DRIVEN: Emit doctor update event
+    try {
+      await CacheEvents.doctorUpdated(
+        Number(id), 
+        { 
+          consultationFee: data.consultationFee,
+          specialty: data.specialty,
+          isDietician: isDietician,
+          status: status
+        }, 
+        clinicId ? Number(clinicId) : undefined
+      );
+      console.log(`[DOCTOR-UPDATE] Event-driven cache invalidation completed for doctor ${id}`);
+    } catch (cacheError) {
+      console.error('[DOCTOR-UPDATE] Error in event-driven cache invalidation:', cacheError);
+      // Fallback to smart cache invalidation
+      try {
+        await SmartCacheInvalidation.onDoctorUpdate(
+          Number(id), 
+          { 
+            consultationFee: data.consultationFee,
+            specialty: data.specialty,
+            isDietician: isDietician,
+            status: status
+          }, 
+          clinicId ? Number(clinicId) : undefined
+        );
+        console.log(`[DOCTOR-UPDATE] Fallback smart cache invalidation completed for doctor ${id}`);
+      } catch (fallbackError) {
+        console.error('[DOCTOR-UPDATE] Fallback cache invalidation also failed:', fallbackError);
+      }
+    }
+
     return NextResponse.json(result);
   } catch (error) {
     console.error(error);
@@ -292,6 +338,16 @@ export async function DELETE(request: Request) {
         });
       });
 
+      // ✅ HIGH PRIORITY: Invalidate doctor caches after bulk deletion
+      try {
+        for (const doctorId of ids) {
+          await invalidateAllDoctorCaches(Number(doctorId));
+        }
+        console.log(`[DOCTOR-DELETE] Cache invalidated for deleted doctors: ${ids.join(', ')}`);
+      } catch (cacheError) {
+        console.error('[DOCTOR-DELETE] Error invalidating doctor cache:', cacheError);
+      }
+
       return NextResponse.json({ message: "Doctors deleted successfully" });
     } else if (body.id) {
       const id = Number(body.id);
@@ -303,6 +359,15 @@ export async function DELETE(request: Request) {
           data: { role: 'NOT_SET' },
         });
       });
+
+      // ✅ HIGH PRIORITY: Invalidate doctor cache after single deletion
+      try {
+        await invalidateAllDoctorCaches(Number(id));
+        console.log(`[DOCTOR-DELETE] Cache invalidated for deleted doctor ${id}`);
+      } catch (cacheError) {
+        console.error('[DOCTOR-DELETE] Error invalidating doctor cache:', cacheError);
+      }
+
       return NextResponse.json({ message: "Doctor deleted successfully" });
     } else {
       return NextResponse.json({ error: "No valid identifier provided" }, { status: 400 });

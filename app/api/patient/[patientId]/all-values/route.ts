@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
 
-export async function GET(
+const getAllValuesHandler = async (
   _request: NextRequest,
   { params }: { params: Promise<{ patientId: string }> }
-) {
+) => {
   try {
     const { patientId: patientIdParam } = await params;
     const patientId = Number(patientIdParam);
@@ -20,14 +21,9 @@ export async function GET(
         labResult: { isEmpty: false },
       },
       include: {
-        labAssignments: {
-          where: { status: 'COMPLETED', deletedAt: null },
-          include: { 
-            labBooking: {
-              include: { reportAnalyses: true }
-            }
-          },
-        },
+        reportAnalyses: {
+          where: { deletedAt: null }
+        }
       },
       orderBy: { labDate: "desc" },
     });
@@ -36,8 +32,7 @@ export async function GET(
     console.log('[ALL-VALUES][GET] Lab bookings with analyses:', labBookings.map(b => ({
       id: b.id,
       labDate: b.labDate,
-      assignmentsCount: b.labAssignments.length,
-      analysesCount: b.labAssignments.reduce((sum, a) => sum + (a.labBooking?.reportAnalyses?.length || 0), 0)
+      analysesCount: b.reportAnalyses?.length || 0
     })));
 
     // Also fetch standalone reports with their analyses
@@ -126,6 +121,8 @@ export async function GET(
       reportId?: number;
       labDate?: Date;
       labBookingId?: number;
+      isTracked?: boolean;
+      isCritical?: boolean; // Flag to indicate if this came from critical values
     }
 
     const criticalValuesMap = new Map<string, ValueEntry[]>();
@@ -133,43 +130,45 @@ export async function GET(
 
     // Process lab booking values
     for (const booking of labBookings) {
-      for (const assignment of booking.labAssignments) {
-        if (assignment.labBooking?.reportAnalyses) {
-          for (const analysis of assignment.labBooking.reportAnalyses) {
-            const criticalList: any[] = Array.isArray(analysis?.criticalValues) ? analysis.criticalValues : [];
-            const allList: any[] = Array.isArray(analysis?.allValues) ? analysis.allValues : [];
-            
-            // Process critical values
-            for (const item of criticalList) {
-              if (item.parameter && item.value) {
-                const key = item.parameter.toLowerCase();
-                if (!criticalValuesMap.has(key)) {
-                  criticalValuesMap.set(key, []);
-                }
-                criticalValuesMap.get(key)!.push({
-                  ...item,
-                  labDate: booking.labDate,
-                  labBookingId: booking.id,
-                  source: 'lab_report'
-                });
-              }
+      const analyses: any[] = Array.isArray(booking.reportAnalyses) ? booking.reportAnalyses : [];
+      
+      for (const analysis of analyses) {
+        if (!analysis) continue;
+        
+        const criticalList: any[] = Array.isArray(analysis?.criticalValues) ? analysis.criticalValues : [];
+        const allList: any[] = Array.isArray(analysis?.allValues) ? analysis.allValues : [];
+        
+        // Process critical values
+        for (const item of criticalList) {
+          if (item.parameter && item.value) {
+            const key = item.parameter.toLowerCase();
+            if (!criticalValuesMap.has(key)) {
+              criticalValuesMap.set(key, []);
             }
-            
-            // Process all values
-            for (const item of allList) {
-              if (item.parameter && item.value) {
-                const key = item.parameter.toLowerCase();
-                if (!allValuesMap.has(key)) {
-                  allValuesMap.set(key, []);
-                }
-                allValuesMap.get(key)!.push({
-                  ...item,
-                  labDate: booking.labDate,
-                  labBookingId: booking.id,
-                  source: 'lab_report'
-                });
-              }
+            criticalValuesMap.get(key)!.push({
+              ...item,
+              labDate: booking.labDate,
+              labBookingId: booking.id,
+              source: 'lab_report',
+              isCritical: true // Mark as critical value
+            });
+          }
+        }
+        
+        // Process all values
+        for (const item of allList) {
+          if (item.parameter && item.value) {
+            const key = item.parameter.toLowerCase();
+            if (!allValuesMap.has(key)) {
+              allValuesMap.set(key, []);
             }
+            allValuesMap.get(key)!.push({
+              ...item,
+              labDate: booking.labDate,
+              labBookingId: booking.id,
+              source: 'lab_report',
+              isCritical: false // Mark as non-critical value
+            });
           }
         }
       }
@@ -192,7 +191,8 @@ export async function GET(
               ...item,
               reportDate: report.createdAt,
               reportId: report.id,
-              source: 'standalone_report'
+              source: 'standalone_report',
+              isCritical: true // Mark as critical value
             });
           }
         }
@@ -208,7 +208,8 @@ export async function GET(
               ...item,
               reportDate: report.createdAt,
               reportId: report.id,
-              source: 'standalone_report'
+              source: 'standalone_report',
+              isCritical: false // Mark as non-critical value
             });
           }
         }
@@ -245,9 +246,26 @@ export async function GET(
         )
       );
 
+      // Determine if parameter is tracked by checking the isTracked property in values
+      // Critical values: tracked if isTracked !== false (defaults to true)
+      // All values: tracked if isTracked === true (defaults to false)
+      const isTracked = uniqueValues.some(value => {
+        const valueEntry = value as ValueEntry;
+        const isCritical = valueEntry.isCritical === true;
+        
+        if (isCritical) {
+          // For critical values, tracked if isTracked !== false (defaults to true)
+          // If isTracked is undefined, it defaults to true for critical values
+          return valueEntry.isTracked !== false;
+        } else {
+          // For all values, tracked only if isTracked === true (defaults to false)
+          return valueEntry.isTracked === true;
+        }
+      });
+
       return {
         parameter: parameter,
-        isTracked: criticalValuesMap.has(parameter), // Tracked if it has critical values
+        isTracked: isTracked,
         values: uniqueValues.sort((a, b) => {
           const dateA = a.labDate || new Date(a.reportDate || 0);
           const dateB = b.labDate || new Date(b.reportDate || 0);
@@ -267,4 +285,7 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+};
+
+// ✅ UNIFIED CACHE: Apply cache middleware to GET endpoint
+export const GET = withUnifiedCache(getCacheConfig('/api/patient/[patientId]/all-values'))(getAllValuesHandler);

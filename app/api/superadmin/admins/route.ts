@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
 
-export async function GET() {
+const getAdminsHandler = async () => {
   try {
     const admins = await prisma.user.findMany({
       where: {
@@ -30,7 +31,10 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+};
+
+// ✅ UNIFIED CACHE: Apply cache middleware to GET endpoint
+export const GET = withUnifiedCache(getCacheConfig('/api/superadmin/admins'))(getAdminsHandler);
 
 export async function POST(request: Request) {
   try {

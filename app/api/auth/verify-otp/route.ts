@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { checkUserExists } from "@/lib/check-user";
 import { msg91Service } from "@/lib/msg91-service";
 import { clearOtpRequest } from "@/lib/otp-cache";
+import { warmDoctorCaches } from "@/lib/cache-warming";
 
 // JWT + cookie lifetime (in days)
 const TOKEN_LIFETIME_DAYS = 15;   // ⬅️ change this to whatever “more than a week” means to you
@@ -63,6 +64,13 @@ export async function POST(request: Request) {
         maxAge: TOKEN_LIFETIME_SECONDS,
         path: "/",
       });
+      
+      // Warm doctor caches in background (non-blocking)
+      if (userRole === "DOCTOR" || userRole === "DIETICIAN") {
+        warmDoctorCaches(plusAddedPhoneNumber).catch((error) => {
+          console.error("[AUTH] Cache warming failed (non-critical):", error);
+        });
+      }
       
       return response;
     } else {

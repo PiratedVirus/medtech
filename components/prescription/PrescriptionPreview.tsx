@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 
 interface PrescriptionPreviewProps {
   prescriptionData: any;
@@ -39,6 +40,35 @@ export default function PrescriptionPreview({
       minute: "2-digit",
     });
   };
+
+  const [qrLinks, setQrLinks] = useState<{ link: string; dataUrl: string }[]>([]);
+
+  const recommendedLinks = Array.isArray(prescriptionData.recommendedLinks) 
+    ? prescriptionData.recommendedLinks 
+    : (typeof prescriptionData.recommendedLinks === 'string' && prescriptionData.recommendedLinks.trim() 
+        ? prescriptionData.recommendedLinks.split(',').map((link: string) => link.trim()).filter(Boolean)
+        : []);
+
+  useEffect(() => {
+    const generateQRCodes = async () => {
+      try {
+        const results: { link: string; dataUrl: string }[] = [];
+        for (const link of recommendedLinks) {
+          const dataUrl = await QRCode.toDataURL(link, { margin: 1, width: 120 });
+          results.push({ link, dataUrl });
+        }
+        setQrLinks(results);
+      } catch (error) {
+        console.error("Failed to generate QR codes", error);
+        setQrLinks([]);
+      }
+    };
+    if (recommendedLinks.length) {
+      generateQRCodes();
+    } else {
+      setQrLinks([]);
+    }
+  }, [recommendedLinks]);
 
   return (
     <div className="bg-white p-8 font-sans text-sm text-gray-800">
@@ -79,7 +109,22 @@ export default function PrescriptionPreview({
             <span><span className="font-semibold">Pulse</span> {prescriptionData.vitals?.pulse || '72'} bpm</span>
             <span><span className="font-semibold">Height</span> {prescriptionData.vitals?.height || '185'} cm</span>
             <span><span className="font-semibold">Weight</span> {prescriptionData.vitals?.weight || '90'} kgs</span>
-            <span><span className="font-semibold">Random Blood Sugar</span> 150 mg/dL</span>
+          </div>
+        )}
+
+        {Array.isArray(prescriptionData.investigationValues) && prescriptionData.investigationValues.length > 0 && (
+          <div className="mb-3">
+            <p className="font-semibold mb-2">Tracked Values:</p>
+            <div className="space-y-1 text-sm">
+              {prescriptionData.investigationValues.map((v: any, idx: number) => (
+                <div key={idx} className="text-gray-800">
+                  <span className="font-semibold">{v.parameter || "Value"}:</span>{" "}
+                  <span>
+                    {`${v.value}${v.unit ? ` ${v.unit}` : ""}`}{v.severity ? ` (${v.severity})` : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -107,6 +152,49 @@ export default function PrescriptionPreview({
                   </p>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* History of Presenting Illness */}
+        {visibleSections.history && prescriptionData.historyOfCurrentIllness && (
+          <div className="mb-4">
+            <p className="font-semibold mb-2">History of Presenting Illness:</p>
+            <div className="ml-4 text-sm">
+              <p>{prescriptionData.historyOfCurrentIllness}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Medical History Section */}
+        {visibleSections.history && (
+          <div className="mb-4">
+            <p className="font-semibold mb-2">Medical History:</p>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              {prescriptionData.history?.allergies && (
+                <div>
+                  <span className="font-semibold">Allergies:</span>
+                  <p className="ml-2">{prescriptionData.history.allergies}</p>
+                </div>
+              )}
+              {prescriptionData.history?.personalHistory && (
+                <div>
+                  <span className="font-semibold">Personal History:</span>
+                  <p className="ml-2">{prescriptionData.history.personalHistory}</p>
+                </div>
+              )}
+              {prescriptionData.history?.pastMedicalHistory && (
+                <div>
+                  <span className="font-semibold">Past Medical History:</span>
+                  <p className="ml-2">{prescriptionData.history.pastMedicalHistory}</p>
+                </div>
+              )}
+              {prescriptionData.history?.familyHistory && (
+                <div>
+                  <span className="font-semibold">Family History:</span>
+                  <p className="ml-2">{prescriptionData.history.familyHistory}</p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -152,6 +240,20 @@ export default function PrescriptionPreview({
           <div className="text-sm">
             {prescriptionData.advice.split('\n').map((line: string, index: number) => (
               line.trim() && <p key={index} className="mb-1">• {line.trim()}</p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recommended Links as QR Codes */}
+      {qrLinks.length > 0 && (
+        <div className="mb-4">
+          <p className="font-semibold mb-2">Recommended Links:</p>
+          <div className="flex flex-wrap gap-4">
+            {qrLinks.map(({ link, dataUrl }, index) => (
+              <div key={index} className="flex flex-col items-center gap-1">
+                <Image src={dataUrl} alt={`QR ${index + 1}`} width={90} height={90} />
+              </div>
             ))}
           </div>
         </div>

@@ -22,6 +22,7 @@ import PatientInsightsModal from "@/components/doctors/patients/PatientInsightsM
 import PatientSummarySection from "@/components/doctors/patients/PatientSummarySection";
 import PatientPillsRow from "@/components/doctors/patients/PatientPillsRow";
 import PatientAISummaryRow from "@/components/doctors/patients/PatientAISummaryRow";
+import BeforeAfterImagesSection from "@/components/doctors/patients/BeforeAfterImagesSection";
 
 // Type Definitions
 interface PatientProfile {
@@ -255,6 +256,12 @@ const DoctorPatientDetailsClient = ({ patientId }: DoctorPatientDetailsClientPro
           <PastAppointmentRow appointments={patientDetails.doctorAppointments} patientId={patientId} />
           <HealthToolsRow onOpenInsights={() => setInsightsOpen(true)} />
         </div>
+
+        {/* Before/After Images Section */}
+        <BeforeAfterImagesSection 
+          patientId={patientId}
+          appointments={patientDetails.doctorAppointments}
+        />
 
         {/* Health Insights */}
         {/* <div className="col-span-full mt-6">

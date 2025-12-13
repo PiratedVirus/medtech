@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAdminClinicId, createClinicFilter, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
+import { getCachedDashboardSummary } from "@/lib/data-cache";
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,6 +10,17 @@ export async function GET(request: NextRequest) {
     const clinicId = getAdminClinicId(request);
     if (!clinicId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // ✅ CACHE: Try to get dashboard summary from cache first
+    try {
+      const cachedSummary = await getCachedDashboardSummary();
+      if (cachedSummary) {
+        console.log('[DASHBOARD] Returning cached summary for clinic:', clinicId);
+        return NextResponse.json(cachedSummary);
+      }
+    } catch (cacheError) {
+      console.log('[DASHBOARD] Cache miss or error, fetching from database:', cacheError);
     }
 
     // Create clinic filters

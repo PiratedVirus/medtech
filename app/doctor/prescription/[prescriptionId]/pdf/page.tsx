@@ -48,6 +48,7 @@ interface PrescriptionData {
   }>;
   advice: string;
   testsRequested: string;
+  recommendedLinks?: string[];
   nextVisit: {
     type: "days" | "weeks" | "months";
     value: number;
@@ -95,7 +96,63 @@ export default function PrescriptionPDFPage() {
       }
       
       const result = await response.json();
-      setPrescriptionData(result.data);
+      const prescription = result.data;
+      
+      // Transform prescription data to match expected format, including recommendedLinks
+      setPrescriptionData({
+        id: prescription.id.toString(),
+        complaints: (prescription.complaints || []).map((c: any) => ({
+          id: c.id.toString(),
+          text: c.complaintText,
+          severity: c.severity,
+          daysSince: c.daysSince,
+        })),
+        vitals: prescription.vitals ? {
+          bloodPressure: prescription.vitals.bloodPressure || "",
+          pulse: prescription.vitals.pulse?.toString() || "",
+          height: prescription.vitals.height?.toString() || "",
+          weight: prescription.vitals.weight?.toString() || "",
+        } : {
+          bloodPressure: "",
+          pulse: "",
+          height: "",
+          weight: "",
+        },
+        history: {
+          allergies: "",
+          personalHistory: "",
+          pastMedicalHistory: "",
+          familyHistory: "",
+        },
+        systemicExamination: prescription.systemicExamination ? {
+          general: prescription.systemicExamination.general || "",
+          cvs: prescription.systemicExamination.cvs || "NAD",
+          rs: prescription.systemicExamination.rs || "NAD",
+          cns: prescription.systemicExamination.cns || "NAD",
+        } : {
+          general: "",
+          cvs: "NAD",
+          rs: "NAD",
+          cns: "NAD",
+        },
+        medicines: (prescription.medicines || []).map((m: any) => ({
+          id: m.id.toString(),
+          name: m.medicineName,
+          frequency: m.frequency,
+          medicineTime: m.medicineTime,
+          duration: m.duration,
+          quantity: m.quantity?.toString() || "",
+          instructions: m.instructions || "",
+        })),
+        advice: prescription.advice || "",
+        testsRequested: prescription.testsRequested || "",
+        recommendedLinks: prescription.recommendedLinks ? prescription.recommendedLinks.split(',').filter((link: string) => link.trim() !== '') : [],
+        nextVisit: {
+          type: prescription.nextVisitType || "days",
+          value: prescription.nextVisitValue || 7,
+          date: prescription.nextVisitDate ? new Date(prescription.nextVisitDate) : undefined,
+        },
+      });
     } catch (error) {
       console.error("Error fetching prescription:", error);
       toast({

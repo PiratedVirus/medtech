@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { invalidateAllUserCaches, getUserPhoneNumber } from './cache-invalidation';
+import { invalidateAllUserCaches, getUserPhoneNumber, invalidateAllDoctorCaches } from './cache-invalidation';
 
 /**
  * Middleware to automatically invalidate user cache after operations
@@ -26,7 +26,6 @@ export function withCacheInvalidation(
         if (userId) {
           const phoneNumber = await getUserPhoneNumber(Number(userId));
           await invalidateAllUserCaches(Number(userId), phoneNumber || undefined);
-          console.log(`[CACHE-MIDDLEWARE] Cache invalidated for user ${userId}`);
         }
       } catch (error) {
         console.error('[CACHE-MIDDLEWARE] Error invalidating cache:', error);
@@ -87,6 +86,35 @@ export function withProfileCacheInvalidation(
         }
       } catch (error) {
         console.error('[PROFILE-CACHE] Error invalidating cache:', error);
+      }
+    }
+    
+    return response;
+  };
+}
+
+/**
+ * Specific cache invalidation for doctor operations
+ */
+export function withDoctorCacheInvalidation(
+  handler: (request: NextRequest, ...args: any[]) => Promise<NextResponse>
+) {
+  return async (request: NextRequest, ...args: any[]): Promise<NextResponse> => {
+    const response = await handler(request, ...args);
+    
+    if (response.status >= 200 && response.status < 300) {
+      try {
+        const body = await request.clone().json().catch(() => ({}));
+        const doctorId = body.id || body.doctorId;
+        const clinicId = body.clinicId;
+        
+        if (doctorId) {
+          const { invalidateAllDoctorCaches } = await import('./cache-invalidation');
+          await invalidateAllDoctorCaches(Number(doctorId), clinicId ? Number(clinicId) : undefined);
+          console.log(`[DOCTOR-CACHE] Cache invalidated for doctor ${doctorId} after doctor change`);
+        }
+      } catch (error) {
+        console.error('[DOCTOR-CACHE] Error invalidating cache:', error);
       }
     }
     

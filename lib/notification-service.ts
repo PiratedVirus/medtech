@@ -335,6 +335,92 @@ export class NotificationService {
     );
   }
 
+  static async sendPlanExpiryFinalWarning(patientId: number, planName: string, isLastDay: boolean) {
+    const title = isLastDay ? 'Plan Expires Today!' : 'Plan Expiring Soon';
+    const message = isLastDay
+      ? `Your ${planName} expires today! Renew now to continue your benefits.`
+      : `Your ${planName} expires in 1 day. Renew now to continue your benefits!`;
+    
+    await this.sendAndSave(
+      patientId,
+      'PLAN_EXPIRY_WARNING',
+      title,
+      message,
+      {
+        planName,
+        daysLeft: isLastDay ? 0 : 1,
+        action: 'RENEW_PLAN',
+        priority: 'high',
+      }
+    );
+  }
+
+  static async sendPlanBookingWindowOpen(
+    patientId: number,
+    consultationType: string,
+    consultationDate: string,
+    planName: string
+  ) {
+    const date = new Date(consultationDate);
+    const bookingWindowStart = new Date(date);
+    bookingWindowStart.setDate(date.getDate() - 5);
+    const bookingWindowEnd = new Date(date);
+    bookingWindowEnd.setDate(date.getDate() + 10);
+
+    await this.sendAndSave(
+      patientId,
+      'CONSULTATION_REMINDER',
+      'Book Your Consultation Now!',
+      `Your ${consultationType} consultation window is open! You can book your appointment from ${bookingWindowStart.toLocaleDateString()} to ${bookingWindowEnd.toLocaleDateString()}. Don't miss out on your ${planName} benefit!`,
+      {
+        consultationType,
+        consultationDate,
+        bookingWindowStart: bookingWindowStart.toISOString(),
+        bookingWindowEnd: bookingWindowEnd.toISOString(),
+        planName,
+        action: 'BOOK_APPOINTMENT',
+        priority: 'medium',
+      }
+    );
+  }
+
+  static async sendPlanBookingWindowClosing(
+    patientId: number,
+    consultationType: string,
+    consultationDate: string,
+    daysRemaining: number
+  ) {
+    await this.sendAndSave(
+      patientId,
+      'CONSULTATION_REMINDER',
+      'Booking Window Closing Soon',
+      `Your ${consultationType} consultation booking window closes in ${daysRemaining} days. Book your appointment now to use your plan benefit!`,
+      {
+        consultationType,
+        consultationDate,
+        daysRemaining,
+        action: 'BOOK_APPOINTMENT',
+        priority: 'medium',
+      }
+    );
+  }
+
+  static async sendSameDayAppointmentMorning(patientId: number, doctorName: string, appointmentTime: string, appointmentId: number) {
+    await this.sendAndSave(
+      patientId,
+      'APPOINTMENT_REMINDER',
+      'You Have an Appointment Today!',
+      `Good morning! You have an appointment with Dr. ${doctorName} today at ${appointmentTime}. Don't forget to join on time!`,
+      {
+        appointmentId,
+        action: 'VIEW_APPOINTMENT',
+        doctorName,
+        appointmentTime,
+        priority: 'high',
+      }
+    );
+  }
+
   static async sendPlanRenewed(patientId: number, planName: string, newEndDate: string) {
     await this.sendAndSave(
       patientId,

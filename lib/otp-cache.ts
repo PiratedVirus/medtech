@@ -19,6 +19,10 @@ export const OTP_CACHE_TTL = {
  * Check if phone number is rate limited
  */
 export async function checkRateLimit(phoneNumber: string): Promise<boolean> {
+  if (!redis) {
+    return true // If Redis is not available, allow the request
+  }
+  
   const key = OTP_CACHE_KEYS.OTP_RATE_LIMIT(phoneNumber)
   const attempts = await redis.get<number>(key) || 0
   
@@ -36,6 +40,10 @@ export async function checkRateLimit(phoneNumber: string): Promise<boolean> {
  * Check if phone number is blocked due to too many attempts
  */
 export async function isPhoneBlocked(phoneNumber: string): Promise<boolean> {
+  if (!redis) {
+    return false // If Redis is not available, don't block
+  }
+  
   const key = OTP_CACHE_KEYS.OTP_BLOCKED(phoneNumber)
   const blocked = await redis.get<boolean>(key)
   return blocked === true
@@ -45,6 +53,10 @@ export async function isPhoneBlocked(phoneNumber: string): Promise<boolean> {
  * Block phone number due to too many attempts
  */
 export async function blockPhoneNumber(phoneNumber: string): Promise<void> {
+  if (!redis) {
+    return // If Redis is not available, skip blocking
+  }
+  
   const key = OTP_CACHE_KEYS.OTP_BLOCKED(phoneNumber)
   await redis.setex(key, OTP_CACHE_TTL.OTP_BLOCKED, true)
 }
@@ -53,6 +65,10 @@ export async function blockPhoneNumber(phoneNumber: string): Promise<void> {
  * Track OTP attempts
  */
 export async function trackOtpAttempt(phoneNumber: string): Promise<number> {
+  if (!redis) {
+    return 0 // If Redis is not available, return 0 attempts
+  }
+  
   const key = OTP_CACHE_KEYS.OTP_ATTEMPTS(phoneNumber)
   const attempts = await redis.get<number>(key) || 0
   const newAttempts = attempts + 1
@@ -71,6 +87,10 @@ export async function trackOtpAttempt(phoneNumber: string): Promise<number> {
  * Cache OTP request to prevent duplicate requests
  */
 export async function cacheOtpRequest(phoneNumber: string, requestId: string): Promise<void> {
+  if (!redis) {
+    return // If Redis is not available, skip caching
+  }
+  
   const key = OTP_CACHE_KEYS.OTP_REQUEST(phoneNumber)
   await redis.setex(key, OTP_CACHE_TTL.OTP_REQUEST, requestId)
 }
@@ -79,6 +99,10 @@ export async function cacheOtpRequest(phoneNumber: string, requestId: string): P
  * Check if OTP request already exists
  */
 export async function getCachedOtpRequest(phoneNumber: string): Promise<string | null> {
+  if (!redis) {
+    return null // If Redis is not available, return null
+  }
+  
   const key = OTP_CACHE_KEYS.OTP_REQUEST(phoneNumber)
   return await redis.get<string>(key)
 }
@@ -87,6 +111,10 @@ export async function getCachedOtpRequest(phoneNumber: string): Promise<string |
  * Clear OTP request cache (after successful verification)
  */
 export async function clearOtpRequest(phoneNumber: string): Promise<void> {
+  if (!redis) {
+    return // If Redis is not available, skip clearing
+  }
+  
   const key = OTP_CACHE_KEYS.OTP_REQUEST(phoneNumber)
   await redis.del(key)
 }

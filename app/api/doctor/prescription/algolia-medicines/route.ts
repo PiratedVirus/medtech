@@ -36,11 +36,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, category, frequency, medicineTime, duration, price } = body;
+    const { name, category, frequency, medicineTime, duration, price, short_composition1 } = body;
 
     if (!name) {
       return NextResponse.json(
         { success: false, error: "Medicine name is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!short_composition1?.trim()) {
+      return NextResponse.json(
+        { success: false, error: "short_composition1 is required" },
         { status: 400 }
       );
     }
@@ -52,11 +59,12 @@ export async function POST(request: Request) {
       medicineTime,
       duration,
       price: price || 0,
+      short_composition1: short_composition1.trim(),
     });
 
     return NextResponse.json({
       success: true,
-      data: { objectID, name, category, frequency, medicineTime, duration, price },
+      data: { objectID, name, category, frequency, medicineTime, duration, price, short_composition1: short_composition1.trim() },
     });
   } catch (error: any) {
     console.error("Algolia add medicine error:", error);

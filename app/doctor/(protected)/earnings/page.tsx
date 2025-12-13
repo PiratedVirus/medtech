@@ -184,8 +184,9 @@ export default function DoctorEarningsPage() {
     try {
       setIsLoading(true);
       const res = await axios.get(`/api/doctor/earnings`);
-      setAllPayments(res.data.payments);
-      setEarnings(res.data.earnings);
+      const data = res.data.data || res.data; // Support both formats during transition
+      setAllPayments(data.payments || []);
+      setEarnings(data.earnings || { paid: 0, pending: 0, cash: 0, online: 0, cashCount: 0, onlineCount: 0, total: 0 });
     } catch (error) {
       console.error("Error fetching earnings:", error);
       toast.error("Failed to fetch earnings data");

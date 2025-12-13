@@ -87,6 +87,7 @@ model User {
   // Notifications
   notifications              PatientNotification[]
   deviceTokens              PatientDeviceToken[]
+  uploadedAppointmentImages AppointmentImage[] @relation("UploadedAppointmentImages")
 
   @@unique([phoneNumber, deletedAt])
   @@index([deletedAt])
@@ -235,6 +236,7 @@ model Appointment {
   payment              Payment?             @relation("AppointmentPayment")
   prescription         Prescription?
   prescriptionTexts    PrescriptionText[]
+  images               AppointmentImage[] @relation("AppointmentImages")
 
   @@index([deletedAt])
   @@index([patientId, isDietician])
@@ -448,9 +450,12 @@ model Prescription {
   prescriptionNumber  String                           @unique
   advice              String?
   testsRequested      String?
+  historyOfCurrentIllness String?
+  recommendedLinks   String?
   nextVisitDate       DateTime?
   nextVisitType       String?
   nextVisitValue      Int?
+  investigationValues Json?
   isTemplate          Boolean                          @default(false)
   templateName        String?
   createdAt           DateTime                         @default(now())
@@ -460,7 +465,6 @@ model Prescription {
   doctor              User                             @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
   patient             User                             @relation("PatientPrescriptions", fields: [patientId], references: [id])
   complaints          PrescriptionComplaint[]
-  history             PrescriptionHistory?
   medicines           PrescriptionMedicine[]
   systemicExamination PrescriptionSystemicExamination?
   prescriptionText    PrescriptionText?
@@ -495,18 +499,6 @@ model PrescriptionVitals {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-}
-
-model PrescriptionHistory {
-  id                 Int          @id @default(autoincrement())
-  prescriptionId     Int          @unique
-  allergies          String?
-  personalHistory    String?
-  pastMedicalHistory String?
-  familyHistory      String?
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
-  prescription       Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
 }
 
 model PrescriptionSystemicExamination {
@@ -765,6 +757,25 @@ model AppointmentReport {
   @@index([deletedAt])
 }
 
+// Images captured for an appointment, categorized as BEFORE or AFTER
+model AppointmentImage {
+  id             Int                  @id @default(autoincrement())
+  appointmentId  Int
+  uploadedById   Int?
+  imageUrl       String
+  type           AppointmentImageType
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  deletedAt      DateTime?
+
+  appointment    Appointment          @relation("AppointmentImages", fields: [appointmentId], references: [id])
+  uploadedBy     User?                @relation("UploadedAppointmentImages", fields: [uploadedById], references: [id])
+
+  @@index([appointmentId, type])
+  @@index([uploadedById])
+  @@index([deletedAt])
+}
+
 model LabReportAnalysis {
   id               Int               @id @default(autoincrement())
   labBookingId     Int
@@ -782,6 +793,9 @@ model LabReportAnalysis {
   updatedAt        DateTime          @updatedAt
   deletedAt        DateTime?
   allValues        Json?
+  keyFindings      Json?             // Array of key clinical findings
+  recommendations  Json?             // Array of actionable recommendations
+  urgency          String?           @default("ROUTINE") // ROUTINE, SOON, URGENT
   labBooking       LabBooking        @relation("LabBookingAnalyses", fields: [labBookingId], references: [id])
   trendDataEntries ReportTrendData[] @relation("SourceReportTrend")
 
@@ -931,18 +945,21 @@ model DietPlanRequest {
   dieticianId  Int
   complaint    String
   status       DietPlanRequestStatus @default(PENDING)
+  planId       Int?      @unique
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
   patient      User      @relation("DietPlanRequestPatient", fields: [patientId], references: [id])
   dietician    User      @relation("DietPlanRequestDietician", fields: [dieticianId], references: [id])
+  dietPlan     DietPlan?
 
   @@index([patientId, deletedAt])
   @@index([dieticianId, deletedAt])
   @@index([deletedAt])
   @@index([status])
   @@index([status, createdAt])
+  @@index([planId])
 }
 
 model DietPlan {
@@ -955,16 +972,19 @@ model DietPlan {
   endDate      DateTime?
   meals        Json
   customMealTimings Json? // Store custom meal timing names and order
+  requestId    Int?      @unique
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
   patient      User      @relation("DietPlanPatient", fields: [patientId], references: [id])
   dietician    User      @relation("DietPlanDietician", fields: [dieticianId], references: [id])
+  request      DietPlanRequest? @relation(fields: [requestId], references: [id])
 
   @@index([patientId, deletedAt])
   @@index([dieticianId, deletedAt])
   @@index([deletedAt])
+  @@index([requestId])
 }
 
 // Custom meal timing templates for dieticians
@@ -1095,6 +1115,11 @@ enum ReportStatus {
   PROCESSING
   COMPLETED
   FAILED
+}
+
+enum AppointmentImageType {
+  BEFORE
+  AFTER
 }
 
 // Push Notifications System

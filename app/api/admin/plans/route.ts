@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
 
 export async function POST(request: Request) {
   try {
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
+const getPlansHandler = async (request: Request) => {
   try {
     const plans = await prisma.plan.findMany({
       include: {
@@ -64,7 +65,10 @@ export async function GET(request: Request) {
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
-}
+};
+
+// ✅ UNIFIED CACHE: Apply cache middleware to GET endpoint
+export const GET = withUnifiedCache(getCacheConfig('/api/admin/plans'))(getPlansHandler);
 
 export async function PUT(request: Request) {
   try {

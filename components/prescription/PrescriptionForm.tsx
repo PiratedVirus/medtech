@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,10 +12,15 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, X, Edit2, Clock, Calendar, User, FileText, Save, Download, Loader2, ArrowLeft, Mic, MicOff, Bot, Sparkles } from "lucide-react";
+import { Plus, X, Edit2, Clock, Calendar, User, Save, Download, Loader2, ArrowLeft, Mic, MicOff, Bot, Sparkles, Eye, TestTube, FileText } from "lucide-react";
 import TypeAheadInput from "./TypeAheadInput";
 import ComplaintCard from "./ComplaintCard";
 import MedicineCard from "./MedicineCard";
+import UnifiedAnalysisModal from "@/components/common/UnifiedAnalysisModal";
+import ImageGallery from "@/components/common/ImageGallery";
+import AllValuesModal, { ValueEntry, AllValuesModalRef } from "@/components/doctors/patients/AllValuesModal";
+import TrackedValuesList from "@/components/doctors/patients/TrackedValuesList";
+import ReportUploadButton from "@/components/common/ReportUploadButton";
 // VoiceRecorder import removed - using original UI with robust logic
 
 interface PrescriptionFormProps {
@@ -28,6 +34,7 @@ interface PrescriptionFormProps {
   isGenerating?: boolean;
   onBack?: () => void;
   existingPrescriptionId?: string | null;
+  isLoadingData?: boolean;
 }
 
 export default function PrescriptionForm({
@@ -41,6 +48,7 @@ export default function PrescriptionForm({
   isGenerating = false,
   onBack,
   existingPrescriptionId,
+  isLoadingData = false,
 }: PrescriptionFormProps) {
   const [newComplaint, setNewComplaint] = useState("");
   const [newMedicine, setNewMedicine] = useState("");
@@ -74,11 +82,31 @@ export default function PrescriptionForm({
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [recognition, setRecognition] = useState<any>(null);
   const [isClearingVoice, setIsClearingVoice] = useState(false);
+  const [currentVoiceField, setCurrentVoiceField] = useState<string | null>(null);
   const { toast } = useToast();
   // Ref to hold accumulated transcript across interim/final results
   const finalTranscriptRef = useRef<string>("");
   // Ref to mark if recording was cancelled (e.g., via Clear All)
   const recordingCancelledRef = useRef<boolean>(false);
+  // Current images state
+  const [currentImages, setCurrentImages] = useState<Array<{id?: number; url: string}>>([]);
+  const [isUploadingCurrent, setIsUploadingCurrent] = useState(false);
+  // Historical images from all appointments (for gallery)
+  const [historicalImages, setHistoricalImages] = useState<Array<{id: number; imageUrl: string; type: 'BEFORE' | 'AFTER'; createdAt: string; appointmentId: number}>>([]);
+  const [patientAppointmentsForGallery, setPatientAppointmentsForGallery] = useState<Array<{id: number; date: string; status: string}>>([]);
+  const [loadingHistoricalImages, setLoadingHistoricalImages] = useState(false);
+  // Toggle for showing/hiding all images
+  const [showAllImages, setShowAllImages] = useState(false);
+  
+  // Investigation section state
+  const [prescriptionModalOpen, setPrescriptionModalOpen] = useState(false);
+  const [reportsModalOpen, setReportsModalOpen] = useState(false);
+  const [showInvestigationsModal, setShowInvestigationsModal] = useState(false);
+  const labValuesModalRef = useRef<AllValuesModalRef>(null);
+  const [patientAppointments, setPatientAppointments] = useState<any[]>([]);
+  const [labBookings, setLabBookings] = useState<any[]>([]);
+  const [standaloneReports, setStandaloneReports] = useState<any[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
 
   const severityOptions = [
     { value: "PERFECT", label: "Perfect", color: "bg-green-100 text-green-800" },
@@ -87,6 +115,69 @@ export default function PrescriptionForm({
     { value: "RISK", label: "Risk", color: "bg-orange-100 text-orange-800" },
     { value: "CRITICAL", label: "Critical", color: "bg-red-100 text-red-800" },
   ];
+
+  const investigationValues = prescriptionData?.investigationValues || [];
+
+  const handleToggleInvestigation = async (parameter: string, makeTracked: boolean, values?: ValueEntry[]) => {
+    if (!prescriptionData) return;
+
+    if (makeTracked) {
+      const latest = values?.[0];
+      if (!latest) return;
+
+      const normalized = {
+        parameter: parameter,
+        value: latest.value,
+        unit: latest.unit,
+        normalRange: latest.normalRange,
+        isAbnormal: latest.isAbnormal,
+        severity: latest.severity,
+        source: latest.source,
+        reportDate: latest.labDate
+          ? new Date(latest.labDate).toISOString()
+          : latest.reportDate
+          ? new Date(latest.reportDate).toISOString()
+          : undefined,
+        labBookingId: latest.labBookingId,
+        reportId: latest.reportId,
+      };
+
+      setPrescriptionData({
+        ...prescriptionData,
+        investigationValues: [
+          ...investigationValues.filter((v: any) => v.parameter?.toLowerCase() !== parameter.toLowerCase()),
+          normalized,
+        ],
+      });
+    } else {
+      setPrescriptionData({
+        ...prescriptionData,
+        investigationValues: investigationValues.filter(
+          (v: any) => v.parameter?.toLowerCase() !== parameter.toLowerCase()
+        ),
+      });
+    }
+  };
+
+  const handleUntrackInvestigation = (name: string) => {
+    if (!prescriptionData) return;
+    setPrescriptionData({
+      ...prescriptionData,
+      investigationValues: investigationValues.filter(
+        (v: any) => v.parameter?.toLowerCase() !== name.toLowerCase()
+      ),
+    });
+  };
+
+  const investigationChips = investigationValues.map((v: any) => ({
+    name: v.parameter || "",
+    value: v.value,
+    unit: v.unit,
+    normalRange: v.normalRange,
+    isAbnormal: v.isAbnormal,
+    severity: v.severity,
+    reportDate: v.reportDate,
+  }));
 
   const addComplaint = () => {
     if (newComplaint.trim()) {
@@ -232,6 +323,246 @@ export default function PrescriptionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Load current appointment images once patientInfo is present
+  useEffect(() => {
+    const apptId = patientInfo?.appointmentId;
+    if (!apptId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/doctor/appointments/${apptId}/images`);
+        if (res.ok) {
+          const json = await res.json();
+          const imgs = Array.isArray(json?.data) ? json.data : [];
+          // Load all images as current images (no before/after distinction)
+          setCurrentImages(imgs.map((i: any) => ({ id: i.id, url: i.imageUrl })));
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, [patientInfo?.appointmentId]);
+
+  // Load historical images from all patient appointments for gallery
+  useEffect(() => {
+    const patientId = patientInfo?.patientId || patientInfo?.id;
+    if (!patientId) return;
+    
+    setLoadingHistoricalImages(true);
+    (async () => {
+      try {
+        // Fetch patient appointments
+        const res = await fetch(`/api/doctor/patients/${patientId}`);
+        if (res.ok) {
+          const data = await res.json();
+          const appointments = data.doctorAppointments || [];
+          setPatientAppointmentsForGallery(
+            appointments
+              .filter((apt: any) => apt.status === 'COMPLETED')
+              .map((apt: any) => ({
+                id: apt.id,
+                date: apt.date || apt.doctorAvailability?.date || new Date().toISOString(),
+                status: apt.status,
+              }))
+          );
+
+          // Fetch images from all completed appointments
+          const completedAppointments = appointments.filter(
+            (apt: any) => apt.status === 'COMPLETED'
+          );
+
+          const imagePromises = completedAppointments.map(async (apt: any) => {
+            try {
+              const imgRes = await fetch(`/api/doctor/appointments/${apt.id}/images`);
+              if (imgRes.ok) {
+                const imgData = await imgRes.json();
+                if (imgData.success && Array.isArray(imgData.data)) {
+                  return imgData.data.map((img: any) => ({
+                    ...img,
+                    appointmentId: apt.id,
+                  }));
+                }
+              }
+              return [];
+            } catch (error) {
+              console.error(`Error fetching images for appointment ${apt.id}:`, error);
+              return [];
+            }
+          });
+
+          const imageArrays = await Promise.all(imagePromises);
+          const flattened = imageArrays.flat();
+          setHistoricalImages(flattened);
+        }
+      } catch (error) {
+        console.error('Error fetching historical images:', error);
+      } finally {
+        setLoadingHistoricalImages(false);
+      }
+    })();
+  }, [patientInfo?.patientId, patientInfo?.id]);
+
+  // Fetch patient appointments and lab reports for Investigation section
+  useEffect(() => {
+    const patientId = patientInfo?.patientId || patientInfo?.id;
+    if (!patientId) return;
+    
+    setLoadingAppointments(true);
+    (async () => {
+      try {
+        // Fetch patient details which includes appointments and lab bookings
+        const res = await fetch(`/api/doctor/patients/${patientId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPatientAppointments(data.doctorAppointments || []);
+          setLabBookings(data.labBookings || []);
+        }
+        
+        // Fetch standalone reports
+        const reportsRes = await fetch(`/api/reports/upload?patientId=${patientId}`);
+        if (reportsRes.ok) {
+          const reportsData = await reportsRes.json();
+          if (reportsData.success) {
+            setStandaloneReports(reportsData.reports || []);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch patient data:', error);
+      } finally {
+        setLoadingAppointments(false);
+      }
+    })();
+  }, [patientInfo?.patientId, patientInfo?.id]);
+
+  // Cloudinary upload using existing unsigned preset
+  const uploadImageToCloudinary = async (file: File): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "client-unsigned");
+    formData.append("cloud_name", "pirated-virus-cloud");
+    try {
+      const res = await fetch("https://api.cloudinary.com/v1_1/pirated-virus-cloud/image/upload", { method: "POST", body: formData });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.secure_url as string;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleUploadCurrentImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !files.length) return;
+    const apptId = patientInfo?.appointmentId;
+    if (!apptId) return;
+    setIsUploadingCurrent(true);
+    try {
+      const urls: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const url = await uploadImageToCloudinary(files[i]);
+        if (url) urls.push(url);
+      }
+      if (urls.length) {
+        // Use 'AFTER' type for current images (maintaining backward compatibility)
+        const resp = await fetch(`/api/doctor/appointments/${apptId}/images`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ urls, type: 'AFTER', uploadedById: doctorInfo?.id ? Number(doctorInfo.id) : undefined }),
+        });
+        if (resp.ok) {
+          const saved = await resp.json();
+          const items = Array.isArray(saved?.data) ? saved.data.map((i: any) => ({ id: i.id, url: i.imageUrl })) : urls.map(u => ({ url: u }));
+          setCurrentImages(prev => [...prev, ...items]);
+          // Also update historical images to include the new ones (deduplicate by id)
+          if (Array.isArray(saved?.data)) {
+            const newHistoricalItems: Array<{
+              id: number;
+              imageUrl: string;
+              type: 'AFTER';
+              createdAt: string;
+              appointmentId: number;
+            }> = saved.data.map((i: any) => ({
+              id: i.id,
+              imageUrl: i.imageUrl,
+              type: 'AFTER' as const,
+              createdAt: i.createdAt || new Date().toISOString(),
+              appointmentId: apptId,
+            }));
+            setHistoricalImages(prev => {
+              const existingIds = new Set(prev.map(img => img.id));
+              const uniqueNewItems = newHistoricalItems.filter((item) => !existingIds.has(item.id));
+              return [...prev, ...uniqueNewItems];
+            });
+          }
+          toast({ title: "Uploaded", description: `${urls.length} image(s) saved` });
+        } else {
+          toast({ title: "Error", description: "Failed to save images", variant: "destructive" });
+        }
+      }
+    } finally {
+      setIsUploadingCurrent(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDeleteImage = async (imageId: number) => {
+    const apptId = patientInfo?.appointmentId;
+    if (!apptId) return;
+    try {
+      const resp = await fetch(`/api/doctor/appointments/${apptId}/images`, { 
+        method: 'DELETE', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ imageId }) 
+      });
+      if (resp.ok) {
+        setCurrentImages(prev => prev.filter(i => i.id !== imageId));
+        setHistoricalImages(prev => prev.filter(i => i.id !== imageId));
+        toast({ title: "Removed", description: "Image removed" });
+      } else {
+        toast({ title: "Error", description: "Failed to remove image", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to remove image", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteHistoricalImage = async (imageId: number) => {
+    // Find the image to get its appointmentId
+    const imageToDelete = historicalImages.find(img => img.id === imageId);
+    if (!imageToDelete) {
+      toast({ title: "Error", description: "Image not found", variant: "destructive" });
+      return;
+    }
+
+    const appointmentId = imageToDelete.appointmentId;
+
+    try {
+      const resp = await fetch(`/api/doctor/appointments/${appointmentId}/images`, { 
+        method: 'DELETE', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ imageId }) 
+      });
+      if (resp.ok) {
+        setHistoricalImages(prev => prev.filter(i => i.id !== imageId));
+        setCurrentImages(prev => prev.filter(i => i.id !== imageId));
+        toast({ title: "Removed", description: "Image removed successfully" });
+      } else {
+        const errorData = await resp.json().catch(() => ({ error: 'Failed to remove image' }));
+        toast({ 
+          title: "Error", 
+          description: errorData.error || "Failed to remove image", 
+          variant: "destructive" 
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting historical image:', error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to remove image", 
+        variant: "destructive" 
+      });
+    }
+  };
+
   const processFrequencyInput = (input: string): string => {
     // Remove all non-numeric characters except dashes
     const cleanInput = input.replace(/[^0-9-]/g, '');
@@ -314,6 +645,7 @@ export default function PrescriptionForm({
           setVoiceTranscript(finalTranscriptRef.current.trim());
           processVoiceInput(finalTranscriptRef.current.trim());
         }
+        setCurrentVoiceField(null);
       };
 
       recognitionInstance.onerror = (event: any) => {
@@ -645,6 +977,19 @@ export default function PrescriptionForm({
   const handleVoiceTranscriptionComplete = (voiceData: any) => {
     setIsFillingForm(true);
     
+    // Helper function to append medical history fields with comma separator
+    const appendMedicalHistory = (existing: string | null | undefined, newValue: string | null | undefined): string => {
+      const existingStr = existing?.trim() || "";
+      const newStr = newValue?.trim() || "";
+      
+      if (!existingStr && !newStr) return "";
+      if (!existingStr) return newStr;
+      if (!newStr) return existingStr;
+      
+      // Append with comma separator
+      return `${existingStr}, ${newStr}`;
+    };
+    
     // Merge voice data with existing prescription data intelligently
     const updatedData = {
       ...prescriptionData,
@@ -688,6 +1033,26 @@ export default function PrescriptionForm({
       // Update advice and tests only if voice data has content
       advice: voiceData.advice?.trim() || prescriptionData.advice,
       testsRequested: voiceData.testsRequested?.trim() || prescriptionData.testsRequested,
+      historyOfCurrentIllness: voiceData.historyOfCurrentIllness?.trim() || prescriptionData.historyOfCurrentIllness,
+      // Append medical history fields instead of replacing them
+      medicalHistory: {
+        allergies: appendMedicalHistory(
+          prescriptionData.medicalHistory?.allergies,
+          voiceData.medicalHistory?.allergies
+        ),
+        personalHistory: appendMedicalHistory(
+          prescriptionData.medicalHistory?.personalHistory,
+          voiceData.medicalHistory?.personalHistory
+        ),
+        pastMedicalHistory: appendMedicalHistory(
+          prescriptionData.medicalHistory?.pastMedicalHistory,
+          voiceData.medicalHistory?.pastMedicalHistory
+        ),
+        familyHistory: appendMedicalHistory(
+          prescriptionData.medicalHistory?.familyHistory,
+          voiceData.medicalHistory?.familyHistory
+        ),
+      },
       nextVisit: voiceData.nextVisit || prescriptionData.nextVisit,
     };
 
@@ -699,6 +1064,8 @@ export default function PrescriptionForm({
     if (voiceData.medicines?.length) addedItems.push(`${voiceData.medicines.length} medicine(s)`);
     if (voiceData.advice?.trim()) addedItems.push("advice");
     if (voiceData.testsRequested?.trim()) addedItems.push("tests");
+    if (voiceData.historyOfCurrentIllness?.trim()) addedItems.push("History of Presenting Illness");
+    if (voiceData.medicalHistory?.allergies?.trim() || voiceData.medicalHistory?.personalHistory?.trim() || voiceData.medicalHistory?.pastMedicalHistory?.trim() || voiceData.medicalHistory?.familyHistory?.trim()) addedItems.push("medical history");
     
     // Only show success if we actually added meaningful data
     if (addedItems.length > 0) {
@@ -791,6 +1158,37 @@ export default function PrescriptionForm({
     }
   };
 
+  const handleVoiceInput = async (fieldName: string) => {
+    if (isVoiceRecording) {
+      // Stop recording
+      if (recognition) {
+        recognition.stop();
+      }
+      setCurrentVoiceField(null);
+    } else {
+      // Start recording for specific field
+      setCurrentVoiceField(fieldName);
+      if (recognition) {
+        setVoiceTranscript("");
+        setIsVoiceRecording(true);
+        setIsClearingVoice(false);
+        finalTranscriptRef.current = "";
+        recordingCancelledRef.current = false;
+        recognition.start();
+        toast({
+          title: "🎤 Recording",
+          description: `Recording for ${fieldName.replace(/([A-Z])/g, ' $1').toLowerCase()}...`,
+        });
+      } else {
+        toast({
+          title: "Speech Recognition Not Available",
+          description: "Your browser doesn't support speech recognition.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   const clearAllVoiceData = () => {
     // Set clearing flag FIRST to prevent any onend events from processing
     setIsClearingVoice(true);
@@ -808,6 +1206,7 @@ export default function PrescriptionForm({
     setIsProcessingVoice(false);
     setIsVoiceRecording(false);
     setIsFillingForm(false);
+    setCurrentVoiceField(null);
     finalTranscriptRef.current = "";
 
     // Clear all form data that could have been filled by voice
@@ -819,12 +1218,7 @@ export default function PrescriptionForm({
         height: "",
         weight: "",
       },
-      history: {
-        allergies: "",
-        personalHistory: "",
-        pastMedicalHistory: "",
-        familyHistory: "",
-      },
+      historyOfCurrentIllness: "",
       systemicExamination: {
         general: "",
         cvs: "NAD",
@@ -873,11 +1267,11 @@ export default function PrescriptionForm({
               variant="outline"
               size="sm"
               onClick={handleAIMicClick}
-              disabled={isProcessingVoice || isFillingForm}
+              disabled={isLoadingData || isProcessingVoice || isFillingForm}
               className={`relative transition-all duration-500 ease-in-out ${
                 isVoiceRecording 
                   ? "bg-gradient-to-r from-pink-500 to-blue-500 text-white border-transparent shadow-lg shadow-pink-500/20" 
-                  : (isProcessingVoice || isFillingForm)
+                  : (isLoadingData || isProcessingVoice || isFillingForm)
                   ? "bg-gradient-to-r from-pink-400 to-blue-400 text-white border-transparent shadow-lg shadow-blue-500/20"
                   : "hover:bg-gradient-to-r hover:from-pink-50 hover:to-blue-50 hover:border-pink-200"
               }`}
@@ -914,7 +1308,7 @@ export default function PrescriptionForm({
                   ? "text-white" 
                   : "bg-gradient-to-r from-pink-600 to-blue-600 bg-clip-text text-transparent"
               }`}>
-                {isVoiceRecording ? "Recording..." : isProcessingVoice ? "Thinking..." : isFillingForm ? "Filling..." : "AI Mic"}
+                {isLoadingData ? "Loading..." : isVoiceRecording ? "Recording..." : isProcessingVoice ? "Thinking..." : isFillingForm ? "Filling..." : "AI Mic"}
               </span>
             </Button>
             <Button
@@ -1119,6 +1513,46 @@ export default function PrescriptionForm({
         </div>
       </div>
 
+      {/* Lab Parameters Section */}
+      <div className="bg-custom-mutedgreen p-6 rounded-lg border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Lab Parameters</h3>
+          <div className="flex items-center gap-3">
+            <ReportUploadButton
+              patientId={parseInt(patientInfo?.patientId || patientInfo?.id || "0", 10)}
+              variant="outline"
+              size="sm"
+              onUploadSuccess={() => {
+                setShowInvestigationsModal(true);
+                labValuesModalRef.current?.refresh();
+              }}
+            >
+              Upload report
+            </ReportUploadButton>
+            <Button
+              size="sm"
+              className="bg-primary text-white"
+              onClick={() => setShowInvestigationsModal(true)}
+              disabled={loadingAppointments}
+            >
+              Add lab parameters
+            </Button>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-gray-800">Tracked values for this prescription</span>
+          </div>
+          <TrackedValuesList
+            values={investigationChips}
+            loading={false}
+            onUntrack={handleUntrackInvestigation}
+            showUntrack
+            emptyText="No values tracked for this prescription yet"
+          />
+        </div>
+      </div>
+
       {/* Complaints Section */}
       <div className="bg-white p-6 rounded-lg border border-gray-200">
         <div className="flex items-center justify-between mb-4">
@@ -1177,72 +1611,102 @@ export default function PrescriptionForm({
 
 
 
-      {/* History Section */}
+      {/* History of Presenting Illness Section - Visit Specific */}
+        <div className="bg-custom-mutedgreen p-6 rounded-lg border border-gray-200">
+          <h3 className="text-lg font-semibold mb-4">History of Presenting Illness</h3>
+          <Textarea
+            id="historyOfCurrentIllness"
+            value={prescriptionData.historyOfCurrentIllness || ""}
+            onChange={(e) =>
+              setPrescriptionData({
+                ...prescriptionData,
+                historyOfCurrentIllness: e.target.value,
+              })
+            }
+            placeholder="Describe the current illness, symptoms, duration, and progression..."
+            rows={4}
+            className="mt-1 bg-white"
+          />
+        </div>
+
+      {/* Medical History Section - Longitudinal Patient Data */}
       <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold mb-4">History</h3>
+        <h3 className="text-lg font-semibold mb-4">Medical History</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="allergies" className="text-sm font-medium text-gray-700">Allergies</Label>
+            <Label className="text-sm font-medium text-gray-700">Allergies</Label>
             <Textarea
               id="allergies"
-              value={prescriptionData.history?.allergies || ""}
+              value={prescriptionData.medicalHistory?.allergies || ""}
               onChange={(e) =>
                 setPrescriptionData({
                   ...prescriptionData,
-                  history: { ...prescriptionData.history || {}, allergies: e.target.value },
+                  medicalHistory: {
+                    ...prescriptionData.medicalHistory,
+                    allergies: e.target.value,
+                  },
                 })
               }
-              placeholder="Enter here..."
-              rows={2}
-              className="mt-1"
+              placeholder="Enter patient allergies..."
+              rows={3}
+              className="mt-1 bg-white"
             />
           </div>
           <div>
-            <Label htmlFor="personalHistory" className="text-sm font-medium text-gray-700">Personal History</Label>
+            <Label className="text-sm font-medium text-gray-700">Personal History</Label>
             <Textarea
               id="personalHistory"
-              value={prescriptionData.history?.personalHistory || ""}
+              value={prescriptionData.medicalHistory?.personalHistory || ""}
               onChange={(e) =>
                 setPrescriptionData({
                   ...prescriptionData,
-                  history: { ...prescriptionData.history || {}, personalHistory: e.target.value },
+                  medicalHistory: {
+                    ...prescriptionData.medicalHistory,
+                    personalHistory: e.target.value,
+                  },
                 })
               }
-              placeholder="Enter here..."
-              rows={2}
-              className="mt-1"
+              placeholder="Enter personal history..."
+              rows={3}
+              className="mt-1 bg-white"
             />
           </div>
           <div>
-            <Label htmlFor="pastMedicalHistory" className="text-sm font-medium text-gray-700">Past Medical History</Label>
+            <Label className="text-sm font-medium text-gray-700">Past Medical History</Label>
             <Textarea
               id="pastMedicalHistory"
-              value={prescriptionData.history?.pastMedicalHistory || ""}
+              value={prescriptionData.medicalHistory?.pastMedicalHistory || ""}
               onChange={(e) =>
                 setPrescriptionData({
                   ...prescriptionData,
-                  history: { ...prescriptionData.history || {}, pastMedicalHistory: e.target.value },
+                  medicalHistory: {
+                    ...prescriptionData.medicalHistory,
+                    pastMedicalHistory: e.target.value,
+                  },
                 })
               }
-              placeholder="Enter here..."
-              rows={2}
-              className="mt-1"
+              placeholder="Enter past medical history..."
+              rows={3}
+              className="mt-1 bg-white"
             />
           </div>
           <div>
-            <Label htmlFor="familyHistory" className="text-sm font-medium text-gray-700">Family History</Label>
+            <Label className="text-sm font-medium text-gray-700">Family History</Label>
             <Textarea
               id="familyHistory"
-              value={prescriptionData.history?.familyHistory || ""}
+              value={prescriptionData.medicalHistory?.familyHistory || ""}
               onChange={(e) =>
                 setPrescriptionData({
                   ...prescriptionData,
-                  history: { ...prescriptionData.history || {}, familyHistory: e.target.value },
+                  medicalHistory: {
+                    ...prescriptionData.medicalHistory,
+                    familyHistory: e.target.value,
+                  },
                 })
               }
-              placeholder="Enter family medical history..."
-              rows={2}
-              className="mt-1"
+              placeholder="Enter family history..."
+              rows={3}
+              className="mt-1 bg-white"
             />
           </div>
         </div>
@@ -1433,8 +1897,132 @@ export default function PrescriptionForm({
         </Card>
       </div>
 
+      {/* Recommended Links Section */}
+      <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <h3 className="text-lg font-semibold mb-4">Recommended Links</h3>
+        
+        <div className="space-y-3">
+          {/* Display existing links */}
+          {(prescriptionData.recommendedLinks || []).map((link: string, index: number) => (
+            <div key={index} className="flex items-center gap-2">
+              <Input
+                type="url"
+                value={link}
+                onChange={(e) => {
+                  const updatedLinks = [...(prescriptionData.recommendedLinks || [])];
+                  updatedLinks[index] = e.target.value;
+                  setPrescriptionData({
+                    ...prescriptionData,
+                    recommendedLinks: updatedLinks,
+                  });
+                }}
+                placeholder="https://example.com"
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  const updatedLinks = (prescriptionData.recommendedLinks || []).filter((_: string, i: number) => i !== index);
+                  setPrescriptionData({
+                    ...prescriptionData,
+                    recommendedLinks: updatedLinks,
+                  });
+                  toast({
+                    title: "Success",
+                    description: "Link removed successfully",
+                  });
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          
+          {/* Add new link button */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setPrescriptionData({
+                ...prescriptionData,
+                recommendedLinks: [...(prescriptionData.recommendedLinks || []), ""],
+              });
+            }}
+            className="w-full"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add New Link
+          </Button>
+        </div>
+      </div>
 
-      {/* it Section */}
+      {/* Current Images Upload Section */}
+      <div className="bg-custom-mutedgreen p-6 rounded-lg border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Current Images</h3>
+          {historicalImages.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="bg-white text-gray-900 border-gray-200 hover:bg-gray-100"
+              onClick={() => setShowAllImages(!showAllImages)}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              {showAllImages ? 'Hide Previous Images' : 'Show Previous Images'}
+            </Button>
+          )}
+        </div>
+        <div className="p-3 bg-slate-50 rounded-md border-2 border-dashed border-gray-300 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="font-medium text-gray-800">Upload Current Images</div>
+            <label className="text-sm px-3 py-1 rounded bg-primary text-white cursor-pointer">
+              {isUploadingCurrent ? 'Uploading…' : 'Upload'}
+              <input 
+                type="file" 
+                accept="image/*" 
+                multiple 
+                className="hidden" 
+                onChange={handleUploadCurrentImages} 
+              />
+            </label>
+          </div>
+          <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+            {currentImages.length === 0 && (
+              <div className="text-sm text-gray-500 col-span-3 md:col-span-4">No images uploaded yet</div>
+            )}
+            {currentImages.map((img) => (
+              <div key={(img.id ?? img.url)} className="relative w-full aspect-square overflow-hidden rounded border">
+                <Image src={img.url} alt="Current" fill className="object-cover" />
+                <button
+                  type="button"
+                  className="absolute top-1 right-1 bg-white/80 text-red-600 text-xs px-1.5 py-0.5 rounded"
+                  onClick={() => img.id && handleDeleteImage(img.id)}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Historical Images Gallery */}
+        {showAllImages && historicalImages.length > 0 && (
+          <div className="mt-4">
+            <ImageGallery
+              images={historicalImages}
+              appointments={patientAppointmentsForGallery}
+              loading={loadingHistoricalImages}
+              showUpload={false}
+              allowDelete={true}
+              onDelete={handleDeleteHistoricalImage}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Next Visit card – keep existing wrapper */}
       <div className="bg-white p-6 rounded-lg border border-gray-200">
         <h3 className="text-lg font-semibold mb-2">Next Visit</h3>
@@ -1705,6 +2293,114 @@ export default function PrescriptionForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Prescription Modal */}
+      <Dialog open={prescriptionModalOpen} onOpenChange={setPrescriptionModalOpen}>
+        <DialogContent className="sm:max-w-[720px] max-h-[70vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>View Prescriptions</DialogTitle>
+            <DialogDescription>Select an appointment to view its prescription</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {loadingAppointments ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                <p className="text-sm text-gray-500">Loading prescriptions...</p>
+              </div>
+            ) : patientAppointments.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">No appointments found</div>
+            ) : (
+              <ul className="divide-y">
+                {patientAppointments.map((apt: any) => {
+                  const hasPrescription = Boolean(apt.prescriptionLink);
+                  const viewHref = apt.prescriptionLink || `/doctor/appointments/${apt.id}/prescription`;
+                  return (
+                    <li key={apt.id} className="py-3 flex items-center">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-800">
+                          Appointment #{apt.id}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {apt.doctorAvailability?.date 
+                            ? new Date(apt.doctorAvailability.date).toLocaleString() 
+                            : apt.date 
+                            ? new Date(apt.date).toLocaleString() 
+                            : 'No date'}
+                        </div>
+                        {apt.doctor?.name && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Dr. {apt.doctor.name}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 ml-auto">
+                        {hasPrescription && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(viewHref, '_blank')}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                        )}
+                        {hasPrescription ? (
+                          <Button
+                            size="sm"
+                            className="w-44 shrink-0"
+                            onClick={() => window.open(`/doctor/appointments/${apt.id}`, '_blank')}
+                          >
+                            Edit Prescription
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="w-44 shrink-0"
+                            onClick={() => window.open(`/doctor/appointments/${apt.id}`, '_blank')}
+                          >
+                            Generate Prescription
+                          </Button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPrescriptionModalOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {showInvestigationsModal && (
+        <AllValuesModal
+          ref={labValuesModalRef}
+          patientId={String(patientInfo?.patientId || patientInfo?.id || '')}
+          onClose={() => setShowInvestigationsModal(false)}
+          trackedParameters={investigationValues.map((v: any) => v.parameter || "")}
+          onToggleOverride={handleToggleInvestigation}
+        />
+      )}
+
+      {/* Reports Modal - Unified Analysis Modal */}
+      <UnifiedAnalysisModal
+        isOpen={reportsModalOpen}
+        onClose={() => setReportsModalOpen(false)}
+        patientId={String(patientInfo?.patientId || patientInfo?.id || '')}
+        labReports={labBookings.map((booking: any) => ({
+          id: booking.id,
+          labPackageName: booking.labPackageName || booking.labPackage?.name || 'Unknown',
+          date: booking.date || booking.labDate || new Date().toISOString(),
+          status: booking.status || "COMPLETED",
+          labResult: booking.labResult,
+          reportLink: booking.reportLink
+        }))}
+        standaloneReports={standaloneReports}
+        preSelectedStandaloneReportId={null}
+        hideAIAnalysis={true}
+      />
       </div>
     </>
   );

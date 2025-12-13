@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
 
-export async function GET() {
+const getStatsHandler = async () => {
   try {
     // Get total clinics
     const totalClinics = await prisma.clinic.count({
@@ -72,4 +73,7 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+};
+
+// ✅ UNIFIED CACHE: Apply cache middleware to GET endpoint
+export const GET = withUnifiedCache(getCacheConfig('/api/superadmin/dashboard/stats'))(getStatsHandler);

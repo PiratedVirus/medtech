@@ -1,6 +1,7 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, pdf, Image, Font } from '@react-pdf/renderer';
 import jsPDF from 'jspdf';
+import QRCode from 'qrcode';
 
 const formatDate = (date: Date) => {
   return date.toLocaleDateString("en-GB", {
@@ -12,40 +13,57 @@ const formatDate = (date: Date) => {
   });
 };
 
-const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo, visibleSections }: any) => (
-  <Document>
-    <Page style={styles.body}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.clinicInfoRow}>
-            {clinicInfo?.logo && (
-              <Image 
-                src={clinicInfo.logo} 
-                style={styles.clinicLogo}
-              />
-            )}
-            <View style={styles.clinicTextContainer}>
-              {clinicInfo?.name && (
-                <Text style={styles.hospital}>{clinicInfo.name}</Text>
+const getRecommendedLinks = (prescriptionData: any): string[] => {
+  if (Array.isArray(prescriptionData?.recommendedLinks)) {
+    return prescriptionData.recommendedLinks.filter((l: string) => typeof l === "string" && l.trim()).map((l: string) => l.trim());
+  }
+  if (typeof prescriptionData?.recommendedLinks === "string" && prescriptionData.recommendedLinks.trim()) {
+    return prescriptionData.recommendedLinks.split(",").map((l: string) => l.trim()).filter(Boolean);
+  }
+  return [];
+};
+
+const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo, visibleSections, qrLinks }: any) => {
+  const now = new Date();
+  const timeString = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const dateString = now.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
+  const recommendedLinks = getRecommendedLinks(prescriptionData);
+
+  return (
+    <Document>
+      <Page style={styles.body}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={styles.clinicInfoRow}>
+              {clinicInfo?.logo && (
+                <Image 
+                  src={clinicInfo.logo} 
+                  style={styles.clinicLogo}
+                />
               )}
-              {clinicInfo?.subtitle && (
-                <Text style={styles.subheading}>{clinicInfo.subtitle}</Text>
-              )}
+              <View style={styles.clinicTextContainer}>
+                {clinicInfo?.name && (
+                  <Text style={styles.hospital}>{clinicInfo.name}</Text>
+                )}
+                {clinicInfo?.subtitle && (
+                  <Text style={styles.subheading}>{clinicInfo.subtitle}</Text>
+                )}
+              </View>
             </View>
           </View>
+          <View style={styles.headerRight}>
+            <Text style={styles.dateTime}>{timeString}</Text>
+            <Text style={styles.dateTime}>{dateString}</Text>
+          </View>
         </View>
-        <View style={styles.headerRight}>
-          <Text style={styles.dateTime}>Date & Time: {formatDate(new Date())}</Text>
-        </View>
-      </View>
 
-      <View style={styles.divider} />
+        <View style={styles.divider} />
 
       {/* Patient Info */}
       <View style={styles.patientSection}>
         <Text style={styles.patientInfo}>
-          <Text style={styles.bold}>Patient Name:</Text> Mr. {patientInfo.name} ({patientInfo.age || 0} yrs, {patientInfo.gender || 'Not specified'}) - {patientInfo.phone || 'Not provided'}
+          <Text style={styles.bold}>Patient Name:</Text> {patientInfo.name} ({patientInfo.age || 0} yrs, {patientInfo.gender || 'Not specified'}) - {patientInfo.phone || 'Not provided'}
         </Text>
         <Text style={styles.patientInfo}>
           <Text style={styles.bold}>BP:</Text> {prescriptionData.vitals?.bloodPressure || '-'} mmHg {"   "}
@@ -53,6 +71,20 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
           <Text style={styles.bold}>Height:</Text> {prescriptionData.vitals?.height || '-'} cm {"   "}
           <Text style={styles.bold}>Weight:</Text> {prescriptionData.vitals?.weight || '-'} kgs
         </Text>
+
+        {Array.isArray(prescriptionData.investigationValues) && prescriptionData.investigationValues.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.patientInfo, styles.bold]}>Tracked Values:</Text>
+            {prescriptionData.investigationValues.map((v: any, idx: number) => {
+              const unitText = v.unit ? ` ${v.unit}` : "";
+              return (
+                <Text key={idx} style={styles.bulletPoint}>
+                  • {v.parameter}: {v.value}{unitText} {v.severity ? `(${v.severity})` : ""}
+                </Text>
+              );
+            })}
+          </View>
+        )}
 
         {/* Complaints with Timeline */}
         {visibleSections?.complaints !== false && prescriptionData.complaints?.length > 0 && (
@@ -77,6 +109,47 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
                 </Text>
               );
             })}
+          </View>
+        )}
+
+        {/* History of Presenting Illness */}
+        {visibleSections?.history !== false && prescriptionData.historyOfCurrentIllness && (
+          <View style={styles.historySection}>
+            <Text style={[styles.patientInfo, styles.bold]}>History of Presenting Illness:</Text>
+            <Text style={styles.historyValue}>{prescriptionData.historyOfCurrentIllness}</Text>
+          </View>
+        )}
+
+        {/* Medical History Section */}
+        {visibleSections?.history !== false && (
+          <View style={styles.historySection}>
+            <Text style={[styles.patientInfo, styles.bold]}>Medical History:</Text>
+            <View style={styles.historyGrid}>
+              <View style={styles.historyItem}>
+                <Text style={styles.historyLabel}>Allergies:</Text>
+                <Text style={styles.historyValue}>
+                  {(prescriptionData.history?.allergies || '').toString().trim() || '—'}
+                </Text>
+              </View>
+              <View style={styles.historyItem}>
+                <Text style={styles.historyLabel}>Personal History:</Text>
+                <Text style={styles.historyValue}>
+                  {(prescriptionData.history?.personalHistory || '').toString().trim() || '—'}
+                </Text>
+              </View>
+              <View style={styles.historyItem}>
+                <Text style={styles.historyLabel}>Past Medical History:</Text>
+                <Text style={styles.historyValue}>
+                  {(prescriptionData.history?.pastMedicalHistory || '').toString().trim() || '—'}
+                </Text>
+              </View>
+              <View style={styles.historyItem}>
+                <Text style={styles.historyLabel}>Family History:</Text>
+                <Text style={styles.historyValue}>
+                  {(prescriptionData.history?.familyHistory || '').toString().trim() || '—'}
+                </Text>
+              </View>
+            </View>
           </View>
         )}
       </View>
@@ -120,6 +193,20 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
               </Text>
             )
           ))}
+        </View>
+      )}
+
+      {/* Recommended Links as QR Codes */}
+      {recommendedLinks.length > 0 && qrLinks?.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recommended Links:</Text>
+          <View style={styles.qrRow}>
+            {qrLinks.map((qr: any, idx: number) => (
+              <View key={idx} style={styles.qrItem}>
+                <Image src={qr.dataUrl} style={styles.qrImage} />
+              </View>
+            ))}
+          </View>
         </View>
       )}
 
@@ -171,22 +258,23 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
         render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
         fixed
       />
-    </Page>
-  </Document>
-);
+      </Page>
+    </Document>
+  );
+};
 
 const styles = StyleSheet.create({
   body: {
-    padding: 40,
+    padding: 16,
     fontSize: 10,
     fontFamily: "Helvetica",
-    paddingBottom: 30,
+    paddingBottom: 16,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 20,
+    marginBottom: 6,
   },
   headerLeft: {
     flex: 1,
@@ -194,11 +282,12 @@ const styles = StyleSheet.create({
   clinicInfoRow: {
     flexDirection: "row",
     alignItems: "center",
+    marginBottom: 2,
   },
   clinicLogo: {
     width: 60,
     height: 60,
-    marginRight: 12,
+    marginRight: 10,
   },
   clinicTextContainer: {
     flex: 1,
@@ -210,11 +299,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: "#000000",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   subheading: {
     fontSize: 9,
     color: "#666",
+    marginTop: -1,
   },
   dateTime: {
     fontSize: 10,
@@ -222,10 +312,11 @@ const styles = StyleSheet.create({
   },
   divider: {
     borderBottom: "1px solid #ddd",
-    marginVertical: 8,
+    marginVertical: 2,
   },
   patientSection: {
-    marginBottom: 12,
+    marginTop: 4,
+    marginBottom: 8,
   },
   sectionTitle: {
     fontSize: 12,
@@ -239,7 +330,7 @@ const styles = StyleSheet.create({
     lineHeight: 1.4,
   },
   complaintsSection: {
-    marginBottom: 8,
+    marginBottom: 4,
   },
   complaintItem: {
     fontSize: 10,
@@ -247,19 +338,42 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     lineHeight: 1.3,
   },
+  historySection: {
+    marginBottom: 4,
+  },
+  historyGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 4,
+  },
+  historyItem: {
+    width: "48%",
+    marginBottom: 6,
+    marginRight: "2%",
+  },
+  historyLabel: {
+    fontSize: 9,
+    fontWeight: "bold",
+    marginBottom: 2,
+  },
+  historyValue: {
+    fontSize: 9,
+    lineHeight: 1.3,
+    marginLeft: 8,
+  },
   bold: {
     fontWeight: "bold",
   },
   rxSection: {
     alignItems: "flex-start",
-    marginVertical: 12,
+    marginVertical: 4,
     paddingLeft: 0,
   },
   rx: {
     fontSize: 28,
     fontWeight: "bold",
     color: "#0C7C59",
-    marginBottom: 4,
+    marginBottom: 1,
   },
   rxUnderline: {
     width: 40,
@@ -267,7 +381,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0C7C59",
   },
   tableContainer: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   tableHeader: {
     flexDirection: "row",
@@ -284,7 +398,7 @@ const styles = StyleSheet.create({
   tableRow: {
     flexDirection: "row",
     borderBottom: "1px solid #ccc",
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   tableRowEven: {
     backgroundColor: "#fafafa",
@@ -296,18 +410,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   section: {
-    marginVertical: 10,
+    marginVertical: 6,
   },
   bulletPoint: {
     fontSize: 10,
-    marginBottom: 4,
+    marginBottom: 2,
     lineHeight: 1.4,
     paddingLeft: 10,
   },
   testVisitSection: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginVertical: 10,
+    marginVertical: 6,
   },
   testVisitColumn: {
     width: "48%",
@@ -318,8 +432,8 @@ const styles = StyleSheet.create({
   },
   signatureSection: {
     alignItems: "flex-end",
-    marginTop: 30,
-    marginBottom: 15,
+    marginTop: 16,
+    marginBottom: 10,
   },
   signatureLine: {
     fontSize: 10,
@@ -345,6 +459,29 @@ const styles = StyleSheet.create({
     marginTop: 15,
     paddingTop: 10,
     borderTop: "1px solid #eee",
+  },
+  qrRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 4,
+    gap: 8,
+    alignItems: "flex-start",
+  },
+  qrItem: {
+    alignItems: "center",
+    width: "30%",
+    marginRight: "2%",
+    marginBottom: 6,
+  },
+  qrImage: {
+    width: 70,
+    height: 70,
+  },
+  qrLabel: {
+    fontSize: 8,
+    textAlign: "center",
+    marginTop: 2,
+    color: "#333",
   },
   footerText: {
     fontSize: 8,
@@ -427,7 +564,6 @@ export const generatePDFWithJsPDF = async (
     doc.text(`Name: Mr. ${patientInfo.name} (${patientInfo.age || 0} yrs, ${patientInfo.gender || 'Not specified'}) - +91 ${patientInfo.phone || 'Not provided'}`, 20, 60);
     doc.text(`BP: ${prescriptionData.vitals?.bloodPressure || '120/80'} mmHg | Pulse: ${prescriptionData.vitals?.pulse || '72'} bpm`, 20, 70);
     doc.text(`Height: ${prescriptionData.vitals?.height || '185'} cm | Weight: ${prescriptionData.vitals?.weight || '90'} kgs`, 20, 80);
-    doc.text(`Random Blood Sugar: 150 mg/dL`, 20, 90);
     // Complaints with timeline
     if (visibleSections?.complaints !== false && prescriptionData.complaints?.length > 0) {
       doc.setFont("helvetica", "bold");
@@ -455,7 +591,7 @@ export const generatePDFWithJsPDF = async (
     const diagnosisY = prescriptionData.complaints?.length > 0 ? 110 + (prescriptionData.complaints.length * 5) + 5 : 110;
     
     // Prescription symbol - Medical Style
-    const rxY = diagnosisY + 15;
+    const rxY = diagnosisY + 7;
     doc.setFontSize(24);
     doc.setTextColor(12, 124, 89); // Green color
     doc.text("Rx", 20, rxY);
@@ -504,6 +640,24 @@ export const generatePDFWithJsPDF = async (
       });
       
       adviceY = adviceY + 10 + (adviceLines.length * 5) + 15;
+    }
+    
+    // Recommended Links
+    const links = Array.isArray(prescriptionData.recommendedLinks) 
+      ? prescriptionData.recommendedLinks 
+      : (typeof prescriptionData.recommendedLinks === 'string' && prescriptionData.recommendedLinks.trim() 
+          ? prescriptionData.recommendedLinks.split(',').filter((link: string) => link.trim() !== '')
+          : []);
+    if (links.length > 0) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Recommended Links:", 20, adviceY);
+      doc.setFont("helvetica", "normal");
+      
+      links.forEach((link: string, index: number) => {
+        doc.text(`• ${link.trim()}`, 20, adviceY + 10 + (index * 5));
+      });
+      
+      adviceY = adviceY + 10 + (links.length * 5) + 15;
     }
     
     // Tests and Next Visit
@@ -559,13 +713,14 @@ export const generatePDFWithJsPDF = async (
 };
 
 // Create a wrapper component for PDF generation
-const PDFDocument = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo, visibleSections }: any) => (
+const PDFDocument = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo, visibleSections, qrLinks }: any) => (
   <PrescriptionPDF
     prescriptionData={prescriptionData}
     patientInfo={patientInfo}
     doctorInfo={doctorInfo}
     clinicInfo={clinicInfo}
     visibleSections={visibleSections}
+    qrLinks={qrLinks}
   />
 );
 
@@ -604,6 +759,14 @@ export const generatePDFBase64 = async (
     }
 
     // Generate PDF blob using react-pdf with wrapper component
+    const links = getRecommendedLinks(prescriptionData);
+    const qrLinks = await Promise.all(
+      links.map(async (link: string) => ({
+        link,
+        dataUrl: await QRCode.toDataURL(link, { margin: 1, width: 120 }),
+      }))
+    );
+
     const pdfBlob = await pdf(
       <PDFDocument
         prescriptionData={prescriptionData}
@@ -611,6 +774,7 @@ export const generatePDFBase64 = async (
         doctorInfo={doctorInfo}
         clinicInfo={clinicInfo}
         visibleSections={visibleSections}
+        qrLinks={qrLinks}
       />
     ).toBlob();
     
@@ -671,6 +835,14 @@ export const generateAndDownloadPDF = async (
     }
 
     // Generate PDF blob using react-pdf with wrapper component
+    const links = getRecommendedLinks(prescriptionData);
+    const qrLinks = await Promise.all(
+      links.map(async (link: string) => ({
+        link,
+        dataUrl: await QRCode.toDataURL(link, { margin: 1, width: 120 }),
+      }))
+    );
+
     const pdfBlob = await pdf(
       <PDFDocument
         prescriptionData={prescriptionData}
@@ -678,6 +850,7 @@ export const generateAndDownloadPDF = async (
         doctorInfo={doctorInfo}
         clinicInfo={clinicInfo}
         visibleSections={visibleSections}
+        qrLinks={qrLinks}
       />
     ).toBlob();
     

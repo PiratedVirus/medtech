@@ -1,12 +1,13 @@
 'use client'
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import AllValuesModal from "./AllValuesModal";
+import AllValuesModal, { AllValuesModalRef } from "./AllValuesModal";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronDown, Eye } from "lucide-react";
+import TrackedValuesList from "./TrackedValuesList";
 
 interface Checkup {
   name: string;
@@ -52,18 +53,66 @@ export default function PatientSummarySection({
   const [loadingCheckups, setLoadingCheckups] = useState(false);
   const [showAllValuesModal, setShowAllValuesModal] = useState(false);
   const [showAllLatestComplaints, setShowAllLatestComplaints] = useState(false);
+  const allValuesModalRef = useRef<AllValuesModalRef>(null);
+
+  const refreshCheckups = async () => {
+    setLoadingCheckups(true);
+    try {
+      const response = await fetch(`/api/patient/${patientId}/tracked-values`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data.criticalValues) {
+          const transformedCheckups: Checkup[] = data.data.criticalValues.map((cv: any) => ({
+            name: cv.parameter,
+            value: cv.value.toString(),
+            unit: cv.unit || '',
+            normalRange: cv.normalRange,
+            isAbnormal: cv.isAbnormal,
+            severity: cv.severity,
+            category: cv.category,
+            reportDate: cv.reportDate
+          }));
+          setCheckups(transformedCheckups);
+        } else {
+          setCheckups([]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching tracked values:', error);
+    } finally {
+      setLoadingCheckups(false);
+    }
+  };
 
   const handleUntrack = async (parameter: string) => {
     const previous = [...checkups];
+    // Optimistically update UI
     setCheckups((current) => current.filter((c) => c.name.toLowerCase() !== parameter.toLowerCase()));
+    
     try {
-      await fetch(`/api/patient/${patientId}/tracked-values/track`, {
+      const response = await fetch(`/api/patient/${patientId}/tracked-values/track`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ parameter, isTracked: false })
       });
+      
+      if (!response.ok) {
+        // Revert on error
+        setCheckups(previous);
+        return;
+      }
+      
+      // Refresh modal if it's open
+      if (showAllValuesModal && allValuesModalRef.current) {
+        allValuesModalRef.current.refresh();
+      }
+      
+      // Refresh checkups to ensure consistency
+      await refreshCheckups();
     } catch (e) {
+      // Revert on error
       setCheckups(previous);
+      console.error('Error untracking parameter:', e);
     }
   };
 
@@ -106,39 +155,9 @@ export default function PatientSummarySection({
 
   // Fetch critical values from lab reports
   useEffect(() => {
-    const fetchLabAnalysis = async () => {
-      if (!patientId) return;
-      
-      setLoadingCheckups(true);
-      try {
-        const response = await fetch(`/api/patient/${patientId}/tracked-values`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data.criticalValues) {
-            // Transform critical values to Checkup format
-            const transformedCheckups: Checkup[] = data.data.criticalValues.map((cv: any) => ({
-              name: cv.parameter,
-              value: cv.value.toString(),
-              unit: cv.unit || '',
-              normalRange: cv.normalRange,
-              isAbnormal: cv.isAbnormal,
-              severity: cv.severity,
-              category: cv.category,
-              reportDate: cv.reportDate
-            }));
-            setCheckups(transformedCheckups);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching lab analysis:', error);
-        // Fallback to empty array if API fails
-        setCheckups([]);
-      } finally {
-        setLoadingCheckups(false);
-      }
-    };
-
-    fetchLabAnalysis();
+    if (!patientId) return;
+    refreshCheckups();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId]);
 
   // Get selected appointment or aggregate all previous
@@ -148,7 +167,13 @@ export default function PatientSummarySection({
 
   // Aggregate data from previous appointments
   const aggregatedComplaints = !selectedAppointmentId ? previousCompletedAppointments
-    .map(apt => apt.complaints)
+    .map(apt => {
+      const complaints = apt.complaints;
+      if (Array.isArray(complaints)) {
+        return complaints.map((c: any) => typeof c === 'string' ? c : (c.complaintText || c.text || '')).join(", ");
+      }
+      return typeof complaints === 'string' ? complaints : '';
+    })
     .filter(Boolean)
     .join(", ") : "";
 
@@ -158,12 +183,19 @@ export default function PatientSummarySection({
     .join(", ") : "";
 
   // Latest appointment complaints: flagged vs all
-  const latestComplaintsArray = (latestCompletedAppointment?.complaints || "")
-    .split(',')
-    .map(c => c.trim())
-    .filter(Boolean);
-  const flaggedComplaintsRegex = /high|low|severe|critical|urgent|blood pressure|bp|sugar|glucose|pain|fever/i;
-  const flaggedLatestComplaints = latestComplaintsArray.filter(c => flaggedComplaintsRegex.test(c));
+  // Handle both array format (new) and string format (legacy) for backward compatibility
+  const latestComplaintsRaw = latestCompletedAppointment?.complaints || [];
+  const latestComplaintsArray = Array.isArray(latestComplaintsRaw)
+    ? latestComplaintsRaw.map((c: any) => ({
+        text: typeof c === 'string' ? c : (c.complaintText || c.text || ''),
+        isFlagged: typeof c === 'string' ? false : (c.isFlagged || false)
+      }))
+    : typeof latestComplaintsRaw === 'string'
+    ? latestComplaintsRaw.split(',').map(c => ({ text: c.trim(), isFlagged: false })).filter(c => c.text)
+    : [];
+  
+  // Filter by isFlagged property instead of regex
+  const flaggedLatestComplaints = latestComplaintsArray.filter(c => c.isFlagged === true);
   const latestComplaintsToShow = showAllLatestComplaints ? latestComplaintsArray : flaggedLatestComplaints;
 
   // Previous appointments for dropdown (all completed appointments)
@@ -198,7 +230,7 @@ export default function PatientSummarySection({
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-5 min-h-0 px-2 py-0 leading-none text-secondary border-secondary/30 hover:bg-secondary/10 text-xs rounded-full"
+                        className="h-5 min-h-0 px-2 py-0 leading-none bg-white text-gray-900 border-gray-200 hover:bg-gray-100 text-xs rounded-full"
                         onClick={() => window.open(latestCompletedAppointment.prescriptionLink as string, '_blank')}
                       >
                         <Eye className="h-3 w-3 mr-1" /> View Prescription
@@ -207,7 +239,7 @@ export default function PatientSummarySection({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-5 min-h-0 px-2 py-0 leading-none text-secondary border-secondary/30 hover:bg-secondary/10 text-xs rounded-full"
+                      className="h-5 min-h-0 px-2 py-0 leading-none bg-white text-gray-900 border-gray-200 hover:bg-gray-100 text-xs rounded-full"
                       onClick={onSaveNotes}
                       disabled={savingNotes}
                     >
@@ -227,52 +259,19 @@ export default function PatientSummarySection({
                     {/* Checkups */}
                     <div className="flex justify-between">
                       <h5 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">Tracked Values</h5>
-                      <button onClick={() => setShowAllValuesModal(true)} className="w-8 h-8 bg-secondary text-white rounded-full flex mr-10 items-center justify-center hover:bg-secondary/90 transition-colors">
+                      <button onClick={() => setShowAllValuesModal(true)} className="w-8 h-8 bg-white text-gray-900 border border-gray-200 rounded-full flex mr-10 items-center justify-center hover:bg-gray-100 transition-colors">
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
                       </button>
                     </div>
                     <div className="mt-2">
-                      {loadingCheckups ? (
-                        <div className="text-sm text-gray-500">Loading lab values...</div>
-                      ) : checkups.length > 0 ? (
-                        <div className="max-h-36 overflow-y-auto pr-1 custom-scrollbar">
-                          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-                            {checkups.map((checkup, index) => {
-                              const s = getSeverityClasses(checkup.severity, checkup.isAbnormal);
-                              return (
-                                <div
-                                  key={`${checkup.name}-${index}`}
-                                  className={`group relative flex items-center gap-2 rounded-full ${s.bg} h-8 px-3 shadow-sm`}
-                                  title={checkup.normalRange ? `Normal: ${checkup.normalRange}` : undefined}
-                                >
-                                  <div className="flex items-center w-full gap-2">
-                                    <span className="flex-1 truncate text-[13px] font-semibold text-gray-700" title={checkup.name}>{checkup.name}</span>
-                                    <span className="ml-auto inline-flex items-baseline gap-1.5">
-                                      <span className={`text-[13px] font-bold ${s.text}`}>{checkup.value}</span>
-                                      {checkup.unit && (
-                                        <span className="text-[11px] text-gray-600">{checkup.unit}</span>
-                                      )}
-                                    </span>
-                                  </div>
-                                  <button
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center rounded-full bg-white/70 hover:bg-red-100 text-gray-600 hover:text-red-600 h-6 w-6 transition-opacity opacity-0 group-hover:opacity-100"
-                                    title="Untrack"
-                                    onClick={() => handleUntrack(checkup.name)}
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
-                                      <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.256 1.476l-.209-.035-1.005 12.063A3.75 3.75 0 0115.168 22H8.832a3.75 3.75 0 01-3.74-3.279L4.087 6.658l-.209.035a.75.75 0 11-.256-1.476A48.567 48.567 0 017.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.969a52.662 52.662 0 013.368 0C15.287 1.805 16.5 3.141 16.5 4.705zm-6.136-1.47a51.196 51.196 0 013.272 0C14.454 3.074 15 3.62 15 4.295v.26a49.488 49.488 0 00-6 0v-.26c0-.674.546-1.22 1.364-1.287zM9.75 9a.75.75 0 00-1.5 0v8.25a.75.75 0 001.5 0V9zm3 0a.75.75 0 00-1.5 0v8.25a.75.75 0 001.5 0V9zm3 0a.75.75 0 00-1.5 0v8.25a.75.75 0 001.5 0V9z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-sm text-gray-500">No lab values available</div>
-                      )}
+                      <TrackedValuesList
+                        values={checkups}
+                        loading={loadingCheckups}
+                        onUntrack={handleUntrack}
+                        showUntrack
+                      />
                     </div>
 
                     {/* Latest Complaints with toggle */}
@@ -290,18 +289,21 @@ export default function PatientSummarySection({
                       </div>
                       <div className="space-y-2">
                         {latestComplaintsToShow.length > 0 ? (
-                          latestComplaintsToShow.map((complaint, index) => (
-                            <div key={index} className="text-sm text-gray-700 flex items-start gap-2">
-                              <span className="flex items-center gap-2 bg-secondary/10 p-2 rounded-lg">
-                                {complaint}
-                                {complaint.toLowerCase().includes('blood pressure') && (
-                                  <svg className="h-3 w-3 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                                  </svg>
-                                )}
-                              </span>
-                            </div>
-                          ))
+                          latestComplaintsToShow.map((complaint, index) => {
+                            const complaintText = typeof complaint === 'string' ? complaint : complaint.text;
+                            return (
+                              <div key={index} className="text-sm text-gray-700 flex items-start gap-2">
+                                <span className="flex items-center gap-2 bg-secondary/10 p-2 rounded-lg">
+                                  {complaintText}
+                                  {complaintText.toLowerCase().includes('blood pressure') && (
+                                    <svg className="h-3 w-3 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                    </svg>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })
                         ) : (
                           <p className="text-sm text-gray-500">{showAllLatestComplaints ? 'No complaints recorded' : 'No flagged complaints for latest appointment'}</p>
                         )}
@@ -328,15 +330,29 @@ export default function PatientSummarySection({
                     <div>
                       <h5 className="font-bold text-gray-800 mb-3">Medicines</h5>
                       <div className="space-y-2">
-                        {latestCompletedAppointment?.medicines ? (
-                          latestCompletedAppointment.medicines.split(',').map((medicine, index) => (
+                        {(() => {
+                          const medicinesData = latestCompletedAppointment?.medicines;
+                          if (!medicinesData) {
+                            return <p className="text-sm text-gray-500">No medicines prescribed</p>;
+                          }
+                          
+                          // Handle both array and string formats
+                          const medicinesArray = Array.isArray(medicinesData)
+                            ? medicinesData.map((m: any) => typeof m === 'string' ? m : (m.name || m.text || '')).filter(Boolean)
+                            : typeof medicinesData === 'string'
+                            ? medicinesData.split(',').map(m => m.trim()).filter(Boolean)
+                            : [];
+                          
+                          if (medicinesArray.length === 0) {
+                            return <p className="text-sm text-gray-500">No medicines prescribed</p>;
+                          }
+                          
+                          return medicinesArray.map((medicine, index) => (
                             <div key={index} className="text-sm text-gray-700 bg-secondary/10 p-3 rounded">
-                              <div className="font-semibold">{medicine.trim()}</div>
+                              <div className="font-semibold">{medicine}</div>
                             </div>
-                          ))
-                        ) : (
-                          <p className="text-sm text-gray-500">No medicines prescribed</p>
-                        )}
+                          ));
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -346,35 +362,10 @@ export default function PatientSummarySection({
           </Card>
           {showAllValuesModal && (
             <AllValuesModal 
+              ref={allValuesModalRef}
               patientId={patientId} 
               onClose={() => setShowAllValuesModal(false)} 
-              onChanged={() => {
-                // Refresh tracked values after a change
-                (async () => {
-                  setLoadingCheckups(true);
-                  try {
-                    const response = await fetch(`/api/patient/${patientId}/tracked-values`);
-                    if (response.ok) {
-                      const data = await response.json();
-                      if (data.success && data.data.criticalValues) {
-                        const transformedCheckups: Checkup[] = data.data.criticalValues.map((cv: any) => ({
-                          name: cv.parameter,
-                          value: cv.value.toString(),
-                          unit: cv.unit || '',
-                          normalRange: cv.normalRange,
-                          isAbnormal: cv.isAbnormal,
-                          severity: cv.severity,
-                          category: cv.category,
-                          reportDate: cv.reportDate
-                        }));
-                        setCheckups(transformedCheckups);
-                      }
-                    }
-                  } finally {
-                    setLoadingCheckups(false);
-                  }
-                })();
-              }}
+              onChanged={refreshCheckups}
             />
           )}
 
@@ -402,7 +393,7 @@ export default function PatientSummarySection({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-5 min-h-0 px-2 py-0 leading-none text-xs rounded-full"
+                    className="h-5 min-h-0 px-2 py-0 leading-none bg-white text-gray-900 border-gray-200 hover:bg-gray-100 text-xs rounded-full"
                     disabled={!selectedAppointment || !selectedAppointment?.prescriptionLink}
                     onClick={() => {
                       if (selectedAppointment?.prescriptionLink) {
@@ -414,7 +405,7 @@ export default function PatientSummarySection({
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-5 min-h-0 px-2 py-0 leading-none text-xs flex items-center gap-1 rounded-full">
+                      <Button variant="outline" size="sm" className="h-5 min-h-0 px-2 py-0 leading-none bg-white text-gray-900 border-gray-200 hover:bg-gray-100 text-xs flex items-center gap-1 rounded-full">
                         <span>
                           {selectedAppointmentId
                             ? `Selected: ${new Date((previousAppointments.find(a => a.id.toString() === selectedAppointmentId)?.date || '')).toLocaleDateString()}`
@@ -448,11 +439,24 @@ export default function PatientSummarySection({
                       </h5>
                       <div className="max-h-28 overflow-y-auto pr-1 custom-scrollbar">
                         <div className="flex flex-wrap gap-2">
-                          {(selectedAppointment ? selectedAppointment.complaints : aggregatedComplaints)
-                            ?.split(',')
-                            .map(c => c.trim())
-                            .filter(Boolean)
-                            .map((complaint, index) => (
+                          {(() => {
+                            const complaintsData = selectedAppointment ? selectedAppointment.complaints : aggregatedComplaints;
+                            if (!complaintsData) {
+                              return <span className="text-sm text-gray-500">No complaints recorded</span>;
+                            }
+                            
+                            // Handle both array and string formats
+                            const complaintsArray = Array.isArray(complaintsData)
+                              ? complaintsData.map((c: any) => typeof c === 'string' ? c : (c.complaintText || c.text || '')).filter(Boolean)
+                              : typeof complaintsData === 'string'
+                              ? complaintsData.split(',').map(c => c.trim()).filter(Boolean)
+                              : [];
+                            
+                            if (complaintsArray.length === 0) {
+                              return <span className="text-sm text-gray-500">No complaints recorded</span>;
+                            }
+                            
+                            return complaintsArray.map((complaint, index) => (
                               <span key={`complaint-${index}`} className="inline-flex items-center gap-1.5 rounded-full bg-secondary/10 px-2.5 py-1 text-xs text-secondary">
                                 {complaint}
                                 {complaint.toLowerCase().includes('blood pressure') && (
@@ -461,10 +465,8 @@ export default function PatientSummarySection({
                                   </svg>
                                 )}
                               </span>
-                            ))
-                          || (
-                            <span className="text-sm text-gray-500">No complaints recorded</span>
-                          )}
+                            ));
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -480,18 +482,29 @@ export default function PatientSummarySection({
                         <div>
                           <div className="text-xs font-semibold text-gray-600 mb-1">Medicines</div>
                           <div className="flex flex-wrap gap-2">
-                            {(selectedAppointment ? selectedAppointment.medicines : aggregatedMedicines)
-                              ?.split(',')
-                              .map(m => m.trim())
-                              .filter(Boolean)
-                              .map((medicine, index) => (
+                            {(() => {
+                              const medicinesData = selectedAppointment ? selectedAppointment.medicines : aggregatedMedicines;
+                              if (!medicinesData) {
+                                return <span className="text-sm text-gray-500">No medicines prescribed</span>;
+                              }
+                              
+                              // Handle both array and string formats
+                              const medicinesArray = Array.isArray(medicinesData)
+                                ? medicinesData.map((m: any) => typeof m === 'string' ? m : (m.name || m.text || '')).filter(Boolean)
+                                : typeof medicinesData === 'string'
+                                ? medicinesData.split(',').map(m => m.trim()).filter(Boolean)
+                                : [];
+                              
+                              if (medicinesArray.length === 0) {
+                                return <span className="text-sm text-gray-500">No medicines prescribed</span>;
+                              }
+                              
+                              return medicinesArray.map((medicine, index) => (
                                 <span key={`medicine-${index}`} className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-1 text-xs text-secondary">
                                   {medicine}
                                 </span>
-                              ))
-                            || (
-                              <span className="text-sm text-gray-500">No medicines prescribed</span>
-                            )}
+                              ));
+                            })()}
                           </div>
                         </div>
                         {/* Notes for selected appointment */}

@@ -31,13 +31,40 @@ export async function GET() {
     });
 
     for (const appointment of todayAppointments) {
-      // Send reminder at 8 AM
       const appointmentTime = new Date(appointment.doctorAvailability.date);
       const [hours] = appointment.doctorAvailability.startTime.split(':').map(Number);
       appointmentTime.setHours(hours, 0, 0, 0);
       
       const timeDiff = appointmentTime.getTime() - now.getTime();
       const hoursUntilAppointment = timeDiff / (1000 * 60 * 60);
+      const currentHour = now.getHours();
+      
+      // Send morning notification at 8 AM (between 8:00 and 8:59)
+      if (currentHour === 8) {
+        // Check if we already sent morning notification today
+        const existingMorningNotification = await prisma.patientNotification.findFirst({
+          where: {
+            patientId: appointment.patientId,
+            type: 'APPOINTMENT_REMINDER',
+            createdAt: {
+              gte: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0),
+            },
+            data: {
+              path: ['appointmentId'],
+              equals: appointment.id,
+            },
+          },
+        });
+
+        if (!existingMorningNotification) {
+          await NotificationService.sendSameDayAppointmentMorning(
+            appointment.patientId,
+            appointment.doctor.name,
+            appointment.doctorAvailability.startTime,
+            appointment.id
+          );
+        }
+      }
       
       // Send reminder if appointment is in 1-24 hours
       if (hoursUntilAppointment >= 1 && hoursUntilAppointment <= 24) {
@@ -64,41 +91,198 @@ export async function GET() {
     });
 
     for (const subscription of activeSubscriptions) {
-      const allConsultationDates = [
-        ...subscription.doctorConsultationDates,
-        ...subscription.dieticianConsultationDates,
-        ...subscription.labTestsDates,
-        ...subscription.ophthalmologistConsultationDates,
-      ];
-
-      for (const consultationDate of allConsultationDates) {
+      // Check doctor consultation dates
+      for (const consultationDate of subscription.doctorConsultationDates) {
         const consultationDateTime = new Date(consultationDate);
         const daysDiff = Math.ceil((consultationDateTime.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         
-        // Send reminder 3 days before
+        // Calculate booking window: 5 days before to 10 days after consultation date
+        const bookingWindowStart = new Date(consultationDateTime);
+        bookingWindowStart.setDate(consultationDateTime.getDate() - 5);
+        const bookingWindowEnd = new Date(consultationDateTime);
+        bookingWindowEnd.setDate(consultationDateTime.getDate() + 10);
+        
+        // Check if today is the first day of booking window (5 days before)
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const windowStartDate = new Date(bookingWindowStart.getFullYear(), bookingWindowStart.getMonth(), bookingWindowStart.getDate());
+        
+        if (todayStart.getTime() === windowStartDate.getTime()) {
+          // Check if notification already sent for this consultation date
+          const existingNotification = await prisma.patientNotification.findFirst({
+            where: {
+              patientId: subscription.patientId,
+              type: 'CONSULTATION_REMINDER',
+              data: {
+                path: ['consultationDate'],
+                equals: consultationDate,
+              },
+              createdAt: {
+                gte: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0),
+              },
+            },
+          });
+
+          if (!existingNotification) {
+            await NotificationService.sendPlanBookingWindowOpen(
+              subscription.patientId,
+              'Doctor Consultation',
+              consultationDate,
+              subscription.plan.name
+            );
+          }
+        }
+        
+        // Send reminder 3 days before consultation date
         if (daysDiff === 3) {
-          const consultationType = subscription.doctorConsultationDates.includes(consultationDate) ? 'Doctor' :
-                                 subscription.dieticianConsultationDates.includes(consultationDate) ? 'Dietician' :
-                                 subscription.labTestsDates.includes(consultationDate) ? 'Lab Test' :
-                                 'Ophthalmologist';
-          
           await NotificationService.sendConsultationReminder(
             subscription.patientId,
             consultationDate,
-            consultationType
+            'Doctor'
+          );
+        }
+      }
+
+      // Check dietician consultation dates
+      for (const consultationDate of subscription.dieticianConsultationDates) {
+        const consultationDateTime = new Date(consultationDate);
+        const daysDiff = Math.ceil((consultationDateTime.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        
+        const bookingWindowStart = new Date(consultationDateTime);
+        bookingWindowStart.setDate(consultationDateTime.getDate() - 5);
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const windowStartDate = new Date(bookingWindowStart.getFullYear(), bookingWindowStart.getMonth(), bookingWindowStart.getDate());
+        
+        if (todayStart.getTime() === windowStartDate.getTime()) {
+          const existingNotification = await prisma.patientNotification.findFirst({
+            where: {
+              patientId: subscription.patientId,
+              type: 'CONSULTATION_REMINDER',
+              data: {
+                path: ['consultationDate'],
+                equals: consultationDate,
+              },
+              createdAt: {
+                gte: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0),
+              },
+            },
+          });
+
+          if (!existingNotification) {
+            await NotificationService.sendPlanBookingWindowOpen(
+              subscription.patientId,
+              'Dietician Consultation',
+              consultationDate,
+              subscription.plan.name
+            );
+          }
+        }
+        
+        if (daysDiff === 3) {
+          await NotificationService.sendConsultationReminder(
+            subscription.patientId,
+            consultationDate,
+            'Dietician'
+          );
+        }
+      }
+
+      // Check lab test dates
+      for (const consultationDate of subscription.labTestsDates) {
+        const consultationDateTime = new Date(consultationDate);
+        const daysDiff = Math.ceil((consultationDateTime.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        
+        const bookingWindowStart = new Date(consultationDateTime);
+        bookingWindowStart.setDate(consultationDateTime.getDate() - 5);
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const windowStartDate = new Date(bookingWindowStart.getFullYear(), bookingWindowStart.getMonth(), bookingWindowStart.getDate());
+        
+        if (todayStart.getTime() === windowStartDate.getTime()) {
+          const existingNotification = await prisma.patientNotification.findFirst({
+            where: {
+              patientId: subscription.patientId,
+              type: 'CONSULTATION_REMINDER',
+              data: {
+                path: ['consultationDate'],
+                equals: consultationDate,
+              },
+              createdAt: {
+                gte: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0),
+              },
+            },
+          });
+
+          if (!existingNotification) {
+            await NotificationService.sendPlanBookingWindowOpen(
+              subscription.patientId,
+              'Lab Test',
+              consultationDate,
+              subscription.plan.name
+            );
+          }
+        }
+        
+        if (daysDiff === 3) {
+          await NotificationService.sendConsultationReminder(
+            subscription.patientId,
+            consultationDate,
+            'Lab Test'
+          );
+        }
+      }
+
+      // Check ophthalmologist consultation dates
+      for (const consultationDate of subscription.ophthalmologistConsultationDates) {
+        const consultationDateTime = new Date(consultationDate);
+        const daysDiff = Math.ceil((consultationDateTime.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        
+        const bookingWindowStart = new Date(consultationDateTime);
+        bookingWindowStart.setDate(consultationDateTime.getDate() - 5);
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const windowStartDate = new Date(bookingWindowStart.getFullYear(), bookingWindowStart.getMonth(), bookingWindowStart.getDate());
+        
+        if (todayStart.getTime() === windowStartDate.getTime()) {
+          const existingNotification = await prisma.patientNotification.findFirst({
+            where: {
+              patientId: subscription.patientId,
+              type: 'CONSULTATION_REMINDER',
+              data: {
+                path: ['consultationDate'],
+                equals: consultationDate,
+              },
+              createdAt: {
+                gte: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0),
+              },
+            },
+          });
+
+          if (!existingNotification) {
+            await NotificationService.sendPlanBookingWindowOpen(
+              subscription.patientId,
+              'Ophthalmologist Consultation',
+              consultationDate,
+              subscription.plan.name
+            );
+          }
+        }
+        
+        if (daysDiff === 3) {
+          await NotificationService.sendConsultationReminder(
+            subscription.patientId,
+            consultationDate,
+            'Ophthalmologist'
           );
         }
       }
     }
 
-    // 3. Plan expiry warnings
+    // 3. Enhanced Plan expiry warnings (7, 3, 1 days before, and last day)
     console.log('⚠️ Checking for plan expiry warnings...');
-    const expiringSubscriptions = await prisma.subscriptionTracker.findMany({
+    const activeSubscriptionsForExpiry = await prisma.subscriptionTracker.findMany({
       where: {
         isActive: true,
         endDate: {
-          gte: new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000), // 7 days from now
-          lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          not: null,
+          gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
         },
         deletedAt: null,
       },
@@ -108,14 +292,45 @@ export async function GET() {
       },
     });
 
-    for (const subscription of expiringSubscriptions) {
+    for (const subscription of activeSubscriptionsForExpiry) {
       if (subscription.endDate) {
-        const daysLeft = Math.ceil((subscription.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        await NotificationService.sendPlanExpiryWarning(
-          subscription.patientId,
-          subscription.plan.name,
-          daysLeft
-        );
+        const endDate = new Date(subscription.endDate);
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const endDateStart = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+        
+        const daysLeft = Math.ceil((endDateStart.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Check if notification already sent for this day
+        const existingNotification = await prisma.patientNotification.findFirst({
+          where: {
+            patientId: subscription.patientId,
+            type: 'PLAN_EXPIRY_WARNING',
+            createdAt: {
+              gte: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0),
+            },
+            data: {
+              path: ['daysLeft'],
+              equals: daysLeft,
+            },
+          },
+        });
+
+        if (existingNotification) continue;
+
+        // Send notification at 7, 3, 1 days before, and on the last day
+        if (daysLeft === 7 || daysLeft === 3) {
+          await NotificationService.sendPlanExpiryWarning(
+            subscription.patientId,
+            subscription.plan.name,
+            daysLeft
+          );
+        } else if (daysLeft === 1 || daysLeft === 0) {
+          await NotificationService.sendPlanExpiryFinalWarning(
+            subscription.patientId,
+            subscription.plan.name,
+            daysLeft === 0
+          );
+        }
       }
     }
 
@@ -217,7 +432,7 @@ export async function GET() {
       processed: {
         todayAppointments: todayAppointments.length,
         activeSubscriptions: activeSubscriptions.length,
-        expiringSubscriptions: expiringSubscriptions.length,
+        expiringSubscriptions: activeSubscriptionsForExpiry.length,
         completedLabBookings: completedLabBookings.length,
         recentDietPlanRequests: recentDietPlanRequests.length,
         recentDietPlans: recentDietPlans.length,

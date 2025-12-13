@@ -34,10 +34,28 @@ export function parseTimeTo24Hour(time12h: string): number {
   return hour + minute / 60;
 }
 
-export function getTimeSegment(time12h: string): "morning" | "afternoon" | "evening" {
-  const hour24 = parseTimeTo24Hour(time12h);
-  if (hour24 < 12) return "morning";
-  if (hour24 < 17) return "afternoon";
+export function getTimeSegment(timeString: string): "morning" | "afternoon" | "evening" {
+  let hour24: number;
+  
+  // Handle both 24-hour format (HH:MM) and 12-hour format (HH:MM AM/PM)
+  if (timeString.includes("AM") || timeString.includes("PM")) {
+    // 12-hour format with AM/PM
+    hour24 = parseTimeTo24Hour(timeString);
+  } else {
+    // 24-hour format (HH:MM)
+    const [hourStr, minuteStr] = timeString.split(":");
+    const hour = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr || "0", 10);
+    hour24 = hour + minute / 60;
+  }
+  
+  // Morning: 6am-12pm (6:00 to 11:59)
+  // Afternoon: 12pm-4pm (12:00 to 15:59)
+  // Evening: 4pm-11pm (16:00 to 22:59)
+  if (hour24 >= 6 && hour24 < 12) return "morning";
+  if (hour24 >= 12 && hour24 < 16) return "afternoon";
+  if (hour24 >= 16 && hour24 < 23) return "evening";
+  // For times outside 6am-11pm, default to evening (shouldn't happen in normal flow)
   return "evening";
 }
 

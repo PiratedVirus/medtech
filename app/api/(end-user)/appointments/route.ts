@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCachedAppointments, invalidateAppointmentsCache } from "@/lib/data-cache";
 import { AppointmentStatus, ConsultationType } from "@/lib/constants/enums";
+import { SmartCacheInvalidation } from "@/lib/cache-dependencies";
 
 /**
  * GET /api/appointments
@@ -311,14 +312,29 @@ export async function POST(request: Request) {
     });
     console.log("Transaction completed successfully, appointment ID:", newAppointment.id);
 
-    // Invalidate appointments cache after appointment creation
+    // ✅ HIGH PRIORITY: Smart cache invalidation with dependencies
     try {
-      await invalidateAppointmentsCache(patientId);
-      console.log(`[APPOINTMENT] Appointments cache invalidated for patient ${patientId} after appointment creation`);
+      await SmartCacheInvalidation.onAppointmentUpdate(patientId, doctorId);
+      console.log(`[APPOINTMENT] Smart cache invalidation completed for patient ${patientId}`);
     } catch (cacheError) {
-      console.error('[APPOINTMENT] Error invalidating appointments cache:', cacheError);
-      // Don't fail the request if cache invalidation fails
+      console.error('[APPOINTMENT] Error in smart cache invalidation:', cacheError);
+      // Fallback to basic cache invalidation
+      try {
+        await invalidateAppointmentsCache(patientId);
+        console.log(`[APPOINTMENT] Fallback cache invalidation completed for patient ${patientId}`);
+      } catch (fallbackError) {
+        console.error('[APPOINTMENT] Fallback cache invalidation also failed:', fallbackError);
+      }
     }
+
+    // ✅ CACHE WARMING: Warm the new appointment cache for doctor (non-blocking)
+    import('@/lib/cache-warming').then(({ warmAppointmentCache }) => {
+      warmAppointmentCache(newAppointment.id, doctorId).catch((error) => {
+        console.error('[APPOINTMENT] Cache warming failed (non-critical):', error);
+      });
+    }).catch(() => {
+      // Silently fail if import fails
+    });
 
     return NextResponse.json({ success: true, data: newAppointment });
 
