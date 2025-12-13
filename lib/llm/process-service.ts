@@ -1,7 +1,8 @@
 import prisma from "@/lib/prisma";
+import { generateSummary } from "@/lib/llm/unified-service";
 
-// Optimized model choices for medical text analysis
-const OR_MODEL = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.2-3b-instruct:free';
+// GROQ-only unified processing (no OpenRouter)
+const OR_MODEL = 'groq+extractor';
 const MAX_TEXT_TOKENS = 8000; // Conservative token limit for input text
 
 function extractOpenRouterContent(responseJson: any): string {
@@ -64,21 +65,13 @@ function tryParseLooseJson(jsonLike: string): any | null {
 // Process PDF with OpenRouter - Enhanced with multiple strategies
 export async function processWithOpenRouter(analysisId: number, pdfUrl: string, patientId: number, labBookingId: number) {
   try {
-    const apiKey = process.env.OPENROUTER_API_KEY;
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    console.log(`[LLM-PROC][START] analysisId=${analysisId} unified GROQ pipeline`);
 
-    if (!apiKey) {
-      throw new Error("OPENROUTER_API_KEY not configured in environment variables");
-    }
-
-    console.log(`[LLM-PROC][START] analysisId=${analysisId} model=${OR_MODEL}`);
-
-    // Use working PDF processor
-    console.log(`[LLM-PROC][STRATEGY] analysisId=${analysisId} Starting PDF processing`);
-    const analysisText = await processWithWorkingStrategy(pdfUrl, apiKey, siteUrl);
-
-    console.log(`[LLM-PROC][PARSE] analysisId=${analysisId} Parsing LLM response to structured fields`);
-    const { summary, criticalValues, allValues, trendAnalysis } = parseLLMResponse(analysisText);
+    // Unified pipeline: OCR -> GROQ summary -> internal extractor
+    const ocrText = await extractOcrText(pdfUrl);
+    const unifiedJson = await analyzeWithGroqAndExtractor(ocrText, siteUrl);
+    const { summary, criticalValues, allValues, keyFindings, recommendations, urgency, trendAnalysis } = parseLLMResponse(unifiedJson);
 
     await prisma.labReportAnalysis.update({
       where: { id: analysisId },
@@ -86,6 +79,9 @@ export async function processWithOpenRouter(analysisId: number, pdfUrl: string, 
         llmSummary: ensureSummary(summary, criticalValues, allValues),
         criticalValues,
         allValues,
+        keyFindings: keyFindings || [],
+        recommendations: recommendations || [],
+        urgency: urgency || 'ROUTINE',
         trendAnalysis: {},
         processingStatus: 'COMPLETED',
         processedAt: new Date(),
@@ -113,173 +109,33 @@ export async function processWithOpenRouter(analysisId: number, pdfUrl: string, 
 }
 
 // Working PDF processing implementation
-async function processWithWorkingStrategy(pdfUrl: string, apiKey: string, siteUrl: string): Promise<string> {
-  if (!apiKey || apiKey.trim() === '') {
-    console.warn('No OpenRouter API key configured');
-    return `{"summary":"API key missing","criticalValues":[],"allValues":[]}`;
-  }
-
-  try {
-    // Strategy 1: Try text extraction first (most reliable)
-    console.log('[LLM-PROC][STRATEGY] Attempting PDF text extraction strategy');
-    return await extractAndProcessText(pdfUrl, apiKey, siteUrl);
-  } catch (textError) {
-    console.log('[LLM-PROC][STRATEGY] Text extraction failed, trying direct URL approach:', textError);
-    try {
-      return await processWithDirectUrl(pdfUrl, apiKey, siteUrl);
-    } catch (urlError) {
-      console.error('All strategies failed:', urlError);
-      throw new Error(`PDF processing failed: ${urlError instanceof Error ? urlError.message : 'Unknown error'}`);
-    }
-  }
+async function processWithWorkingStrategy(pdfUrl: string, _apiKey: string, siteUrl: string): Promise<string> {
+  console.log('[LLM-PROC][STRATEGY] Unified GROQ pipeline');
+  const ocrText = await extractOcrText(pdfUrl);
+  return await analyzeWithGroqAndExtractor(ocrText, siteUrl);
 }
 
 // Strategy 1: Extract text from PDF using OCR and send to LLM
-async function extractAndProcessText(pdfUrl: string, apiKey: string, siteUrl: string): Promise<string> {
+async function extractAndProcessText(pdfUrl: string, _apiKey: string, siteUrl: string): Promise<string> {
   console.log('[LLM-PROC][PDF] Using OCR (Google Vision) for PDF text extraction');
-  
-  // Always use OCR for PDF text extraction
-  const { ocrExtractPdfTextFromUrl } = await import('@/lib/ocr/google-vision');
-  let extractedText = await ocrExtractPdfTextFromUrl(pdfUrl);
+  const extractedText = await extractOcrText(pdfUrl);
 
   if (!extractedText || extractedText.trim().length < 50) {
     throw new Error('OCR text extraction failed or insufficient content');
   }
 
-  extractedText = extractedText
-    .replace(/\s+/g, ' ')
-    .replace(/\n+/g, '\n')
-    .trim()
-    .substring(0, MAX_TEXT_TOKENS);
-
-  console.log(`[LLM-PROC][PDF] Extracted ${extractedText.length} characters from PDF using OCR`);
-  return await sendTextToLLM(extractedText, apiKey, siteUrl);
+  console.log('[LLM-PROC][PDF] Text extracted; analyzing with GROQ + extractor');
+  return await analyzeWithGroqAndExtractor(extractedText, siteUrl);
 }
 
 // Strategy 2: Send PDF URL directly to LLM
-async function processWithDirectUrl(pdfUrl: string, apiKey: string, siteUrl: string): Promise<string> {
-  console.log('[LLM-PROC][PDF] Using direct URL strategy');
-  
-  const systemPrompt = `You are a medical lab report analyzer. Extract and summarize lab values from the provided PDF URL. Return a JSON object with the following structure:
-{
-  "summary": "Brief summary of the lab report",
-  "criticalValues": [
-    {
-      "parameter": "Parameter name",
-      "value": "Value",
-      "unit": "Unit",
-      "normalRange": "Normal range",
-      "isAbnormal": true/false,
-      "severity": "CRITICAL/HIGH/MODERATE/NORMAL"
-    }
-  ],
-  "allValues": [
-    {
-      "parameter": "Parameter name", 
-      "value": "Value",
-      "unit": "Unit", 
-      "normalRange": "Normal range",
-      "isAbnormal": true/false,
-      "severity": "CRITICAL/HIGH/MODERATE/NORMAL"
-    }
-  ]
-}`;
-
-  const userPrompt = `Please analyze this lab report PDF: ${pdfUrl}
-
-Extract all lab values and provide a comprehensive summary. Focus on identifying any abnormal or critical values that require immediate attention.`;
-
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': siteUrl,
-      'X-Title': 'CareDB Lab Analysis'
-    },
-    body: JSON.stringify({
-      model: OR_MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.1,
-      max_tokens: 4000
-    })
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenRouter API error: ${response.status} ${errorText}`);
-  }
-
-  const data = await response.json();
-  return extractOpenRouterContent(data);
-}
+// Deprecated: processWithDirectUrl no longer used (OpenRouter removed)
 
 // Send extracted text to LLM for analysis
-async function sendTextToLLM(text: string, apiKey: string, siteUrl: string): Promise<string> {
-  const systemPrompt = `You are a medical lab report analyzer. Extract and summarize lab values from the provided text. Return a JSON object with the following structure:
-{
-  "summary": "Brief summary of the lab report",
-  "criticalValues": [
-    {
-      "parameter": "Parameter name",
-      "value": "Value", 
-      "unit": "Unit",
-      "normalRange": "Normal range",
-      "isAbnormal": true/false,
-      "severity": "CRITICAL/HIGH/MODERATE/NORMAL"
-    }
-  ],
-  "allValues": [
-    {
-      "parameter": "Parameter name",
-      "value": "Value",
-      "unit": "Unit", 
-      "normalRange": "Normal range",
-      "isAbnormal": true/false,
-      "severity": "CRITICAL/HIGH/MODERATE/NORMAL"
-    }
-  ]
-}`;
-
-  const userPrompt = `Please analyze this lab report text:
-
-${text}
-
-Extract all lab values and provide a comprehensive summary. Focus on identifying any abnormal or critical values that require immediate attention.`;
-
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': siteUrl,
-      'X-Title': 'CareDB Lab Analysis'
-    },
-    body: JSON.stringify({
-      model: OR_MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.1,
-      max_tokens: 4000
-    })
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenRouter API error: ${response.status} ${errorText}`);
-  }
-
-  const data = await response.json();
-  return extractOpenRouterContent(data);
-}
+// Deprecated: sendTextToLLM no longer used (OpenRouter removed)
 
 // Parse LLM response into structured data
-function parseLLMResponse(responseText: string): { summary: string; criticalValues: any[]; allValues: any[]; trendAnalysis: any } {
+function parseLLMResponse(responseText: string): { summary: string; criticalValues: any[]; allValues: any[]; keyFindings: any[]; recommendations: any[]; urgency: string; trendAnalysis: any } {
   try {
     const parsed = tryParseLooseJson(responseText);
     if (!parsed) {
@@ -290,6 +146,9 @@ function parseLLMResponse(responseText: string): { summary: string; criticalValu
       summary: parsed.summary || 'No summary provided',
       criticalValues: Array.isArray(parsed.criticalValues) ? parsed.criticalValues : [],
       allValues: Array.isArray(parsed.allValues) ? parsed.allValues : [],
+      keyFindings: Array.isArray(parsed.keyFindings) ? parsed.keyFindings : [],
+      recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+      urgency: parsed.urgency || 'ROUTINE',
       trendAnalysis: parsed.trendAnalysis || {}
     };
   } catch (error) {
@@ -298,6 +157,9 @@ function parseLLMResponse(responseText: string): { summary: string; criticalValu
       summary: 'Error parsing response',
       criticalValues: [],
       allValues: [],
+      keyFindings: [],
+      recommendations: [],
+      urgency: 'ROUTINE',
       trendAnalysis: {}
     };
   }
@@ -336,5 +198,72 @@ async function saveTrendData(patientId: number, criticalValues: any[], labBookin
     }
   } catch (error) {
     console.error('Error saving trend data:', error);
+  }
+}
+
+async function extractOcrText(pdfUrl: string): Promise<string> {
+  const { ocrExtractPdfTextFromUrl } = await import('@/lib/ocr/google-vision');
+  let extractedText = await ocrExtractPdfTextFromUrl(pdfUrl);
+  if (!extractedText || extractedText.trim().length < 50) {
+    throw new Error('OCR text extraction failed or insufficient content');
+  }
+  extractedText = extractedText
+    .replace(/\s+/g, ' ')
+    .replace(/\n+/g, '\n')
+    .trim()
+    .substring(0, MAX_TEXT_TOKENS);
+  return extractedText;
+}
+
+// Fallback analysis that mirrors the manual upload pipeline: GROQ summary + internal value extraction
+async function analyzeWithGroqAndExtractor(text: string, siteUrl: string): Promise<string> {
+  try {
+    const groqKey = process.env.GROQ_API_KEY || '';
+    let summary = 'Analysis completed.';
+    let keyFindings: any[] = [];
+    let recommendations: any[] = [];
+    let urgency = 'ROUTINE';
+    let allValues: any[] = [];
+    let criticalValues: any[] = [];
+
+    // Summary via GROQ if available
+    if (groqKey) {
+      try {
+        const res = await generateSummary(text, groqKey);
+        summary = res.summary || summary;
+        keyFindings = res.keyFindings || [];
+        recommendations = res.recommendations || [];
+        urgency = res.urgency || 'ROUTINE';
+      } catch (e) {
+        console.warn('[LLM-PROC][FALLBACK] GROQ summary failed, continuing with defaults');
+      }
+    }
+
+    // Extract values via internal API (same endpoint used by standalone flow)
+    try {
+      const extractUrl = `${siteUrl.replace(/\/$/, '')}/api/llm-process/extract-standalone-values`;
+      const extractResponse = await fetch(extractUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, force: true })
+      });
+      if (extractResponse.ok) {
+        const data = await extractResponse.json();
+        if (data?.success) {
+          allValues = data.data?.allValues || [];
+          criticalValues = data.data?.criticalValues || [];
+        }
+      } else {
+        const t = await extractResponse.text();
+        console.warn('[LLM-PROC][FALLBACK] extractor response not OK:', t);
+      }
+    } catch (e) {
+      console.warn('[LLM-PROC][FALLBACK] extractor call failed');
+    }
+
+    return JSON.stringify({ summary, keyFindings, recommendations, urgency, criticalValues, allValues });
+  } catch (e) {
+    console.error('[LLM-PROC][FALLBACK] unexpected failure', e);
+    return `{"summary":"Fallback failed","keyFindings":[],"recommendations":[],"urgency":"ROUTINE","criticalValues":[],"allValues":[]}`;
   }
 }

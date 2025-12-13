@@ -51,6 +51,7 @@ export async function addMedicineToAlgolia(medicine: {
   medicineTime?: string[];
   duration?: string[];
   price?: number;
+  short_composition1?: string;
 }) {
   try {
     const response = await adminClient.saveObject({

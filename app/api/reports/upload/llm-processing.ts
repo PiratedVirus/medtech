@@ -258,58 +258,16 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
         },
       });
 
-      const apiKey = process.env.OPENROUTER_API_KEY;
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-      
-      if (apiKey) {
-        try {
-          const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'HTTP-Referer': siteUrl,
-              'X-Title': 'CareDB Prescription Analysis',
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'meta-llama/llama-3.2-3b-instruct:free',
-              messages: [
-                {
-                  role: 'system',
-                  content: 'You are a medical prescription analyzer. Return JSON with summary, key findings, and recommendations.',
-                },
-                {
-                  role: 'user',
-                  content: `Analyze this prescription text and return JSON: ${extractedText}`,
-                },
-              ],
-              max_tokens: 1000,
-              temperature: 0.1,
-              response_format: { type: 'json_object' },
-            }),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            const content = data.choices[0]?.message?.content;
-            
-            if (content) {
-              try {
-                const parsed = JSON.parse(content);
-                llmSummary = parsed.summary || 'Prescription analysis completed.';
-                keyFindings = Array.isArray(parsed.keyFindings) ? parsed.keyFindings : [];
-                recommendations = Array.isArray(parsed.recommendations) ? parsed.recommendations : [];
-                urgency = parsed.urgency || 'ROUTINE';
-              } catch (parseError) {
-                console.error('Failed to parse prescription analysis response:', parseError);
-                llmSummary = 'Prescription analysis completed.';
-              }
-            }
-          }
-        } catch (apiError) {
-          console.error('OpenRouter API error:', apiError);
-          llmSummary = 'Prescription analysis completed.';
-        }
+      try {
+        const groqApiKey = process.env.GROQ_API_KEY || '';
+        const result = await generateSummary(extractedText, groqApiKey);
+        llmSummary = result.summary || 'Prescription analysis completed.';
+        keyFindings = Array.isArray(result.keyFindings) ? result.keyFindings : [];
+        recommendations = Array.isArray(result.recommendations) ? result.recommendations : [];
+        urgency = result.urgency || 'ROUTINE';
+      } catch (e) {
+        console.error('Prescription GROQ analysis failed:', e);
+        llmSummary = 'Prescription analysis completed.';
       }
     } else {
       // For other document types, generate summary

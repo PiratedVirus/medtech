@@ -34,7 +34,6 @@ export async function GET(request: NextRequest) {
         include: {
           complaints: true,
           vitals: true,
-          history: true,
           systemicExamination: true,
           medicines: true,
           doctor: {
@@ -73,7 +72,6 @@ export async function GET(request: NextRequest) {
         include: {
           complaints: true,
           vitals: true,
-          history: true,
           systemicExamination: true,
           medicines: true,
           doctor: {

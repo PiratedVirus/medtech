@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAdminClinicId, createClinicFilter } from "@/lib/admin-clinic-middleware";
+import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
+import { CacheEvents } from "@/lib/cache-events";
 
 // Enhanced GET endpoint with filtering and role counts
-export async function GET(request: NextRequest) {
+const getUsersHandler = async (request: NextRequest) => {
   try {
     // Get admin's clinic ID for filtering
     const clinicId = getAdminClinicId(request);
@@ -107,16 +109,40 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const body = await request.json();
+    let deletedUserIds: number[] = [];
+    
     if (body.ids && Array.isArray(body.ids)) {
       // Use deleteMany which will trigger the soft delete extension
+      deletedUserIds = body.ids;
       await prisma.user.deleteMany({
         where: { id: { in: body.ids } }
       });
+      
+      // ✅ EVENT-DRIVEN: Emit user deletion events
+      for (const userId of deletedUserIds) {
+        try {
+          await CacheEvents.userUpdated(Number(userId), { deleted: true });
+          console.log(`[ADMIN-USERS] Event-driven cache invalidation completed for deleted user ${userId}`);
+        } catch (cacheError) {
+          console.error(`[ADMIN-USERS] Error in event-driven cache invalidation for user ${userId}:`, cacheError);
+        }
+      }
+      
       return NextResponse.json({ message: "Users deleted successfully" });
     } else if (body.id) {
+      deletedUserIds = [body.id];
       await prisma.user.delete({
         where: { id: body.id }
       });
+      
+      // ✅ EVENT-DRIVEN: Emit user deletion event
+      try {
+        await CacheEvents.userUpdated(Number(body.id), { deleted: true });
+        console.log(`[ADMIN-USERS] Event-driven cache invalidation completed for deleted user ${body.id}`);
+      } catch (cacheError) {
+        console.error(`[ADMIN-USERS] Error in event-driven cache invalidation for user ${body.id}:`, cacheError);
+      }
+      
       return NextResponse.json({ message: "User deleted successfully" });
     } else {
       return NextResponse.json({ error: "No valid identifier provided" }, { status: 400 });
@@ -124,4 +150,7 @@ export async function DELETE(request: Request) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to delete user(s)" }, { status: 500 });
   }
-}
+};
+
+// ✅ UNIFIED CACHE: Apply cache middleware to GET endpoint
+export const GET = withUnifiedCache(getCacheConfig('/api/admin/users'))(getUsersHandler);

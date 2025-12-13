@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { generateSummary } from "@/lib/llm/unified-service";
 import { getActiveProductionProfile } from "@/lib/llm/profile-service";
 // Enhanced PDF processor - using dynamic import to avoid build issues
 // import { EnhancedPDFProcessor } from "@/lib/llm/enhanced-pdf-processor";
@@ -7,23 +8,19 @@ import { getActiveProductionProfile } from "@/lib/llm/profile-service";
 // Ensure Node.js runtime for file uploads and larger payloads
 export const runtime = 'nodejs';
 
-// Optimized model choices for medical text analysis
-// Use gpt-oss-20b by default as requested
-const OR_MODEL = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.2-3b-instruct:free';
-const FALLBACK_MODELS = [
-  'meta-llama/llama-3.2-3b-instruct:free'
-];
-const MAX_PDF_MB = Number(process.env.OPENROUTER_MAX_PDF_MB ?? 10);
+// GROQ-only unified processing
+const OR_MODEL = 'groq+extractor';
 const MAX_TEXT_TOKENS = 8000; // Conservative token limit for input text
 
-function extractOpenRouterContent(responseJson: any): string {
+// GROQ content extractor (replaces OpenRouter helper)
+function extractGroqContent(responseJson: any): string {
   if (!responseJson) {
-    throw new Error('Empty response from OpenRouter');
+    throw new Error('Empty response from Groq');
   }
 
   if (responseJson.error) {
     const err = typeof responseJson.error === 'string' ? responseJson.error : (responseJson.error.message || JSON.stringify(responseJson.error));
-    throw new Error(`OpenRouter API error: ${err}`);
+    throw new Error(`Groq API error: ${err}`);
   }
 
   const choice = responseJson.choices?.[0];
@@ -194,16 +191,72 @@ export async function POST(request: NextRequest) {
     const pdfUrl = labBooking.labResult[labResultIndex];
     try { new URL(pdfUrl); } catch { return NextResponse.json({ success: false, error: "Invalid PDF URL format", pdfUrl }, { status: 400 }); }
 
-    console.log(`[LLM-PROC][POST] Request received: reportId=${reportIdNum}, patientId=${patientIdNum}, force=false. Model=${OR_MODEL}`);
+    console.log(`[LLM-PROC][POST] Request received: reportId=${reportIdNum}, patientId=${patientIdNum}`);
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    if (!apiKey) {
-      return NextResponse.json({ success: false, error: 'OPENROUTER_API_KEY not configured in environment variables' }, { status: 500 });
+
+    // Check if we should use production profile or default unified pipeline
+    let useProductionProfile = false;
+    let productionProfile = null;
+    try {
+      productionProfile = await getActiveProductionProfile();
+      useProductionProfile = !!productionProfile;
+    } catch (e) {
+      console.log('[LLM-PROC][POST] No production profile configured, using default unified pipeline');
     }
 
-    // New pipeline: extract text once, then make two LLM calls (summary + values)
-    const { summary, allValues, criticalValues } = await processUsingTextThenLLMs(pdfUrl, apiKey, siteUrl);
+    if (useProductionProfile && productionProfile) {
+      console.log(`[LLM-PROC][POST] Using production profile: ${productionProfile.name}`);
+      const { summary, allValues, criticalValues } = await processWithProductionProfile(pdfUrl, productionProfile, siteUrl);
+      
+      return NextResponse.json({
+        success: true,
+        status: "completed",
+        analysis: {
+          id: null,
+          llmSummary: ensureSummary(summary, criticalValues, allValues),
+          criticalValues: criticalValues || [],
+          allValues: allValues || [],
+          trendAnalysis: {},
+          processedAt: new Date().toISOString(),
+          llmModel: productionProfile.model || OR_MODEL,
+          labBooking: { id: labBooking.id, labPackageName: labBooking.labPackage?.name || null }
+        },
+        message: `Completed with production profile: ${productionProfile.name}`
+      });
+    }
+
+    // Default unified pipeline: OCR -> GROQ summary -> internal extractor
+    console.log(`[LLM-PROC][POST] Using default unified GROQ pipeline`);
+    const text = await extractPdfText(pdfUrl);
+    let summary = 'Analysis completed.';
+    let allValues: any[] = [];
+    let criticalValues: any[] = [];
+
+    try {
+      const groqKey = process.env.GROQ_API_KEY || '';
+      const res = await generateSummary(text, groqKey);
+      summary = res.summary || summary;
+    } catch (e) {
+      console.warn('[LLM-PROC][POST] GROQ summary failed, continuing');
+    }
+
+    try {
+      const extractUrl = `${siteUrl.replace(/\/$/, '')}/api/llm-process/extract-standalone-values`;
+      const r = await fetch(extractUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, force: true }) });
+      if (r.ok) {
+        const j = await r.json();
+        if (j?.success) {
+          allValues = j.data?.allValues || [];
+          criticalValues = j.data?.criticalValues || [];
+        }
+      } else {
+        const t = await r.text();
+        console.warn('[LLM-PROC][POST] extractor non-OK:', t);
+      }
+    } catch (e) {
+      console.warn('[LLM-PROC][POST] extractor failed');
+    }
 
     return NextResponse.json({
       success: true,
@@ -218,7 +271,7 @@ export async function POST(request: NextRequest) {
         llmModel: OR_MODEL,
         labBooking: { id: labBooking.id, labPackageName: labBooking.labPackage?.name || null }
       },
-      message: "Completed with fresh LLM output (testing mode, parsed once then reused)"
+      message: "Completed with default unified pipeline"
     });
 
   } catch (error) {
@@ -230,154 +283,66 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Process PDF with OpenRouter - Enhanced with multiple strategies
-async function processWithOpenRouter(analysisId: number, pdfUrl: string, patientId: number, labBookingId: number) {
-  try {
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
-    if (!apiKey) {
-      throw new Error("OPENROUTER_API_KEY not configured in environment variables");
-    }
-
-    console.log(`[LLM-PROC][START] analysisId=${analysisId} model=${OR_MODEL}`);
-
-    // Use working PDF processor
-    console.log(`[LLM-PROC][STRATEGY] analysisId=${analysisId} Starting PDF processing`);
-    const analysisText = await processWithWorkingStrategy(pdfUrl, apiKey, siteUrl);
-
-    console.log(`[LLM-PROC][PARSE] analysisId=${analysisId} Parsing LLM response to structured fields`);
-    const { summary, criticalValues, allValues, trendAnalysis } = parseLLMResponse(analysisText);
-
-    await prisma.labReportAnalysis.update({
-      where: { id: analysisId },
-      data: {
-        llmSummary: ensureSummary(summary, criticalValues, allValues),
-        criticalValues,
-        allValues,
-        trendAnalysis: {},
-        processingStatus: 'COMPLETED',
-        processedAt: new Date(),
-        processingError: null,
-        llmModel: OR_MODEL
-      }
-    });
-
-    await saveTrendData(patientId, criticalValues, labBookingId, analysisId);
-
-    console.log(`[LLM-PROC][DONE] analysisId=${analysisId} saved; processing complete`);
-  } catch (error) {
-    console.error(`[LLM-PROC][ERROR] analysisId=${analysisId}:`, error);
-
-    await prisma.labReportAnalysis.update({
-      where: { id: analysisId },
-      data: {
-        processingStatus: 'FAILED',
-        processingError: (error as Error).message
-      }
-    });
-
-    throw error; // Re-throw for caller handling
+// Process with production profile using GROQ
+async function processWithProductionProfile(pdfUrl: string, profile: any, siteUrl: string): Promise<{ summary: string; allValues: any[]; criticalValues: any[]; }> {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    throw new Error('GROQ_API_KEY not configured');
   }
+
+  // Extract text via OCR
+  const text = await extractPdfText(pdfUrl);
+
+  // Run summary and values extraction in parallel using production profile settings
+  const [summary, values] = await Promise.all([
+    llmGenerateSummaryFromText(text, apiKey, profile),
+    llmGenerateValuesFromText(text, apiKey, profile)
+  ]);
+
+  let allValues = normalizeLabValues(values.allValues || []);
+  let criticalValues = normalizeLabValues(values.criticalValues || []);
+  if (criticalValues.length === 0) {
+    const abnormal = (allValues || []).filter((v: any) => v && v.isAbnormal && v.severity && v.severity !== 'NORMAL');
+    criticalValues = abnormal;
+  }
+
+  return { summary, allValues, criticalValues };
 }
 
-// Working PDF processing implementation
-async function processWithWorkingStrategy(pdfUrl: string, apiKey: string, siteUrl: string): Promise<string> {
-  if (!apiKey || apiKey.trim() === '') {
-    console.warn('No OpenRouter API key configured');
-    return `{"summary":"API key missing","criticalValues":[],"allValues":[]}`;
-  }
-
-  try {
-    // Strategy 1: Try text extraction first (most reliable)
-    console.log('[LLM-PROC][STRATEGY] Attempting PDF text extraction strategy');
-    return await extractAndProcessText(pdfUrl, apiKey, siteUrl);
-  } catch (textError) {
-    console.log('[LLM-PROC][STRATEGY] Text extraction failed, trying direct URL approach:', textError);
-    try {
-      return await processWithDirectUrl(pdfUrl, apiKey, siteUrl);
-    } catch (urlError) {
-      console.error('All strategies failed:', urlError);
-      throw new Error(`PDF processing failed: ${urlError instanceof Error ? urlError.message : 'Unknown error'}`);
-    }
-  }
-}
-
-// Strategy 1: Extract text from PDF using OCR and send to LLM
-async function extractAndProcessText(pdfUrl: string, apiKey: string, siteUrl: string): Promise<string> {
-  console.log('[LLM-PROC][PDF] Using OCR (Google Vision) for PDF text extraction');
+// Call GROQ to generate summary using production profile
+async function llmGenerateSummaryFromText(text: string, apiKey: string, profile: any): Promise<string> {
+  const model = profile?.model || 'meta-llama/llama-4-scout-17b-16e-instruct';
+  const temperature = profile?.temperature ?? 0.1;
+  const maxTokens = profile?.maxTokens ?? 1200;
   
-  // Always use OCR for PDF text extraction
-  const { ocrExtractPdfTextFromUrl } = await import('@/lib/ocr/google-vision');
-  let extractedText = await ocrExtractPdfTextFromUrl(pdfUrl);
-
-  if (!extractedText || extractedText.trim().length < 50) {
-    throw new Error('OCR text extraction failed or insufficient content');
-  }
-
-  extractedText = extractedText
-    .replace(/\s+/g, ' ')
-    .replace(/\n+/g, '\n')
-    .trim()
-    .substring(0, MAX_TEXT_TOKENS);
-
-  console.log(`[LLM-PROC][PDF] Extracted ${extractedText.length} characters from PDF using OCR`);
-  return await sendTextToLLM(extractedText, apiKey, siteUrl);
-}
-
-// Strategy 2: Send PDF URL directly to LLM
-async function processWithDirectUrl(pdfUrl: string, apiKey: string, siteUrl: string): Promise<string> {
-  const chatPayload = {
-    model: OR_MODEL,
-    messages: [
-      { role: 'system', content: 'You are a strict JSON generator. Always respond with a single valid JSON object matching the requested schema. Do not include any prose, code fences, or explanations.' },
-      {
-        role: 'user',
-        content: `You are a medical lab report parser. Return STRICT JSON ONLY. Do not include any text outside JSON. Rules: use double quotes for all keys and strings, booleans as true/false, no trailing commas, no comments, no code fences.
-
-Schema:
+  const systemPrompt = profile?.systemPrompt || 'You are a strict JSON generator. Always respond with a single valid JSON object matching the requested schema. Do not include any prose, code fences, or explanations.';
+  
+  const userPrompt = profile?.summaryPrompt || `Return STRICT JSON ONLY with this schema:
 {
-  "summary": "Clinical summary in 200-250 words focusing on key findings, health implications, and recommendations",
-  "criticalValues": [
-    {
-      "parameter": "Parameter name",
-      "value": "actual value",
-      "unit": "unit of measurement",
-      "normalRange": "normal reference range",
-      "isAbnormal": true,
-      "severity": "LOW|NORMAL|HIGH|CRITICAL",
-      "category": "CBC|LFT|KFT|Lipid Profile|..."
-    }
-  ],
-  "allValues": [
-    {
-      "parameter": "Parameter name",
-      "value": "actual value",
-      "unit": "unit of measurement",
-      "normalRange": "normal reference range",
-      "isAbnormal": false,
-      "severity": "LOW|NORMAL|HIGH|CRITICAL",
-      "category": "CBC|LFT|KFT|Lipid Profile|..."
-    }
-  ]
+  "summary": "Clinical summary in 200-250 words focusing on key findings, health implications, and recommendations"
 }
+Do not include any other keys. Use double quotes and valid JSON. No trailing commas.
 
-If a section has no data, return an empty array for it. Do not add explanations.
+Lab Report Text:
+${text}`;
 
-PDF URL: ${pdfUrl}`
-      }
+  console.log(`[LLM-PROC][SUMMARY] Using production profile: ${profile?.name || 'default'}, model: ${model}`);
+
+  const chatPayload = {
+    model,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
     ],
-    max_tokens: 2500,
-    temperature: 0.1,
+    max_tokens: maxTokens,
+    temperature,
     response_format: { type: 'json_object' }
   };
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': siteUrl,
-      'X-Title': 'CareDB Lab Analysis',
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(chatPayload)
@@ -385,119 +350,96 @@ PDF URL: ${pdfUrl}`
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`OpenRouter API error: ${response.status} ${errorText}`);
+    throw new Error(`Groq API error: ${response.status} ${errorText}`);
   }
 
   const data = await response.json();
-  // Always log raw provider response (may be large)
-  try {
-    console.log('[LLM-PROC][RAW][URL] Provider response JSON:', JSON.stringify(data));
-  } catch {
-    console.log('[LLM-PROC][RAW][URL] Provider response JSON: <unserializable>');
-  }
-  const content = extractOpenRouterContent(data);
-  // Always log extracted content
-  console.log('[LLM-PROC][RAW][URL] Extracted content:', typeof content === 'string' ? content : String(content));
-  if (!content) {
-    throw new Error('No content received from LLM');
+  const content = extractGroqContent(data);
+
+  const parsed = tryParseLooseJson(content);
+  if (parsed && typeof parsed.summary === 'string') {
+    return parsed.summary;
   }
 
-  return content;
+  if (typeof content === 'string' && content.length > 0) {
+    return content.substring(0, 1200);
+  }
+
+  throw new Error('Failed to extract summary from LLM response');
 }
 
-// Send extracted text to LLM for comprehensive analysis
-async function sendTextToLLM(text: string, apiKey: string, siteUrl: string): Promise<string> {
-  const models = [ 'meta-llama/llama-3.2-3b-instruct:free' ];
-  let lastError: Error | null = null;
+// Call GROQ to generate values using production profile
+async function llmGenerateValuesFromText(text: string, apiKey: string, profile: any): Promise<{ allValues: any[]; criticalValues: any[]; }> {
+  const model = profile?.model || 'meta-llama/llama-4-scout-17b-16e-instruct';
+  const temperature = profile?.temperature ?? 0.1;
+  const maxTokens = profile?.maxTokens ?? 2500;
+  
+  const systemPrompt = profile?.systemPrompt || 'You are a medical lab report analyzer. Extract ONLY the test parameters and values that are explicitly mentioned in the provided lab report text. DO NOT generate, invent, or hallucinate any values not present in the text. Always respond with a single valid JSON object matching the requested schema. Do not include any prose, code fences, or explanations.';
+  
+  const userPrompt = profile?.valuesPrompt || `Extract ONLY the test parameters and values that are explicitly mentioned in the provided lab report text.
 
-  for (const model of models) {
-    try {
-      console.log(`Trying model: ${model}`);
-      const chatPayload = {
-        model,
-        messages: [
-          { role: 'system', content: 'You are a strict JSON generator. Always respond with a single valid JSON object matching the requested schema. Do not include any prose, code fences, or explanations.' },
-          {
-            role: 'user',
-            content: `You are a medical lab report parser. Return STRICT JSON ONLY. Do not include any text outside JSON. Rules: use double quotes for all keys and strings, booleans as true/false, no trailing commas, no comments, no code fences.
+CRITICAL: DO NOT generate, invent, or hallucinate any values not present in the text. Only extract values that are explicitly shown in the report.
 
-Schema:
+Return STRICT JSON ONLY with this schema:
 {
-  "summary": "Clinical summary in 200-250 words focusing on key findings, health implications, and recommendations",
-  "criticalValues": [
-    {
-      "parameter": "Parameter name",
-      "value": "actual value",
-      "unit": "unit of measurement",
-      "normalRange": "normal reference range",
-      "isAbnormal": true,
-      "severity": "LOW|NORMAL|HIGH|CRITICAL",
-      "category": "CBC|LFT|KFT|Lipid Profile|..."
-    }
-  ],
   "allValues": [
-    {
-      "parameter": "Parameter name",
-      "value": "actual value",
-      "unit": "unit of measurement",
-      "normalRange": "normal reference range",
-      "isAbnormal": false,
-      "severity": "LOW|NORMAL|HIGH|CRITICAL",
-      "category": "CBC|LFT|KFT|Lipid Profile|..."
-    }
+    {"parameter": "", "value": "", "unit": "", "normalRange": "", "isAbnormal": false, "severity": "LOW|NORMAL|HIGH|CRITICAL", "category": "CBC|LFT|KFT|Lipid Profile|..."}
+  ],
+  "criticalValues": [
+    {"parameter": "", "value": "", "unit": "", "normalRange": "", "isAbnormal": true, "severity": "LOW|NORMAL|HIGH|CRITICAL", "category": "CBC|LFT|KFT|Lipid Profile|..."}
   ]
 }
+Rules: 
+- Extract ONLY values explicitly present in the report
+- DO NOT add any tests not mentioned in the original report
+- Use double quotes and valid JSON, no trailing commas, no additional keys
+- If a section has no data, return an empty array for it
 
-If a section has no data, return an empty array for it. Do not add explanations.
+Lab Report Text:
+${text}`;
 
-Lab Report Text:\n${text}`
-          }
-        ],
-        max_tokens: 2500,
-        temperature: 0.1,
-        response_format: { type: 'json_object' }
-      };
+  console.log(`[LLM-PROC][VALUES] Using production profile: ${profile?.name || 'default'}, model: ${model}`);
 
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': siteUrl,
-          'X-Title': 'CareDB Lab Analysis',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(chatPayload)
-      });
+  const chatPayload = {
+    model,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ],
+    max_tokens: maxTokens,
+    temperature,
+    response_format: { type: 'json_object' }
+  };
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`OpenRouter API error: ${response.status} ${errorText}`);
-      }
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(chatPayload)
+  });
 
-      const data = await response.json();
-      // Always log raw provider response (may be large)
-      try {
-        console.log('[LLM-PROC][RAW][TEXT] Provider response JSON:', JSON.stringify(data));
-      } catch {
-        console.log('[LLM-PROC][RAW][TEXT] Provider response JSON: <unserializable>');
-      }
-      const content = extractOpenRouterContent(data);
-      // Always log extracted content
-      console.log('[LLM-PROC][RAW][TEXT] Extracted content:', typeof content === 'string' ? content : String(content));
-      if (!content) {
-        throw new Error('No content received from LLM');
-      }
-
-      console.log(`[LLM-PROC][MODEL] ${model} succeeded`);
-      return content;
-    } catch (error) {
-      console.warn(`[LLM-PROC][MODEL] ${model} failed:`, error);
-      lastError = error as Error;
-      continue;
-    }
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Groq API error: ${response.status} ${errorText}`);
   }
 
-  throw new Error(`All models failed. Last error: ${lastError?.message}`);
+  const data = await response.json();
+  const content = extractGroqContent(data);
+
+  const parsed = tryParseLooseJson(content) || {};
+  const allValues = Array.isArray(parsed.allValues) ? parsed.allValues : [];
+  const criticalValues = Array.isArray(parsed.criticalValues) ? parsed.criticalValues : [];
+  
+  const totalValues = allValues.length + criticalValues.length;
+  if (totalValues > 20) {
+    console.warn(`[LLM-PROC][VALUES] Warning: Extracted ${totalValues} values, which seems high. Please verify against original report.`);
+  }
+  
+  console.log(`[LLM-PROC][VALUES] Extracted ${allValues.length} all values and ${criticalValues.length} critical values`);
+  
+  return { allValues, criticalValues };
 }
 
 // Parse LLM response to extract structured data
@@ -745,196 +687,4 @@ async function extractPdfText(pdfUrl: string): Promise<string> {
 
   console.log(`[LLM-PROC][PDF] Extracted ${extractedText.length} characters from PDF using OCR`);
   return extractedText;
-}
-
-// Call LLM to generate summary only from text; returns a plain string summary
-async function llmGenerateSummaryFromText(text: string, apiKey: string, siteUrl: string): Promise<string> {
-  // Try to get production profile
-  let productionProfile = null;
-  try {
-    productionProfile = await getActiveProductionProfile();
-  } catch (error) {
-    console.warn('[LLM-PROC][SUMMARY] Failed to get production profile, using defaults:', error);
-  }
-
-  // Use production profile settings if available, otherwise use defaults
-  const model = productionProfile?.model || OR_MODEL;
-  const temperature = productionProfile?.temperature || 0.1;
-  const maxTokens = productionProfile?.maxTokens || 1200;
-  
-  const systemPrompt = productionProfile?.systemPrompt || 'You are a strict JSON generator. Always respond with a single valid JSON object matching the requested schema. Do not include any prose, code fences, or explanations.';
-  
-  const userPrompt = productionProfile?.summaryPrompt || `Return STRICT JSON ONLY with this schema:
-{
-  "summary": "Clinical summary in 200-250 words focusing on key findings, health implications, and recommendations"
-}
-Do not include any other keys. Use double quotes and valid JSON. No trailing commas.
-\n\nLab Report Text:\n${text}`;
-
-  console.log(`[LLM-PROC][SUMMARY] Using ${productionProfile ? 'production profile' : 'default settings'}: ${model}`);
-
-  const chatPayload = {
-    model,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ],
-    max_tokens: maxTokens,
-    temperature,
-    response_format: { type: 'json_object' }
-  };
-
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': siteUrl,
-      'X-Title': 'CareDB Lab Analysis',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(chatPayload)
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenRouter API error: ${response.status} ${errorText}`);
-  }
-
-  const data = await response.json();
-  try { console.log('[LLM-PROC][RAW][SUMMARY] Provider response JSON:', JSON.stringify(data)); } catch {}
-  const content = extractOpenRouterContent(data);
-  console.log('[LLM-PROC][RAW][SUMMARY] Extracted content:', content);
-
-  const parsed = tryParseLooseJson(content);
-  if (parsed && typeof parsed.summary === 'string') {
-    return parsed.summary;
-  }
-
-  // Fallback: if content itself looks like a summary string
-  if (typeof content === 'string' && content.length > 0) {
-    return content.substring(0, 1200);
-  }
-
-  throw new Error('Failed to extract summary from LLM response');
-}
-
-// Call LLM to generate values (allValues and criticalValues) from text; returns arrays
-async function llmGenerateValuesFromText(text: string, apiKey: string, siteUrl: string): Promise<{ allValues: any[]; criticalValues: any[]; }> {
-  // Try to get production profile
-  let productionProfile = null;
-  try {
-    productionProfile = await getActiveProductionProfile();
-  } catch (error) {
-    console.warn('[LLM-PROC][VALUES] Failed to get production profile, using defaults:', error);
-  }
-
-  // Use production profile settings if available, otherwise use defaults
-  const model = productionProfile?.model || OR_MODEL;
-  const temperature = productionProfile?.temperature || 0.1;
-  const maxTokens = productionProfile?.maxTokens || 2500;
-  
-  const systemPrompt = productionProfile?.systemPrompt || 'You are a medical lab report analyzer. Extract ONLY the test parameters and values that are explicitly mentioned in the provided lab report text. DO NOT generate, invent, or hallucinate any values not present in the text. Always respond with a single valid JSON object matching the requested schema. Do not include any prose, code fences, or explanations.';
-  
-  const userPrompt = productionProfile?.valuesPrompt || `Extract ONLY the test parameters and values that are explicitly mentioned in the provided lab report text.
-
-CRITICAL: DO NOT generate, invent, or hallucinate any values not present in the text. Only extract values that are explicitly shown in the report.
-
-Return STRICT JSON ONLY with this schema:
-{
-  "allValues": [
-    {"parameter": "", "value": "", "unit": "", "normalRange": "", "isAbnormal": false, "severity": "LOW|NORMAL|HIGH|CRITICAL", "category": "CBC|LFT|KFT|Lipid Profile|..."}
-  ],
-  "criticalValues": [
-    {"parameter": "", "value": "", "unit": "", "normalRange": "", "isAbnormal": true, "severity": "LOW|NORMAL|HIGH|CRITICAL", "category": "CBC|LFT|KFT|Lipid Profile|..."}
-  ]
-}
-Rules: 
-- Extract ONLY values explicitly present in the report
-- DO NOT add any tests not mentioned in the original report
-- Use double quotes and valid JSON, no trailing commas, no additional keys
-- If a section has no data, return an empty array for it
-
-Lab Report Text:
-${text}`;
-
-  console.log(`[LLM-PROC][VALUES] Using ${productionProfile ? 'production profile' : 'default settings'}: ${model}`);
-
-  const chatPayload = {
-    model,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ],
-    max_tokens: maxTokens,
-    temperature,
-    response_format: { type: 'json_object' }
-  };
-
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': siteUrl,
-      'X-Title': 'CareDB Lab Analysis',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(chatPayload)
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenRouter API error: ${response.status} ${errorText}`);
-  }
-
-  const data = await response.json();
-  try { console.log('[LLM-PROC][RAW][VALUES] Provider response JSON:', JSON.stringify(data)); } catch {}
-  const content = extractOpenRouterContent(data);
-  console.log('[LLM-PROC][RAW][VALUES] Extracted content:', content);
-
-      const parsed = tryParseLooseJson(content) || {};
-    const allValues = Array.isArray(parsed.allValues) ? parsed.allValues : [];
-    const criticalValues = Array.isArray(parsed.criticalValues) ? parsed.criticalValues : [];
-    
-    // Log warning if too many values are extracted (potential hallucination)
-    const totalValues = allValues.length + criticalValues.length;
-    if (totalValues > 20) {
-      console.warn(`[LLM-PROC][VALUES] Warning: Extracted ${totalValues} values, which seems high. Please verify against original report.`);
-    }
-    
-    console.log(`[LLM-PROC][VALUES] Extracted ${allValues.length} all values and ${criticalValues.length} critical values`);
-    
-    return { allValues, criticalValues };
-}
-
-// Orchestrate: extract text once, then call two LLMs; fallback to URL strategy if needed
-async function processUsingTextThenLLMs(pdfUrl: string, apiKey: string, siteUrl: string): Promise<{ summary: string; allValues: any[]; criticalValues: any[]; }> {
-  try {
-    // Always use OCR for PDF text extraction
-    const { ocrExtractPdfTextFromUrl } = await import('@/lib/ocr/google-vision');
-    console.log('[LLM-PROC] Using OCR (Google Vision) for PDF text extraction');
-    const text = await ocrExtractPdfTextFromUrl(pdfUrl);
-    const [summary, values] = await Promise.all([
-      llmGenerateSummaryFromText(text, apiKey, siteUrl),
-      llmGenerateValuesFromText(text, apiKey, siteUrl)
-    ]);
-
-    // Normalize values
-    let allValues = normalizeLabValues(values.allValues || []);
-    let criticalValues = normalizeLabValues(values.criticalValues || []);
-    if (criticalValues.length === 0) {
-      // Derive criticals if missing
-      const abnormal = (allValues || []).filter((v: any) => v && v.isAbnormal && v.severity && v.severity !== 'NORMAL');
-      criticalValues = abnormal;
-    }
-
-    return { summary, allValues, criticalValues };
-  } catch (err) {
-    console.warn('[LLM-PROC] Text-first pipeline failed, falling back to URL strategy:', err);
-    const content = await processWithDirectUrl(pdfUrl, apiKey, siteUrl);
-    const parsed = tryParseLooseJson(content) || {};
-    let allValues = normalizeLabValues(Array.isArray(parsed.allValues) ? parsed.allValues : []);
-    let criticalValues = normalizeLabValues(Array.isArray(parsed.criticalValues) ? parsed.criticalValues : []);
-    const summary = typeof parsed.summary === 'string' ? parsed.summary : (content.substring(0, 800));
-    return { summary, allValues, criticalValues };
-  }
 }

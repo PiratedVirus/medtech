@@ -18,7 +18,6 @@ import { LineChart, DollarSign } from "lucide-react"
 import HomePageCardSmall from "@/components/ui/custom/cd-homepage-card-small"
 import MedicalCarousel from "@/components/patients/home/MedicalCarousel";
 import SubscribeCarePlanCard from "./SubscribePlanCard";
-import DietPlanModal from "@/components/patients/home/DietPlanModal";
 
 
 
@@ -28,8 +27,6 @@ export default function HomeOverview() {
   const [dieticianLink, setDieticianLink] = useState<string>("");
   const [dietPlan, setDietPlan] = useState<any>(null);
   const { toast } = useToast();
-  const [isDietModalOpen, setIsDietModalOpen] = useState(false);
-  const { clinicId } = useDecryptedProfile();
   const dispatch = useDispatch();
 
   const fetchSubscriptionTracker = async (subscriptionId: number) => {
@@ -119,9 +116,9 @@ export default function HomeOverview() {
                 OutlineIcon={LineChart}
               />
             </Link>
-            <div className="block w-full" onClick={() => setIsDietModalOpen(true)} role="button">
+            <Link href="/dashboard/diet-requests" className="block w-full">
               <HomePageCardSmall
-                href="#"
+                href="/dashboard/diet-requests"
                 headerLabel="Diet details"
                 cardTitle="View Diet"
                 cardDescription="Personalized diet plans and meal suggestions"
@@ -129,10 +126,8 @@ export default function HomeOverview() {
                 PrimaryIcon={BicepsFlexed}
                 OutlineIcon={BicepsFlexed}
               />
-            </div>
+            </Link>
           </div>
-          {/* Diet Plan Modal */}
-          <DietPlanModal open={isDietModalOpen} onOpenChange={setIsDietModalOpen} patientId={profile?.id} clinicId={clinicId} dietPlan={dietPlan} />
         </div>
 
         {/* Right Section - Appointment & Apps */}

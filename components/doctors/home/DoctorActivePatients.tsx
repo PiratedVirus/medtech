@@ -87,7 +87,7 @@ export default function DoctorActivePatients() {
       try {
         setIsLoading(true);
         const res = await axios.get('/api/doctor/appointments/upcoming');
-        setAppointments(res.data.appointments || []);
+        setAppointments(res.data.data?.appointments || res.data.appointments || []);
       } catch (err) {
         console.error('Failed to load appointments', err);
       } finally {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
 
 // Create a diet plan and mark request as CREATED
 export async function POST(request: Request) {
@@ -20,10 +21,19 @@ export async function POST(request: Request) {
           endDate: endDate ? new Date(endDate) : null,
           meals,
           customMealTimings: customMealTimings || null,
+          requestId: requestId ? Number(requestId) : null,
         }
       });
+      
+      // Update request status if requestId was provided
       if (requestId) {
-        await tx.dietPlanRequest.update({ where: { id: Number(requestId) }, data: { status: 'CREATED' } });
+        await tx.dietPlanRequest.update({ 
+          where: { id: Number(requestId) }, 
+          data: { 
+            status: 'CREATED', 
+            planId: created.id 
+          } 
+        });
       }
       return created;
     });
@@ -34,16 +44,19 @@ export async function POST(request: Request) {
 }
 
 // Get latest plan for a patient (doctor view)
-export async function GET(request: Request) {
+const getDietPlansHandler = async (request: Request) => {
   try {
     const { searchParams } = new URL(request.url);
     const patientId = Number(searchParams.get('patientId'));
     if (!patientId) return NextResponse.json({ success: false, error: 'patientId required' }, { status: 400 });
     const plan = await prisma.dietPlan.findFirst({ where: { patientId, deletedAt: null }, orderBy: { id: 'desc' } });
-    return NextResponse.json({ success: true, plan });
+    return NextResponse.json({ success: true, data: { plan } });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || 'Server error' }, { status: 500 });
   }
-}
+};
+
+// ✅ UNIFIED CACHE: Apply cache middleware to GET endpoint
+export const GET = withUnifiedCache(getCacheConfig('/api/doctor/diet-plans'))(getDietPlansHandler);
 
 

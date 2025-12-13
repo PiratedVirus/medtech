@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import * as jose from 'jose';
+import { getCachedInsights } from "@/lib/data-cache";
+import { CacheEvents } from "@/lib/cache-events";
 
 // JWT payload interface
 interface JWTPayload {
@@ -85,6 +87,21 @@ export async function GET(request: NextRequest) {
     const requestedUserId = parseInt(userIdParam, 10);
 
     console.log('[insights API] Requested userId:', requestedUserId);
+
+    // ✅ CACHE: Try to get insights from cache first
+    try {
+      const cachedInsights = await getCachedInsights(requestedUserId);
+      if (cachedInsights) {
+        console.log('[insights API] Returning cached insights for user:', requestedUserId);
+        return NextResponse.json({
+          success: true,
+          data: cachedInsights,
+          cached: true
+        });
+      }
+    } catch (cacheError) {
+      console.log('[insights API] Cache miss or error, fetching from database:', cacheError);
+    }
 
     // Step 2: Check permissions
     const isPatient = user.id === requestedUserId;
@@ -289,6 +306,14 @@ export async function POST(request: NextRequest) {
         recordedAt: recordedAt ? new Date(recordedAt) : new Date(),
       },
     });
+
+    // ✅ EVENT-DRIVEN: Emit insights update event
+    try {
+      await CacheEvents.insightsUpdated(requestedUserId);
+      console.log(`[INSIGHTS] Event-driven cache invalidation completed for user ${requestedUserId}`);
+    } catch (cacheError) {
+      console.error('[INSIGHTS] Error in event-driven cache invalidation:', cacheError);
+    }
 
     return NextResponse.json({ success: true, newMetric });
   } catch (error) {

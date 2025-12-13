@@ -119,7 +119,7 @@ export default function PatientPillsRow({ pills: pillsProp, onEditPill, onAddPil
               <Button
                 variant="ghost"
                 size="sm"
-                className="absolute -top-2 -right-2 h-6 w-6 p-0 bg-white/80 hover:bg-white text-gray-600 hover:text-secondary rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-200 z-10"
+                className="absolute -top-2 -right-2 h-6 w-6 p-0 bg-white hover:bg-gray-100 text-gray-900 border border-gray-200 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-200 z-10"
                 onClick={() => (onEditPill ? onEditPill(String(pill.id)) : handleStartEdit(pill))}
               >
                 <Edit className="h-3 w-3" />

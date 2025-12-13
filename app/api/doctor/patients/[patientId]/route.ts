@@ -100,7 +100,8 @@ export async function GET(
               select: {
                 complaints: {
                   select: {
-                    complaintText: true
+                    complaintText: true,
+                    isFlagged: true
                   }
                 },
                 medicines: {
@@ -166,12 +167,15 @@ export async function GET(
       doctorAppointments: (patient as any).patientAppointments.map((a: any) => ({
         id: a.id,
         // Use the underlying doctorAvailability.date for a reliable appointment date
-        date: a.doctorAvailability?.date,
+        // Convert to ISO string to ensure proper serialization
+        date: a.doctorAvailability?.date ? (a.doctorAvailability.date instanceof Date 
+          ? a.doctorAvailability.date.toISOString() 
+          : new Date(a.doctorAvailability.date).toISOString()) : null,
         type: a.consultationType,
         status: a.status,
         prescriptionLink: a.prescriptionLink,
         doctorName: a.doctor.name,
-        complaints: a.prescription?.complaints?.map((c: any) => c.complaintText).join(", ") || "",
+        complaints: a.prescription?.complaints || [],
         medicines: a.prescription?.medicines?.map((m: any) => `${m.medicineName} (${m.frequency || 'As prescribed'})`).join(", ") || "",
         tests: a.prescription?.testsRequested || "",
         doctorNotes: a.doctorNotes

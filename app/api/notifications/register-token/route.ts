@@ -43,26 +43,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find patient by phone number
-    const patient = await prisma.user.findFirst({
+    // Find user by phone number
+    const user = await prisma.user.findFirst({
       where: { 
-        phoneNumber,
-        role: 'PATIENT'
+        phoneNumber
       },
     });
 
-    if (!patient) {
+    if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Patient not found' },
+        { success: false, error: 'User not found' },
         { status: 404 }
       );
+    }
+
+    // If user is not a patient, return success without storing token
+    // (Device tokens are currently only supported for patients)
+    if (user.role !== 'PATIENT') {
+      return NextResponse.json({
+        success: true,
+        message: 'Device token registration not available for this user type',
+      });
     }
 
     // Upsert device token
     await prisma.patientDeviceToken.upsert({
       where: {
         patientId_deviceToken: {
-          patientId: patient.id,
+          patientId: user.id,
           deviceToken: deviceToken,
         },
       },
@@ -72,7 +80,7 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(),
       },
       create: {
-        patientId: patient.id,
+        patientId: user.id,
         deviceToken,
         platform,
         isActive: true,
@@ -132,25 +140,32 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Find patient by phone number
-    const patient = await prisma.user.findFirst({
+    // Find user by phone number
+    const user = await prisma.user.findFirst({
       where: { 
-        phoneNumber,
-        role: 'PATIENT'
+        phoneNumber
       },
     });
 
-    if (!patient) {
+    if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Patient not found' },
+        { success: false, error: 'User not found' },
         { status: 404 }
       );
+    }
+
+    // If user is not a patient, return success without doing anything
+    if (user.role !== 'PATIENT') {
+      return NextResponse.json({
+        success: true,
+        message: 'No device token to remove',
+      });
     }
 
     // Deactivate device token
     await prisma.patientDeviceToken.updateMany({
       where: {
-        patientId: patient.id,
+        patientId: user.id,
         deviceToken: deviceToken,
       },
       data: {

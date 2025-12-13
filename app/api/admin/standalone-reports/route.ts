@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getAdminClinicId, createUserClinicFilter } from '@/lib/admin-clinic-middleware';
+import { withUnifiedCache, getCacheConfig } from '@/lib/cache-middleware-unified';
 
 export const runtime = 'nodejs';
 
-export async function GET(request: NextRequest) {
+const getStandaloneReportsHandler = async (request: NextRequest) => {
   try {
     // Get admin's clinic ID for filtering
     const clinicId = getAdminClinicId(request);
@@ -125,4 +126,7 @@ export async function GET(request: NextRequest) {
       error: error?.message || 'Internal server error' 
     }, { status: 500 });
   }
-}
+};
+
+// ✅ UNIFIED CACHE: Apply cache middleware to GET endpoint
+export const GET = withUnifiedCache(getCacheConfig('/api/admin/standalone-reports'))(getStandaloneReportsHandler);

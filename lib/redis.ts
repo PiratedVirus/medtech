@@ -3,19 +3,22 @@ import { Redis } from '@upstash/redis'
 // Check if environment variables are set
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+const redisEnabled = process.env.REDIS_ENABLED !== 'false';
 
-if (!redisUrl || !redisToken) {
-  console.error('❌ Redis environment variables not set!');
-  console.error('Please add to your .env.local:');
-  console.error('UPSTASH_REDIS_REST_URL=https://your-database.upstash.io');
-  console.error('UPSTASH_REDIS_REST_TOKEN=your_token_here');
+// Initialize Redis client only if environment variables are set
+let redis: Redis | null = null;
+
+if (redisEnabled && redisUrl && redisToken) {
+  try {
+    redis = new Redis({
+      url: redisUrl,
+      token: redisToken,
+    });
+  } catch (error) {
+    console.error('❌ Failed to initialize Redis client:', error);
+    redis = null;
+  }
 }
-
-// Initialize Redis client for Upstash
-const redis = new Redis({
-  url: redisUrl!,
-  token: redisToken!,
-})
 
 export default redis
 
@@ -31,6 +34,11 @@ export const CACHE_KEYS = {
   APPOINTMENTS: (patientId: number, upcomingOnly: boolean) => `appointments:${patientId}:${upcomingOnly}`,
   INSIGHTS: (patientId: number) => `insights:${patientId}`,
   PATHOLOGY_APPOINTMENTS: 'pathology:upcoming:appointments',
+  // Doctor-related cache keys
+  DOCTOR_PROFILE: (doctorId: number) => `doctor:profile:${doctorId}`,
+  DOCTOR_LIST: (clinicId: number) => `doctors:list:${clinicId}`,
+  DOCTOR_AVAILABILITY: (doctorId: number) => `doctor:availability:${doctorId}`,
+  DOCTOR_APPOINTMENTS: (doctorId: number) => `doctor:appointments:${doctorId}`,
 } as const
 
 // Cache TTL (Time To Live) in seconds
@@ -45,6 +53,11 @@ export const CACHE_TTL = {
   APPOINTMENTS: 5 * 60, // 5 minutes
   INSIGHTS: 10 * 60, // 10 minutes
   PATHOLOGY_APPOINTMENTS: 3 * 60, // 3 minutes
+  // Doctor-related cache TTL
+  DOCTOR_PROFILE: 15 * 60, // 15 minutes
+  DOCTOR_LIST: 10 * 60, // 10 minutes
+  DOCTOR_AVAILABILITY: 5 * 60, // 5 minutes
+  DOCTOR_APPOINTMENTS: 5 * 60, // 5 minutes
 } as const
 
 // Utility functions
@@ -55,6 +68,11 @@ export const cacheUtils = {
     fallback: () => Promise<T>,
     ttl: number
   ): Promise<T> {
+    // If Redis is not available, just execute fallback
+    if (!redis) {
+      return await fallback()
+    }
+
     try {
       // Try to get from cache first
       const cached = await redis.get<T>(key)
@@ -75,6 +93,10 @@ export const cacheUtils = {
 
   // Invalidate cache
   async invalidate(pattern: string): Promise<void> {
+    if (!redis) {
+      return
+    }
+
     try {
       const keys = await redis.keys(pattern)
       if (keys.length > 0) {
@@ -87,6 +109,10 @@ export const cacheUtils = {
 
   // Set cache with TTL
   async set<T>(key: string, value: T, ttl: number): Promise<void> {
+    if (!redis) {
+      return
+    }
+
     try {
       await redis.setex(key, ttl, value)
     } catch (error) {
@@ -96,6 +122,10 @@ export const cacheUtils = {
 
   // Get from cache
   async get<T>(key: string): Promise<T | null> {
+    if (!redis) {
+      return null
+    }
+
     try {
       return await redis.get<T>(key)
     } catch (error) {

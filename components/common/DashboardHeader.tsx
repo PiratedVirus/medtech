@@ -11,6 +11,7 @@ import {
   ShieldPlus,
   TestTubeDiagonal,
   TrendingUp,
+  UtensilsCrossed,
   MoreHorizontal as MoreIcon,
 } from "lucide-react";
 import { useDispatch } from "react-redux";

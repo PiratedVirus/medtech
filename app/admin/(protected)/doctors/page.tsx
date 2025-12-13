@@ -61,6 +61,8 @@ type Doctor = {
   createdAt: string;
   isDietician: boolean;
   doctorCode: string | null;
+  supportsVideo?: boolean;
+  supportsClinic?: boolean;
   // Relation from doctorProfile to user
   user: {
     id: number;
@@ -339,6 +341,8 @@ export default function DoctorsPage() {
       setValue("userId", selectedDoctor.user.id);
       setValue("isDietician", selectedDoctor.isDietician || false);
       setValue("doctorCode", selectedDoctor.doctorCode || "");
+      setValue("supportsVideo", selectedDoctor.supportsVideo ?? true);
+      setValue("supportsClinic", selectedDoctor.supportsClinic ?? true);
     } else {
       reset();
     }

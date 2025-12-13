@@ -5,10 +5,27 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Download, Edit, Eye, EyeOff, Share2, Mail, MessageCircle } from "lucide-react";
+import { ArrowLeft, Download, Edit, Eye, EyeOff, Share2, Mail, MessageCircle, CheckCircle2, X, Copy, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import PrescriptionPreview from "@/components/prescription/PrescriptionPreview";
-import { generateAndDownloadPDF } from "@/components/prescription/PrescriptionPDF";
+import { generateAndDownloadPDF, generatePDFBase64 } from "@/components/prescription/PrescriptionPDF";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface PrescriptionData {
   id: string;
@@ -48,12 +65,25 @@ interface PrescriptionData {
   }>;
   advice: string;
   testsRequested: string;
+  recommendedLinks?: string[];
   nextVisit: {
     type: "days" | "weeks" | "months";
     value: number;
     date?: Date;
   };
+  investigationValues?: Array<{
+    parameter?: string;
+    value: string | number;
+    unit?: string;
+    normalRange?: string;
+    isAbnormal?: boolean;
+    severity?: string;
+    reportDate?: string;
+    source?: string;
+  }>;
 }
+
+type ProcessingStatusType = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | null;
 
 export default function AppointmentPrescriptionPage() {
   const params = useParams();
@@ -86,7 +116,15 @@ export default function AppointmentPrescriptionPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processingStatus, setProcessingStatus] = useState<'PENDING' | 'COMPLETED' | 'FAILED' | null>(null);
+  const [processingStatus, setProcessingStatus] = useState<ProcessingStatusType>(null);
+  const [appointmentStatus, setAppointmentStatus] = useState<string | null>(null);
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'download' | 'whatsapp' | 'share' | null>(null);
+  const [isCompletingAppointment, setIsCompletingAppointment] = useState(false);
+  const [showShareLinkModal, setShowShareLinkModal] = useState(false);
+  const [shareLink, setShareLink] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [pdfUploadFailed, setPdfUploadFailed] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
 
   // Default visible sections
@@ -128,16 +166,19 @@ export default function AppointmentPrescriptionPage() {
 
   const fetchPrescription = async () => {
     try {
-      // First fetch appointment data to get patient info
-      const appointmentRes = await fetch(`/api/doctor/appointments/all`);
+      // Fetch single appointment directly (much faster than fetching all)
+      const appointmentRes = await fetch(`/api/doctor/appointments/${appointmentId}`);
       if (!appointmentRes.ok) throw new Error("Failed to fetch appointment data");
       const appointmentData = await appointmentRes.json();
+      
+      if (!appointmentData.success || !appointmentData.data) {
+        throw new Error("Appointment not found");
+      }
+      
+      const appointment = appointmentData.data;
 
-      const appointment =
-        appointmentData.upcoming.find((apt: any) => apt.id.toString() === appointmentId) ||
-        appointmentData.past.find((apt: any) => apt.id.toString() === appointmentId);
-
-      if (!appointment) throw new Error("Appointment not found");
+      // Set appointment status
+      setAppointmentStatus(appointment.status);
 
       // Fetch detailed patient information
       try {
@@ -200,13 +241,14 @@ export default function AppointmentPrescriptionPage() {
           const clinicData = await clinicRes.json();
           console.log("Clinic API response data:", clinicData);
           
-          if (clinicData.success && clinicData.clinic) {
+          if (clinicData.success && (clinicData.data?.clinic || clinicData.clinic)) {
+            const clinic = clinicData.data?.clinic || clinicData.clinic;
             const clinicInfo = {
-              name: clinicData.clinic.name,
-              logo: clinicData.clinic.logo,
-              address: clinicData.clinic.address,
-              timings: clinicData.clinic.timings,
-              subtitle: clinicData.clinic.subtitle,
+              name: clinic.name,
+              logo: clinic.logo,
+              address: clinic.address,
+              timings: clinic.timings,
+              subtitle: clinic.subtitle,
             };
             console.log("Setting clinic info:", clinicInfo);
             setClinicInfo(clinicInfo);
@@ -284,15 +326,23 @@ export default function AppointmentPrescriptionPage() {
           })) || [],
         advice: prescription.advice || "",
         testsRequested: prescription.testsRequested || "",
+        recommendedLinks: prescription.recommendedLinks ? prescription.recommendedLinks.split(',').filter((link: string) => link.trim() !== '') : [],
         nextVisit: {
           type: prescription.nextVisitType || "days",
           value: prescription.nextVisitValue || 7,
           date: prescription.nextVisitDate ? new Date(prescription.nextVisitDate) : undefined,
         },
+        investigationValues: prescription.investigationValues || [],
       });
 
       // Prefill longitudinal history from patient profile
       try {
+        // Validate patientId exists before fetching
+        if (!appointment.patientId) {
+          console.warn('[PRESCRIPTION] Patient ID not found in appointment data, skipping profile fetch');
+          return;
+        }
+        
         const profRes = await fetch(`/api/profile?userId=${appointment.patientId}`);
         if (profRes.ok) {
           const profJson = await profRes.json();
@@ -319,6 +369,72 @@ export default function AppointmentPrescriptionPage() {
     }
   };
 
+  const handleCompleteAppointment = async () => {
+    try {
+      setIsCompletingAppointment(true);
+      
+      // Generate PDF and upload to blob storage
+      const pdfResult = await generatePDFBase64(
+        prescriptionData!,
+        patientInfo,
+        doctorInfo,
+        clinicInfo,
+        appointmentId,
+        visibleSections
+      );
+      
+      if (!pdfResult.success) {
+        setPdfUploadFailed(true);
+        toast({ title: "Error", description: "PDF generation failed. Appointment not completed.", variant: "destructive" });
+        return;
+      }
+
+      // Upload PDF to blob storage and update prescription link
+      const uploadResponse = await fetch('/api/doctor/prescription/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          appointmentId: appointmentId,
+          pdf: pdfResult.pdfBase64
+        }),
+      });
+
+      if (!uploadResponse.ok) {
+        setPdfUploadFailed(true);
+        toast({ title: "Error", description: "PDF upload failed. Appointment not completed.", variant: "destructive" });
+        return;
+      }
+
+      setPdfUploadFailed(false);
+
+      // Mark appointment as completed (only after successful upload)
+      const response = await fetch(`/api/doctor/appointments/${appointmentId}/mark-completed`, {
+        method: 'PUT',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to mark appointment as completed');
+      }
+
+      setAppointmentStatus('COMPLETED');
+      toast({ 
+        title: "Success", 
+        description: "Appointment marked as completed successfully", 
+      });
+    } catch (error) {
+      console.error("Error completing appointment:", error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to complete appointment", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsCompletingAppointment(false);
+    }
+  };
+
   const handleDownload = async () => {
     try {
       if (!prescriptionData || !patientInfo || !doctorInfo || !clinicInfo) {
@@ -337,7 +453,7 @@ export default function AppointmentPrescriptionPage() {
       );
 
       if (result.success) {
-        toast({ title: "Success", description: "PDF downloaded successfully", variant: "success" });
+        toast({ title: "Success", description: "PDF downloaded successfully" });
       } else {
         throw new Error('error' in result ? result.error : 'Failed to generate PDF');
       }
@@ -347,16 +463,125 @@ export default function AppointmentPrescriptionPage() {
     }
   };
 
+  const handleWhatsAppShare = async () => {
+    try {
+      if (!prescriptionData || !patientInfo || !doctorInfo || !clinicInfo) {
+        toast({ title: "Error", description: "Missing prescription data", variant: "destructive" });
+        return;
+      }
+
+      if (!patientInfo.phone || patientInfo.phone === "Not provided") {
+        toast({ title: "Error", description: "Patient phone number is not available", variant: "destructive" });
+        return;
+      }
+
+      // Prepare template variables (2 variables as required)
+      // Variable 1: Patient name ({{1}} in template)
+      // Variable 2: Doctor name ({{2}} in template)
+      const templateVariables = [
+        patientInfo.name,
+        doctorInfo.name || "Doctor"
+      ];
+
+      // Call WhatsApp sharing API
+      // Uses existing prescriptionLink from database (no need to regenerate PDF)
+      const response = await fetch('/api/doctor/prescription/share-whatsapp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          appointmentId: appointmentId,
+          templateVariables: templateVariables,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to share prescription via WhatsApp');
+      }
+
+      toast({ 
+        title: "Success", 
+        description: `Prescription shared via WhatsApp to ${patientInfo.phone}` 
+      });
+    } catch (error) {
+      console.error("WhatsApp sharing error", error);
+      toast({ 
+        title: "Error", 
+        description: error instanceof Error ? error.message : "Failed to share prescription via WhatsApp", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const checkAndExecuteAction = (action: 'download' | 'whatsapp' | 'share') => {
+    if (appointmentStatus !== 'COMPLETED') {
+      setPendingAction(action);
+      setShowCompletionDialog(true);
+    } else {
+      executeAction(action);
+    }
+  };
+
+  const executeAction = async (action: 'download' | 'whatsapp' | 'share') => {
+    switch (action) {
+      case 'download':
+        await handleDownload();
+        break;
+      case 'whatsapp':
+        await handleWhatsAppShare();
+        break;
+      case 'share':
+        // Generate shareable link
+        const baseUrl = window.location.origin;
+        const link = `${baseUrl}/doctor/appointments/${appointmentId}/prescription`;
+        setShareLink(link);
+        setLinkCopied(false);
+        setShowShareLinkModal(true);
+        break;
+    }
+  };
+
+  const copyLinkToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setLinkCopied(true);
+      toast({ title: "Success", description: "Link copied to clipboard!" });
+      setTimeout(() => setLinkCopied(false), 3000);
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to copy link", variant: "destructive" });
+    }
+  };
+
+  const handleDialogProceedWithoutCompleting = () => {
+    setShowCompletionDialog(false);
+    if (pendingAction) {
+      executeAction(pendingAction);
+    }
+    setPendingAction(null);
+  };
+
+  const handleDialogCompleteAndProceed = async () => {
+    setShowCompletionDialog(false);
+    await handleCompleteAppointment();
+    if (pendingAction) {
+      await executeAction(pendingAction);
+    }
+    setPendingAction(null);
+  };
+
   const checkProcessingStatus = async () => {
     try {
-      // Get appointment details to find the prescription ID
-      const appointmentRes = await fetch(`/api/doctor/appointments/all`);
+      // Get appointment details to find the prescription ID (use direct endpoint)
+      const appointmentRes = await fetch(`/api/doctor/appointments/${appointmentId}`);
       if (!appointmentRes.ok) return;
       const appointmentData = await appointmentRes.json();
-
-      const appointment =
-        appointmentData.upcoming.find((apt: any) => apt.id.toString() === appointmentId) ||
-        appointmentData.past.find((apt: any) => apt.id.toString() === appointmentId);
+      
+      if (!appointmentData.success || !appointmentData.data) return;
+      
+      const appointment = appointmentData.data;
 
       if (!appointment?.prescriptionId) return;
 
@@ -365,7 +590,7 @@ export default function AppointmentPrescriptionPage() {
       if (statusRes.ok) {
         const statusData = await statusRes.json();
         if (statusData.success) {
-          setProcessingStatus(statusData.data.processingStatus);
+          setProcessingStatus(statusData.data.processingStatus as ProcessingStatusType);
         }
       }
     } catch (error) {
@@ -377,44 +602,64 @@ export default function AppointmentPrescriptionPage() {
     try {
       setIsProcessing(true);
       
-      // Get appointment details to find the patient id
-      const appointmentRes = await fetch(`/api/doctor/appointments/all`);
+      // Get appointment details to find the patient id (use direct endpoint)
+      const appointmentRes = await fetch(`/api/doctor/appointments/${appointmentId}`);
       if (!appointmentRes.ok) throw new Error("Failed to fetch appointment data");
       const appointmentData = await appointmentRes.json();
+      
+      if (!appointmentData.success || !appointmentData.data) {
+        throw new Error("Appointment not found");
+      }
+      
+      const appointment = appointmentData.data;
 
-      const appointment =
-        appointmentData.upcoming.find((apt: any) => apt.id.toString() === appointmentId) ||
-        appointmentData.past.find((apt: any) => apt.id.toString() === appointmentId);
-
-      if (!appointment) throw new Error("Appointment not found");
-
-      // Trigger processing for ALL prescriptions for this patient
-      const processRes = await fetch(`/api/prescription/process-all/${appointment.patientId}`, {
-        method: 'POST',
+      // Trigger processing asynchronously (don't block UI)
+      toast({
+        title: 'Processing started',
+        description: 'Prescription processing has started in the background. This may take a few minutes.',
+        variant: 'default',
       });
-
-      if (!processRes.ok) {
-        const errorData = await processRes.json();
-        throw new Error(errorData.error || 'Failed to process prescription');
-      }
-
-      const result = await processRes.json();
-      if (result.success) {
-        toast({
-          title: 'Success',
-          description: `Processed ${result.totals.completed}/${result.totals.total} prescriptions. Summary updated with ${result.summary?.count || 0} texts.`,
-          variant: 'success',
+      
+      // Fire and forget - process in background
+      fetch(`/api/prescription/process-all/${appointment.patientId}`, {
+        method: 'POST',
+      })
+        .then(async (processRes) => {
+          if (!processRes.ok) {
+            const errorData = await processRes.json();
+            throw new Error(errorData.error || 'Failed to process prescription');
+          }
+          return processRes.json();
+        })
+        .then((result) => {
+          if (result.success) {
+            toast({
+              title: 'Processing complete',
+              description: `Processed ${result.totals.completed}/${result.totals.total} prescriptions. Summary updated with ${result.summary?.count || 0} texts.`,
+              variant: 'success',
+            });
+            setProcessingStatus('COMPLETED');
+          } else {
+            throw new Error(result.error || 'Processing failed');
+          }
+        })
+        .catch((error) => {
+          console.error("Prescription processing error:", error);
+          toast({ 
+            title: "Processing error", 
+            description: error instanceof Error ? error.message : "Failed to process prescription", 
+            variant: "destructive" 
+          });
+          setProcessingStatus('FAILED');
         });
-        // We can set status to completed for this appointment if its PDF existed and processed.
-        setProcessingStatus('COMPLETED');
-      } else {
-        throw new Error(result.error || 'Processing failed');
-      }
+      
+      // Set status to processing immediately
+      setProcessingStatus('PROCESSING');
     } catch (error) {
-      console.error("Prescription processing error:", error);
+      console.error("Error starting prescription processing:", error);
       toast({ 
         title: "Error", 
-        description: error instanceof Error ? error.message : "Failed to process prescription", 
+        description: error instanceof Error ? error.message : "Failed to start processing", 
         variant: "destructive" 
       });
       setProcessingStatus('FAILED');
@@ -449,7 +694,7 @@ export default function AppointmentPrescriptionPage() {
           >
             <div className="flex items-center justify-between px-6 py-3">
               <div className="flex items-center gap-4">
-                <Link href={`/doctor/appointments/${appointmentId}`}>
+                <Link href={appointmentStatus === 'COMPLETED' ? '/doctor/appointments' : `/doctor/appointments/${appointmentId}`}>
                   <Button variant="ghost" size="icon" className="mr-2 p-2">
                     <ArrowLeft className="h-5 w-5" />
                   </Button>
@@ -457,6 +702,19 @@ export default function AppointmentPrescriptionPage() {
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-gray-600">#APT0{appointmentId}</span>
                   <span className="text-lg font-semibold text-gray-900">{patientInfo.name}</span>
+                  {appointmentStatus === 'COMPLETED' && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Completed
+                    </span>
+                  )}
+                  {appointmentStatus !== 'COMPLETED' && pdfUploadFailed && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                      {/* small cross icon via SVG */}
+                      <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                      PDF upload failed
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -464,10 +722,27 @@ export default function AppointmentPrescriptionPage() {
                   <Edit className="h-4 w-4 mr-2" />
                   {isEditing ? "Done" : "Edit"}
                 </Button>
-                <Button onClick={handleDownload} size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                  <Download className="h-4 w-4 mr-2" />
-                  Download PDF
-                </Button>
+                {appointmentStatus === 'COMPLETED' ? (
+                  <Link href="/doctor/appointments">
+                    <Button 
+                      size="sm" 
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Go to Appointments
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button 
+                    onClick={handleCompleteAppointment} 
+                    size="sm" 
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                    disabled={isCompletingAppointment}
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    {isCompletingAppointment ? "Completing..." : "Complete Appointment"}
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -497,34 +772,31 @@ export default function AppointmentPrescriptionPage() {
                     <Button
                       variant="outline"
                       className="w-full justify-start gap-3 h-12"
-                      onClick={() => {
-                        // TODO: Implement WhatsApp sharing
-                        toast({ title: "Success", description: "Sharing via WhatsApp...", variant: "success" });
-                      }}
+                      onClick={() => checkAndExecuteAction('download')}
+                    >
+                      <Download className="h-5 w-5 text-primary" />
+                      <span>Download PDF</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-3 h-12"
+                      disabled
+                      onClick={() => {}}
                     >
                       <MessageCircle className="h-5 w-5 text-primary" />
-                      <span>Share via WhatsApp</span>
+                      <div className="flex items-center justify-between w-full">
+                        <span>Share via WhatsApp</span>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">
+                          Coming soon
+                        </span>
+                      </div>
                     </Button>
 
                     <Button
                       variant="outline"
                       className="w-full justify-start gap-3 h-12"
-                      onClick={() => {
-                        // TODO: Implement email sharing
-                        toast({ title: "Success", description: "Sharing via Email...", variant: "success" });
-                      }}
-                    >
-                      <Mail className="h-5 w-5 text-primary" />
-                      <span>Share via Email</span>
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-12"
-                      onClick={() => {
-                        // TODO: Implement general sharing
-                        toast({ title: "Success", description: "Sharing prescription...", variant: "success" });
-                      }}
+                      onClick={() => checkAndExecuteAction('share')}
                     >
                       <Share2 className="h-5 w-5 text-primary" />
                       <span>Share Prescription</span>
@@ -636,6 +908,79 @@ export default function AppointmentPrescriptionPage() {
           </div>
         </div>
       </div>
+
+      {/* Appointment Completion Dialog */}
+      <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
+        <AlertDialogContent>
+          <button
+            onClick={() => setShowCompletionDialog(false)}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Appointment Not Completed</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAction === 'whatsapp' 
+                ? "To share via WhatsApp, the prescription PDF must be generated first. Please complete the appointment to generate the PDF."
+                : "This appointment has not been marked as completed yet. Would you like to mark it as completed before proceeding with this action?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {pendingAction !== 'whatsapp' && (
+              <AlertDialogCancel onClick={handleDialogProceedWithoutCompleting}>
+                Proceed Without Completing
+              </AlertDialogCancel>
+            )}
+            <AlertDialogAction onClick={handleDialogCompleteAndProceed}>
+              Mark as Completed and Proceed
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Share Link Modal */}
+      <Dialog open={showShareLinkModal} onOpenChange={setShowShareLinkModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Share Prescription</DialogTitle>
+            <DialogDescription>
+              Copy this link to share the prescription with others.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center space-x-2">
+            <div className="grid flex-1 gap-2">
+              <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2">
+                <input
+                  type="text"
+                  value={shareLink}
+                  readOnly
+                  className="flex-1 bg-transparent text-sm outline-none"
+                />
+              </div>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              className="px-3"
+              onClick={copyLinkToClipboard}
+            >
+              {linkCopied ? (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

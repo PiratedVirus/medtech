@@ -18,6 +18,7 @@ export default function DoctorInfoTwo({
   onBack,
 }: AppointmentDoctorInfoProps) {
   const bookingData = useSelector((state: RootState) => state.appointment.bookingData);
+  const imageSrc = doctor?.userProfilePicture || bookingData?.doctor?.userProfilePicture || "/images/doc.png";
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px]">
@@ -42,7 +43,7 @@ export default function DoctorInfoTwo({
 
             <div className="relative w-24 h-24 hidden sm:block rounded-full overflow-hidden shrink-0">
               <Image
-                src={doctor?.userProfilePicture || "/images/doc.png"}
+                src={imageSrc}
                 alt=""
                 fill
                 className="object-cover"
@@ -75,7 +76,7 @@ export default function DoctorInfoTwo({
           </div>
         </div>
 
-        <div className="bg-gradient-to-t from-[#134F30] to-[#56A67C] px-4 py-3 sm:p-6 lg:p-8 lg:pb-0 text-white">
+        <div className="bg-gradient-to-t from-[#134F30] to-[#56A67C] px-4 py-4 sm:p-6 lg:p-8 pb-2 sm:pb-4 lg:pb-6 text-white">
           <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
             <div className="flex items-center gap-3">
               <Calendar className="h-5 w-5" />
@@ -91,7 +92,7 @@ export default function DoctorInfoTwo({
             </div>
           </div>
 
-          <a onClick={onBack} className="w-full cursor-pointer text-[14px] sm:text-[15px] font-medium text-white  hover:bg-white/10 transition-colors mb-5">
+          <a onClick={onBack} className="w-full cursor-pointer text-[14px] sm:text-[15px] font-medium text-white  hover:bg-white/10 transition-colors mb-6">
             Change Date & Time
           </a>
 

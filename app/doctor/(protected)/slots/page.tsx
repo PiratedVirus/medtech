@@ -6,8 +6,8 @@ import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight } from 'lu
 import { format, addMinutes, setHours, setMinutes, addDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-const SLOT_START = 8 * 60; // 8:00 AM in minutes
-const SLOT_END = 20 * 60; // 8:00 PM in minutes
+const SLOT_START = 6 * 60; // 6:00 AM in minutes
+const SLOT_END = 23 * 60; // 11:00 PM in minutes
 const SLOT_DURATION = 30; // 30 mins
 
 type SlotState = 'available' | 'break' | 'unselected';
@@ -34,10 +34,14 @@ function generateSlots(): Slot[] {
 const ALL_SLOTS = generateSlots();
 
 function groupSlots(slots: Slot[]): Record<string, Slot[]> {
+  // Morning: 6am-12pm (6:00, 6:30, 7:00, 7:30, 8:00, 8:30, 9:00, 9:30, 10:00, 10:30, 11:00, 11:30) = 12 slots
+  // Afternoon: 12pm-4pm (12:00, 12:30, 1:00, 1:30, 2:00, 2:30, 3:00, 3:30) = 8 slots
+  // Evening: 4pm-11pm (4:00, 4:30, 5:00, 5:30, 6:00, 6:30, 7:00, 7:30, 8:00, 8:30, 9:00, 9:30, 10:00, 10:30) = 14 slots
+  // Total: 34 slots (6am to 11pm, 30min intervals)
   return {
-    Morning: slots.slice(0, 6),
-    Afternoon: slots.slice(6, 12),
-    Evening: slots.slice(12),
+    Morning: slots.slice(0, 12),    // 6am-12pm (12 slots)
+    Afternoon: slots.slice(12, 20), // 12pm-4pm (8 slots)
+    Evening: slots.slice(20),      // 4pm-11pm (14 slots)
   };
 }
 
