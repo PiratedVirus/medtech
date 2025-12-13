@@ -156,10 +156,10 @@ export default function PrescriptionPreview({
           </div>
         )}
 
-        {/* History of Current Illness */}
+        {/* History of Presenting Illness */}
         {visibleSections.history && prescriptionData.historyOfCurrentIllness && (
           <div className="mb-4">
-            <p className="font-semibold mb-2">History of Current Illness:</p>
+            <p className="font-semibold mb-2">History of Presenting Illness:</p>
             <div className="ml-4 text-sm">
               <p>{prescriptionData.historyOfCurrentIllness}</p>
             </div>

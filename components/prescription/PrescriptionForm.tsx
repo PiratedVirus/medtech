@@ -1064,7 +1064,7 @@ export default function PrescriptionForm({
     if (voiceData.medicines?.length) addedItems.push(`${voiceData.medicines.length} medicine(s)`);
     if (voiceData.advice?.trim()) addedItems.push("advice");
     if (voiceData.testsRequested?.trim()) addedItems.push("tests");
-    if (voiceData.historyOfCurrentIllness?.trim()) addedItems.push("history of current illness");
+    if (voiceData.historyOfCurrentIllness?.trim()) addedItems.push("History of Presenting Illness");
     if (voiceData.medicalHistory?.allergies?.trim() || voiceData.medicalHistory?.personalHistory?.trim() || voiceData.medicalHistory?.pastMedicalHistory?.trim() || voiceData.medicalHistory?.familyHistory?.trim()) addedItems.push("medical history");
     
     // Only show success if we actually added meaningful data
@@ -1611,9 +1611,9 @@ export default function PrescriptionForm({
 
 
 
-      {/* History of Current Illness Section - Visit Specific */}
+      {/* History of Presenting Illness Section - Visit Specific */}
         <div className="bg-custom-mutedgreen p-6 rounded-lg border border-gray-200">
-          <h3 className="text-lg font-semibold mb-4">History of Current Illness</h3>
+          <h3 className="text-lg font-semibold mb-4">History of Presenting Illness</h3>
           <Textarea
             id="historyOfCurrentIllness"
             value={prescriptionData.historyOfCurrentIllness || ""}

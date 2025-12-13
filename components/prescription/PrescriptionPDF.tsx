@@ -112,10 +112,10 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
           </View>
         )}
 
-        {/* History of Current Illness */}
+        {/* History of Presenting Illness */}
         {visibleSections?.history !== false && prescriptionData.historyOfCurrentIllness && (
           <View style={styles.historySection}>
-            <Text style={[styles.patientInfo, styles.bold]}>History of Current Illness:</Text>
+            <Text style={[styles.patientInfo, styles.bold]}>History of Presenting Illness:</Text>
             <Text style={styles.historyValue}>{prescriptionData.historyOfCurrentIllness}</Text>
           </View>
         )}

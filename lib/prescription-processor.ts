@@ -96,9 +96,9 @@ export class PrescriptionProcessor {
       lines.push('');
     }
     
-    // History of Current Illness
+    // History of Presenting Illness
     if (prescription.historyOfCurrentIllness) {
-      lines.push('HISTORY OF CURRENT ILLNESS:');
+      lines.push('History of Presenting Illness:');
       lines.push(prescription.historyOfCurrentIllness);
       lines.push('');
     }
