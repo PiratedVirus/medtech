@@ -415,6 +415,13 @@ export const CACHE_CONFIGS = {
     dependencies: ['admin:dashboard:*', 'user:profile:*']
   },
   
+  ADMIN_STANDALONE_REPORTS: {
+    key: 'admin:standalone-reports',
+    ttl: CACHE_TTL.ADMIN_PROFILE,
+    entityType: 'lab' as const,
+    dependencies: ['admin:dashboard:*', 'lab:*', 'pathology:*']
+  },
+  
   // Pathology-related endpoints
   PATHOLOGY_APPOINTMENTS: {
     key: 'pathology:appointments',
@@ -481,6 +488,7 @@ export function getCacheConfig(endpoint: string, params: Record<string, any> = {
     '/api/admin/dashboard/summary': CACHE_CONFIGS.ADMIN_DASHBOARD,
     '/api/admin/users': CACHE_CONFIGS.ADMIN_USERS,
     '/api/admin/patients': CACHE_CONFIGS.ADMIN_PATIENTS,
+    '/api/admin/standalone-reports': CACHE_CONFIGS.ADMIN_STANDALONE_REPORTS,
     '/api/pathology/upcoming-appointments': CACHE_CONFIGS.PATHOLOGY_APPOINTMENTS,
     '/api/(end-user)/plans': CACHE_CONFIGS.PLANS_DATA,
     '/api/(end-user)/plans/planUsage': CACHE_CONFIGS.PLANS_USAGE,
