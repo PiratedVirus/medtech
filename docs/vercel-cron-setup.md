@@ -13,7 +13,7 @@ The cron job is configured in `vercel.json`:
   "crons": [
     {
       "path": "/api/cron/send-notifications",
-      "schedule": "0 8,12,16,20 * * *"
+      "schedule": "0 8 * * *"
     }
   ]
 }
@@ -21,13 +21,10 @@ The cron job is configured in `vercel.json`:
 
 ### Schedule Explanation
 
-The schedule `"0 8,12,16,20 * * *"` runs the cron job at:
-- **8:00 AM** - Morning notifications (same-day appointment reminders)
-- **12:00 PM** - Midday check
-- **4:00 PM** - Afternoon check
-- **8:00 PM** - Evening check
+The schedule `"0 8 * * *"` runs the cron job once per day at:
+- **8:00 AM UTC** - Daily notification check for all pending notifications
 
-This ensures notifications are sent multiple times per day to catch time-sensitive events.
+**Note**: This schedule is configured to run once per day to comply with Vercel Hobby plan limitations, which only allows daily cron jobs. For multiple daily runs, upgrade to Vercel Pro plan.
 
 ### Alternative Schedules
 
@@ -54,8 +51,9 @@ You can modify the schedule based on your needs:
 
 ### Step 3: Enable Cron Jobs (if needed)
 
-- Cron jobs are automatically enabled for Vercel Pro plans and above
-- For Hobby plan, you may need to upgrade or use Vercel Cron (add-on)
+- **Hobby Plan**: Supports daily cron jobs only (once per day)
+- **Pro Plan and above**: Supports all cron job features including multiple daily runs
+- Current configuration uses `"0 8 * * *"` to comply with Hobby plan limitations
 
 ### Step 4: Test the Cron Job
 
@@ -199,7 +197,7 @@ Then in `vercel.json`:
   "crons": [
     {
       "path": "/api/cron/send-notifications",
-      "schedule": "0 8,12,16,20 * * *"
+      "schedule": "0 8 * * *"
     }
   ]
 }
