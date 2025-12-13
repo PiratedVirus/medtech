@@ -2,6 +2,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { PrismaClient } from '@prisma/client'
 
+// For Prisma 7: use adapter if available, otherwise fall back to default
+let adapter: any = undefined
+try {
+  // Try to use Prisma 7 adapter if packages are installed
+  if (process.env.DATABASE_URL) {
+    const { Pool } = require('pg')
+    const { PrismaPg } = require('@prisma/adapter-pg')
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL!,
+    })
+    adapter = new PrismaPg(pool)
+  }
+} catch {
+  // Adapter packages not installed, will use default connection
+  adapter = undefined
+}
+
 // --- Models that truly have a deletedAt column (must match your schema) ---
 const SOFT_DELETE_MODELS = new Set<string>([
   'User',
@@ -43,7 +60,7 @@ declare global {
   var __PRISMA_BASE__: PrismaClient | undefined
 }
 
-const base: PrismaClient = global.__PRISMA_BASE__ ?? new PrismaClient()
+const base: PrismaClient = global.__PRISMA_BASE__ ?? new PrismaClient(adapter ? { adapter } : {})
 if (!global.__PRISMA_BASE__) global.__PRISMA_BASE__ = base
 
 // Map model name -> delegate property, e.g. "User" -> "user"

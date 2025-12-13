@@ -89,6 +89,26 @@ async function extractDoctorIdentifier(): Promise<string | null> {
   }
 }
 
+/**
+ * Extract admin clinic ID from JWT token for admin-specific endpoints
+ * Uses clinicId to ensure clinic-specific caching
+ */
+async function extractAdminClinicId(request: NextRequest): Promise<number | null> {
+  try {
+    const token = request.cookies.get('admin_token')?.value;
+    if (!token) return null;
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    if (decoded.role !== 'ADMIN' || !decoded.clinicId) {
+      return null;
+    }
+    
+    return decoded.clinicId;
+  } catch {
+    return null;
+  }
+}
+
 async function handleGetWithCache(
   request: NextRequest,
   handler: (request: NextRequest, ...args: any[]) => Promise<NextResponse>,
@@ -122,6 +142,15 @@ async function handleGetWithCache(
       if (doctorIdentifier) {
         // Use phoneNumber as unique identifier for cache key
         cacheKey = `${config.key}:${doctorIdentifier}`;
+      }
+    }
+    
+    // For admin-specific endpoints, extract clinic ID from token to ensure clinic isolation
+    if (config.key.startsWith('admin:')) {
+      const clinicId = await extractAdminClinicId(request);
+      if (clinicId) {
+        // Append clinic ID to cache key to prevent cross-clinic data leakage
+        cacheKey = `${config.key}:${clinicId}`;
       }
     }
     
@@ -415,6 +444,13 @@ export const CACHE_CONFIGS = {
     dependencies: ['admin:dashboard:*', 'user:profile:*']
   },
   
+  ADMIN_STANDALONE_REPORTS: {
+    key: 'admin:standalone-reports',
+    ttl: CACHE_TTL.ADMIN_PROFILE,
+    entityType: 'lab' as const,
+    dependencies: ['admin:dashboard:*', 'user:profile:*', 'lab:*']
+  },
+  
   // Pathology-related endpoints
   PATHOLOGY_APPOINTMENTS: {
     key: 'pathology:appointments',
@@ -481,6 +517,7 @@ export function getCacheConfig(endpoint: string, params: Record<string, any> = {
     '/api/admin/dashboard/summary': CACHE_CONFIGS.ADMIN_DASHBOARD,
     '/api/admin/users': CACHE_CONFIGS.ADMIN_USERS,
     '/api/admin/patients': CACHE_CONFIGS.ADMIN_PATIENTS,
+    '/api/admin/standalone-reports': CACHE_CONFIGS.ADMIN_STANDALONE_REPORTS,
     '/api/pathology/upcoming-appointments': CACHE_CONFIGS.PATHOLOGY_APPOINTMENTS,
     '/api/(end-user)/plans': CACHE_CONFIGS.PLANS_DATA,
     '/api/(end-user)/plans/planUsage': CACHE_CONFIGS.PLANS_USAGE,
