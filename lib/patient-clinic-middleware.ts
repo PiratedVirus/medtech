@@ -1,4 +1,4 @@
-import { NextRequest, headers } from 'next/server';
+import { NextRequest } from 'next/server';
 
 /**
  * Get clinic ID from request headers (set by middleware)
