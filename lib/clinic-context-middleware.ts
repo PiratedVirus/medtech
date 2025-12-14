@@ -9,7 +9,9 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
  * Extract subdomain from hostname
  * Examples:
  * - clinic1.yourdomain.com -> "clinic1"
+ * - clinic1.test.yourdomain.com -> "clinic1" (handles nested subdomains for dev/staging)
  * - clinic1.yourdomain.com:3000 -> "clinic1"
+ * - test.yourdomain.com -> null (environment subdomain, not clinic)
  * - localhost:3000 -> null (no subdomain)
  * - yourdomain.com -> null (no subdomain)
  */
@@ -25,24 +27,40 @@ export function extractSubdomain(hostname: string): string | null {
   // Split by dots
   const parts = hostWithoutPort.split('.');
   
-  // If we have at least 3 parts (subdomain.domain.tld), extract subdomain
-  // Example: clinic1.yourdomain.com -> ["clinic1", "yourdomain", "com"]
-  if (parts.length >= 3) {
-    return parts[0]; // Return the first part as subdomain
+  // Handle nested subdomains for dev/staging environments
+  // Examples:
+  // - clinic1.test.abc.com -> ["clinic1", "test", "abc", "com"] -> return "clinic1"
+  // - clinic1.abc.com -> ["clinic1", "abc", "com"] -> return "clinic1"
+  // - test.abc.com -> ["test", "abc", "com"] -> return null (environment subdomain)
+  
+  if (parts.length >= 4) {
+    // 4+ parts: clinic1.test.abc.com or clinic1.dev.abc.com
+    // First part is clinic subdomain, second might be environment (test/dev/staging)
+    return parts[0];
+  }
+  
+  if (parts.length === 3) {
+    // 3 parts: clinic1.abc.com or test.abc.com
+    // Check if first part is a known environment subdomain
+    const firstPart = parts[0].toLowerCase();
+    const knownEnvironments = ['test', 'dev', 'staging', 'preview', 'demo'];
+    
+    // If it's a known environment subdomain, return null (not a clinic)
+    if (knownEnvironments.includes(firstPart)) {
+      return null;
+    }
+    
+    // Otherwise, it's a clinic subdomain
+    return parts[0];
   }
 
   // If only 2 parts, check if it's a subdomain (e.g., in development)
   // For development: clinic1.localhost -> ["clinic1", "localhost"]
-  if (parts.length === 2 && parts[1] !== 'localhost') {
-    // In production, 2 parts means no subdomain (yourdomain.com)
-    return null;
-  }
-
-  // For localhost development with subdomain
   if (parts.length === 2 && parts[1] === 'localhost') {
     return parts[0];
   }
 
+  // 2 parts in production means no subdomain (yourdomain.com)
   return null;
 }
 
