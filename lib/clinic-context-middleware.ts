@@ -34,14 +34,24 @@ export function extractSubdomain(hostname: string): string | null {
   // - test.abc.com -> ["test", "abc", "com"] -> return null (environment subdomain)
   
   if (parts.length >= 4) {
-    // 4+ parts: clinic1.test.abc.com or clinic1.dev.abc.com
-    // First part is clinic subdomain, second might be environment (test/dev/staging)
-    return parts[0];
+    // 4+ parts: 
+    // - manipal.dev.carediabetics.com -> ["manipal", "dev", "carediabetics", "com"] -> return "manipal"
+    // - www.manipal.dev.carediabetics.com -> ["www", "manipal", "dev", "carediabetics", "com"] -> return "manipal" (skip www)
+    // - clinic1.test.abc.com -> ["clinic1", "test", "abc", "com"] -> return "clinic1"
+    
+    // Skip "www" prefix if present
+    const firstPart = parts[0].toLowerCase();
+    if (firstPart === 'www' && parts.length >= 5) {
+      // www.clinic.env.domain.com -> return clinic (second part) normalized
+      return parts[1].toLowerCase();
+    }
+    
+    // Otherwise, first part is clinic subdomain (normalize to lowercase)
+    return parts[0].toLowerCase();
   }
   
   if (parts.length === 3) {
-    // 3 parts: clinic1.abc.com or test.abc.com
-    // Check if first part is a known environment subdomain
+    // 3 parts: clinic1.abc.com, test.abc.com, or clinic1-test.abc.com
     const firstPart = parts[0].toLowerCase();
     const knownEnvironments = ['test', 'dev', 'staging', 'preview', 'demo'];
     
@@ -50,14 +60,24 @@ export function extractSubdomain(hostname: string): string | null {
       return null;
     }
     
-    // Otherwise, it's a clinic subdomain
-    return parts[0];
+    // Handle pattern: clinic1-test.abc.com or clinic1-dev.abc.com
+    // Extract clinic name before the hyphen
+    if (firstPart.includes('-')) {
+      const clinicPart = firstPart.split('-')[0];
+      // Only return if there's a valid clinic name before the hyphen
+      if (clinicPart && clinicPart.length > 0) {
+        return clinicPart;
+      }
+    }
+    
+    // Otherwise, it's a clinic subdomain (clinic1.abc.com) - normalize to lowercase
+    return parts[0].toLowerCase();
   }
 
   // If only 2 parts, check if it's a subdomain (e.g., in development)
   // For development: clinic1.localhost -> ["clinic1", "localhost"]
   if (parts.length === 2 && parts[1] === 'localhost') {
-    return parts[0];
+    return parts[0].toLowerCase();
   }
 
   // 2 parts in production means no subdomain (yourdomain.com)
@@ -69,27 +89,36 @@ export function extractSubdomain(hostname: string): string | null {
  * Uses caching to reduce database queries
  */
 export async function getClinicIdFromSubdomain(subdomain: string): Promise<number | null> {
+  // Normalize subdomain to lowercase for consistent lookup
+  const normalizedSubdomain = subdomain.toLowerCase().trim();
+  
   // Check cache first
-  const cached = clinicCache.get(subdomain);
+  const cached = clinicCache.get(normalizedSubdomain);
   if (cached && cached.validUntil > Date.now()) {
     return cached.clinicId;
   }
 
   try {
-    const clinic = await prisma.clinic.findFirst({
-      where: {
-        subdomain: subdomain,
-        deletedAt: null
-      },
-      select: {
-        id: true
-      }
-    });
+    // Use case-insensitive lookup by normalizing in query
+    // PostgreSQL is case-sensitive by default, so we need to use LOWER() or ILIKE
+    const clinic = await prisma.$queryRaw<Array<{ id: number }>>`
+      SELECT id FROM "Clinic" 
+      WHERE LOWER(subdomain) = LOWER(${normalizedSubdomain})
+      AND "deletedAt" IS NULL
+      LIMIT 1
+    `;
 
-    const clinicId = clinic?.id || null;
+    const clinicId = clinic && clinic.length > 0 ? clinic[0].id : null;
+
+    // Log for debugging (remove in production if too verbose)
+    if (!clinicId) {
+      console.log(`[Clinic Lookup] Subdomain "${normalizedSubdomain}" not found in database`);
+    } else {
+      console.log(`[Clinic Lookup] Found clinic ID ${clinicId} for subdomain "${normalizedSubdomain}"`);
+    }
 
     // Cache the result
-    clinicCache.set(subdomain, {
+    clinicCache.set(normalizedSubdomain, {
       clinicId,
       validUntil: Date.now() + CACHE_DURATION
     });
@@ -126,9 +155,11 @@ export async function getClinicContext(request: NextRequest): Promise<{
     return { clinicId: null, subdomain: null };
   }
 
-  const clinicId = await getClinicIdFromSubdomain(subdomain);
+  // Normalize subdomain before lookup
+  const normalizedSubdomain = subdomain.toLowerCase().trim();
+  const clinicId = await getClinicIdFromSubdomain(normalizedSubdomain);
 
-  return { clinicId, subdomain };
+  return { clinicId, subdomain: normalizedSubdomain };
 }
 
 /**
