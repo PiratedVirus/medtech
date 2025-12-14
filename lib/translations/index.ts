@@ -11,21 +11,32 @@ export const translations = {
 export const getFrequencyTranslation = (frequency: string, language: TranslationLanguage): string => {
   if (!language || !frequency) return frequency;
   
-  const translation = translations[language]?.frequency?.[frequency];
+  const langTranslations = translations[language];
+  if (!langTranslations?.frequency) return frequency;
+  
+  const translation = (langTranslations.frequency as Record<string, string>)[frequency];
   return translation || frequency;
 };
 
 export const getMedicineTimeTranslation = (medicineTime: string, language: TranslationLanguage): string => {
   if (!language || !medicineTime) return medicineTime;
   
-  const translation = translations[language]?.medicineTime?.[medicineTime];
+  const langTranslations = translations[language];
+  if (!langTranslations?.medicineTime) return medicineTime;
+  
+  const medicineTimeDict = langTranslations.medicineTime as Record<string, string>;
+  const translation = medicineTimeDict[medicineTime];
   return translation || medicineTime;
 };
 
 export const getLabelTranslation = (label: string, language: TranslationLanguage): string => {
   if (!language || !label) return label;
   
-  const translation = translations[language]?.labels?.[label];
+  const langTranslations = translations[language];
+  if (!langTranslations?.labels) return label;
+  
+  const labelsDict = langTranslations.labels as Record<string, string>;
+  const translation = labelsDict[label];
   return translation || label;
 };
 

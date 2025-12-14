@@ -91,7 +91,7 @@ export async function middleware(request: NextRequest) {
 
   // Extract clinic context from subdomain (before route protection)
   // Skip for admin/superadmin routes as they don't use subdomain routing
-  let clinicContext = { clinicId: null, subdomain: null };
+  let clinicContext: { clinicId: number | null; subdomain: string | null } = { clinicId: null, subdomain: null };
   if (!pathname.startsWith("/superadmin") && !pathname.startsWith("/admin")) {
     clinicContext = await getClinicContext(request);
     
