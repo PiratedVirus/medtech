@@ -136,18 +136,28 @@ async function handleGetWithCache(
           await cacheUtils.invalidate(cacheKey);
           // Fall through to fetch fresh data
         } else {
-          return NextResponse.json({
+          const response = NextResponse.json({
             success: true,
             data: cachedData,
             cached: true
           });
+          // Prevent browser caching - ensure fresh data on every request
+          response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+          response.headers.set('Pragma', 'no-cache');
+          response.headers.set('Expires', '0');
+          return response;
         }
       } else {
-        return NextResponse.json({
+        const response = NextResponse.json({
           success: true,
           data: cachedData,
           cached: true
         });
+        // Prevent browser caching - ensure fresh data on every request
+        response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        response.headers.set('Pragma', 'no-cache');
+        response.headers.set('Expires', '0');
+        return response;
       }
     }
     
@@ -181,11 +191,21 @@ async function handleGetWithCache(
       }
     }
     
+    // Prevent browser caching - ensure fresh data on every request
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
     return response;
   } catch (error) {
     console.error(`[CACHE-MIDDLEWARE] Error in cache handling for ${config.key}:`, error);
     // Fallback to handler without caching
-    return await handler(request, ...args);
+    const response = await handler(request, ...args);
+    // Still prevent browser caching even on fallback
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    return response;
   }
 }
 

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
+import { SmartCacheInvalidation } from "@/lib/cache-dependencies";
+import { cacheUtils } from "@/lib/redis";
 
 export async function PUT(
   request: Request,
@@ -38,12 +40,17 @@ export async function PUT(
     const { appointmentId } = await params;
     const appointmentIdNum = parseInt(appointmentId, 10);
 
-    // Verify the appointment belongs to this doctor
+    // Verify the appointment belongs to this doctor and get patientId
     const appointment = await prisma.appointment.findFirst({
       where: {
         id: appointmentIdNum,
         userId: user.id,
         deletedAt: null
+      },
+      select: {
+        id: true,
+        patientId: true,
+        userId: true
       }
     });
 
@@ -56,6 +63,29 @@ export async function PUT(
       where: { id: appointmentIdNum },
       data: { status: "COMPLETED" }
     });
+
+    // ✅ CACHE INVALIDATION: Invalidate doctor appointments cache and patient appointments cache
+    try {
+      // Invalidate doctor appointments cache using phoneNumber (as used in cache key)
+      // Use pattern to catch all variations (all, upcoming, etc.)
+      const doctorCacheKeyPattern = `doctor:appointments:${phoneNumber}*`;
+      await cacheUtils.invalidate(doctorCacheKeyPattern);
+      console.log(`[MARK-COMPLETED] Invalidated doctor appointments cache pattern: ${doctorCacheKeyPattern}`);
+
+      // Also invalidate exact key for immediate effect
+      const doctorCacheKey = `doctor:appointments:${phoneNumber}`;
+      await cacheUtils.invalidate(doctorCacheKey);
+      console.log(`[MARK-COMPLETED] Invalidated doctor appointments cache: ${doctorCacheKey}`);
+
+      // Also invalidate using SmartCacheInvalidation for comprehensive invalidation
+      if (appointment.patientId) {
+        await SmartCacheInvalidation.onAppointmentUpdate(appointment.patientId, user.id);
+        console.log(`[MARK-COMPLETED] Smart cache invalidation completed for patient ${appointment.patientId} and doctor ${user.id}`);
+      }
+    } catch (cacheError) {
+      console.error('[MARK-COMPLETED] Error invalidating cache:', cacheError);
+      // Don't fail the request if cache invalidation fails
+    }
 
     return NextResponse.json({ 
       success: true, 

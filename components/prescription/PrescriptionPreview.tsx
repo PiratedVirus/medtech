@@ -5,6 +5,14 @@ import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import { TranslationLanguage, getTranslatedFrequency, getMedicineTimeTranslation } from "@/lib/translations";
+
+// Format duration from "5d" to "5 days"
+const formatDuration = (duration: string): string => {
+  if (!duration) return duration;
+  // Replace "d" at the end with " days"
+  return duration.replace(/d$/, ' days');
+};
 
 interface PrescriptionPreviewProps {
   prescriptionData: any;
@@ -21,6 +29,8 @@ interface PrescriptionPreviewProps {
     testsRequested: boolean;
     nextVisit: boolean;
   };
+  translationLanguage?: TranslationLanguage;
+  onTranslationChange?: (language: TranslationLanguage) => void;
 }
 
 export default function PrescriptionPreview({
@@ -29,6 +39,8 @@ export default function PrescriptionPreview({
   doctorInfo,
   clinicInfo,
   visibleSections,
+  translationLanguage = null,
+  onTranslationChange,
 }: PrescriptionPreviewProps) {
 
   const formatDate = (date: Date) => {
@@ -100,7 +112,7 @@ export default function PrescriptionPreview({
       </header>
 
       {/* Patient Info */}
-      <section className="mt-4">
+      <section className="mt-4 space-y-3">
         <p className="mb-2"><span className="font-semibold">Patient name:</span> Mr. {patientInfo.name} ({patientInfo.age || 0} yrs, {patientInfo.gender || 'Not specified'}) - +91 {patientInfo.phone || 'Not provided'}</p>
         
         {visibleSections.vitals && (
@@ -113,24 +125,27 @@ export default function PrescriptionPreview({
         )}
 
         {Array.isArray(prescriptionData.investigationValues) && prescriptionData.investigationValues.length > 0 && (
-          <div className="mb-3">
-            <p className="font-semibold mb-2">Tracked Values:</p>
-            <div className="space-y-1 text-sm">
-              {prescriptionData.investigationValues.map((v: any, idx: number) => (
-                <div key={idx} className="text-gray-800">
-                  <span className="font-semibold">{v.parameter || "Value"}:</span>{" "}
-                  <span>
-                    {`${v.value}${v.unit ? ` ${v.unit}` : ""}`}{v.severity ? ` (${v.severity})` : ""}
-                  </span>
-                </div>
-              ))}
+          <div className="mb-3 pb-3 border-b border-gray-200">
+            <p className="font-semibold mb-2">Lab Parameters:</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              {prescriptionData.investigationValues.map((v: any, idx: number) => {
+                const unitText = v.unit ? ` ${v.unit}` : "";
+                return (
+                  <div key={idx} className="text-gray-800">
+                    <span className="font-semibold">{v.parameter || "Value"}:</span>{" "}
+                    <span>
+                      {v.value}{unitText}{v.severity ? ` (${v.severity})` : ""}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
         {/* Complaints with Timeline */}
         {visibleSections.complaints && prescriptionData.complaints?.length > 0 && (
-          <div className="mb-3">
+          <div className="mb-3 pb-3 border-b border-gray-200">
             <p className="font-semibold mb-2">Chief Complaints:</p>
             <div className="ml-4">
               {prescriptionData.complaints.map((complaint: any, index: number) => {
@@ -158,7 +173,7 @@ export default function PrescriptionPreview({
 
         {/* History of Presenting Illness */}
         {visibleSections.history && prescriptionData.historyOfCurrentIllness && (
-          <div className="mb-4">
+          <div className="mb-4 pb-3 border-b border-gray-200">
             <p className="font-semibold mb-2">History of Presenting Illness:</p>
             <div className="ml-4 text-sm">
               <p>{prescriptionData.historyOfCurrentIllness}</p>
@@ -168,7 +183,7 @@ export default function PrescriptionPreview({
 
         {/* Medical History Section */}
         {visibleSections.history && (
-          <div className="mb-4">
+          <div className="mb-4 pb-3 border-b border-gray-200">
             <p className="font-semibold mb-2">Medical History:</p>
             <div className="grid grid-cols-2 gap-4 text-sm">
               {prescriptionData.history?.allergies && (
@@ -202,9 +217,9 @@ export default function PrescriptionPreview({
       </section>
 
       {/* Rx Section - Medical Style */}
-      <div className="text-left mb-6">
-        <div className="text-3xl font-bold text-[#0C7C59] mb-2">Rx</div>
-        <div className="w-12 h-0.5 bg-[#0C7C59]"></div>
+      <div className="text-left mb-4 mt-2">
+        <div className="text-2xl font-bold text-[#0C7C59] mb-1">Rx</div>
+        <div className="w-10 h-0.5 bg-[#0C7C59]"></div>
       </div>
 
       {/* Medicines Table */}
@@ -220,15 +235,43 @@ export default function PrescriptionPreview({
             </tr>
           </thead>
           <tbody>
-            {prescriptionData.medicines.map((med: any, index: number) => (
-              <tr key={index} className="border-b text-sm">
-                <td className="py-2 pr-4">{med.name}</td>
-                <td className="py-2 pr-4">{med.frequency}</td>
-                <td className="py-2 pr-4">{med.medicineTime}</td>
-                <td className="py-2 pr-4">{med.duration}</td>
-                <td className="py-2">{med.quantity}</td>
-              </tr>
-            ))}
+            {prescriptionData.medicines.map((med: any, index: number) => {
+              const frequencyData = getTranslatedFrequency(med.frequency, translationLanguage);
+              const medicineTimeTranslated = getMedicineTimeTranslation(med.medicineTime, translationLanguage);
+              const composition = med.composition || med.composition2 || '';
+              const compositionText = [med.composition, med.composition2].filter(Boolean).join(', ') || '';
+              
+              return (
+                <tr key={index} className="border-b text-sm">
+                  <td className="py-2 pr-4">
+                    <div>
+                      <div className="font-medium">{med.name}</div>
+                      {compositionText && (
+                        <div className="text-xs text-gray-500 mt-0.5">{compositionText}</div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-2 pr-4">
+                    <div>
+                      <div>{frequencyData.english}</div>
+                      {translationLanguage && frequencyData.translated !== frequencyData.english && (
+                        <div className="text-xs text-gray-600 mt-0.5">{frequencyData.translated}</div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-2 pr-4">
+                    <div>
+                      <div>{med.medicineTime}</div>
+                      {translationLanguage && medicineTimeTranslated !== med.medicineTime && (
+                        <div className="text-xs text-gray-600 mt-0.5">{medicineTimeTranslated}</div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-2 pr-4">{formatDuration(med.duration)}</td>
+                  <td className="py-2">{med.quantity}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

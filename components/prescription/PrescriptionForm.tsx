@@ -894,6 +894,8 @@ export default function PrescriptionForm({
       duration: m.duration || "",
       quantity: (m.quantity ?? '').toString(),
       instructions: m.instructions || "",
+      composition: m.composition || "",
+      composition2: m.composition2 || "",
     }));
     setPrescriptionData({ ...prescriptionData, medicines: meds });
     setShowMedicineLoadDialog(false);
@@ -996,6 +998,8 @@ export default function PrescriptionForm({
         duration: m.duration || "",
         quantity: m.quantity?.toString() || "",
         instructions: m.instructions || "",
+        composition: m.composition || "",
+        composition2: m.composition2 || "",
       })) || [],
       advice: template.advice || "",
       testsRequested: template.testsRequested || "",
@@ -1934,6 +1938,8 @@ export default function PrescriptionForm({
                     medicineTime: "Post-meal",
                     duration: "",
                     quantity: "0",
+                    composition: item.composition || "",
+                    composition2: item.composition2 || "",
                   },
                 ],
               });
