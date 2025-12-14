@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 
 // Fetch all dieticians along with their profile & availability
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const clinicId = searchParams.get('clinicId');
+    // Get clinic ID from headers (set by middleware) - priority
+    const headersList = await headers();
+    const clinicIdHeader = headersList.get('x-clinic-id');
+    let clinicId: number | null = clinicIdHeader ? parseInt(clinicIdHeader, 10) : null;
+
+    // Fallback to query param for backward compatibility
+    if (!clinicId) {
+      const { searchParams } = new URL(request.url);
+      const clinicIdParam = searchParams.get('clinicId');
+      clinicId = clinicIdParam ? parseInt(clinicIdParam, 10) : null;
+    }
 
     if (!clinicId) {
       return NextResponse.json(
@@ -20,7 +30,7 @@ export async function GET(request: Request) {
     const where: any = {
       role: "DOCTOR",
       status: "ACTIVE",
-      clinicId: Number(clinicId),
+      clinicId: clinicId,
       doctorProfile: {
         isDietician: true,
         deletedAt: null

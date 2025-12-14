@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
@@ -6,10 +7,17 @@ import jwt from "jsonwebtoken";
 // Fetch all doctors along with their profile & availability
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const clinicId = searchParams.get('clinicId');
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    // Get clinic ID from headers (set by middleware) - priority
+    const headersList = await headers();
+    const clinicIdHeader = headersList.get('x-clinic-id');
+    let clinicId: number | null = clinicIdHeader ? parseInt(clinicIdHeader, 10) : null;
+
+    // Fallback to query param for backward compatibility
+    if (!clinicId) {
+      const { searchParams } = new URL(request.url);
+      const clinicIdParam = searchParams.get('clinicId');
+      clinicId = clinicIdParam ? parseInt(clinicIdParam, 10) : null;
+    }
 
     if (!clinicId) {
       return NextResponse.json(
@@ -17,6 +25,9 @@ export async function GET(request: Request) {
         { status: 400 }
       );
     }
+
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
 
     // Get the current user's doctor code if they have one
     let userDoctorCode = null;
@@ -45,7 +56,7 @@ export async function GET(request: Request) {
     const where: any = {
       role: "DOCTOR",
       status: "ACTIVE",
-      clinicId: Number(clinicId),
+      clinicId: clinicId,
       doctorProfile: {
         isDietician: false,
         deletedAt: null

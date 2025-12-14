@@ -42,21 +42,38 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if subdomain already exists
-    if (subdomain) {
-      const existingSubdomain = await prisma.clinic.findFirst({
-        where: {
-          subdomain: subdomain,
-          deletedAt: null
-        }
-      });
+    // Subdomain is now required for clinic-specific patient portals
+    if (!subdomain || subdomain.trim() === '') {
+      return NextResponse.json(
+        { success: false, error: "Subdomain is required for clinic creation" },
+        { status: 400 }
+      );
+    }
 
-      if (existingSubdomain) {
-        return NextResponse.json(
-          { success: false, error: "Subdomain already exists" },
-          { status: 400 }
-        );
+    // Validate subdomain format: alphanumeric and hyphens only, 3-63 characters
+    const subdomainRegex = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+    const normalizedSubdomain = subdomain.toLowerCase().trim();
+    
+    if (!subdomainRegex.test(normalizedSubdomain)) {
+      return NextResponse.json(
+        { success: false, error: "Subdomain must be 3-63 characters, alphanumeric with hyphens only, and start/end with alphanumeric" },
+        { status: 400 }
+      );
+    }
+
+    // Check if subdomain already exists
+    const existingSubdomain = await prisma.clinic.findFirst({
+      where: {
+        subdomain: normalizedSubdomain,
+        deletedAt: null
       }
+    });
+
+    if (existingSubdomain) {
+      return NextResponse.json(
+        { success: false, error: "Subdomain already exists" },
+        { status: 400 }
+      );
     }
 
     // Check if domain already exists
@@ -79,7 +96,7 @@ export async function POST(request: Request) {
     const clinic = await prisma.clinic.create({
       data: {
         name,
-        subdomain: subdomain || null,
+        subdomain: normalizedSubdomain, // Use normalized subdomain
         domain: domain || null,
         address: address || null,
         contactInfo: contactInfo || null,

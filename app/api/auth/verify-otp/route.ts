@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import jwt from "jsonwebtoken";
 import { checkUserExists } from "@/lib/check-user";
 import { msg91Service } from "@/lib/msg91-service";
 import { clearOtpRequest } from "@/lib/otp-cache";
 import { warmDoctorCaches } from "@/lib/cache-warming";
+import { getPatientClinicId, verifyPatientClinicMatch } from "@/lib/patient-clinic-middleware";
+import prisma from "@/lib/prisma";
 
 // JWT + cookie lifetime (in days)
 const TOKEN_LIFETIME_DAYS = 15;   // ⬅️ change this to whatever “more than a week” means to you
@@ -11,10 +14,12 @@ const TOKEN_LIFETIME_SECONDS = TOKEN_LIFETIME_DAYS * 24 * 60 * 60;
 
 // Optimized OTP verification using MSG91 service
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const { phoneNumber, code, reqId } = await request.json();
   
   try {
+    // Get clinic ID from subdomain (set by middleware)
+    const subdomainClinicId = getPatientClinicId(request);
     // Validate input
     if (!phoneNumber || !code || !reqId) {
       return NextResponse.json({
@@ -40,6 +45,23 @@ export async function POST(request: Request) {
           userExists: false,
           message: "OTP verified successfully"
         });
+      }
+
+      // For PATIENT role, verify clinic context matches
+      if (user.role === "PATIENT" && subdomainClinicId) {
+        const patientClinicId = user.clinicId;
+        
+        // If patient has no clinic, allow (will be set during registration)
+        if (!patientClinicId) {
+          // Patient will be assigned clinic during registration
+        } else if (!verifyPatientClinicMatch(patientClinicId, subdomainClinicId)) {
+          // Patient belongs to different clinic - deny access
+          return NextResponse.json({
+            success: false,
+            error: "You cannot access this clinic portal. Please use the correct clinic URL.",
+            clinicMismatch: true
+          }, { status: 403 });
+        }
       }
 
       const userRole = user?.role;

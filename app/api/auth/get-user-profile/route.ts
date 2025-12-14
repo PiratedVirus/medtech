@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import jwt from "jsonwebtoken";
 import { getCachedUserProfile } from "@/lib/auth-cache";
+import { verifyPatientClinicMatch } from "@/lib/patient-clinic-middleware";
 
 export async function GET() {
   try {
+    // Get clinic ID from headers (set by middleware)
+    const headersList = await headers();
+    const clinicIdHeader = headersList.get('x-clinic-id');
+    const subdomainClinicId = clinicIdHeader ? parseInt(clinicIdHeader, 10) : null;
     // Step 1: Await cookies() and extract token
     const cookieStore = await cookies(); //  Await cookies()
     const token = cookieStore.get("token")?.value;
@@ -38,6 +43,22 @@ export async function GET() {
         { success: false, error: "User not found" },
         { status: 404 },
       );
+    }
+
+    // For PATIENT role, verify clinic context matches
+    if (user.role === "PATIENT" && subdomainClinicId) {
+      const patientClinicId = user.clinicId;
+      
+      if (!verifyPatientClinicMatch(patientClinicId, subdomainClinicId)) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: "You cannot access this clinic portal. Please use the correct clinic URL.",
+            clinicMismatch: true
+          },
+          { status: 403 },
+        );
+      }
     }
 
     return NextResponse.json({ success: true, user });

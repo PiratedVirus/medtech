@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { decryptData } from '@/lib/encryption';
 import jwt from 'jsonwebtoken';
+import { getPatientClinicId } from '@/lib/patient-clinic-middleware';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const { name, age, gender, phoneNumber, doctorCode: rawDoctorCode } = await request.json();
   
   try {
+    // Get clinic ID from subdomain (set by middleware)
+    const subdomainClinicId = getPatientClinicId(request);
     // Check if user already exists
     const existingUser = await prisma.user.findFirst({
       where: { 
@@ -55,6 +59,33 @@ export async function POST(request: Request) {
       }
     }
 
+    // Determine clinic ID for new patient
+    let finalClinicId: number | null = null;
+
+    // Priority 1: If doctor code provided, use doctor's clinic
+    if (doctorCode) {
+      const doctor = await prisma.doctorProfile.findUnique({
+        where: { doctorCode },
+        include: { user: true }
+      });
+
+      if (doctor?.user.clinicId) {
+        finalClinicId = doctor.user.clinicId;
+      }
+    }
+    
+    // Priority 2: Use subdomain clinic (if no doctor code or doctor has no clinic)
+    if (!finalClinicId && subdomainClinicId) {
+      finalClinicId = subdomainClinicId;
+    }
+
+    // Priority 3: Fallback to clinic ID 1 (for backward compatibility)
+    // This should rarely happen if subdomain is properly configured
+    if (!finalClinicId) {
+      console.warn('No clinic ID determined for new patient, using default clinic 1');
+      finalClinicId = 1;
+    }
+
     // Create new user
     const newUser = await prisma.user.create({
       data: {
@@ -62,7 +93,7 @@ export async function POST(request: Request) {
         phoneNumber,
         role: 'PATIENT',
         status: 'ACTIVE',
-        clinicId: doctorCode ? undefined : 1, // Use doctor's clinic if code provided
+        clinicId: finalClinicId,
         doctorCode: doctorCode || null, // Store the doctor code
         patientProfile: {
           create: {
@@ -81,21 +112,6 @@ export async function POST(request: Request) {
         patientProfile: true,
       },
     });
-
-    // If doctor code was provided, update the user's clinic to match the doctor's clinic
-    if (doctorCode) {
-      const doctor = await prisma.doctorProfile.findUnique({
-        where: { doctorCode },
-        include: { user: true }
-      });
-
-      if (doctor?.user.clinicId) {
-        await prisma.user.update({
-          where: { id: newUser.id },
-          data: { clinicId: doctor.user.clinicId }
-        });
-      }
-    }
 
     // Create JWT token for newly registered user
     const TOKEN_LIFETIME_DAYS = 15;

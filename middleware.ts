@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import * as jose from 'jose';
+import { getClinicContext, setClinicContextHeaders } from '@/lib/clinic-context-middleware';
 
 // Cache for validated tokens (in-memory cache for the server)
 const tokenCache = new Map<string, { decoded: any; validUntil: number }>();
@@ -88,6 +89,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Extract clinic context from subdomain (before route protection)
+  // Skip for admin/superadmin routes as they don't use subdomain routing
+  let clinicContext = { clinicId: null, subdomain: null };
+  if (!pathname.startsWith("/superadmin") && !pathname.startsWith("/admin")) {
+    clinicContext = await getClinicContext(request);
+    
+    // If subdomain exists but clinic not found, redirect to clinic-not-found page
+    // Only for patient-facing routes (not API routes)
+    if (clinicContext.subdomain && !clinicContext.clinicId && !pathname.startsWith("/api")) {
+      // Allow access to clinic-not-found page itself
+      if (pathname !== "/clinic-not-found") {
+        const redirectUrl = new URL("/clinic-not-found", request.url);
+        return NextResponse.redirect(redirectUrl);
+      }
+    }
+  }
+
   // Super Admin routes protection
   if (pathname.startsWith("/superadmin")) {
     // Allow access to superadmin login page
@@ -158,7 +176,14 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/dashboard")) {
     // Allow access to login page
     if (pathname === "/login") {
-      return NextResponse.next();
+      const response = NextResponse.next();
+      return setClinicContextHeaders(response, clinicContext.clinicId, clinicContext.subdomain);
+    }
+
+    // For patient routes, require valid clinic context
+    if (clinicContext.subdomain && !clinicContext.clinicId) {
+      const redirectUrl = new URL("/clinic-not-found", request.url);
+      return NextResponse.redirect(redirectUrl);
     }
 
     const userToken = request.cookies.get("token")?.value;
@@ -181,6 +206,10 @@ export async function middleware(request: NextRequest) {
       redirectUrl.searchParams.set('redirect', 'true');
       return NextResponse.redirect(redirectUrl);
     }
+
+    // For PATIENT role, ensure clinic context is available
+    // Detailed clinic validation happens in API routes for performance
+    // Middleware ensures subdomain clinic exists (already checked above)
     
     // Role-based redirects with caching
     if (decodedUser.userRole === "DOCTOR") {
@@ -196,7 +225,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    return NextResponse.next();
+    const response = NextResponse.next();
+    return setClinicContextHeaders(response, clinicContext.clinicId, clinicContext.subdomain);
   }
 
   // Doctor routes protection
@@ -259,16 +289,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  return NextResponse.next();
+  // For all other routes, set clinic context headers if available
+  const response = NextResponse.next();
+  return setClinicContextHeaders(response, clinicContext.clinicId, clinicContext.subdomain);
 }
 
 // Specify the paths to protect - more specific matchers for better performance
+// Also include root and login routes for clinic context detection
 export const config = {
   matcher: [
     "/superadmin/:path*",
     "/admin/:path*", 
     "/dashboard/:path*", 
     "/pathology/:path*",
-    "/doctor/:path*"
+    "/doctor/:path*",
+    "/login/:path*",
+    "/clinic-not-found",
+    "/"
   ],
 };
