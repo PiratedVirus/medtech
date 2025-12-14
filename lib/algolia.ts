@@ -104,3 +104,28 @@ export async function deleteMedicineFromAlgolia(objectID: string) {
     throw new Error('Failed to delete medicine from search index');
   }
 }
+
+// Search pathology tests function
+export async function searchPathologyTests(query: string, limit: number = 10) {
+  try {
+    const response = await searchClient.search({
+      requests: [{
+        indexName: 'patahlogy_tests',
+        query: query,
+        hitsPerPage: limit,
+        attributesToRetrieve: ['individual_test', 'package_panel'],
+      }]
+    });
+
+    const hits = (response.results[0] as any)?.hits || [];
+
+    return hits.map((hit: any) => ({
+      id: hit.objectID || hit.id,
+      name: hit.individual_test || hit.name || '',
+      category: hit.package_panel || 'General',
+    }));
+  } catch (error) {
+    console.error('Algolia pathology tests search error:', error);
+    throw new Error('Failed to search pathology tests');
+  }
+}

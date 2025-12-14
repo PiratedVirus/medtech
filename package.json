@@ -34,6 +34,7 @@
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.77.0",
+    "@fontsource/noto-sans-devanagari": "^5.2.8",
     "@google-cloud/storage": "^7.16.0",
     "@google-cloud/vision": "^5.3.3",
     "@hookform/resolvers": "^4.1.0",

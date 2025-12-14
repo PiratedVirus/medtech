@@ -45,27 +45,59 @@ export default function DoctorAppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [scheduledView, setScheduledView] = useState<"upcoming" | "past">("upcoming");
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      try {
-        const res = await axios.get("/api/doctor/appointments/all");
-        const data = res.data.data || res.data; // Support both formats during transition
-        setData(data);
-        // After fetching, auto-mark any appointments with a prescription as COMPLETED
-        const all = [...(res.data.upcoming || []), ...(res.data.past || [])];
-        const toMark = all.filter((a: any) => a.prescriptionLink && String(a.status).toUpperCase() !== "COMPLETED");
-        if (toMark.length > 0) {
-          // Fire and forget; no need to block UI
-          toMark.forEach((a: any) => {
-            axios.put(`/api/doctor/appointments/${a.id}/mark-completed`).catch(() => {});
-          });
+  const fetchData = async (forceRefresh = false) => {
+    setLoading(true);
+    try {
+      // Force refresh by adding cache-busting header to bypass browser cache
+      // Server-side Redis cache is invalidated by the mark-completed endpoint
+      const config = forceRefresh ? {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         }
-      } finally {
-        setLoading(false);
+      } : {};
+      const res = await axios.get("/api/doctor/appointments/all", config);
+      const data = res.data.data || res.data; // Support both formats during transition
+      setData(data);
+      // After fetching, auto-mark any appointments with a prescription as COMPLETED
+      const all = [...(res.data.upcoming || []), ...(res.data.past || [])];
+      const toMark = all.filter((a: any) => a.prescriptionLink && String(a.status).toUpperCase() !== "COMPLETED");
+      if (toMark.length > 0) {
+        // Fire and forget; no need to block UI
+        toMark.forEach((a: any) => {
+          axios.put(`/api/doctor/appointments/${a.id}/mark-completed`).catch(() => {});
+        });
       }
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     fetchData();
+  }, []);
+
+  // Refetch when page becomes visible (user switches back to tab/window)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Refetch data when page becomes visible to get latest appointments
+        fetchData(true);
+      }
+    };
+
+    // Refetch when window gains focus (user returns to tab)
+    const handleFocus = () => {
+      fetchData(true);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   function AppointmentCard({ appt, idx, isPast }: { appt: any; idx: number; isPast?: boolean }) {

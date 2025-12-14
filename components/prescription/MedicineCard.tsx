@@ -17,6 +17,8 @@ interface MedicineCardProps {
     medicineTime: string;
     duration: string;
     quantity: string;
+    composition?: string;
+    composition2?: string;
   };
   onUpdate: (updates: any) => void;
   onRemove: () => void;
@@ -170,6 +172,12 @@ export default function MedicineCard({
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
               <p className="text-sm text-gray-900 font-semibold">{medicine.name}</p>
+              {(() => {
+                const compositionText = [medicine.composition, medicine.composition2].filter(Boolean).join(', ');
+                return compositionText ? (
+                  <p className="text-xs text-gray-500 mt-0.5">{compositionText}</p>
+                ) : null;
+              })()}
             </div>
             
             {/* Frequency combobox */}
@@ -349,6 +357,12 @@ export default function MedicineCard({
             <div className="flex items-start gap-2">
               <div className="flex-1">
                 <p className="text-sm text-gray-900 font-semibold">{medicine.name}</p>
+                {(() => {
+                  const compositionText = [medicine.composition, medicine.composition2].filter(Boolean).join(', ');
+                  return compositionText ? (
+                    <p className="text-xs text-gray-500 mt-0.5">{compositionText}</p>
+                  ) : null;
+                })()}
               </div>
             </div>
           </div>

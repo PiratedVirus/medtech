@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Download, Edit, Eye, EyeOff, Share2, Mail, MessageCircle, CheckCircle2, X, Copy, Check } from "lucide-react";
+import { ArrowLeft, Download, Edit, Eye, EyeOff, Share2, Mail, MessageCircle, CheckCircle2, X, Copy, Check, Languages, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import PrescriptionPreview from "@/components/prescription/PrescriptionPreview";
 import { generateAndDownloadPDF, generatePDFBase64 } from "@/components/prescription/PrescriptionPDF";
@@ -26,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { TranslationLanguage } from "@/lib/translations";
 
 interface PrescriptionData {
   id: string;
@@ -119,12 +120,13 @@ export default function AppointmentPrescriptionPage() {
   const [processingStatus, setProcessingStatus] = useState<ProcessingStatusType>(null);
   const [appointmentStatus, setAppointmentStatus] = useState<string | null>(null);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
-  const [pendingAction, setPendingAction] = useState<'download' | 'whatsapp' | 'share' | null>(null);
+  const [pendingAction, setPendingAction] = useState<'download' | 'whatsapp' | 'share' | 'print' | null>(null);
   const [isCompletingAppointment, setIsCompletingAppointment] = useState(false);
   const [showShareLinkModal, setShowShareLinkModal] = useState(false);
   const [shareLink, setShareLink] = useState("");
   const [linkCopied, setLinkCopied] = useState(false);
   const [pdfUploadFailed, setPdfUploadFailed] = useState(false);
+  const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguage>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
 
   // Default visible sections
@@ -271,6 +273,43 @@ export default function AppointmentPrescriptionPage() {
 
       // Transform prescription data to match expected format
       const prescription = prescriptionResult.data;
+      
+      // Fetch composition for all medicines from Algolia
+      const medicinesWithComposition = await Promise.all(
+        (prescription.medicines || []).map(async (m: any) => {
+          // Try to fetch composition from Algolia
+          let composition = "";
+          let composition2 = "";
+          try {
+            const algoliaRes = await fetch(
+              `/api/doctor/prescription/algolia-medicines?query=${encodeURIComponent(m.medicineName)}&limit=1`
+            );
+            if (algoliaRes.ok) {
+              const algoliaData = await algoliaRes.json();
+              if (algoliaData.success && algoliaData.data && algoliaData.data.length > 0) {
+                const medicine = algoliaData.data[0];
+                composition = medicine.composition || "";
+                composition2 = medicine.composition2 || "";
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching composition for medicine:", m.medicineName, error);
+          }
+          
+          return {
+            id: m.id.toString(),
+            name: m.medicineName,
+            frequency: m.frequency,
+            medicineTime: m.medicineTime,
+            duration: m.duration,
+            quantity: m.quantity?.toString() || "",
+            instructions: m.instructions || "",
+            composition: composition,
+            composition2: composition2,
+          };
+        })
+      );
+      
       setPrescriptionData({
         id: prescription.id.toString(),
         complaints:
@@ -314,16 +353,7 @@ export default function AppointmentPrescriptionPage() {
               rs: "NAD",
               cns: "NAD",
             },
-        medicines:
-          prescription.medicines?.map((m: any) => ({
-            id: m.id.toString(),
-            name: m.medicineName,
-            frequency: m.frequency,
-            medicineTime: m.medicineTime,
-            duration: m.duration,
-            quantity: m.quantity?.toString() || "",
-            instructions: m.instructions || "",
-          })) || [],
+        medicines: medicinesWithComposition,
         advice: prescription.advice || "",
         testsRequested: prescription.testsRequested || "",
         recommendedLinks: prescription.recommendedLinks ? prescription.recommendedLinks.split(',').filter((link: string) => link.trim() !== '') : [],
@@ -380,7 +410,8 @@ export default function AppointmentPrescriptionPage() {
         doctorInfo,
         clinicInfo,
         appointmentId,
-        visibleSections
+        visibleSections,
+        translationLanguage
       );
       
       if (!pdfResult.success) {
@@ -449,7 +480,8 @@ export default function AppointmentPrescriptionPage() {
         doctorInfo,
         clinicInfo,
         appointmentId,
-        visibleSections
+        visibleSections,
+        translationLanguage
       );
 
       if (result.success) {
@@ -460,6 +492,67 @@ export default function AppointmentPrescriptionPage() {
     } catch (error) {
       console.error("PDF download error", error);
       toast({ title: "Error", description: "Failed to download PDF", variant: "destructive" });
+    }
+  };
+
+  const handlePrint = async () => {
+    try {
+      if (!prescriptionData || !patientInfo || !doctorInfo || !clinicInfo) {
+        toast({ title: "Error", description: "Missing prescription data", variant: "destructive" });
+        return;
+      }
+
+      // Generate PDF as base64
+      const result = await generatePDFBase64(
+        prescriptionData,
+        patientInfo,
+        doctorInfo,
+        clinicInfo,
+        appointmentId,
+        visibleSections,
+        translationLanguage
+      );
+
+      if (result.success && result.pdfBase64) {
+        // Convert base64 to blob
+        const byteCharacters = atob(result.pdfBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        
+        // Create object URL and open in new window for printing
+        const blobUrl = URL.createObjectURL(blob);
+        const printWindow = window.open(blobUrl, '_blank');
+        
+        if (printWindow) {
+          // Wait for PDF to load, then trigger print
+          printWindow.onload = () => {
+            printWindow.print();
+          };
+        } else {
+          // Fallback: if popup blocked, use iframe
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = blobUrl;
+          document.body.appendChild(iframe);
+          iframe.onload = () => {
+            iframe.contentWindow?.print();
+            // Clean up after a delay
+            setTimeout(() => {
+              document.body.removeChild(iframe);
+              URL.revokeObjectURL(blobUrl);
+            }, 1000);
+          };
+        }
+      } else {
+        throw new Error('error' in result ? result.error : 'Failed to generate PDF');
+      }
+    } catch (error) {
+      console.error("Print error", error);
+      toast({ title: "Error", description: "Failed to print prescription", variant: "destructive" });
     }
   };
 
@@ -516,7 +609,7 @@ export default function AppointmentPrescriptionPage() {
     }
   };
 
-  const checkAndExecuteAction = (action: 'download' | 'whatsapp' | 'share') => {
+  const checkAndExecuteAction = (action: 'download' | 'whatsapp' | 'share' | 'print') => {
     if (appointmentStatus !== 'COMPLETED') {
       setPendingAction(action);
       setShowCompletionDialog(true);
@@ -525,7 +618,7 @@ export default function AppointmentPrescriptionPage() {
     }
   };
 
-  const executeAction = async (action: 'download' | 'whatsapp' | 'share') => {
+  const executeAction = async (action: 'download' | 'whatsapp' | 'share' | 'print') => {
     switch (action) {
       case 'download':
         await handleDownload();
@@ -540,6 +633,9 @@ export default function AppointmentPrescriptionPage() {
         setShareLink(link);
         setLinkCopied(false);
         setShowShareLinkModal(true);
+        break;
+      case 'print':
+        await handlePrint();
         break;
     }
   };
@@ -758,6 +854,8 @@ export default function AppointmentPrescriptionPage() {
                   doctorInfo={doctorInfo}
                   clinicInfo={clinicInfo}
                   visibleSections={visibleSections}
+                  translationLanguage={translationLanguage}
+                  onTranslationChange={setTranslationLanguage}
                 />
               </Card>
             </div>
@@ -765,6 +863,44 @@ export default function AppointmentPrescriptionPage() {
             {/* Side Panel */}
             <div className="w-80 shrink-0 sticky top-24 self-start max-h-[calc(100vh-6rem)] overflow-y-auto bg-white border border-gray-200 rounded-lg">
               <div className="p-6">
+                {/* Translation Section - Above Share Prescription */}
+                <div className="mb-6 pb-6 border-b">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-700">Translation</h3>
+                    <Languages className="h-4 w-4 text-gray-500" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setTranslationLanguage('hindi')}
+                      className={`flex-1 px-2 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                        translationLanguage === 'hindi'
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      हिंदी
+                    </button>
+                    <button
+                      onClick={() => setTranslationLanguage('marathi')}
+                      className={`flex-1 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                        translationLanguage === 'marathi'
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      मराठी
+                    </button>
+                  </div>
+                  {translationLanguage && (
+                    <button
+                      onClick={() => setTranslationLanguage(null)}
+                      className="w-full mt-2 text-xs text-gray-500 hover:text-gray-700 underline"
+                    >
+                      Clear translation
+                    </button>
+                  )}
+                </div>
+
                 {/* Share Section */}
                 <div className="mb-8">
                   <h3 className="text-lg font-semibold mb-4 text-gray-900">Share Prescription</h3>
@@ -776,6 +912,15 @@ export default function AppointmentPrescriptionPage() {
                     >
                       <Download className="h-5 w-5 text-primary" />
                       <span>Download PDF</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-3 h-12"
+                      onClick={() => checkAndExecuteAction('print')}
+                    >
+                      <Printer className="h-5 w-5 text-primary" />
+                      <span>Print Prescription</span>
                     </Button>
 
                     <Button

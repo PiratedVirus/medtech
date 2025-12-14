@@ -2,6 +2,111 @@ import React from 'react';
 import { Page, Text, View, Document, StyleSheet, pdf, Image, Font } from '@react-pdf/renderer';
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
+import { TranslationLanguage, getTranslatedFrequency, getMedicineTimeTranslation } from '@/lib/translations';
+
+// Register Devanagari font for Hindi/Marathi support
+let devanagariFontRegistered = false;
+
+// Helper function to convert ArrayBuffer to Base64
+const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+};
+
+// Function to register Devanagari font from local TTF file
+// This must be called before PDF generation when translation is needed
+const registerDevanagariFontAsync = async (): Promise<boolean> => {
+  if (devanagariFontRegistered) {
+    console.log('Devanagari font already registered');
+    return true;
+  }
+  
+  try {
+    // Fetch the font file from public folder
+    const fontUrl = '/fonts/NotoSansDevanagari-Regular.ttf';
+    console.log('Fetching Devanagari font from:', fontUrl);
+    
+    const response = await fetch(fontUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch font: ${response.status} ${response.statusText}`);
+    }
+    
+    const fontBuffer = await response.arrayBuffer();
+    console.log('Font fetched successfully, size:', fontBuffer.byteLength, 'bytes');
+    
+    // Convert to data URL for react-pdf compatibility
+    const base64Font = arrayBufferToBase64(fontBuffer);
+    const dataUrl = `data:font/truetype;base64,${base64Font}`;
+    
+    // Register font with react-pdf
+    Font.register({
+      family: 'NotoSansDevanagari',
+      src: dataUrl,
+    });
+    
+    devanagariFontRegistered = true;
+    console.log('Devanagari font registered successfully');
+    return true;
+  } catch (error) {
+    console.error('Failed to register Devanagari font:', error);
+    return false;
+  }
+};
+
+// Format duration from "5d" to "5 days"
+const formatDuration = (duration: string): string => {
+  if (!duration) return duration;
+  // Replace "d" at the end with " days"
+  return duration.replace(/d$/, ' days');
+};
+
+// Sanitize text for PDF rendering - replace special characters with ASCII equivalents
+const sanitizeForPDF = (text: string): string => {
+  if (!text) return text;
+  return text
+    // Greek letters and symbols
+    .replace(/μ/g, 'u')      // micro symbol → u
+    .replace(/µ/g, 'u')      // micro sign → u
+    .replace(/α/g, 'a')      // alpha → a
+    .replace(/β/g, 'b')      // beta → b
+    .replace(/γ/g, 'g')      // gamma → g
+    .replace(/δ/g, 'd')      // delta → d
+    .replace(/Δ/g, 'D')      // Delta → D
+    .replace(/λ/g, 'l')      // lambda → l
+    .replace(/π/g, 'pi')     // pi → pi
+    .replace(/Σ/g, 'S')      // Sigma → S
+    .replace(/σ/g, 's')      // sigma → s
+    .replace(/Ω/g, 'Ohm')    // Omega → Ohm
+    .replace(/ω/g, 'w')      // omega → w
+    // Superscripts and subscripts
+    .replace(/²/g, '2')      // superscript 2 → 2
+    .replace(/³/g, '3')      // superscript 3 → 3
+    .replace(/¹/g, '1')      // superscript 1 → 1
+    .replace(/⁰/g, '0')      // superscript 0 → 0
+    // Fractions
+    .replace(/½/g, '1/2')    // half → 1/2
+    .replace(/¼/g, '1/4')    // quarter → 1/4
+    .replace(/¾/g, '3/4')    // three quarters → 3/4
+    // Other common symbols
+    .replace(/°/g, ' deg')   // degree → deg
+    .replace(/±/g, '+/-')    // plus-minus → +/-
+    .replace(/×/g, 'x')      // multiplication → x
+    .replace(/÷/g, '/')      // division → /
+    .replace(/≤/g, '<=')     // less than or equal → <=
+    .replace(/≥/g, '>=')     // greater than or equal → >=
+    .replace(/≠/g, '!=')     // not equal → !=
+    .replace(/∞/g, 'inf')    // infinity → inf
+    // Clean up any remaining non-ASCII printable characters
+    .replace(/[^\x20-\x7E]/g, (char) => {
+      // Keep common printable characters, replace others with empty string
+      console.warn(`Removing unsupported character: ${char} (code: ${char.charCodeAt(0)})`);
+      return '';
+    });
+};
 
 const formatDate = (date: Date) => {
   return date.toLocaleDateString("en-GB", {
@@ -23,7 +128,7 @@ const getRecommendedLinks = (prescriptionData: any): string[] => {
   return [];
 };
 
-const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo, visibleSections, qrLinks }: any) => {
+const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo, visibleSections, qrLinks, translationLanguage }: any) => {
   const now = new Date();
   const timeString = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
   const dateString = now.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
@@ -73,16 +178,25 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
         </Text>
 
         {Array.isArray(prescriptionData.investigationValues) && prescriptionData.investigationValues.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.patientInfo, styles.bold]}>Tracked Values:</Text>
-            {prescriptionData.investigationValues.map((v: any, idx: number) => {
-              const unitText = v.unit ? ` ${v.unit}` : "";
-              return (
-                <Text key={idx} style={styles.bulletPoint}>
-                  • {v.parameter}: {v.value}{unitText} {v.severity ? `(${v.severity})` : ""}
-                </Text>
-              );
-            })}
+          <View style={styles.labParametersSection}>
+            <Text style={[styles.patientInfo, styles.bold]}>Lab Parameters:</Text>
+            <View style={styles.labParametersGrid}>
+              {prescriptionData.investigationValues.map((v: any, idx: number) => {
+                // Sanitize unit text for PDF rendering (handles special characters like μ)
+                const sanitizedUnit = v.unit ? sanitizeForPDF(v.unit) : "";
+                const unitText = sanitizedUnit ? ` ${sanitizedUnit}` : "";
+                const parameterName = sanitizeForPDF(v.parameter || "Value");
+                const severityText = v.severity ? ` (${v.severity})` : "";
+                return (
+                  <View key={idx} style={styles.labParameterItem}>
+                    <Text style={styles.labParameterText}>
+                      <Text style={styles.bold}>{parameterName}:</Text> {v.value}{unitText}{severityText}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+            <View style={styles.sectionDivider} />
           </View>
         )}
 
@@ -109,6 +223,7 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
                 </Text>
               );
             })}
+            <View style={styles.sectionDivider} />
           </View>
         )}
 
@@ -117,6 +232,7 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
           <View style={styles.historySection}>
             <Text style={[styles.patientInfo, styles.bold]}>History of Presenting Illness:</Text>
             <Text style={styles.historyValue}>{prescriptionData.historyOfCurrentIllness}</Text>
+            <View style={styles.sectionDivider} />
           </View>
         )}
 
@@ -150,6 +266,7 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
                 </Text>
               </View>
             </View>
+            <View style={styles.sectionDivider} />
           </View>
         )}
       </View>
@@ -170,15 +287,51 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
             <Text style={styles.tableHeaderCell}>Duration</Text>
             <Text style={styles.tableHeaderCell}>Qty</Text>
           </View>
-          {prescriptionData.medicines?.map((med: any, index: number) => (
-            <View key={index} style={styles.tableRow}>
-              <Text style={styles.tableCell}>{med.name}</Text>
-              <Text style={styles.tableCell}>{med.frequency}</Text>
-              <Text style={styles.tableCell}>{med.medicineTime}</Text>
-              <Text style={styles.tableCell}>{med.duration}</Text>
-              <Text style={styles.tableCell}>{med.quantity}</Text>
-            </View>
-          ))}
+          {prescriptionData.medicines?.map((med: any, index: number) => {
+            const frequencyData = getTranslatedFrequency(med.frequency, translationLanguage);
+            const medicineTimeTranslated = getMedicineTimeTranslation(med.medicineTime, translationLanguage);
+            const compositionText = [med.composition, med.composition2].filter(Boolean).join(', ') || '';
+            
+            // Debug: Log translation data
+            if (translationLanguage) {
+              console.log('PDF Translation Debug:', {
+                medicine: med.name,
+                frequency: med.frequency,
+                frequencyData,
+                medicineTime: med.medicineTime,
+                medicineTimeTranslated,
+                translationLanguage,
+                fontRegistered: devanagariFontRegistered,
+                willShowFrequency: translationLanguage && frequencyData.translated,
+                willShowTime: translationLanguage && medicineTimeTranslated
+              });
+            }
+            
+            return (
+              <View key={index} style={styles.tableRow}>
+                <View style={styles.tableCell}>
+                  <Text>{med.name}</Text>
+                  {compositionText && (
+                    <Text style={styles.compositionText}>{compositionText}</Text>
+                  )}
+                </View>
+                <View style={styles.tableCell}>
+                  <Text>{frequencyData.english}</Text>
+                  {translationLanguage && frequencyData.translated && (
+                    <Text style={styles.translationText}>{frequencyData.translated}</Text>
+                  )}
+                </View>
+                <View style={styles.tableCell}>
+                  <Text>{med.medicineTime}</Text>
+                  {translationLanguage && medicineTimeTranslated && (
+                    <Text style={styles.translationText}>{medicineTimeTranslated}</Text>
+                  )}
+                </View>
+                <Text style={styles.tableCell}>{formatDuration(med.duration)}</Text>
+                <Text style={styles.tableCell}>{med.quantity}</Text>
+              </View>
+            );
+          })}
         </View>
       )}
 
@@ -266,7 +419,7 @@ const PrescriptionPDF = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo
 const styles = StyleSheet.create({
   body: {
     padding: 16,
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: "Helvetica",
     paddingBottom: 16,
   },
@@ -316,7 +469,7 @@ const styles = StyleSheet.create({
   },
   patientSection: {
     marginTop: 4,
-    marginBottom: 8,
+    marginBottom: 2,
   },
   sectionTitle: {
     fontSize: 12,
@@ -325,7 +478,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   patientInfo: {
-    fontSize: 10,
+    fontSize: 11,
     marginBottom: 6,
     lineHeight: 1.4,
   },
@@ -333,7 +486,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   complaintItem: {
-    fontSize: 10,
+    fontSize: 11,
     marginBottom: 3,
     marginLeft: 10,
     lineHeight: 1.3,
@@ -352,32 +505,55 @@ const styles = StyleSheet.create({
     marginRight: "2%",
   },
   historyLabel: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: "bold",
     marginBottom: 2,
   },
   historyValue: {
-    fontSize: 9,
+    fontSize: 10,
     lineHeight: 1.3,
     marginLeft: 8,
+  },
+  labParametersSection: {
+    marginBottom: 4,
+  },
+  labParametersGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 2,
+  },
+  labParameterItem: {
+    width: "48%",
+    marginBottom: 3,
+    marginRight: "2%",
+  },
+  labParameterText: {
+    fontSize: 11,
+    lineHeight: 1.3,
+  },
+  sectionDivider: {
+    borderBottom: "1px solid #e5e5e5",
+    marginTop: 4,
+    marginBottom: 2,
   },
   bold: {
     fontWeight: "bold",
   },
   rxSection: {
     alignItems: "flex-start",
-    marginVertical: 4,
+    marginTop: 2,
+    marginBottom: 3,
     paddingLeft: 0,
   },
   rx: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: "bold",
     color: "#0C7C59",
-    marginBottom: 1,
+    marginBottom: 0.5,
   },
   rxUnderline: {
-    width: 40,
-    height: 2,
+    width: 35,
+    height: 1.5,
     backgroundColor: "#0C7C59",
   },
   tableContainer: {
@@ -390,7 +566,7 @@ const styles = StyleSheet.create({
   },
   tableHeaderCell: {
     flex: 1,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "bold",
     textAlign: "center",
     color: "#333",
@@ -405,15 +581,26 @@ const styles = StyleSheet.create({
   },
   tableCell: {
     flex: 1,
-    fontSize: 9,
+    fontSize: 10,
     textAlign: "center",
     paddingHorizontal: 4,
+  },
+  compositionText: {
+    fontSize: 8,
+    color: "#666",
+    marginTop: 2,
+  },
+  translationText: {
+    fontSize: 8,
+    color: "#666",
+    marginTop: 2,
+    fontFamily: 'NotoSansDevanagari',
   },
   section: {
     marginVertical: 6,
   },
   bulletPoint: {
-    fontSize: 10,
+    fontSize: 11,
     marginBottom: 2,
     lineHeight: 1.4,
     paddingLeft: 10,
@@ -505,7 +692,8 @@ export const generatePDFWithJsPDF = async (
   doctorInfo: any,
   clinicInfo: any,
   appointmentId: string,
-  visibleSections?: any
+  visibleSections?: any,
+  translationLanguage?: TranslationLanguage
 ) => {
   try {
 
@@ -615,15 +803,38 @@ export const generatePDFWithJsPDF = async (
       // Medicine rows
       doc.setFont("helvetica", "normal");
       prescriptionData.medicines?.forEach((med: any, index: number) => {
-        const rowY = tableY + 10 + (index * 8);
+        const rowY = tableY + 10 + (index * 10);
+        const frequencyData = getTranslatedFrequency(med.frequency, translationLanguage || null);
+        const medicineTimeTranslated = getMedicineTimeTranslation(med.medicineTime, translationLanguage || null);
+        const compositionText = [med.composition, med.composition2].filter(Boolean).join(', ') || '';
+        
+        // Medicine name with composition
+        doc.setFontSize(9);
         doc.text(med.name, tableX, rowY);
-        doc.text(med.frequency, tableX + colWidth, rowY);
+        if (compositionText) {
+          doc.setFontSize(7);
+          doc.setTextColor(100, 100, 100);
+          doc.text(compositionText, tableX, rowY + 4);
+          doc.setTextColor(0, 0, 0);
+        }
+        
+        // Frequency with translation
+        doc.setFontSize(9);
+        doc.text(frequencyData.english, tableX + colWidth, rowY);
+        // Note: jsPDF doesn't support Devanagari fonts well, so we skip translations in fallback
+        // The main react-pdf version will handle translations properly
+        
+        // Medicine time with translation
+        doc.setFontSize(9);
         doc.text(med.medicineTime, tableX + (colWidth * 2), rowY);
-        doc.text(med.duration, tableX + (colWidth * 3), rowY);
+        // Note: jsPDF doesn't support Devanagari fonts well, so we skip translations in fallback
+        
+        doc.setFontSize(9);
+        doc.text(formatDuration(med.duration), tableX + (colWidth * 3), rowY);
         doc.text(med.quantity, tableX + (colWidth * 4), rowY);
       });
       
-      adviceY = tableY + 10 + (prescriptionData.medicines?.length || 0) * 8 + 20;
+      adviceY = tableY + 10 + (prescriptionData.medicines?.length || 0) * 10 + 20;
     }
     
     // Advice
@@ -713,7 +924,7 @@ export const generatePDFWithJsPDF = async (
 };
 
 // Create a wrapper component for PDF generation
-const PDFDocument = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo, visibleSections, qrLinks }: any) => (
+const PDFDocument = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo, visibleSections, qrLinks, translationLanguage }: any) => (
   <PrescriptionPDF
     prescriptionData={prescriptionData}
     patientInfo={patientInfo}
@@ -721,6 +932,7 @@ const PDFDocument = ({ prescriptionData, patientInfo, doctorInfo, clinicInfo, vi
     clinicInfo={clinicInfo}
     visibleSections={visibleSections}
     qrLinks={qrLinks}
+    translationLanguage={translationLanguage}
   />
 );
 
@@ -731,7 +943,8 @@ export const generatePDFBase64 = async (
   doctorInfo: any,
   clinicInfo: any,
   appointmentId: string,
-  visibleSections?: any
+  visibleSections?: any,
+  translationLanguage?: TranslationLanguage
 ) => {
   try {
     // Debug logging to help identify data structure issues
@@ -758,6 +971,15 @@ export const generatePDFBase64 = async (
       throw new Error('Clinic info is required');
     }
 
+    // Ensure Devanagari font is loaded before generating PDF with translations
+    if (translationLanguage) {
+      console.log('Translation language selected:', translationLanguage, '- Loading Devanagari font...');
+      const fontLoaded = await registerDevanagariFontAsync();
+      if (!fontLoaded) {
+        console.error('Failed to load Devanagari font. Translations may not render correctly.');
+      }
+    }
+
     // Generate PDF blob using react-pdf with wrapper component
     const links = getRecommendedLinks(prescriptionData);
     const qrLinks = await Promise.all(
@@ -775,6 +997,7 @@ export const generatePDFBase64 = async (
         clinicInfo={clinicInfo}
         visibleSections={visibleSections}
         qrLinks={qrLinks}
+        translationLanguage={translationLanguage}
       />
     ).toBlob();
     
@@ -796,7 +1019,7 @@ export const generatePDFBase64 = async (
     
     // Fallback to jsPDF
     console.log('Falling back to jsPDF...');
-    return await generatePDFWithJsPDF(prescriptionData, patientInfo, doctorInfo, clinicInfo, appointmentId, visibleSections);
+    return await generatePDFWithJsPDF(prescriptionData, patientInfo, doctorInfo, clinicInfo, appointmentId, visibleSections, translationLanguage);
   }
 };
 
@@ -807,7 +1030,8 @@ export const generateAndDownloadPDF = async (
   doctorInfo: any,
   clinicInfo: any,
   appointmentId: string,
-  visibleSections?: any
+  visibleSections?: any,
+  translationLanguage?: TranslationLanguage
 ) => {
   try {
     // Debug logging to help identify data structure issues
@@ -834,6 +1058,17 @@ export const generateAndDownloadPDF = async (
       throw new Error('Clinic info is required');
     }
 
+    // Ensure Devanagari font is loaded before generating PDF with translations
+    if (translationLanguage) {
+      console.log('Translation language selected:', translationLanguage, '- Loading Devanagari font...');
+      const fontLoaded = await registerDevanagariFontAsync();
+      if (!fontLoaded) {
+        console.error('Failed to load Devanagari font. Translations may not render correctly.');
+      }
+    }
+    
+    console.log('PDF Generation - Translation Language:', translationLanguage, 'Font Registered:', devanagariFontRegistered);
+
     // Generate PDF blob using react-pdf with wrapper component
     const links = getRecommendedLinks(prescriptionData);
     const qrLinks = await Promise.all(
@@ -851,6 +1086,7 @@ export const generateAndDownloadPDF = async (
         clinicInfo={clinicInfo}
         visibleSections={visibleSections}
         qrLinks={qrLinks}
+        translationLanguage={translationLanguage}
       />
     ).toBlob();
     
@@ -874,7 +1110,7 @@ export const generateAndDownloadPDF = async (
     
     // Fallback to jsPDF
     console.log('Falling back to jsPDF...');
-    return await generatePDFWithJsPDF(prescriptionData, patientInfo, doctorInfo, clinicInfo, appointmentId, visibleSections);
+    return await generatePDFWithJsPDF(prescriptionData, patientInfo, doctorInfo, clinicInfo, appointmentId, visibleSections, translationLanguage);
   }
 };
 

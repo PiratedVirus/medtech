@@ -52,6 +52,7 @@ export default function PrescriptionForm({
 }: PrescriptionFormProps) {
   const [newComplaint, setNewComplaint] = useState("");
   const [newMedicine, setNewMedicine] = useState("");
+  const [newTest, setNewTest] = useState("");
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [isSplitScreen, setIsSplitScreen] = useState(false);
   const patientCardRef = useRef<HTMLDivElement>(null);
@@ -75,6 +76,12 @@ export default function PrescriptionForm({
   const [showMedicineSaveDialog, setShowMedicineSaveDialog] = useState(false);
   const [showMedicineLoadDialog, setShowMedicineLoadDialog] = useState(false);
   const [medicineTemplates, setMedicineTemplates] = useState<any[]>([]);
+
+  const [adviceTemplateName, setAdviceTemplateName] = useState("");
+  const [isSavingAdviceTemplate, setIsSavingAdviceTemplate] = useState(false);
+  const [showAdviceSaveDialog, setShowAdviceSaveDialog] = useState(false);
+  const [showAdviceLoadDialog, setShowAdviceLoadDialog] = useState(false);
+  const [adviceTemplates, setAdviceTemplates] = useState<any[]>([]);
   const [showVoiceInput, setShowVoiceInput] = useState(false);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
@@ -277,6 +284,51 @@ export default function PrescriptionForm({
     toast({
       title: "Success",
       description: `Medicine "${medicine?.name || 'Unknown'}" removed successfully`,
+    });
+  };
+
+  // Helper to convert testsRequested string to array
+  const getTestsArray = (): string[] => {
+    if (!prescriptionData.testsRequested) return [];
+    // Split by comma, newline, or semicolon, then trim and filter empty
+    return prescriptionData.testsRequested
+      .split(/[,\n;]/)
+      .map((t: string) => t.trim())
+      .filter((t: string) => t.length > 0);
+  };
+
+  // Helper to convert tests array back to string
+  const setTestsFromArray = (tests: string[]) => {
+    setPrescriptionData({
+      ...prescriptionData,
+      testsRequested: tests.join(', '),
+    });
+  };
+
+  const addTest = (testName: string) => {
+    const currentTests = getTestsArray();
+    if (testName.trim() && !currentTests.includes(testName.trim())) {
+      setTestsFromArray([...currentTests, testName.trim()]);
+      setNewTest("");
+      toast({
+        title: "Success",
+        description: `Test "${testName}" added successfully`,
+      });
+    } else if (currentTests.includes(testName.trim())) {
+      toast({
+        title: "Info",
+        description: "Test already added",
+        variant: "default",
+      });
+    }
+  };
+
+  const removeTest = (testName: string) => {
+    const currentTests = getTestsArray();
+    setTestsFromArray(currentTests.filter((t: string) => t !== testName));
+    toast({
+      title: "Success",
+      description: `Test "${testName}" removed successfully`,
     });
   };
 
@@ -842,10 +894,62 @@ export default function PrescriptionForm({
       duration: m.duration || "",
       quantity: (m.quantity ?? '').toString(),
       instructions: m.instructions || "",
+      composition: m.composition || "",
+      composition2: m.composition2 || "",
     }));
     setPrescriptionData({ ...prescriptionData, medicines: meds });
     setShowMedicineLoadDialog(false);
     toast({ title: 'Loaded', description: `Medicines template applied` });
+  };
+
+  // Advice templates handlers
+  const handleSaveAdviceTemplate = async () => {
+    if (!adviceTemplateName.trim()) {
+      toast({ title: "Error", description: "Please enter a template name", variant: "destructive" });
+      return;
+    }
+    setIsSavingAdviceTemplate(true);
+    try {
+      const response = await fetch('/api/doctor/prescription/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: adviceTemplateName,
+          complaints: [],
+          medicines: [],
+          advice: prescriptionData.advice || "",
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to save advice template');
+      toast({ title: 'Saved', description: `Advice template "${adviceTemplateName}" saved` });
+      setShowAdviceSaveDialog(false);
+      setAdviceTemplateName("");
+    } catch (e) {
+      toast({ title: 'Error', description: 'Failed to save advice template', variant: 'destructive' });
+    } finally {
+      setIsSavingAdviceTemplate(false);
+    }
+  };
+
+  const handleLoadAdviceTemplates = async () => {
+    try {
+      const res = await fetch('/api/doctor/prescription/templates?type=advice');
+      if (!res.ok) throw new Error('Failed to load advice templates');
+      const data = await res.json();
+      setAdviceTemplates(data.templates || []);
+      setShowAdviceLoadDialog(true);
+    } catch (e) {
+      toast({ title: 'Error', description: 'Failed to load advice templates', variant: 'destructive' });
+    }
+  };
+
+  const applyAdviceTemplate = (template: any) => {
+    setPrescriptionData({ 
+      ...prescriptionData, 
+      advice: template.advice || "" 
+    });
+    setShowAdviceLoadDialog(false);
+    toast({ title: 'Loaded', description: `Advice template applied` });
   };
 
   const handleSelectTemplate = (template: any) => {
@@ -894,6 +998,8 @@ export default function PrescriptionForm({
         duration: m.duration || "",
         quantity: m.quantity?.toString() || "",
         instructions: m.instructions || "",
+        composition: m.composition || "",
+        composition2: m.composition2 || "",
       })) || [],
       advice: template.advice || "",
       testsRequested: template.testsRequested || "",
@@ -1832,6 +1938,8 @@ export default function PrescriptionForm({
                     medicineTime: "Post-meal",
                     duration: "",
                     quantity: "0",
+                    composition: item.composition || "",
+                    composition2: item.composition2 || "",
                   },
                 ],
               });
@@ -1857,7 +1965,17 @@ export default function PrescriptionForm({
         {/* Advice Section - Left Half */}
         <Card className="bg-custom-mutedgreen">
           <CardHeader>
-            <CardTitle className="text-lg">Advice</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Advice</CardTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onMouseDown={(e)=>e.preventDefault()} onClick={handleLoadAdviceTemplates}>
+                  Load Advice Template
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowAdviceSaveDialog(true)}>
+                  Save Advice Template
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <Textarea
@@ -1881,18 +1999,44 @@ export default function PrescriptionForm({
             <CardTitle className="text-lg">Tests Requested</CardTitle>
           </CardHeader>
           <CardContent>
-            <Textarea
-              value={prescriptionData.testsRequested}
-              onChange={(e) =>
-                setPrescriptionData({
-                  ...prescriptionData,
-                  testsRequested: e.target.value,
-                })
-              }
-              placeholder="Enter the tests to be done by the patient here..."
-              rows={4}
-              className="bg-white"
-            />
+            <div className="space-y-4">
+              <TypeAheadInput
+                value={newTest}
+                onChange={setNewTest}
+                placeholder="Search pathology tests here..."
+                type="tests"
+                className="w-full bg-white"
+                showAddButtons={true}
+                onAddItem={(item) => {
+                  const testName = item.text || item.name || item.value || "";
+                  addTest(testName);
+                }}
+              />
+
+              {/* Selected Tests Display */}
+              <div className="flex flex-wrap gap-2  p-2 rounded border border-transparent">
+                {getTestsArray().length === 0 ? (
+                  <p className="text-sm text-gray-400 italic">No tests added yet. Search and add tests above.</p>
+                ) : (
+                  getTestsArray().map((test, index) => (
+                    <Badge
+                      key={index}
+                      className="flex items-center gap-1 px-2 text-sm bg-primary text-primary-foreground"
+                    >
+                      <span>{test}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeTest(test)}
+                        className="ml-1 hover:bg-primary/80 rounded-full p-0.5"
+                        aria-label={`Remove ${test}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))
+                )}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -2290,6 +2434,59 @@ export default function PrescriptionForm({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowMedicineLoadDialog(false)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Advice Templates Dialogs */}
+      <Dialog open={showAdviceSaveDialog} onOpenChange={setShowAdviceSaveDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Save Advice Template</DialogTitle>
+            <DialogDescription>Enter a name for this advice template.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="adviceTemplateName" className="text-right">Name</Label>
+              <Input id="adviceTemplateName" value={adviceTemplateName} onChange={(e)=>setAdviceTemplateName(e.target.value)} className="col-span-3" placeholder="Enter template name..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAdviceSaveDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveAdviceTemplate} disabled={isSavingAdviceTemplate}>
+              {isSavingAdviceTemplate ? (<Loader2 className="h-4 w-4 mr-2 animate-spin" />) : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAdviceLoadDialog} onOpenChange={setShowAdviceLoadDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Load Advice Template</DialogTitle>
+            <DialogDescription>Select an advice template to load.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4 max-h-[400px] overflow-y-auto">
+            {adviceTemplates.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">No advice templates found</div>
+            ) : (
+              adviceTemplates.map((template: any) => (
+                <div key={template.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer" onClick={() => applyAdviceTemplate(template)}>
+                  <div>
+                    <h4 className="font-medium">{template.templateName || 'Unnamed Template'}</h4>
+                    <p className="text-sm text-gray-500">Created: {new Date(template.createdAt).toLocaleDateString()}</p>
+                    {template.advice && (
+                      <p className="text-xs text-gray-400 mt-1 line-clamp-2">{template.advice}</p>
+                    )}
+                  </div>
+                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); applyAdviceTemplate(template); }}>Load</Button>
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAdviceLoadDialog(false)}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
