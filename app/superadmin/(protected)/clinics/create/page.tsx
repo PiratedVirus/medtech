@@ -14,6 +14,7 @@ import axios from 'axios'
 
 interface ClinicFormData {
   name: string
+  subdomain: string
   domain: string
   address: string
   contactInfo: string
@@ -28,6 +29,7 @@ export default function CreateClinicPage() {
   const [error, setError] = useState('')
   const [formData, setFormData] = useState<ClinicFormData>({
     name: '',
+    subdomain: '',
     domain: '',
     address: '',
     contactInfo: '',
@@ -159,18 +161,37 @@ export default function CreateClinicPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="domain">Custom Domain</Label>
-              <Input
-                id="domain"
-                value={formData.domain}
-                onChange={(e) => handleInputChange('domain', e.target.value)}
-                placeholder="clinic.com"
-                disabled={loading}
-              />
-              <p className="text-xs text-gray-500">
-                Optional: Custom domain for the clinic
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="subdomain">Subdomain *</Label>
+                <Input
+                  id="subdomain"
+                  value={formData.subdomain}
+                  onChange={(e) => handleInputChange('subdomain', e.target.value.toLowerCase().trim())}
+                  placeholder="clinic1"
+                  required
+                  disabled={loading}
+                  pattern="[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?"
+                  title="3-63 characters, alphanumeric with hyphens only"
+                />
+                <p className="text-xs text-gray-500">
+                  Required: Used for patient portal URL (e.g., clinic1.yourdomain.com)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="domain">Custom Domain</Label>
+                <Input
+                  id="domain"
+                  value={formData.domain}
+                  onChange={(e) => handleInputChange('domain', e.target.value)}
+                  placeholder="clinic.com"
+                  disabled={loading}
+                />
+                <p className="text-xs text-gray-500">
+                  Optional: Custom domain for the clinic
+                </p>
+              </div>
             </div>
 
             <div className="space-y-2">

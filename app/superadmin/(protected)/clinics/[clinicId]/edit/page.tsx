@@ -20,6 +20,7 @@ import { toast } from 'react-toastify'
 
 interface ClinicFormData {
   name: string
+  subdomain?: string
   domain?: string
   address?: string
   contactInfo?: string
@@ -36,6 +37,7 @@ export default function EditClinicPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [formData, setFormData] = useState<ClinicFormData>({
     name: '',
+    subdomain: '',
     domain: '',
     address: '',
     contactInfo: '',
@@ -51,6 +53,7 @@ export default function EditClinicPage() {
         const clinic = response.data
         setFormData({
           name: clinic.name || '',
+          subdomain: clinic.subdomain || '',
           domain: clinic.domain || '',
           address: clinic.address || '',
           contactInfo: clinic.contactInfo || '',
@@ -197,6 +200,11 @@ export default function EditClinicPage() {
                 <h3 className="text-lg font-semibold text-gray-900">
                   {formData.name || 'Clinic Name'}
                 </h3>
+                {formData.subdomain && (
+                  <p className="text-sm text-green-600 font-mono bg-green-50 px-2 py-1 rounded">
+                    {formData.subdomain}.yourdomain.com
+                  </p>
+                )}
                 {formData.domain && (
                   <p className="text-sm text-blue-600 font-mono bg-blue-50 px-2 py-1 rounded">
                     {formData.domain}
@@ -239,15 +247,38 @@ export default function EditClinicPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="domain">Domain</Label>
+                <Label htmlFor="subdomain">Subdomain *</Label>
                 <Input
-                  id="domain"
-                  name="domain"
-                  value={formData.domain}
-                  onChange={handleInputChange}
-                  placeholder="clinic.com"
+                  id="subdomain"
+                  name="subdomain"
+                  value={formData.subdomain}
+                  onChange={(e) => {
+                    const value = e.target.value.toLowerCase().trim();
+                    handleInputChange({ target: { name: 'subdomain', value } } as React.ChangeEvent<HTMLInputElement>);
+                  }}
+                  placeholder="clinic1"
+                  required
+                  pattern="[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?"
+                  title="3-63 characters, alphanumeric with hyphens only"
                 />
+                <p className="text-xs text-gray-500">
+                  Used for patient portal URL (e.g., {formData.subdomain || 'clinic1'}.yourdomain.com)
+                </p>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="domain">Custom Domain</Label>
+              <Input
+                id="domain"
+                name="domain"
+                value={formData.domain}
+                onChange={handleInputChange}
+                placeholder="clinic.com"
+              />
+              <p className="text-xs text-gray-500">
+                Optional: Custom domain for the clinic
+              </p>
             </div>
 
             <div className="space-y-2">
