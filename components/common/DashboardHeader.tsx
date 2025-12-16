@@ -29,8 +29,10 @@ import {
 import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { formatDisplayName, isDoctorName } from "@/lib/utils";
+import { useClinicFeatures } from "@/hooks/use-clinic-features";
 
-const fullNavigation = [
+// Navigation items - Plans will be conditionally shown
+const getFullNavigation = (hasPlans: boolean) => [
   { name: "Home", href: "/dashboard", current: true, icon: Home },
   { name: "Doctors", href: "/dashboard/doctors", current: false, icon: ShieldPlus },
   { name: "Dieticians", href: "/dashboard/dieticians", current: false, icon: ShieldPlus },
@@ -38,16 +40,18 @@ const fullNavigation = [
   { name: "Parameter Trends", href: "/dashboard/parameter-trends", current: false, icon: TrendingUp },
   { name: "Prescriptions", href: "/dashboard/prescriptions", current: false, icon: FileText },
   { name: "Appointments", href: "/dashboard/appointments", current: false, icon: TestTubeDiagonal },
-  { name: "Plans", href: "/dashboard/plans", current: false, icon: LayoutGrid },
+  // Only show Plans for CD subdomain
+  ...(hasPlans ? [{ name: "Plans", href: "/dashboard/plans", current: false, icon: LayoutGrid }] : []),
 ];
 
-const mobileNavigation = [
+const getMobileNavigation = (hasPlans: boolean) => [
   { name: "Home", href: "/dashboard", icon: Home },
   { name: "Doctors", href: "/dashboard/doctors", icon: ShieldPlus },
-  { name: "Plans", href: "/dashboard/plans", icon: LayoutGrid },
+  // Only show Plans for CD subdomain
+  ...(hasPlans ? [{ name: "Plans", href: "/dashboard/plans", icon: LayoutGrid }] : []),
   { name: "Labs & Reports", href: "/dashboard/labs", icon: TestTubeDiagonal },
   { name: "Parameter Trends", href: "/dashboard/parameter-trends", icon: TrendingUp },
-  { name: "Profile", href: "/dashboard/profile", icon: User }, // we'll replace this one
+  { name: "Profile", href: "/dashboard/profile", icon: User },
 ];
 
 export function DashboardHeader() {
@@ -55,6 +59,13 @@ export function DashboardHeader() {
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const pathname = usePathname();
+  
+  // Check if plans feature is available for this subdomain
+  const { hasPlans } = useClinicFeatures();
+  
+  // Get navigation items based on plan availability
+  const fullNavigation = getFullNavigation(hasPlans);
+  const mobileNavigation = getMobileNavigation(hasPlans);
 
   const handleLogout = () => {
     dispatch(logoutUser());

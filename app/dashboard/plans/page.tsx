@@ -10,11 +10,14 @@ import SuccessModal from "@/components/ui/custom/cd-success-modal";
 import { useQuery } from "@tanstack/react-query";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import PlanUsage from "@/components/patients/plans/PlanUsage";
-import { Eye, ArrowUpDown, EditIcon, Trash } from "lucide-react";
+import { Eye, ArrowUpDown, EditIcon, Trash, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useQueryClient } from "@tanstack/react-query";
 import ViewParametersDialog from "@/components/common/ViewParametersDialog";
+import { useClinicFeatures } from "@/hooks/use-clinic-features";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
 
 export default function PricingTable() {
   // Basic state for duration and subscription success modal
@@ -32,6 +35,9 @@ export default function PricingTable() {
   const queryClient = useQueryClient();
   const { clinicId, profile, isLoading: profileLoading } = useDecryptedProfile();
   const userId = profile?.id;
+  
+  // Check if plans feature is available for this subdomain
+  const { hasPlans, isLoading: featuresLoading } = useClinicFeatures();
 
   // Determine subscription status
   const subscriptionId = profile?.subscriptionDetails?.subscriptionId;
@@ -52,9 +58,44 @@ export default function PricingTable() {
   });
 
   // Loading and error handling
-  if (profileLoading || isLoading) {
+  if (profileLoading || isLoading || featuresLoading) {
     return <CdLoader />;
   }
+  
+  // Plans are only available for CD (Care Diabetics) subdomain
+  if (!hasPlans) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+              <AlertCircle className="h-8 w-8 text-amber-600" />
+            </div>
+            <CardTitle className="text-xl text-gray-800">Subscription Plans Not Available</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-gray-600">
+              Subscription plans are not available for this clinic. 
+              You can still access all your healthcare services directly.
+            </p>
+            <div className="flex flex-col gap-2">
+              <Link href="/dashboard/appointments">
+                <Button className="w-full bg-primary hover:bg-primary/90">
+                  Book an Appointment
+                </Button>
+              </Link>
+              <Link href="/dashboard">
+                <Button variant="outline" className="w-full">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
   if (isError) {
     return <div className="p-4">Error fetching plans.</div>;
   }
