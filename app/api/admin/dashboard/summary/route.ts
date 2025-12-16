@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
-import { getAdminClinicId, createClinicFilter, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
+import { getAdminClinicIdAsync, createClinicFilter, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
 import { getCachedDashboardSummary } from "@/lib/data-cache";
 
 export async function GET(request: NextRequest) {
   try {
-    // Get admin's clinic ID for filtering
-    const clinicId = getAdminClinicId(request);
+    // Get admin's clinic ID and validate subdomain matches
+    const clinicId = await getAdminClinicIdAsync(request);
     if (!clinicId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ 
+        error: "Unauthorized",
+        message: "Session expired or you are accessing an incorrect clinic portal. Please log in again."
+      }, { status: 401 });
     }
 
     // ✅ CACHE: Try to get dashboard summary from cache first

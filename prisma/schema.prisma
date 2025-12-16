@@ -89,12 +89,15 @@ model User {
   deviceTokens                 PatientDeviceToken[]
   uploadedAppointmentImages    AppointmentImage[]       @relation("UploadedAppointmentImages")
 
-  @@unique([phoneNumber, deletedAt])
+  // Multi-tenancy: Same phone number can exist in different clinics
+  // Unique constraint is on phoneNumber + clinicId + deletedAt
+  @@unique([phoneNumber, clinicId, deletedAt])
   @@index([deletedAt])
   @@index([role, createdAt])
   @@index([status, role])
   @@index([clinicId, role])
   @@index([role, status, deletedAt])
+  @@index([phoneNumber, clinicId]) // For efficient lookup by phone+clinic
 }
 
 model PatientProfile {

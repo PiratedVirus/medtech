@@ -180,7 +180,12 @@ export default function SignInForm() {
           }
           setOtpError("");
         } else {
-          setOtpError(data.error);
+          // Check for clinic mismatch error
+          if (data.clinicMismatch) {
+            setOtpError(data.error || "You are not registered with this clinic. Please use the correct clinic URL.");
+          } else {
+            setOtpError(data.error);
+          }
         }
       } catch (error) {
         setOtpError("Failed to verify OTP. Please try again.");

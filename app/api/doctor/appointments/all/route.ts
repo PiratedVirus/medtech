@@ -1,41 +1,34 @@
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
 import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
+import { 
+  requireDoctorAuth, 
+  handleAuthError 
+} from "@/lib/clinic-auth";
 
 const getAllAppointmentsHandler = async (request: NextRequest) => {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
-    if (!token) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    // Authenticate doctor and validate clinic access
+    const auth = await requireDoctorAuth();
+    if (!auth.success) {
+      return handleAuthError(auth);
     }
-    let decoded: any;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    } catch (err) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-    const phoneNumber = decoded.plusAddedPhoneNumber as string | undefined;
-    if (!phoneNumber) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
+
+    const doctorId = auth.userId!;
+    const clinicId = auth.clinicId;
+    
+    // Get user with doctor profile for additional data
     const user = await prisma.user.findFirst({
-      where: { phoneNumber },
+      where: { id: doctorId },
       include: { doctorProfile: true },
     });
-    if (!user?.doctorProfile?.id) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-    const doctorId = user.id;
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "20");
     const now = new Date();
 
-    // Upcoming appointments
+    // Upcoming appointments - filtered by clinic for multi-tenancy
     const upcoming = await prisma.appointment.findMany({
       where: {
         userId: doctorId,
@@ -43,6 +36,8 @@ const getAllAppointmentsHandler = async (request: NextRequest) => {
           date: { gte: now }
         },
         deletedAt: null,
+        // Multi-tenancy: Only get appointments with patients from the same clinic
+        patient: clinicId ? { clinicId } : undefined,
       },
       include: {
         patient: { select: { name: true, id: true } },
@@ -58,7 +53,7 @@ const getAllAppointmentsHandler = async (request: NextRequest) => {
       take: pageSize,
     });
 
-    // Past appointments
+    // Past appointments - filtered by clinic for multi-tenancy
     const past = await prisma.appointment.findMany({
       where: {
         userId: doctorId,
@@ -66,6 +61,8 @@ const getAllAppointmentsHandler = async (request: NextRequest) => {
           date: { lt: now }
         },
         deletedAt: null,
+        // Multi-tenancy: Only get appointments with patients from the same clinic
+        patient: clinicId ? { clinicId } : undefined,
       },
       include: {
         patient: { select: { name: true, id: true } },
@@ -85,12 +82,14 @@ const getAllAppointmentsHandler = async (request: NextRequest) => {
     const allPatientIds = [...new Set([...upcoming, ...past].map(a => a.patient.id))];
     
     // Single query to get appointment counts per patient (to determine if first appointment)
+    // Multi-tenancy: Ensure we only count appointments within the same clinic
     const appointmentCounts = await prisma.appointment.groupBy({
       by: ['patientId'],
       where: {
         userId: doctorId,
         patientId: { in: allPatientIds },
         deletedAt: null,
+        patient: clinicId ? { clinicId } : undefined,
       },
       _count: {
         id: true,

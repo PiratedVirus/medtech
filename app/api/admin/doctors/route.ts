@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
-import { getAdminClinicId, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
+import { getAdminClinicIdAsync, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
 import { invalidateAllDoctorCaches } from "@/lib/cache-invalidation";
 import { SmartCacheInvalidation } from "@/lib/cache-dependencies";
 import { CacheEvents } from "@/lib/cache-events";
 
 export async function GET(request: NextRequest) {
   try {
-    // Get admin's clinic ID for filtering
-    const clinicId = getAdminClinicId(request);
+    // Get admin's clinic ID and validate subdomain matches
+    const clinicId = await getAdminClinicIdAsync(request);
     if (!clinicId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ 
+        error: "Unauthorized",
+        message: "Session expired or you are accessing an incorrect clinic portal."
+      }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -80,8 +83,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch doctors" }, { status: 500 });
   }
 }
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Get admin's clinic ID and validate subdomain matches
+    const adminClinicId = await getAdminClinicIdAsync(request);
+    if (!adminClinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized",
+        message: "Session expired or you are accessing an incorrect clinic portal."
+      }, { status: 401 });
+    }
+    
     const data = await request.json();
     // Validate that userId is provided and fetch the user with clinic info
     const user = await prisma.user.findUnique({
@@ -91,11 +103,12 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 400 });
     }
-    // Validate that the user belongs to the selected clinic
-    if (data.clinicId && user.clinic?.id !== Number(data.clinicId)) {
+    
+    // Multi-tenancy: User must belong to admin's clinic
+    if (user.clinicId !== adminClinicId) {
       return NextResponse.json(
-        { error: "Selected user does not belong to the chosen clinic" },
-        { status: 400 }
+        { error: "User does not belong to your clinic" },
+        { status: 403 }
       );
     }
 
@@ -209,8 +222,17 @@ export async function POST(request: Request) {
     );
   }
 }
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
+    // Get admin's clinic ID and validate subdomain matches
+    const adminClinicId = await getAdminClinicIdAsync(request);
+    if (!adminClinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized",
+        message: "Session expired or you are accessing an incorrect clinic portal."
+      }, { status: 401 });
+    }
+    
     const { id, userId, status, isDietician, clinicId, doctorCode, ...data } = await request.json();
 
     if (userId) {
@@ -221,10 +243,11 @@ export async function PUT(request: Request) {
       if (!user) {
         return NextResponse.json({ error: "User not found" }, { status: 400 });
       }
-      if (clinicId && user.clinic?.id !== Number(clinicId)) {
+      // Multi-tenancy: User must belong to admin's clinic
+      if (user.clinicId !== adminClinicId) {
         return NextResponse.json(
-          { error: "Selected user does not belong to the chosen clinic" },
-          { status: 400 }
+          { error: "User does not belong to your clinic" },
+          { status: 403 }
         );
       }
     }
@@ -316,17 +339,37 @@ export async function PUT(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   try {
+    // Get admin's clinic ID and validate subdomain matches
+    const adminClinicId = await getAdminClinicIdAsync(request);
+    if (!adminClinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized",
+        message: "Session expired or you are accessing an incorrect clinic portal."
+      }, { status: 401 });
+    }
+    
     const body = await request.json();
 
     if (body.ids && Array.isArray(body.ids)) {
       const ids = body.ids.map((i: any) => Number(i));
-      // fetch affected userIds
+      
+      // Multi-tenancy: Only allow deleting doctors from admin's clinic
       const profiles = await prisma.doctorProfile.findMany({
         where: { id: { in: ids } },
-        select: { userId: true },
+        include: { user: { select: { id: true, clinicId: true } } },
       });
+      
+      // Check all doctors belong to admin's clinic
+      const invalidDoctors = profiles.filter(p => p.user.clinicId !== adminClinicId);
+      if (invalidDoctors.length > 0) {
+        return NextResponse.json(
+          { error: "Cannot delete doctors that don't belong to your clinic" },
+          { status: 403 }
+        );
+      }
+      
       const userIds = profiles.map((p) => p.userId);
 
       // soft-delete profiles & reset user statuses in one transaction
@@ -351,6 +394,20 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ message: "Doctors deleted successfully" });
     } else if (body.id) {
       const id = Number(body.id);
+      
+      // Multi-tenancy: Verify doctor belongs to admin's clinic
+      const doctorProfile = await prisma.doctorProfile.findUnique({
+        where: { id },
+        include: { user: { select: { clinicId: true } } },
+      });
+      
+      if (!doctorProfile || doctorProfile.user.clinicId !== adminClinicId) {
+        return NextResponse.json(
+          { error: "Cannot delete doctor that doesn't belong to your clinic" },
+          { status: 403 }
+        );
+      }
+      
       // soft-delete the profile and reset the user's status
       await prisma.$transaction(async (tx) => {
         const deleted = await tx.doctorProfile.delete({ where: { id } });

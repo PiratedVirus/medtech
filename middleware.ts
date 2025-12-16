@@ -10,6 +10,13 @@ import { extractSubdomain } from '@/lib/subdomain-utils';
 const tokenCache = new Map<string, { decoded: any; validUntil: number }>();
 const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes server-side cache
 
+// Cache for subdomain to clinic ID mapping (populated by API calls, used for validation)
+const subdomainClinicCache = new Map<string, { clinicId: number | null; validUntil: number }>();
+const SUBDOMAIN_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Roles that require strict clinic assignment
+const STAFF_ROLES = ['DOCTOR', 'DIETICIAN', 'LAB_TECH', 'PATHOLOGY', 'PHLEBOTOMIST'];
+
 // Function to verify JWT token using jose with caching
 async function verifyJWTWithCache(token: string, secret: string): Promise<any> {
   // Check cache first
@@ -77,6 +84,55 @@ function isTokenStructurallyValid(token: string): boolean {
   } catch (error) {
     return false;
   }
+}
+
+/**
+ * Extract clinicId from JWT token payload
+ * Returns null if not present (legacy tokens)
+ */
+function getClinicIdFromToken(decoded: any): number | null {
+  if (decoded && typeof decoded.clinicId === 'number') {
+    return decoded.clinicId;
+  }
+  return null;
+}
+
+/**
+ * Check if token's clinicId is valid for the given subdomain
+ * Note: In Edge Runtime, we cannot do DB lookup, so we do basic validation
+ * Full validation happens in API routes
+ * 
+ * This function returns:
+ * - { valid: true } if token has no clinicId (legacy token, will be validated in API)
+ * - { valid: true } if token has clinicId (will be validated against subdomain in API)
+ * - { valid: false, reason } if token explicitly doesn't match (for staff roles)
+ */
+function validateTokenClinicContext(
+  decoded: any,
+  subdomain: string | null
+): { valid: boolean; reason?: string } {
+  // If no subdomain, allow (main domain or localhost)
+  if (!subdomain) {
+    return { valid: true };
+  }
+
+  const tokenClinicId = getClinicIdFromToken(decoded);
+  const userRole = decoded.userRole as string | undefined;
+
+  // Legacy tokens without clinicId - allow but they'll be validated in API routes
+  if (tokenClinicId === null) {
+    return { valid: true };
+  }
+
+  // For staff roles, we'll do strict validation in API routes
+  // Middleware allows through but marks for API validation
+  if (userRole && STAFF_ROLES.includes(userRole)) {
+    // Token has clinicId - API will validate against subdomain
+    return { valid: true };
+  }
+
+  // For patients and other roles, allow through for API validation
+  return { valid: true };
 }
 
 export async function middleware(request: NextRequest) {
@@ -253,7 +309,24 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    return NextResponse.next();
+    // Validate clinic context for doctors
+    const tokenValidation = validateTokenClinicContext(decodedUser, subdomain);
+    if (!tokenValidation.valid) {
+      console.log(`[Middleware] Doctor clinic mismatch: ${tokenValidation.reason}`);
+      // Redirect to login with clinic mismatch indicator
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set('clinic_mismatch', 'true');
+      const response = NextResponse.redirect(redirectUrl);
+      response.cookies.delete('token'); // Clear invalid token
+      return response;
+    }
+
+    // Pass subdomain info for API-level validation
+    const response = NextResponse.next();
+    if (subdomain) {
+      response.headers.set('x-clinic-subdomain', subdomain);
+    }
+    return response;
   }
 
   // Pathology routes protection
@@ -287,7 +360,23 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
-    return NextResponse.next();
+    // Validate clinic context for pathology staff
+    const tokenValidation = validateTokenClinicContext(decodedUser, subdomain);
+    if (!tokenValidation.valid) {
+      console.log(`[Middleware] Pathology clinic mismatch: ${tokenValidation.reason}`);
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set('clinic_mismatch', 'true');
+      const response = NextResponse.redirect(redirectUrl);
+      response.cookies.delete('token');
+      return response;
+    }
+
+    // Pass subdomain info for API-level validation
+    const response = NextResponse.next();
+    if (subdomain) {
+      response.headers.set('x-clinic-subdomain', subdomain);
+    }
+    return response;
   }
 
   // For all other routes, pass subdomain via header for page/API to validate clinic

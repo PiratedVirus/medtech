@@ -1,46 +1,31 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
+import { 
+  requireDoctorAuth, 
+  handleAuthError,
+  createClinicFilter 
+} from "@/lib/clinic-auth";
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
-    if (!token) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    // Authenticate doctor and validate clinic access
+    const auth = await requireDoctorAuth();
+    if (!auth.success) {
+      return handleAuthError(auth);
     }
 
-    let decoded: any;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    } catch (err) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    const phoneNumber = decoded.plusAddedPhoneNumber as string | undefined;
-    if (!phoneNumber) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    const user = await prisma.user.findFirst({
-      where: { phoneNumber },
-      include: { doctorProfile: true },
-    });
-
-    if (!user?.doctorProfile?.id) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    const doctorId = user.id;
-    console.log("Doctor patients API called with doctorId:", doctorId);
+    const doctorId = auth.userId!;
+    const clinicId = auth.clinicId;
+    console.log("Doctor patients API called with doctorId:", doctorId, "clinicId:", clinicId);
 
     // First get the doctor's appointments to find their patients
+    // Filter by clinicId to ensure multi-tenancy isolation
     const doctorAppointments = await prisma.appointment.findMany({
       where: {
         userId: doctorId,
-        // isDietician: false,
-        deletedAt: null
+        deletedAt: null,
+        // Multi-tenancy: Only get patients from the same clinic
+        patient: clinicId ? { clinicId } : undefined
       },
       select: {
         patientId: true,
