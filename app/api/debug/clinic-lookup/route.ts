@@ -7,8 +7,14 @@ import { extractSubdomain } from '@/lib/clinic-context-middleware';
  * Debug endpoint to check clinic lookup
  * Usage: /api/debug/clinic-lookup?subdomain=manipal
  * Or it will extract from hostname if no query param
+ * 
+ * This endpoint is excluded from middleware, so it should always be accessible
  */
 export async function GET(request: NextRequest) {
+  console.log('[DEBUG] Clinic lookup endpoint called');
+  console.log('[DEBUG] Hostname:', request.headers.get('host'));
+  console.log('[DEBUG] URL:', request.url);
+  
   try {
     const { searchParams } = new URL(request.url);
     const subdomainParam = searchParams.get('subdomain');

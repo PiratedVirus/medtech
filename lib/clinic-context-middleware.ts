@@ -1,88 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+// Re-export extractSubdomain from the Edge-safe utility file
+export { extractSubdomain } from '@/lib/subdomain-utils';
+import { extractSubdomain } from '@/lib/subdomain-utils';
 
 // Cache for clinic lookups (in-memory cache)
 const clinicCache = new Map<string, { clinicId: number | null; validUntil: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
-
-/**
- * Extract subdomain from hostname
- * Examples:
- * - clinic1.yourdomain.com -> "clinic1"
- * - clinic1.test.yourdomain.com -> "clinic1" (handles nested subdomains for dev/staging)
- * - clinic1.yourdomain.com:3000 -> "clinic1"
- * - test.yourdomain.com -> null (environment subdomain, not clinic)
- * - localhost:3000 -> null (no subdomain)
- * - yourdomain.com -> null (no subdomain)
- */
-export function extractSubdomain(hostname: string): string | null {
-  // Remove port if present
-  const hostWithoutPort = hostname.split(':')[0];
-  
-  // Skip localhost and IP addresses
-  if (hostWithoutPort === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(hostWithoutPort)) {
-    return null;
-  }
-
-  // Split by dots
-  const parts = hostWithoutPort.split('.');
-  
-  // Handle nested subdomains for dev/staging environments
-  // Examples:
-  // - clinic1.test.abc.com -> ["clinic1", "test", "abc", "com"] -> return "clinic1"
-  // - clinic1.abc.com -> ["clinic1", "abc", "com"] -> return "clinic1"
-  // - test.abc.com -> ["test", "abc", "com"] -> return null (environment subdomain)
-  
-  if (parts.length >= 4) {
-    // 4+ parts: 
-    // - manipal.dev.carediabetics.com -> ["manipal", "dev", "carediabetics", "com"] -> return "manipal"
-    // - www.manipal.dev.carediabetics.com -> ["www", "manipal", "dev", "carediabetics", "com"] -> return "manipal" (skip www)
-    // - clinic1.test.abc.com -> ["clinic1", "test", "abc", "com"] -> return "clinic1"
-    
-    // Skip "www" prefix if present
-    const firstPart = parts[0].toLowerCase();
-    if (firstPart === 'www' && parts.length >= 5) {
-      // www.clinic.env.domain.com -> return clinic (second part) normalized
-      return parts[1].toLowerCase();
-    }
-    
-    // Otherwise, first part is clinic subdomain (normalize to lowercase)
-    return parts[0].toLowerCase();
-  }
-  
-  if (parts.length === 3) {
-    // 3 parts: clinic1.abc.com, test.abc.com, or clinic1-test.abc.com
-    const firstPart = parts[0].toLowerCase();
-    const knownEnvironments = ['test', 'dev', 'staging', 'preview', 'demo'];
-    
-    // If it's a known environment subdomain, return null (not a clinic)
-    if (knownEnvironments.includes(firstPart)) {
-      return null;
-    }
-    
-    // Handle pattern: clinic1-test.abc.com or clinic1-dev.abc.com
-    // Extract clinic name before the hyphen
-    if (firstPart.includes('-')) {
-      const clinicPart = firstPart.split('-')[0];
-      // Only return if there's a valid clinic name before the hyphen
-      if (clinicPart && clinicPart.length > 0) {
-        return clinicPart;
-      }
-    }
-    
-    // Otherwise, it's a clinic subdomain (clinic1.abc.com) - normalize to lowercase
-    return parts[0].toLowerCase();
-  }
-
-  // If only 2 parts, check if it's a subdomain (e.g., in development)
-  // For development: clinic1.localhost -> ["clinic1", "localhost"]
-  if (parts.length === 2 && parts[1] === 'localhost') {
-    return parts[0].toLowerCase();
-  }
-
-  // 2 parts in production means no subdomain (yourdomain.com)
-  return null;
-}
 
 /**
  * Get clinic ID from subdomain
@@ -110,9 +34,18 @@ export async function getClinicIdFromSubdomain(subdomain: string): Promise<numbe
 
     const clinicId = clinic && clinic.length > 0 ? clinic[0].id : null;
 
-    // Log for debugging (remove in production if too verbose)
+    // Enhanced logging for debugging
     if (!clinicId) {
+      // Try to get all clinics with subdomains for debugging
+      const allClinicsWithSubdomain = await prisma.$queryRaw<Array<{ id: number; subdomain: string }>>`
+        SELECT id, subdomain FROM "Clinic" 
+        WHERE subdomain IS NOT NULL
+        AND "deletedAt" IS NULL
+        ORDER BY id
+      `;
       console.log(`[Clinic Lookup] Subdomain "${normalizedSubdomain}" not found in database`);
+      console.log(`[Clinic Lookup] Available subdomains:`, allClinicsWithSubdomain.map(c => c.subdomain));
+      console.log(`[Clinic Lookup] Database URL: ${process.env.DATABASE_URL ? 'SET' : 'NOT SET'}`);
     } else {
       console.log(`[Clinic Lookup] Found clinic ID ${clinicId} for subdomain "${normalizedSubdomain}"`);
     }
@@ -135,7 +68,13 @@ export async function getClinicIdFromSubdomain(subdomain: string): Promise<numbe
 
     return clinicId;
   } catch (error) {
-    console.error('Error fetching clinic from subdomain:', error);
+    console.error('[Clinic Lookup] Error fetching clinic from subdomain:', error);
+    console.error('[Clinic Lookup] Error details:', {
+      subdomain: normalizedSubdomain,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+      databaseUrl: process.env.DATABASE_URL ? 'SET' : 'NOT SET'
+    });
     return null;
   }
 }

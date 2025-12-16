@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import * as jose from 'jose';
-import { getClinicContext, setClinicContextHeaders } from '@/lib/clinic-context-middleware';
+import { extractSubdomain } from '@/lib/subdomain-utils';
+
+// Note: We cannot use Prisma in middleware because it runs in Edge Runtime
+// Clinic database lookup is done in API routes and pages instead
 
 // Cache for validated tokens (in-memory cache for the server)
 const tokenCache = new Map<string, { decoded: any; validUntil: number }>();
@@ -83,27 +86,22 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/api/auth/') ||
+    pathname.startsWith('/api/debug/') || // Allow debug routes - MUST be before other checks
     pathname.startsWith('/static/') ||
     pathname.includes('.') // Skip files with extensions
   ) {
     return NextResponse.next();
   }
 
-  // Extract clinic context from subdomain (before route protection)
-  // Skip for admin/superadmin routes as they don't use subdomain routing
-  let clinicContext: { clinicId: number | null; subdomain: string | null } = { clinicId: null, subdomain: null };
+  // Extract subdomain from hostname (no database lookup - Edge Runtime doesn't support Prisma)
+  // Database lookup for clinic validation is done in API routes and pages
+  let subdomain: string | null = null;
   if (!pathname.startsWith("/superadmin") && !pathname.startsWith("/admin")) {
-    clinicContext = await getClinicContext(request);
+    const hostname = request.headers.get('host') || '';
+    subdomain = extractSubdomain(hostname);
     
-    // If subdomain exists but clinic not found, redirect to clinic-not-found page
-    // Only for patient-facing routes (not API routes)
-    if (clinicContext.subdomain && !clinicContext.clinicId && !pathname.startsWith("/api")) {
-      // Allow access to clinic-not-found page itself
-      if (pathname !== "/clinic-not-found") {
-        const redirectUrl = new URL("/clinic-not-found", request.url);
-        return NextResponse.redirect(redirectUrl);
-      }
-    }
+    // Note: We cannot validate clinic existence here (no DB access in Edge Runtime)
+    // Clinic validation is done in pages/API routes using the subdomain header
   }
 
   // Super Admin routes protection
@@ -177,14 +175,15 @@ export async function middleware(request: NextRequest) {
     // Allow access to login page
     if (pathname === "/login") {
       const response = NextResponse.next();
-      return setClinicContextHeaders(response, clinicContext.clinicId, clinicContext.subdomain);
+      // Pass subdomain via header for page to validate clinic
+      if (subdomain) {
+        response.headers.set('x-clinic-subdomain', subdomain);
+      }
+      return response;
     }
 
-    // For patient routes, require valid clinic context
-    if (clinicContext.subdomain && !clinicContext.clinicId) {
-      const redirectUrl = new URL("/clinic-not-found", request.url);
-      return NextResponse.redirect(redirectUrl);
-    }
+    // Note: Clinic validation is done in the page, not middleware
+    // (Middleware runs in Edge Runtime which doesn't support Prisma)
 
     const userToken = request.cookies.get("token")?.value;
     if (!userToken) {
@@ -207,9 +206,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    // For PATIENT role, ensure clinic context is available
-    // Detailed clinic validation happens in API routes for performance
-    // Middleware ensures subdomain clinic exists (already checked above)
+    // For PATIENT role, clinic validation happens in pages/API routes
     
     // Role-based redirects with caching
     if (decodedUser.userRole === "DOCTOR") {
@@ -226,7 +223,11 @@ export async function middleware(request: NextRequest) {
     }
 
     const response = NextResponse.next();
-    return setClinicContextHeaders(response, clinicContext.clinicId, clinicContext.subdomain);
+    // Pass subdomain via header for page to validate clinic
+    if (subdomain) {
+      response.headers.set('x-clinic-subdomain', subdomain);
+    }
+    return response;
   }
 
   // Doctor routes protection
@@ -289,9 +290,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // For all other routes, set clinic context headers if available
+  // For all other routes, pass subdomain via header for page/API to validate clinic
   const response = NextResponse.next();
-  return setClinicContextHeaders(response, clinicContext.clinicId, clinicContext.subdomain);
+  if (subdomain) {
+    response.headers.set('x-clinic-subdomain', subdomain);
+  }
+  return response;
 }
 
 // Specify the paths to protect - more specific matchers for better performance
@@ -305,6 +309,7 @@ export const config = {
     "/doctor/:path*",
     "/login/:path*",
     "/clinic-not-found",
+    "/api/debug/:path*", // Allow debug routes
     "/"
   ],
 };
