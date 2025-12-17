@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 
 export async function GET(
   request: NextRequest,
@@ -33,7 +34,10 @@ export async function GET(
       return NextResponse.json({ error: "Admin not found" }, { status: 404 });
     }
 
-    return NextResponse.json(admin);
+    // Exclude password from response for security
+    const { password, ...adminWithoutPassword } = admin;
+
+    return NextResponse.json(adminWithoutPassword);
   } catch (error) {
     console.error("Error fetching admin:", error);
     return NextResponse.json({ error: "Failed to fetch admin" }, { status: 500 });
@@ -53,7 +57,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, email, phoneNumber, clinicId, status } = body;
+    const { name, email, phoneNumber, clinicId, status, password } = body;
 
     // Validate required fields
     if (!name || name.trim() === '') {
@@ -117,17 +121,26 @@ export async function PUT(
       return NextResponse.json({ error: "Phone number already exists" }, { status: 400 });
     }
 
+    // Prepare update data
+    const updateData: any = {
+      name: name.trim(),
+      email: email.trim(),
+      phoneNumber: phoneNumber.trim(),
+      clinicId: parseInt(clinicId),
+      status: status as any,
+      updatedAt: new Date()
+    };
+
+    // Hash and update password only if provided
+    if (password && password.trim() !== '') {
+      const hashedPassword = await bcrypt.hash(password.trim(), 12);
+      updateData.password = hashedPassword;
+    }
+
     // Update admin
     const updatedAdmin = await prisma.user.update({
       where: { id: adminId },
-      data: {
-        name: name.trim(),
-        email: email.trim(),
-        phoneNumber: phoneNumber.trim(),
-        clinicId: parseInt(clinicId),
-        status: status as any,
-        updatedAt: new Date()
-      },
+      data: updateData,
       include: {
         clinic: {
           select: {
@@ -138,9 +151,12 @@ export async function PUT(
       }
     });
 
+    // Exclude password from response for security
+    const { password: _, ...adminWithoutPassword } = updatedAdmin;
+
     return NextResponse.json({
       success: true,
-      admin: updatedAdmin
+      admin: adminWithoutPassword
     });
   } catch (error) {
     console.error("Error updating admin:", error);

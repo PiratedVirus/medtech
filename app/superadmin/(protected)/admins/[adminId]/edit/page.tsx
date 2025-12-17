@@ -11,7 +11,8 @@ import {
   User, 
   Save,
   ArrowLeft,
-  Building2
+  Building2,
+  Lock
 } from 'lucide-react'
 import Link from 'next/link'
 import axios from 'axios'
@@ -23,6 +24,7 @@ interface AdminFormData {
   phoneNumber: string
   clinicId: string
   status: string
+  password: string
 }
 
 interface Clinic {
@@ -41,7 +43,8 @@ export default function EditAdminPage() {
     email: '',
     phoneNumber: '',
     clinicId: '',
-    status: 'ACTIVE'
+    status: 'ACTIVE',
+    password: ''
   })
 
   useEffect(() => {
@@ -58,7 +61,8 @@ export default function EditAdminPage() {
           email: admin.email || '',
           phoneNumber: admin.phoneNumber || '',
           clinicId: admin.clinicId?.toString() || '',
-          status: admin.status || 'ACTIVE'
+          status: admin.status || 'ACTIVE',
+          password: '' // Password is never loaded from the server
         })
         
         setClinics(clinicsRes.data.clinics || [])
@@ -222,6 +226,35 @@ export default function EditAdminPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Password Reset
+            </CardTitle>
+            <CardDescription>
+              Leave blank to keep the current password. Enter a new password to reset it.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="password">New Password</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="Enter new password (leave blank to keep current)"
+                autoComplete="new-password"
+              />
+              <p className="text-sm text-gray-500">
+                Only fill this field if you want to change the admin's password.
+              </p>
             </div>
           </CardContent>
         </Card>

@@ -18,6 +18,13 @@ const getAllAppointmentsHandler = async (request: NextRequest) => {
     const doctorId = auth.userId!;
     const clinicId = auth.clinicId;
     
+    if (!clinicId) {
+      return NextResponse.json(
+        { success: false, error: "Clinic context required" },
+        { status: 401 }
+      );
+    }
+    
     // Get user with doctor profile for additional data
     const user = await prisma.user.findFirst({
       where: { id: doctorId },
@@ -37,7 +44,9 @@ const getAllAppointmentsHandler = async (request: NextRequest) => {
         },
         deletedAt: null,
         // Multi-tenancy: Only get appointments with patients from the same clinic
-        patient: clinicId ? { clinicId } : undefined,
+        patient: {
+          clinicId: clinicId
+        },
       },
       include: {
         patient: { select: { name: true, id: true } },
@@ -62,7 +71,9 @@ const getAllAppointmentsHandler = async (request: NextRequest) => {
         },
         deletedAt: null,
         // Multi-tenancy: Only get appointments with patients from the same clinic
-        patient: clinicId ? { clinicId } : undefined,
+        patient: {
+          clinicId: clinicId
+        },
       },
       include: {
         patient: { select: { name: true, id: true } },
@@ -89,7 +100,9 @@ const getAllAppointmentsHandler = async (request: NextRequest) => {
         userId: doctorId,
         patientId: { in: allPatientIds },
         deletedAt: null,
-        patient: clinicId ? { clinicId } : undefined,
+        patient: {
+          clinicId: clinicId
+        },
       },
       _count: {
         id: true,
@@ -140,8 +153,16 @@ const getAllAppointmentsHandler = async (request: NextRequest) => {
     });
   } catch (error) {
     console.error("Error fetching all doctor appointments:", error);
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
     return NextResponse.json(
-      { success: false, error: "Internal Server Error" },
+      { 
+        success: false, 
+        error: "Internal Server Error",
+        message: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }

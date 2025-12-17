@@ -1,46 +1,44 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
 import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
+import { requireDoctorAuth } from "@/lib/clinic-auth";
 
 const getUpcomingAppointmentsHandler = async () => {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
-    if (!token) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    // Use centralized authentication with multi-tenancy validation
+    const auth = await requireDoctorAuth();
+    
+    if (!auth.success) {
+      return NextResponse.json(
+        { error: auth.error },
+        { status: auth.errorCode === 'CLINIC_MISMATCH' ? 403 : 401 }
+      );
     }
 
-    let decoded: any;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    } catch (err) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    if (!auth.userId || !auth.clinicId) {
+      return NextResponse.json(
+        { error: "Invalid authentication context" },
+        { status: 401 }
+      );
     }
 
-    const phoneNumber = decoded.plusAddedPhoneNumber as string | undefined;
-    if (!phoneNumber) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    const user = await prisma.user.findFirst({
-      where: { phoneNumber },
+    // Get full user details for doctor name
+    const user = await prisma.user.findUnique({
+      where: { id: auth.userId },
       include: { 
         doctorProfile: true,
         dieticianProfile: true 
       },
     });
 
-    // Allow doctors and dietitians (dietitians can have doctorProfile with isDietician: true, or dieticianProfile, or role: DIETICIAN)
-    const isDoctor = user?.doctorProfile?.id;
-    const isDietician = user?.dieticianProfile?.id || user?.role === 'DIETICIAN' || user?.doctorProfile?.isDietician;
-    
-    if (!isDoctor && !isDietician) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
     }
 
-    const doctorId = user.id;
+    const doctorId = auth.userId;
 
     // Start of current day to avoid timezone drift when @db.Date is used
     const todayStart = new Date();
@@ -151,7 +149,7 @@ const getUpcomingAppointmentsHandler = async () => {
 
     return NextResponse.json({ 
       success: true, 
-      data: { appointments: transformedAppointments } 
+      appointments: transformedAppointments 
     });
   } catch (error) {
     console.error("Error fetching upcoming appointments:", error);
