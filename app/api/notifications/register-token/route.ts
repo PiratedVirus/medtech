@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
+import { getSubdomainClinicFromRequest } from '@/lib/clinic-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +14,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Get subdomain clinic ID for multi-tenancy validation
+    const { clinicId: subdomainClinicId } = await getSubdomainClinicFromRequest(request);
 
     // Get patient ID from JWT token
     const cookieStore = await cookies();
@@ -44,9 +48,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by phone number
+    // If subdomain clinic ID is available, use it for more specific lookup
     const user = await prisma.user.findFirst({
       where: { 
-        phoneNumber
+        phoneNumber,
+        ...(subdomainClinicId ? { clinicId: subdomainClinicId } : {}),
       },
     });
 
@@ -54,6 +60,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'User not found' },
         { status: 404 }
+      );
+    }
+
+    // Validate clinic access - patient's clinic must match subdomain clinic
+    if (subdomainClinicId && user.clinicId !== subdomainClinicId) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'You are not registered with this clinic. Please use the correct clinic URL.',
+          errorCode: 'CLINIC_MISMATCH'
+        },
+        { status: 403 }
       );
     }
 
@@ -111,6 +129,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // Get subdomain clinic ID for multi-tenancy validation
+    const { clinicId: subdomainClinicId } = await getSubdomainClinicFromRequest(request);
+
     // Get patient ID from JWT token
     const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
@@ -141,9 +162,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Find user by phone number
+    // If subdomain clinic ID is available, use it for more specific lookup
     const user = await prisma.user.findFirst({
       where: { 
-        phoneNumber
+        phoneNumber,
+        ...(subdomainClinicId ? { clinicId: subdomainClinicId } : {}),
       },
     });
 
@@ -151,6 +174,18 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'User not found' },
         { status: 404 }
+      );
+    }
+
+    // Validate clinic access - patient's clinic must match subdomain clinic
+    if (subdomainClinicId && user.clinicId !== subdomainClinicId) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'You are not registered with this clinic. Please use the correct clinic URL.',
+          errorCode: 'CLINIC_MISMATCH'
+        },
+        { status: 403 }
       );
     }
 
