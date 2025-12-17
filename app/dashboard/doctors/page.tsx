@@ -6,11 +6,12 @@ import { setBookingData } from "@/store/appointmentSlice";
 import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import axios from "axios";
 import CdLoader from "@/components/ui/custom/cd-loader";
-import { CircleCheckBig, CalendarIcon } from "lucide-react";
+import { CircleCheckBig, CalendarIcon, Stethoscope } from "lucide-react";
 import DoctorCard from "@/components/patients/doctors/DoctorCard";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { useDoctors } from "@/hooks/use-smart-queries";
+import EmptyState from "@/components/ui/EmptyState";
 
 export default function DoctorsPage() {
   const activeTab: 'doctors' | 'dieticians' = 'doctors';
@@ -98,9 +99,11 @@ export default function DoctorsPage() {
           ))}
         </div>
       ) : (
-        <p className="text-center text-gray-600 py-10">
-          No doctors available at the moment.
-        </p>
+        <EmptyState
+          icon={Stethoscope}
+          title="No Doctors Available"
+          description="Doctors are not currently available for this clinic. Please check back later or contact your clinic administrator for more information."
+        />
       )}
     </div>
   );

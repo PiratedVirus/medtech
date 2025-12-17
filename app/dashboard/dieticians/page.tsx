@@ -6,10 +6,11 @@ import { setBookingData } from "@/store/appointmentSlice";
 import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import axios from "axios";
 import CdLoader from "@/components/ui/custom/cd-loader";
-import { CircleCheckBig, CalendarIcon } from "lucide-react";
+import { CircleCheckBig, CalendarIcon, UtensilsCrossed } from "lucide-react";
 import DoctorCard from "@/components/patients/doctors/DoctorCard";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import EmptyState from "@/components/ui/EmptyState";
 
 export default function DoctorsPage() {
   const activeTab: 'doctors' | 'dieticians' = 'dieticians';
@@ -115,7 +116,11 @@ export default function DoctorsPage() {
           ))}
         </div>
       ) : (
-        <p className="text-center text-gray-600 py-10">No dieticians available at the moment.</p>
+        <EmptyState
+          icon={UtensilsCrossed}
+          title="No Dieticians Available"
+          description="Dieticians are not currently available for this clinic. Please check back later or contact your clinic administrator for more information."
+        />
       )}
     </div>
   );
