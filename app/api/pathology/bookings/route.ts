@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
+import { getSubdomainClinicFromRequest } from "@/lib/clinic-auth";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get clinic ID from subdomain for multi-tenancy
+    const { clinicId: subdomainClinicId } = await getSubdomainClinicFromRequest(request);
+    
+    if (!subdomainClinicId) {
+      return NextResponse.json({ success: false, error: "Clinic not found" }, { status: 404 });
+    }
+
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
     if (!token) {
@@ -21,16 +30,29 @@ export async function GET(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
     const user = await prisma.user.findFirst({
-      where: { phoneNumber },
+      where: { 
+        phoneNumber,
+        clinicId: subdomainClinicId, // Verify user belongs to current clinic
+      },
     });
     if (!user || user.role !== "PATHOLOGY") {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Fetch all lab bookings with related data
+    // Fetch lab bookings for the current clinic only
     const labBookings = await prisma.labBooking.findMany({
       where: {
         deletedAt: null,
+        // Filter by patient's clinic
+        patient: {
+          clinicId: subdomainClinicId,
+          deletedAt: null,
+        },
+        // Also ensure lab package belongs to the clinic
+        labPackage: {
+          clinicId: subdomainClinicId,
+          deletedAt: null,
+        },
       },
       include: {
         patient: {

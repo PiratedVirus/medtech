@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { SmartCacheInvalidation } from "@/lib/cache-dependencies";
+import { getSubdomainClinicFromRequest } from "@/lib/clinic-auth";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get clinic ID from subdomain for multi-tenancy
+    const { clinicId: subdomainClinicId } = await getSubdomainClinicFromRequest(request);
+    
+    if (!subdomainClinicId) {
+      return NextResponse.json({ success: false, error: "Clinic not found" }, { status: 404 });
+    }
+
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get("patientId");
 
@@ -11,10 +20,28 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: "Missing patientId" }, { status: 400 });
     }
 
+    // Verify patient belongs to the current clinic
+    const patient = await prisma.user.findFirst({
+      where: {
+        id: parseInt(patientId, 10),
+        clinicId: subdomainClinicId,
+        deletedAt: null,
+      },
+    });
+
+    if (!patient) {
+      return NextResponse.json({ success: false, error: "Patient not found in this clinic" }, { status: 404 });
+    }
+
     const bookings = await prisma.labBooking.findMany({
       where: {
         deletedAt: null,
         patientId: parseInt(patientId, 10),
+        // Ensure lab package belongs to the same clinic
+        labPackage: {
+          clinicId: subdomainClinicId,
+          deletedAt: null,
+        },
       },
       include: {
         labPackage: true,
@@ -89,8 +116,15 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Get clinic ID from subdomain for multi-tenancy
+    const { clinicId: subdomainClinicId } = await getSubdomainClinicFromRequest(request);
+    
+    if (!subdomainClinicId) {
+      return NextResponse.json({ success: false, error: "Clinic not found" }, { status: 404 });
+    }
+
     console.log("POST /api/lab-bookings called");
     const body = await request.json();
     console.log("Request body:", body);
@@ -118,6 +152,32 @@ export async function POST(request: Request) {
         { success: false, error: "Missing required fields: patientId, packageId" },
         { status: 400 }
       );
+    }
+
+    // Verify patient and lab package belong to the current clinic
+    const [patient, labPackage] = await Promise.all([
+      prisma.user.findFirst({
+        where: {
+          id: parseInt(patientId, 10),
+          clinicId: subdomainClinicId,
+          deletedAt: null,
+        },
+      }),
+      prisma.labPackage.findFirst({
+        where: {
+          id: packageId,
+          clinicId: subdomainClinicId,
+          deletedAt: null,
+        },
+      }),
+    ]);
+
+    if (!patient) {
+      return NextResponse.json({ success: false, error: "Patient not found in this clinic" }, { status: 404 });
+    }
+
+    if (!labPackage) {
+      return NextResponse.json({ success: false, error: "Lab package not found in this clinic" }, { status: 404 });
     }
 
     const newLabBooking = await prisma.$transaction(async (tx) => {

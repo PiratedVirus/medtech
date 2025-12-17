@@ -184,7 +184,7 @@ export default function SignInForm() {
           if (data.clinicMismatch) {
             setOtpError(data.error || "You are not registered with this clinic. Please use the correct clinic URL.");
           } else {
-            setOtpError(data.error);
+          setOtpError(data.error);
           }
         }
       } catch (error) {

@@ -58,7 +58,7 @@ export async function checkUserExistsInAnyClinic(phoneNumber: string): Promise<a
       }
     }
   });
-  
+
   return user;
 }
 

@@ -33,6 +33,7 @@ model Clinic {
   deletedAt       DateTime?
   specializations ClinicSpecialization[]
   users           User[]
+  labPackages     LabPackage[]
 
   @@index([deletedAt])
 }
@@ -316,6 +317,7 @@ model Payment {
 model LabPackage {
   id                   Int          @id @default(autoincrement())
   name                 String       @unique
+  clinicId             Int?         // Multi-tenancy: Lab packages are clinic-specific
   shortDescription     String?
   description          String?
   price                Int
@@ -325,9 +327,11 @@ model LabPackage {
   updatedAt            DateTime     @updatedAt
   deletedAt            DateTime?
   isLabPackage         Boolean      @default(false)
+  clinic               Clinic?      @relation(fields: [clinicId], references: [id])
   labBookings          LabBooking[]
 
   @@index([deletedAt])
+  @@index([clinicId, deletedAt])
 }
 
 model LabBooking {

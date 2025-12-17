@@ -72,14 +72,14 @@ export async function GET() {
     // Step 5: Validate clinic access for multi-tenancy
     if (subdomainClinicId && user.clinicId !== subdomainClinicId) {
       console.log(`[get-user-profile] Clinic mismatch: user clinic ${user.clinicId}, subdomain clinic ${subdomainClinicId}`);
-      return NextResponse.json(
-        { 
-          success: false, 
+        return NextResponse.json(
+          { 
+            success: false, 
           error: "You are not registered with this clinic. Please use the correct clinic URL.",
-          clinicMismatch: true
-        },
-        { status: 403 },
-      );
+            clinicMismatch: true
+          },
+          { status: 403 },
+        );
     }
 
     return NextResponse.json({ success: true, user });

@@ -107,9 +107,9 @@ export default function HomeOverview() {
             {hasPlans ? (
               // Show plan cards for CD subdomain
               profile?.subscriptionDetails?.subscriptionId ? (
-                <PlanUsageMinimal userId={4} subscriptionId={profile?.subscriptionDetails?.subscriptionId} />
-              ) : (
-                <SubscribeCarePlanCard />
+              <PlanUsageMinimal userId={4} subscriptionId={profile?.subscriptionDetails?.subscriptionId} />
+            ) : (
+              <SubscribeCarePlanCard />
               )
             ) : (
               // Show alternative card for other subdomains

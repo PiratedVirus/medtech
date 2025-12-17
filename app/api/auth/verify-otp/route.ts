@@ -46,20 +46,20 @@ function verifyStaffClinicAccess(
   }
 
   // Staff roles MUST be assigned to a clinic and it MUST match the subdomain
-  if (!userClinicId) {
-    return {
-      allowed: false,
-      error: "Your account is not assigned to any clinic. Please contact your administrator."
-    };
-  }
-  
-  if (userClinicId !== subdomainClinicId) {
-    return {
-      allowed: false,
-      error: "You cannot access this clinic portal. Please use your assigned clinic's URL."
-    };
-  }
-  
+    if (!userClinicId) {
+      return {
+        allowed: false,
+        error: "Your account is not assigned to any clinic. Please contact your administrator."
+      };
+    }
+    
+    if (userClinicId !== subdomainClinicId) {
+      return {
+        allowed: false,
+        error: "You cannot access this clinic portal. Please use your assigned clinic's URL."
+      };
+    }
+    
   return { allowed: true };
 }
 
@@ -136,8 +136,8 @@ export async function POST(request: NextRequest) {
       // For staff roles, verify clinic access
       if (STAFF_ROLES.includes(userRole)) {
         const clinicAccess = verifyStaffClinicAccess(userClinicId, userRole, subdomainClinicId);
-        
-        if (!clinicAccess.allowed) {
+      
+      if (!clinicAccess.allowed) {
           console.log(`[AUTH] Staff clinic access denied for user ${userInThisClinic.id} (role: ${userRole}, userClinicId: ${userClinicId}, subdomainClinicId: ${subdomainClinicId})`);
           return NextResponse.json({
             success: false,

@@ -53,3 +53,4 @@ AND indexname LIKE '%phoneNumber%';
 -- DROP INDEX IF EXISTS "User_phoneNumber_clinicId_idx";
 -- CREATE UNIQUE INDEX "User_phoneNumber_deletedAt_key" ON "User" ("phoneNumber", "deletedAt");
 -- ============================================================================
+
