@@ -33,7 +33,26 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, subdomain, domain, address, contactInfo, timings, subtitle } = body;
+    const { 
+      name, 
+      subdomain, 
+      domain, 
+      address, 
+      contactInfo, 
+      timings, 
+      subtitle,
+      logo,           // Square logo for prescription headers
+      footerLogo,     // Rectangular/wide logo for footer display
+      // Branding & Footer fields
+      email,
+      phone,
+      footerTagline,
+      socialLinks,
+      primaryColor,
+      secondaryColor,
+      websiteUrl,
+      copyrightText,
+    } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -96,12 +115,23 @@ export async function POST(request: Request) {
     const clinic = await prisma.clinic.create({
       data: {
         name,
-        subdomain: normalizedSubdomain, // Use normalized subdomain
+        subdomain: normalizedSubdomain,
         domain: domain || null,
         address: address || null,
         contactInfo: contactInfo || null,
         timings: timings || null,
         subtitle: subtitle || null,
+        logo: logo || null,
+        footerLogo: footerLogo || null,
+        // Branding & Footer fields
+        email: email || null,
+        phone: phone || null,
+        footerTagline: footerTagline || null,
+        socialLinks: socialLinks || null,
+        primaryColor: primaryColor || null,
+        secondaryColor: secondaryColor || null,
+        websiteUrl: websiteUrl || null,
+        copyrightText: copyrightText || null,
       },
       include: {
         _count: {

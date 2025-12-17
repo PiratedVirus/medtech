@@ -15,9 +15,19 @@ model Clinic {
   domain          String?                @unique
   address         String?
   contactInfo     String?
-  logo            String?
+  logo            String?                // Square logo for prescription headers
+  footerLogo      String?                // Rectangular/wide logo for footer display
   timings         String?
   subtitle        String?
+  // Branding & Footer fields
+  email           String?                // Contact email for footer
+  phone           String?                // Contact phone for footer
+  footerTagline   String?                // Custom tagline for footer (e.g., "Connecting Patients with Doctors")
+  socialLinks     Json?                  // JSON: { facebook?: string, instagram?: string, youtube?: string, twitter?: string, linkedin?: string }
+  primaryColor    String?                // Brand primary color (hex code)
+  secondaryColor  String?                // Brand secondary color (hex code)
+  websiteUrl      String?                // Clinic's main website URL
+  copyrightText   String?                // Custom copyright text
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
   deletedAt       DateTime?

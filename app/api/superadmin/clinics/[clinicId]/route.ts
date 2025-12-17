@@ -49,7 +49,26 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, subdomain, domain, address, contactInfo, timings, subtitle, logo } = body;
+    const { 
+      name, 
+      subdomain, 
+      domain, 
+      address, 
+      contactInfo, 
+      timings, 
+      subtitle, 
+      logo,           // Square logo for prescription headers
+      footerLogo,     // Rectangular/wide logo for footer display
+      // Branding & Footer fields
+      email,
+      phone,
+      footerTagline,
+      socialLinks,
+      primaryColor,
+      secondaryColor,
+      websiteUrl,
+      copyrightText,
+    } = body;
 
     // Validate required fields
     if (!name || name.trim() === '') {
@@ -109,7 +128,7 @@ export async function PUT(
       }
     }
 
-    // Update clinic
+    // Update clinic with all branding fields
     const updatedClinic = await prisma.clinic.update({
       where: { id: clinicId },
       data: {
@@ -121,6 +140,16 @@ export async function PUT(
         timings: timings?.trim() || null,
         subtitle: subtitle?.trim() || null,
         logo: logo?.trim() || null,
+        footerLogo: footerLogo?.trim() || null,
+        // Branding & Footer fields
+        email: email?.trim() || null,
+        phone: phone?.trim() || null,
+        footerTagline: footerTagline?.trim() || null,
+        socialLinks: socialLinks || null,
+        primaryColor: primaryColor?.trim() || null,
+        secondaryColor: secondaryColor?.trim() || null,
+        websiteUrl: websiteUrl?.trim() || null,
+        copyrightText: copyrightText?.trim() || null,
         updatedAt: new Date()
       },
       include: {
