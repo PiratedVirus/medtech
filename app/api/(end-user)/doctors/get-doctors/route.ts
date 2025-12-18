@@ -1,30 +1,23 @@
-import { NextResponse } from "next/server";
-import { headers } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import { getSubdomainClinicFromRequest } from "@/lib/clinic-auth";
 
 // Fetch all doctors along with their profile & availability
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    // Get clinic ID from headers (set by middleware) - priority
-    const headersList = await headers();
-    const clinicIdHeader = headersList.get('x-clinic-id');
-    let clinicId: number | null = clinicIdHeader ? parseInt(clinicIdHeader, 10) : null;
-
-    // Fallback to query param for backward compatibility
-    if (!clinicId) {
-      const { searchParams } = new URL(request.url);
-      const clinicIdParam = searchParams.get('clinicId');
-      clinicId = clinicIdParam ? parseInt(clinicIdParam, 10) : null;
-    }
-
-    if (!clinicId) {
+    // Get clinic ID from subdomain for multi-tenancy
+    const { clinicId: subdomainClinicId } = await getSubdomainClinicFromRequest(request);
+    
+    if (!subdomainClinicId) {
       return NextResponse.json(
-        { success: false, error: "Clinic ID is required" },
+        { success: false, error: "Clinic subdomain is required. Please access this page using your clinic URL." },
         { status: 400 }
       );
     }
+
+    const clinicId = subdomainClinicId;
 
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;

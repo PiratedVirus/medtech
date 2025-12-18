@@ -152,13 +152,11 @@ export async function middleware(request: NextRequest) {
   // Extract subdomain from hostname (no database lookup - Edge Runtime doesn't support Prisma)
   // Database lookup for clinic validation is done in API routes and pages
   let subdomain: string | null = null;
-  if (!pathname.startsWith("/superadmin") && !pathname.startsWith("/admin")) {
-    const hostname = request.headers.get('host') || '';
-    subdomain = extractSubdomain(hostname);
-    
-    // Note: We cannot validate clinic existence here (no DB access in Edge Runtime)
-    // Clinic validation is done in pages/API routes using the subdomain header
-  }
+  const hostname = request.headers.get('host') || '';
+  subdomain = extractSubdomain(hostname);
+  
+  // Note: We cannot validate clinic existence here (no DB access in Edge Runtime)
+  // Clinic validation is done in pages/API routes using the subdomain header
 
   // Super Admin routes protection
   if (pathname.startsWith("/superadmin")) {
@@ -195,8 +193,14 @@ export async function middleware(request: NextRequest) {
 
   // Admin routes protection
   if (pathname.startsWith("/admin")) {
-    // Allow access to admin login page
+    // Require subdomain for admin login (admin is clinic-specific)
     if (pathname === "/admin/login") {
+      // Block access if no subdomain
+      if (!subdomain) {
+        const redirectUrl = new URL("/clinic-not-found", request.url);
+        redirectUrl.searchParams.set('error', 'no_subdomain');
+        return NextResponse.redirect(redirectUrl);
+      }
       return NextResponse.next();
     }
 
@@ -226,17 +230,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Patient/Doctor login route protection
+  if (pathname === "/login") {
+    // Require subdomain for login (login is clinic-specific)
+    // Block access if no subdomain
+    if (!subdomain) {
+      const redirectUrl = new URL("/clinic-not-found", request.url);
+      redirectUrl.searchParams.set('error', 'no_subdomain');
+      return NextResponse.redirect(redirectUrl);
+    }
+    const response = NextResponse.next();
+    // Pass subdomain via header for page to validate clinic
+    if (subdomain) {
+      response.headers.set('x-clinic-subdomain', subdomain);
+    }
+    return response;
+  }
+
   // Dashboard routes protection
   if (pathname.startsWith("/dashboard")) {
-    // Allow access to login page
-    if (pathname === "/login") {
-      const response = NextResponse.next();
-      // Pass subdomain via header for page to validate clinic
-      if (subdomain) {
-        response.headers.set('x-clinic-subdomain', subdomain);
-      }
-      return response;
-    }
 
     // Note: Clinic validation is done in the page, not middleware
     // (Middleware runs in Edge Runtime which doesn't support Prisma)
@@ -372,6 +384,22 @@ export async function middleware(request: NextRequest) {
     }
 
     // Pass subdomain info for API-level validation
+    const response = NextResponse.next();
+    if (subdomain) {
+      response.headers.set('x-clinic-subdomain', subdomain);
+    }
+    return response;
+  }
+
+  // Root path redirect - require subdomain
+  if (pathname === "/") {
+    // If no subdomain, redirect to clinic-not-found
+    if (!subdomain) {
+      const redirectUrl = new URL("/clinic-not-found", request.url);
+      redirectUrl.searchParams.set('error', 'no_subdomain');
+      return NextResponse.redirect(redirectUrl);
+    }
+    // If subdomain exists, allow through (will be handled by the page)
     const response = NextResponse.next();
     if (subdomain) {
       response.headers.set('x-clinic-subdomain', subdomain);
