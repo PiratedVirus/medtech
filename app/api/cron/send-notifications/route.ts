@@ -417,11 +417,25 @@ export async function GET() {
     });
 
     for (const dietPlan of recentDietPlans) {
-      await NotificationService.sendDietPlanReady(
-        dietPlan.patientId,
-        dietPlan.dietician.name,
-        dietPlan.id
-      );
+      // Check if we already sent notification for this diet plan
+      const existingNotification = await prisma.patientNotification.findFirst({
+        where: {
+          patientId: dietPlan.patientId,
+          type: 'DIET_PLAN_READY',
+          data: {
+            path: ['dietPlanId'],
+            equals: dietPlan.id,
+          },
+        },
+      });
+
+      if (!existingNotification) {
+        await NotificationService.sendDietPlanReady(
+          dietPlan.patientId,
+          dietPlan.dietician.name,
+          dietPlan.id
+        );
+      }
     }
 
     console.log('✅ Scheduled notification job completed successfully');
