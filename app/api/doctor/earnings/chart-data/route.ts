@@ -1,39 +1,28 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
+import { requireDoctorAuth } from "@/lib/clinic-auth";
 
 export async function GET(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
-    if (!token) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    // Use centralized authentication with multi-tenancy validation
+    const auth = await requireDoctorAuth();
+    
+    if (!auth.success) {
+      return NextResponse.json(
+        { error: auth.error },
+        { status: auth.errorCode === 'CLINIC_MISMATCH' ? 403 : 401 }
+      );
     }
 
-    let decoded: any;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    } catch (err) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    if (!auth.userId || !auth.clinicId) {
+      return NextResponse.json(
+        { error: "Invalid authentication context" },
+        { status: 401 }
+      );
     }
 
-    const phoneNumber = decoded.plusAddedPhoneNumber as string | undefined;
-    if (!phoneNumber) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    const user = await prisma.user.findFirst({
-      where: { phoneNumber },
-      include: { doctorProfile: true },
-    });
-
-    if (!user?.doctorProfile?.id) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    const doctorId = user.id;
+    const doctorId = auth.userId;
     const { searchParams } = new URL(request.url);
     const filter = searchParams.get("filter") || "paid"; // paid, pending, cash, online
     const slotsParam = searchParams.get("slots");

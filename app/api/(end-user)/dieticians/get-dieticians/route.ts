@@ -1,18 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getSubdomainClinicFromRequest } from "@/lib/clinic-auth";
 
 // Fetch all dieticians along with their profile & availability
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const clinicId = searchParams.get('clinicId');
-
-    if (!clinicId) {
+    // Get clinic ID from subdomain for multi-tenancy
+    const { clinicId: subdomainClinicId } = await getSubdomainClinicFromRequest(request);
+    
+    if (!subdomainClinicId) {
       return NextResponse.json(
-        { success: false, error: "Clinic ID is required" },
+        { success: false, error: "Clinic subdomain is required. Please access this page using your clinic URL." },
         { status: 400 }
       );
     }
+
+    const clinicId = subdomainClinicId;
 
 
 
@@ -20,7 +23,7 @@ export async function GET(request: Request) {
     const where: any = {
       role: "DOCTOR",
       status: "ACTIVE",
-      clinicId: Number(clinicId),
+      clinicId: clinicId,
       doctorProfile: {
         isDietician: true,
         deletedAt: null

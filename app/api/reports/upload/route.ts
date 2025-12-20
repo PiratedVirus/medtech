@@ -772,16 +772,18 @@ export async function POST(request: NextRequest) {
 
     const isPatient = user.id === Number(patientId);
     const isDoctor = user.role === 'DOCTOR' || user.role === 'DIETICIAN';
+    const isAdmin = user.role === 'ADMIN';
     
     console.log(`[UPLOAD][${requestId}] Permission check:`, {
       isPatient,
       isDoctor,
+      isAdmin,
       userId: user.id,
       patientId: Number(patientId),
       userRole: user.role
     });
     
-    if (!isPatient && !isDoctor) {
+    if (!isPatient && !isDoctor && !isAdmin) {
       console.log(`[UPLOAD][${requestId}] Permission denied for user ${user.id} to upload for patient ${patientId}`);
       return NextResponse.json({ 
         success: false, 
@@ -942,8 +944,9 @@ export async function GET(request: NextRequest) {
     // Check permissions
     const isPatient = user.id === Number(patientId);
     const isDoctor = user.role === 'DOCTOR' || user.role === 'DIETICIAN';
+    const isAdmin = user.role === 'ADMIN';
     
-    if (!isPatient && !isDoctor) {
+    if (!isPatient && !isDoctor && !isAdmin) {
       return NextResponse.json({ 
         success: false, 
         error: 'You do not have permission to view reports for this patient' 

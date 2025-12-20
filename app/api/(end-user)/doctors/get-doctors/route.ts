@@ -1,22 +1,26 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import { getSubdomainClinicFromRequest } from "@/lib/clinic-auth";
 
 // Fetch all doctors along with their profile & availability
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const clinicId = searchParams.get('clinicId');
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
-
-    if (!clinicId) {
+    // Get clinic ID from subdomain for multi-tenancy
+    const { clinicId: subdomainClinicId } = await getSubdomainClinicFromRequest(request);
+    
+    if (!subdomainClinicId) {
       return NextResponse.json(
-        { success: false, error: "Clinic ID is required" },
+        { success: false, error: "Clinic subdomain is required. Please access this page using your clinic URL." },
         { status: 400 }
       );
     }
+
+    const clinicId = subdomainClinicId;
+
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
 
     // Get the current user's doctor code if they have one
     let userDoctorCode = null;
@@ -45,7 +49,7 @@ export async function GET(request: Request) {
     const where: any = {
       role: "DOCTOR",
       status: "ACTIVE",
-      clinicId: Number(clinicId),
+      clinicId: clinicId,
       doctorProfile: {
         isDietician: false,
         deletedAt: null

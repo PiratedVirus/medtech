@@ -1,16 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { requireUserAuth, handleAuthError } from '@/lib/clinic-auth';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ patientId: string }> }
 ) {
   try {
+    // Authenticate user and validate clinic access
+    const auth = await requireUserAuth();
+    if (!auth.success) {
+      return handleAuthError(auth);
+    }
+    
+    const clinicId = auth.clinicId;
+    
     const { patientId } = await params;
     const patientIdNum = parseInt(patientId);
 
     if (!patientIdNum || isNaN(patientIdNum)) {
       return NextResponse.json({ error: 'Invalid patient ID' }, { status: 400 });
+    }
+
+    // Multi-tenancy: Verify patient belongs to the same clinic
+    if (clinicId) {
+      const patient = await prisma.user.findFirst({
+        where: { id: patientIdNum, clinicId, deletedAt: null }
+      });
+      if (!patient) {
+        return NextResponse.json({ error: 'Patient not found or access denied' }, { status: 403 });
+      }
     }
 
     // Get all trend data for the patient from both lab reports and standalone reports

@@ -2,12 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { cacheUtils } from "@/lib/redis";
 import { CacheEvents } from "@/lib/cache-events";
+import { requireUserAuth, handleAuthError } from "@/lib/clinic-auth";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ patientId: string }> }
 ) {
   try {
+    // Authenticate user and validate clinic access
+    const auth = await requireUserAuth();
+    if (!auth.success) {
+      return handleAuthError(auth);
+    }
+    
+    const clinicId = auth.clinicId;
+    
     const { patientId: patientIdParam } = await params;
     const patientId = Number(patientIdParam);
     const body = await request.json();
@@ -22,6 +31,16 @@ export async function POST(
     if (!patientId || Number.isNaN(patientId)) {
       console.warn('[TRACKED-VALUES][POST] Invalid patientId');
       return NextResponse.json({ success: false, error: "Invalid patientId" }, { status: 400 });
+    }
+
+    // Multi-tenancy: Verify patient belongs to the same clinic
+    if (clinicId) {
+      const patient = await prisma.user.findFirst({
+        where: { id: patientId, clinicId, deletedAt: null }
+      });
+      if (!patient) {
+        return NextResponse.json({ success: false, error: "Patient not found or access denied" }, { status: 403 });
+      }
     }
     if (!parameter || typeof isTracked !== "boolean") {
       console.warn('[TRACKED-VALUES][POST] Missing parameter/isTracked', { parameter, isTracked });

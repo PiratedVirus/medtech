@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
+import { NotificationService } from "@/lib/notification-service";
 
 // Create a diet plan and mark request as CREATED
 export async function POST(request: Request) {
@@ -22,7 +23,14 @@ export async function POST(request: Request) {
           meals,
           customMealTimings: customMealTimings || null,
           requestId: requestId ? Number(requestId) : null,
-        }
+        },
+        include: {
+          dietician: {
+            select: {
+              name: true,
+            },
+          },
+        },
       });
       
       // Update request status if requestId was provided
@@ -37,6 +45,19 @@ export async function POST(request: Request) {
       }
       return created;
     });
+
+    // Send immediate notification to patient that their diet plan is ready
+    try {
+      await NotificationService.sendDietPlanReady(
+        plan.patientId,
+        plan.dietician.name,
+        plan.id
+      );
+    } catch (notificationError) {
+      // Log error but don't fail the request if notification fails
+      console.error('Failed to send diet plan ready notification:', notificationError);
+    }
+
     return NextResponse.json({ success: true, plan });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || "Server error" }, { status: 500 });

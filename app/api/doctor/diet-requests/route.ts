@@ -1,14 +1,29 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { requireUserAuth, handleAuthError } from "@/lib/clinic-auth";
 
 // List requests assigned to a dietician (doctor)
 export async function GET(request: Request) {
   try {
+    // Authenticate user and validate clinic access
+    const auth = await requireUserAuth();
+    if (!auth.success) {
+      return handleAuthError(auth);
+    }
+    
+    const clinicId = auth.clinicId;
+    
     const { searchParams } = new URL(request.url);
     const dieticianId = Number(searchParams.get("dieticianId"));
     if (!dieticianId) return NextResponse.json({ success: false, error: "dieticianId required" }, { status: 400 });
+    
     const requests = await prisma.dietPlanRequest.findMany({
-      where: { dieticianId, deletedAt: null },
+      where: { 
+        dieticianId, 
+        deletedAt: null,
+        // Multi-tenancy: Filter by clinic
+        patient: clinicId ? { clinicId } : undefined
+      },
       orderBy: { id: "desc" },
       include: { 
         patient: { select: { id: true, name: true } },

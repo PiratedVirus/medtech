@@ -15,14 +15,25 @@ model Clinic {
   domain          String?                @unique
   address         String?
   contactInfo     String?
-  logo            String?
+  logo            String?                // Square logo for prescription headers
+  footerLogo      String?                // Rectangular/wide logo for footer display
   timings         String?
   subtitle        String?
+  // Branding & Footer fields
+  email           String?                // Contact email for footer
+  phone           String?                // Contact phone for footer
+  footerTagline   String?                // Custom tagline for footer (e.g., "Connecting Patients with Doctors")
+  socialLinks     Json?                  // JSON: { facebook?: string, instagram?: string, youtube?: string, twitter?: string, linkedin?: string }
+  primaryColor    String?                // Brand primary color (hex code)
+  secondaryColor  String?                // Brand secondary color (hex code)
+  websiteUrl      String?                // Clinic's main website URL
+  copyrightText   String?                // Custom copyright text
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
   deletedAt       DateTime?
   specializations ClinicSpecialization[]
   users           User[]
+  labPackages     LabPackage[]
 
   @@index([deletedAt])
 }
@@ -89,12 +100,15 @@ model User {
   deviceTokens                 PatientDeviceToken[]
   uploadedAppointmentImages    AppointmentImage[]       @relation("UploadedAppointmentImages")
 
-  @@unique([phoneNumber, deletedAt])
+  // Multi-tenancy: Same phone number can exist in different clinics
+  // Unique constraint is on phoneNumber + clinicId + deletedAt
+  @@unique([phoneNumber, clinicId, deletedAt])
   @@index([deletedAt])
   @@index([role, createdAt])
   @@index([status, role])
   @@index([clinicId, role])
   @@index([role, status, deletedAt])
+  @@index([phoneNumber, clinicId]) // For efficient lookup by phone+clinic
 }
 
 model PatientProfile {
@@ -303,6 +317,7 @@ model Payment {
 model LabPackage {
   id                   Int          @id @default(autoincrement())
   name                 String       @unique
+  clinicId             Int?         // Multi-tenancy: Lab packages are clinic-specific
   shortDescription     String?
   description          String?
   price                Int
@@ -312,9 +327,11 @@ model LabPackage {
   updatedAt            DateTime     @updatedAt
   deletedAt            DateTime?
   isLabPackage         Boolean      @default(false)
+  clinic               Clinic?      @relation(fields: [clinicId], references: [id])
   labBookings          LabBooking[]
 
   @@index([deletedAt])
+  @@index([clinicId, deletedAt])
 }
 
 model LabBooking {

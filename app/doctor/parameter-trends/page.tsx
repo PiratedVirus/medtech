@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import CdLoader from '@/components/ui/custom/cd-loader';
+import EmptyState from '@/components/ui/EmptyState';
 
 interface ParameterValue {
   id: number;
@@ -378,122 +379,130 @@ export default function DoctorParameterTrendsPage() {
       </div>
 
       <div className="px-8 py-6">
-        {/* Filters and Controls */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search parameters..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+        {/* Only show filters and stats when there are parameters */}
+        {trends.length > 0 ? (
+          <>
+            {/* Filters and Controls */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search parameters..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="all">All Categories</option>
+                  {categories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="parameter">Sort by Parameter</option>
+                  <option value="trend">Sort by Trend</option>
+                  <option value="severity">Sort by Severity</option>
+                  <option value="date">Sort by Date</option>
+                </select>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={filterAbnormal ? "default" : "outline"}
+                    onClick={() => setFilterAbnormal(!filterAbnormal)}
+                    size="sm"
+                  >
+                    <Filter className="h-4 w-4 mr-2" />
+                    Abnormal Only
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Summary Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <Card className="bg-white border border-gray-200">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <LineChart className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Total Parameters</p>
+                      <p className="text-2xl font-bold text-gray-900">{trends.length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-white border border-gray-200">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <AlertTriangle className="h-6 w-6 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Abnormal</p>
+                      <p className="text-2xl font-bold text-gray-900">{trends.filter(t => t.isAbnormal).length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-white border border-gray-200">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-red-100 rounded-lg">
+                      <TrendingUp className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Worsening</p>
+                      <p className="text-2xl font-bold text-gray-900">{trends.filter(t => t.trend === 'WORSENING').length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-white border border-gray-200">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <TrendingDown className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Improving</p>
+                      <p className="text-2xl font-bold text-gray-900">{trends.filter(t => t.trend === 'IMPROVING').length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Parameter Cards */}
+            {filteredAndSortedTrends.length === 0 ? (
+              <EmptyState
+                icon={BarChart3}
+                title="No Parameters Match Your Filters"
+                description="Try adjusting your search terms or filters to see more results."
+                searchTerm={searchTerm}
               />
-            </div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="all">All Categories</option>
-              {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="parameter">Sort by Parameter</option>
-              <option value="trend">Sort by Trend</option>
-              <option value="severity">Sort by Severity</option>
-              <option value="date">Sort by Date</option>
-            </select>
-            <div className="flex items-center gap-2">
-              <Button
-                variant={filterAbnormal ? "default" : "outline"}
-                onClick={() => setFilterAbnormal(!filterAbnormal)}
-                size="sm"
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Abnormal Only
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white border border-gray-200">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <LineChart className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Parameters</p>
-                  <p className="text-2xl font-bold text-gray-900">{trends.length}</p>
-                </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {filteredAndSortedTrends.map(renderParameterCard)}
               </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white border border-gray-200">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <AlertTriangle className="h-6 w-6 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Abnormal</p>
-                  <p className="text-2xl font-bold text-gray-900">{trends.filter(t => t.isAbnormal).length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white border border-gray-200">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-red-100 rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-red-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Worsening</p>
-                  <p className="text-2xl font-bold text-gray-900">{trends.filter(t => t.trend === 'WORSENING').length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white border border-gray-200">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <TrendingDown className="h-6 w-6 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Improving</p>
-                  <p className="text-2xl font-bold text-gray-900">{trends.filter(t => t.trend === 'IMPROVING').length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Parameter Cards */}
-        {filteredAndSortedTrends.length === 0 ? (
-          <Card className="bg-white border border-gray-200">
-            <CardContent className="p-12 text-center">
-              <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No parameter trends found</h3>
-              <p className="text-gray-500">
-                {searchTerm ? 'Try adjusting your search terms' : 'Upload more lab reports to see trends'}
-              </p>
-            </CardContent>
-          </Card>
+            )}
+          </>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {filteredAndSortedTrends.map(renderParameterCard)}
-          </div>
+          <EmptyState
+            icon={BarChart3}
+            title="No Parameter Trends Available"
+            description="Parameter trends will appear here after lab reports are uploaded for this patient. Upload lab reports to see parameter trends and analysis."
+          />
         )}
       </div>
     </div>

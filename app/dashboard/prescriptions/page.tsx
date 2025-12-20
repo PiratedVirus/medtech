@@ -6,6 +6,8 @@ import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
+import EmptyState from "@/components/ui/EmptyState";
+import { FileText } from "lucide-react";
 
 export default function PrescriptionViewHome() {
   const { clinicId, profile, isLoading: profileLoading } = useDecryptedProfile();
@@ -91,7 +93,11 @@ export default function PrescriptionViewHome() {
             ))}
           </div>
         ) : (
-          <p className="text-center text-gray-600 py-10">No past appointments available at the moment.</p>
+          <EmptyState
+            icon={FileText}
+            title="No Prescriptions Available"
+            description="You don't have any prescriptions from past appointments yet. Prescriptions will appear here after your appointments are completed."
+          />
         )}
       </div>
     </div>

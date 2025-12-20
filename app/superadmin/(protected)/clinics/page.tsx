@@ -60,6 +60,7 @@ export default function ClinicsPage() {
 
   const filteredClinics = clinics.filter(clinic =>
     clinic.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    clinic.subdomain?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     clinic.domain?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -90,7 +91,7 @@ export default function ClinicsPage() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
         <Input
-          placeholder="Search clinics by name or domain..."
+          placeholder="Search clinics by name or subdomain..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10"
@@ -128,11 +129,11 @@ export default function ClinicsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {clinic.domain && (
+              {clinic.subdomain && (
                 <div className="flex items-center text-sm text-gray-600">
-                  <span className="font-medium">Domain:</span>
-                  <span className="ml-2 font-mono bg-gray-100 px-2 py-1 rounded">
-                    {clinic.domain}
+                  <span className="font-medium">Subdomain:</span>
+                  <span className="ml-2 font-mono bg-green-100 text-green-700 px-2 py-1 rounded">
+                    {clinic.subdomain}
                   </span>
                 </div>
               )}

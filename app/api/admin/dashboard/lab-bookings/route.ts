@@ -1,14 +1,37 @@
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAdminClinicIdAsync, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get admin's clinic ID for filtering
+    const clinicId = await getAdminClinicIdAsync(request);
+    if (!clinicId) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        message: "Please log out and log back in to access your clinic data" 
+      }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
 
+    // Create clinic filter for patients
+    const userClinicFilter = createUserClinicFilter(clinicId);
+
     const [labBookings, total] = await prisma.$transaction([
       prisma.labBooking.findMany({
+        where: {
+          deletedAt: null,
+          patient: userClinicFilter.user,
+          // Also ensure lab package belongs to the clinic
+          labPackage: {
+            clinicId: clinicId,
+            deletedAt: null,
+          },
+        },
         skip: (page - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: "desc" },
@@ -27,7 +50,16 @@ export async function GET(request: Request) {
           },
         },
       }),
-      prisma.labBooking.count(),
+      prisma.labBooking.count({
+        where: {
+          deletedAt: null,
+          patient: userClinicFilter.user,
+          labPackage: {
+            clinicId: clinicId,
+            deletedAt: null,
+          },
+        },
+      }),
     ]);
 
     return NextResponse.json({

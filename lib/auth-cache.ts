@@ -33,16 +33,83 @@ export interface CachedAdminProfile {
 /**
  * Get user profile with Redis caching
  * This will dramatically speed up authentication
+ * 
+ * MULTI-TENANCY: Use userId for direct lookup (preferred) or phoneNumber+clinicId
+ * 
+ * @param identifier - Either { userId } or { phoneNumber, clinicId }
  */
-export async function getCachedUserProfile(phoneNumber: string): Promise<CachedUserProfile | null> {
-  const cacheKey = CACHE_KEYS.USER_PROFILE(phoneNumber)
+export async function getCachedUserProfile(
+  phoneNumber: string,
+  clinicId?: number | null
+): Promise<CachedUserProfile | null> {
+  // For multi-tenancy, include clinicId in cache key if provided
+  const cacheKey = clinicId 
+    ? `${CACHE_KEYS.USER_PROFILE(phoneNumber)}:clinic:${clinicId}`
+    : CACHE_KEYS.USER_PROFILE(phoneNumber);
   
   return await cacheUtils.getOrSet(
     cacheKey,
     async () => {
+      // Build where clause for multi-tenancy
+      const whereClause: any = { phoneNumber, deletedAt: null };
+      if (clinicId !== undefined && clinicId !== null) {
+        whereClause.clinicId = clinicId;
+      }
+      
       // Fetch from database
       const user = await prisma.user.findFirst({
-        where: { phoneNumber, deletedAt: null },
+        where: whereClause,
+        select: {
+          id: true,
+          clinicId: true,
+          phoneNumber: true,
+          email: true,
+          name: true,
+          role: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+          userProfilePicture: true,
+          patientProfile: true,
+          doctorProfile: true,
+        },
+      })
+
+      if (!user) return null
+
+      // Fetch subscription details
+      const subscriptionDetails = await prisma.subscriptionTracker.findFirst({
+        where: {
+          patientId: user.patientProfile?.id,
+          isActive: true,
+          endDate: {
+            gt: new Date(),
+          },
+        },
+      })
+
+      return {
+        ...user,
+        subscriptionDetails,
+      } as CachedUserProfile
+    },
+    CACHE_TTL.USER_PROFILE
+  )
+}
+
+/**
+ * Get user profile by userId (preferred for multi-tenancy)
+ * This avoids ambiguity when same phone exists in multiple clinics
+ */
+export async function getCachedUserProfileById(userId: number): Promise<CachedUserProfile | null> {
+  const cacheKey = `user:profile:id:${userId}`;
+  
+  return await cacheUtils.getOrSet(
+    cacheKey,
+    async () => {
+      const user = await prisma.user.findFirst({
+        where: { id: userId, deletedAt: null },
         select: {
           id: true,
           clinicId: true,
@@ -120,9 +187,23 @@ export async function getCachedAdminProfile(userId: number): Promise<CachedAdmin
 
 /**
  * Invalidate user cache when profile is updated
+ * For multi-tenancy, invalidates both phone-only and phone+clinic keys
  */
-export async function invalidateUserCache(phoneNumber: string): Promise<void> {
-  await cacheUtils.invalidate(CACHE_KEYS.USER_PROFILE(phoneNumber))
+export async function invalidateUserCache(phoneNumber: string, clinicId?: number | null): Promise<void> {
+  // Invalidate the base phone number cache
+  await cacheUtils.invalidate(CACHE_KEYS.USER_PROFILE(phoneNumber));
+  
+  // If clinicId provided, also invalidate the clinic-specific cache
+  if (clinicId) {
+    await cacheUtils.invalidate(`${CACHE_KEYS.USER_PROFILE(phoneNumber)}:clinic:${clinicId}`);
+  }
+}
+
+/**
+ * Invalidate user cache by userId
+ */
+export async function invalidateUserCacheById(userId: number): Promise<void> {
+  await cacheUtils.invalidate(`user:profile:id:${userId}`);
 }
 
 /**

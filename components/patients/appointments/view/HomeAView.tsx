@@ -8,6 +8,8 @@ import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
+import EmptyState from "@/components/ui/EmptyState";
+import { Calendar, CalendarCheck } from "lucide-react";
 
 export default function AppointmentViewHome() {
   const { clinicId, profile, isLoading: profileLoading } = useDecryptedProfile();
@@ -104,7 +106,11 @@ export default function AppointmentViewHome() {
             ))}
           </div>
         ) : (
-          <p className="text-center text-gray-600 py-10">No future appointments available at the moment.</p>
+          <EmptyState
+            icon={Calendar}
+            title="No Future Appointments"
+            description="You don't have any upcoming appointments scheduled. Book an appointment with a doctor or dietician to get started."
+          />
         )}
       </div>
 
@@ -125,7 +131,11 @@ export default function AppointmentViewHome() {
             ))}
           </div>
         ) : (
-          <p className="text-center text-gray-600 py-10">No past appointments available at the moment.</p>
+          <EmptyState
+            icon={CalendarCheck}
+            title="No Past Appointments"
+            description="You don't have any past appointments yet. Your appointment history will appear here after you complete appointments."
+          />
         )}
       </div>
     </div>

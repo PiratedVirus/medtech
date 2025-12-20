@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server';
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getAdminClinicId, createClinicFilter } from '@/lib/admin-clinic-middleware';
+import { getAdminClinicIdAsync, createClinicFilter } from '@/lib/admin-clinic-middleware';
 import { withUnifiedCache, getCacheConfig } from '@/lib/cache-middleware-unified';
 
 const getPatientsHandler = async (request: NextRequest) => {
   try {
-    // Get admin's clinic ID for filtering
-    const clinicId = getAdminClinicId(request);
+    // Get admin's clinic ID and validate subdomain matches
+    const clinicId = await getAdminClinicIdAsync(request);
     if (!clinicId) {
       return NextResponse.json({ 
         error: "Unauthorized", 
-        message: "Please log out and log back in to access your clinic data" 
+        message: "Session expired or you are accessing an incorrect clinic portal. Please log in again."
       }, { status: 401 });
     }
 

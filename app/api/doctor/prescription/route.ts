@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { requireUserAuth, handleAuthError } from "@/lib/clinic-auth";
 
 // GET: Fetch prescription by appointment ID
 export async function GET(request: NextRequest) {
   try {
+    // Authenticate user and validate clinic access
+    const auth = await requireUserAuth();
+    if (!auth.success) {
+      return handleAuthError(auth);
+    }
+    
+    const clinicId = auth.clinicId;
+    
     const { searchParams } = new URL(request.url);
     const appointmentId = searchParams.get("appointmentId");
     const prescriptionId = searchParams.get("prescriptionId");
@@ -22,6 +31,8 @@ export async function GET(request: NextRequest) {
           { id: prescriptionId ? parseInt(prescriptionId) : undefined },
         ],
         deletedAt: null,
+        // Multi-tenancy: Ensure prescription belongs to the same clinic
+        patient: clinicId ? { clinicId } : undefined,
       },
       include: {
         complaints: true,
@@ -66,6 +77,14 @@ export async function GET(request: NextRequest) {
 
 // POST: Create new prescription
 export async function POST(request: Request) {
+  // Authenticate user (doctor) and validate clinic access
+  const auth = await requireUserAuth();
+  if (!auth.success) {
+    return handleAuthError(auth);
+  }
+  
+  const clinicId = auth.clinicId;
+  
   let body: any;
   try {
     body = await request.json();
@@ -95,6 +114,19 @@ export async function POST(request: Request) {
         { success: false, error: "appointmentId, patientId, and doctorId are required" },
         { status: 400 }
       );
+    }
+
+    // Multi-tenancy: Verify patient belongs to the same clinic
+    if (clinicId) {
+      const patient = await prisma.user.findFirst({
+        where: { id: parseInt(patientId), clinicId, deletedAt: null }
+      });
+      if (!patient) {
+        return NextResponse.json(
+          { success: false, error: "Patient not found or does not belong to this clinic" },
+          { status: 403 }
+        );
+      }
     }
 
     // Generate prescription number
@@ -226,6 +258,14 @@ export async function POST(request: Request) {
 
 // PUT: Update prescription
 export async function PUT(request: Request) {
+  // Authenticate user (doctor) and validate clinic access
+  const auth = await requireUserAuth();
+  if (!auth.success) {
+    return handleAuthError(auth);
+  }
+  
+  const clinicId = auth.clinicId;
+  
   try {
     const body = await request.json();
     console.log("Received update prescription data:", body);
@@ -263,14 +303,18 @@ export async function PUT(request: Request) {
       );
     }
 
-    // First check if prescription exists
-    const existingPrescription = await prisma.prescription.findUnique({
-      where: { id: prescriptionIdNum },
+    // First check if prescription exists and belongs to the same clinic
+    const existingPrescription = await prisma.prescription.findFirst({
+      where: { 
+        id: prescriptionIdNum,
+        // Multi-tenancy: Ensure prescription belongs to the same clinic
+        patient: clinicId ? { clinicId } : undefined,
+      },
     });
 
     if (!existingPrescription) {
       return NextResponse.json(
-        { success: false, error: "Prescription not found" },
+        { success: false, error: "Prescription not found or access denied" },
         { status: 404 }
       );
     }

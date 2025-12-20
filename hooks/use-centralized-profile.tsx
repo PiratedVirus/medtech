@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { decryptData, encryptData } from '@/lib/encryption';
 import { clearUserSpecificCache, clearCacheOnUserChange } from '@/lib/cache-utils';
 import axios from 'axios';
+import { useRouter } from 'next/navigation';
 
 interface DecryptedProfile {
   id: string;
@@ -98,8 +99,16 @@ const fetchUserProfile = async (): Promise<DecryptedProfile | null> => {
     
     return userProfile;
   } catch (error: any) {
-    // Handle 401/403 errors gracefully - user is not authenticated
+    // Handle 401/403 errors gracefully - user is not authenticated or clinic mismatch
     if (error?.response?.status === 401 || error?.response?.status === 403) {
+      // If it's a clinic mismatch, redirect to clinic-not-found page
+      if (error?.response?.data?.clinicMismatch) {
+        if (typeof window !== "undefined") {
+          window.location.href = "/clinic-not-found?error=clinic_mismatch";
+        }
+        return null;
+      }
+      
       // Clear any cached profile since user is not authenticated
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("userProfile");
@@ -116,6 +125,33 @@ const fetchUserProfile = async (): Promise<DecryptedProfile | null> => {
 };
 
 /**
+ * Extract subdomain from hostname (client-side)
+ */
+function getSubdomainFromHostname(): string | null {
+  if (typeof window === 'undefined') return null;
+  
+  const hostname = window.location.hostname;
+  const parts = hostname.split('.');
+  
+  // Skip localhost and IP addresses
+  if (hostname === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+    return null;
+  }
+  
+  // If we have at least 3 parts (subdomain.domain.tld), extract subdomain
+  if (parts.length >= 3) {
+    return parts[0];
+  }
+  
+  // For localhost development with subdomain
+  if (parts.length === 2 && parts[1] === 'localhost') {
+    return parts[0];
+  }
+  
+  return null;
+}
+
+/**
  * Centralized profile hook using React Query
  * This replaces both useDecryptedProfile and Redux profile management
  */
@@ -123,6 +159,7 @@ export const useCentralizedProfile = () => {
   const cachedProfile = getCachedProfile();
   const queryClient = useQueryClient();
   const previousProfileId = useRef<string | null>(null);
+  const router = useRouter();
   
   const queryResult = useQuery({
     queryKey: ['userProfile'],
@@ -162,6 +199,22 @@ export const useCentralizedProfile = () => {
     // Update the previous profile ID
     previousProfileId.current = currentProfileId;
   }, [effectiveProfile?.id, queryClient]);
+
+  // Validate clinic context for PATIENT role
+  useEffect(() => {
+    if (effectiveProfile?.role === 'PATIENT' && effectiveProfile?.clinicId) {
+      const subdomain = getSubdomainFromHostname();
+      
+      // If we're on a subdomain, we should validate clinic match
+      // However, we can't query the clinic by subdomain on the client
+      // So we rely on API validation. This is just a warning/log.
+      if (subdomain) {
+        // The actual validation happens in API routes
+        // This is just for client-side awareness
+        console.log('[Profile] Patient on subdomain:', subdomain, 'Clinic ID:', effectiveProfile.clinicId);
+      }
+    }
+  }, [effectiveProfile]);
 
   // Clear cache when component unmounts (user navigates away)
   useEffect(() => {

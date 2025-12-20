@@ -1,16 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { requireUserAuth, handleAuthError } from "@/lib/clinic-auth";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ patientId: string }> }
 ) {
   try {
+    // Authenticate user and validate clinic access
+    const auth = await requireUserAuth();
+    if (!auth.success) {
+      return handleAuthError(auth);
+    }
+    
+    const clinicId = auth.clinicId;
+    
     const { patientId: patientIdParam } = await params;
     const patientId = Number(patientIdParam);
 
     if (!patientId || Number.isNaN(patientId)) {
       return NextResponse.json({ success: false, error: "Invalid patientId" }, { status: 400 });
+    }
+
+    // Multi-tenancy: Verify patient belongs to the same clinic
+    if (clinicId) {
+      const patient = await prisma.user.findFirst({
+        where: { id: patientId, clinicId, deletedAt: null }
+      });
+      if (!patient) {
+        return NextResponse.json({ success: false, error: "Patient not found or access denied" }, { status: 403 });
+      }
     }
 
     const labBookings = await prisma.labBooking.findMany({

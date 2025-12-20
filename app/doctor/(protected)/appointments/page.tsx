@@ -297,7 +297,17 @@ export default function DoctorAppointmentsPage() {
                 {(
                   scheduledView === "upcoming" ? scheduledUpcoming : scheduledPast
                 ).length === 0 ? (
-                  <div className="text-gray-500">No {scheduledView} scheduled appointments.</div>
+                  <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                    <Calendar className="h-12 w-12 text-gray-300 mb-3" />
+                    <p className="text-lg font-semibold text-gray-700 mb-1">
+                      No {scheduledView === "upcoming" ? "Upcoming" : "Past"} Appointments
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {scheduledView === "upcoming" 
+                        ? "You don't have any upcoming scheduled appointments."
+                        : "You don't have any past scheduled appointments."}
+                    </p>
+                  </div>
                 ) : (
                   <div>
                     {(scheduledView === "upcoming" ? scheduledUpcoming : scheduledPast).map((appt: any, idx: number) => (
@@ -313,7 +323,13 @@ export default function DoctorAppointmentsPage() {
               <h3 className="text-xl font-semibold mb-4">Completed Appointments</h3>
               <div className="h-[600px] overflow-y-auto pr-2">
                 {completedAppointments.length === 0 ? (
-                  <div className="text-gray-500">No completed appointments.</div>
+                  <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                    <Calendar className="h-12 w-12 text-gray-300 mb-3" />
+                    <p className="text-lg font-semibold text-gray-700 mb-1">No Completed Appointments</p>
+                    <p className="text-sm text-gray-500">
+                      Completed appointments will appear here after appointments are finished.
+                    </p>
+                  </div>
                 ) : (
                   <div>
                     {completedAppointments.map((appt: any, idx: number) => (

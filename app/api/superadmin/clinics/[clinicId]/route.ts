@@ -49,11 +49,46 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, domain, address, contactInfo, timings, subtitle, logo } = body;
+    const { 
+      name, 
+      subdomain, 
+      domain, 
+      address, 
+      contactInfo, 
+      timings, 
+      subtitle, 
+      logo,           // Square logo for prescription headers
+      footerLogo,     // Rectangular/wide logo for footer display
+      // Branding & Footer fields
+      email,
+      phone,
+      footerTagline,
+      socialLinks,
+      primaryColor,
+      secondaryColor,
+      websiteUrl,
+      copyrightText,
+    } = body;
 
     // Validate required fields
     if (!name || name.trim() === '') {
       return NextResponse.json({ error: "Clinic name is required" }, { status: 400 });
+    }
+
+    // Subdomain is required
+    if (!subdomain || subdomain.trim() === '') {
+      return NextResponse.json({ error: "Subdomain is required" }, { status: 400 });
+    }
+
+    // Validate subdomain format: alphanumeric and hyphens only, 3-63 characters
+    const subdomainRegex = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+    const normalizedSubdomain = subdomain.toLowerCase().trim();
+    
+    if (!subdomainRegex.test(normalizedSubdomain)) {
+      return NextResponse.json(
+        { error: "Subdomain must be 3-63 characters, alphanumeric with hyphens only, and start/end with alphanumeric" },
+        { status: 400 }
+      );
     }
 
     // Check if clinic exists
@@ -65,12 +100,26 @@ export async function PUT(
       return NextResponse.json({ error: "Clinic not found" }, { status: 404 });
     }
 
+    // Check for subdomain uniqueness (excluding current clinic)
+    const subdomainExists = await prisma.clinic.findFirst({
+      where: {
+        subdomain: normalizedSubdomain,
+        id: { not: clinicId },
+        deletedAt: null
+      }
+    });
+
+    if (subdomainExists) {
+      return NextResponse.json({ error: "Subdomain already exists" }, { status: 400 });
+    }
+
     // Check for domain uniqueness if domain is provided
     if (domain && domain.trim() !== '') {
       const domainExists = await prisma.clinic.findFirst({
         where: {
           domain: domain.trim(),
-          id: { not: clinicId }
+          id: { not: clinicId },
+          deletedAt: null
         }
       });
 
@@ -79,17 +128,28 @@ export async function PUT(
       }
     }
 
-    // Update clinic
+    // Update clinic with all branding fields
     const updatedClinic = await prisma.clinic.update({
       where: { id: clinicId },
       data: {
         name: name.trim(),
+        subdomain: normalizedSubdomain,
         domain: domain?.trim() || null,
         address: address?.trim() || null,
         contactInfo: contactInfo?.trim() || null,
         timings: timings?.trim() || null,
         subtitle: subtitle?.trim() || null,
         logo: logo?.trim() || null,
+        footerLogo: footerLogo?.trim() || null,
+        // Branding & Footer fields
+        email: email?.trim() || null,
+        phone: phone?.trim() || null,
+        footerTagline: footerTagline?.trim() || null,
+        socialLinks: socialLinks || null,
+        primaryColor: primaryColor?.trim() || null,
+        secondaryColor: secondaryColor?.trim() || null,
+        websiteUrl: websiteUrl?.trim() || null,
+        copyrightText: copyrightText?.trim() || null,
         updatedAt: new Date()
       },
       include: {

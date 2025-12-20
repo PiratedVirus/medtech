@@ -18,6 +18,8 @@ import { LineChart, DollarSign } from "lucide-react"
 import HomePageCardSmall from "@/components/ui/custom/cd-homepage-card-small"
 import MedicalCarousel from "@/components/patients/home/MedicalCarousel";
 import SubscribeCarePlanCard from "./SubscribePlanCard";
+import { HealthQuickAccessCard } from "./ClinicWelcomeCard";
+import { useClinicFeatures } from "@/hooks/use-clinic-features";
 
 
 
@@ -28,6 +30,9 @@ export default function HomeOverview() {
   const [dietPlan, setDietPlan] = useState<any>(null);
   const { toast } = useToast();
   const dispatch = useDispatch();
+  
+  // Check if plans feature is available for this subdomain
+  const { hasPlans } = useClinicFeatures();
 
   const fetchSubscriptionTracker = async (subscriptionId: number) => {
     try {
@@ -98,10 +103,17 @@ export default function HomeOverview() {
         {/* Middle Section - Program Details */}
         <div className="lg:col-span-5 flex flex-col h-[423px] w-full">
           <div className="space-y-4 mb-6">
-            {profile?.subscriptionDetails?.subscriptionId ? (
+            {/* Plans are only available for CD (Care Diabetics) subdomain */}
+            {hasPlans ? (
+              // Show plan cards for CD subdomain
+              profile?.subscriptionDetails?.subscriptionId ? (
               <PlanUsageMinimal userId={4} subscriptionId={profile?.subscriptionDetails?.subscriptionId} />
             ) : (
               <SubscribeCarePlanCard />
+              )
+            ) : (
+              // Show alternative card for other subdomains
+              <HealthQuickAccessCard />
             )}
           </div>
           <div className="flex gap-3 w-full">

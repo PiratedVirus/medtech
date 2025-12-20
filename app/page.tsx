@@ -17,8 +17,22 @@ import TripleCard from "@/components/common/landing-page/TripleCard";
 import Footer from "@/components/common/Footer";
 import HowWorks from "@/components/common/landing-page/HowCardDBWorks";
 import CareDiabeticsWorkflow from "@/components/common/landing-page/HowCdWorks";
+import { useClinicContext } from "@/hooks/use-clinic-context";
+import CdLoader from "@/components/ui/custom/cd-loader";
 
 export default function LandingPageTailwind() {
+  // Validate clinic context for subdomain-based access
+  const { isLoading, isError, subdomain } = useClinicContext({ redirectOnNotFound: true });
+
+  // Show loading while checking clinic
+  if (isLoading) {
+    return <CdLoader />;
+  }
+
+  // If clinic validation failed and we're on a subdomain, show loading (redirect is happening)
+  if (isError && subdomain) {
+    return <CdLoader />;
+  }
   return (
     <>
       {/* <InfoBar /> */}

@@ -1,4 +1,5 @@
 import { NextResponse, NextRequest } from "next/server";
+import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import { getCachedAppointments, invalidateAppointmentsCache } from "@/lib/data-cache";
 import { AppointmentStatus, ConsultationType } from "@/lib/constants/enums";
@@ -12,16 +13,25 @@ export async function GET(request: NextRequest) {
   try {
     console.log("GET /api/appointments called");
 
+    // Get clinic ID from headers (set by middleware) - priority
+    const headersList = await headers();
+    const clinicIdHeader = headersList.get('x-clinic-id');
+    let clinicId: number | undefined = clinicIdHeader ? parseInt(clinicIdHeader, 10) : undefined;
+
     // Parse Query Params
     const { searchParams } = new URL(request.url);
     const clinicIdParam = searchParams.get("clinicId");
     const patientIdParam = searchParams.get("patientId");
     const upcomingOnly = searchParams.get("upcomingOnly") === "true"; // Convert to boolean
 
-    console.log("Query Params:", { clinicIdParam, patientIdParam, upcomingOnly });
+    // Fallback to query param for backward compatibility
+    if (!clinicId && clinicIdParam) {
+      clinicId = parseInt(clinicIdParam, 10);
+    }
+
+    console.log("Query Params:", { clinicIdParam, patientIdParam, upcomingOnly, clinicIdFromHeader: clinicId });
 
     // Convert params to numbers if they exist
-    const clinicId = clinicIdParam ? parseInt(clinicIdParam, 10) : undefined;
     const patientId = patientIdParam ? parseInt(patientIdParam, 10) : undefined;
 
     // Build 'where' clause for filtering
