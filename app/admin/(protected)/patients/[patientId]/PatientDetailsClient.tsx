@@ -437,157 +437,199 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
     );
   };
 
-  const LabReportsSection = () => (
-    <Card className="rounded-lg p-4 bg-custom-mutedgreen">
-      <h3 className="font-semibold text-xl mb-4">Lab Reports</h3>
-      <div className="flex flex-wrap gap-4">
-        {(patientDetails?.labBookings || []).map(labBooking => (
-          <Card
-            key={labBooking.id}
-            className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center"
-          >
-            <div className="absolute -right-4 -top-4 h-24 w-24 opacity-5">
-              <FileText className="h-full w-full" />
+  const LabReportsSection = () => {
+    const labBookings = patientDetails?.labBookings || [];
+    
+    return (
+      <Card className="rounded-lg p-4 bg-custom-mutedgreen">
+        <h3 className="font-semibold text-xl mb-4">Lab Reports</h3>
+        {labBookings.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="mb-4 opacity-20">
+              <FileText className="h-16 w-16 text-gray-500" />
             </div>
-            <h4 className="font-medium mb-2"><b>{labBooking.labPackageName || 'Unknown Package'}</b></h4>
-            <p className="text-sm mb-4">Booked on {labBooking.date ? new Date(labBooking.date).toLocaleDateString() : 'Unknown Date'}</p>
-            <div className="mt-auto flex items-center justify-between">
-              {Array.isArray(labBooking.reportLink) && labBooking.reportLink.length > 0 ? (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant={"outline"} size="sm">View Reports</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogTitle>Lab Reports</DialogTitle>
-                    <div className="flex flex-wrap gap-2">
-                      {labBooking.reportLink.map((url, index) => {
-                        const fileName = decodeURIComponent(url.split("/").pop() || `LabReport-${index + 1}`);
-                        return (
-                          <a key={index} href={url} target="_blank" rel="noopener noreferrer">
-                            <Button variant="outline" size="sm" className="whitespace-nowrap">{fileName}</Button>
-                          </a>
-                        );
-                      })}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              ) : (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="sm" onClick={() => setUploadingAppointmentId(labBooking.id)}>
-                      Upload Report
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogTitle>Upload Lab Report PDF</DialogTitle>
-                    <UploadDropZone type="labReport" />
-                    {uploading && <p>Uploading...</p>}
-                    {uploadSuccess && (
-                      <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
-                    )}
-                  </DialogContent>
-                </Dialog>
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
-    </Card>
-  );
+            <p className="text-gray-600 font-medium">No lab reports available</p>
+            <p className="text-sm text-gray-500 mt-1">Lab reports will appear here once they are uploaded.</p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-4">
+            {labBookings.map(labBooking => (
+              <Card
+                key={labBooking.id}
+                className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center"
+              >
+                <div className="absolute -right-4 -top-4 h-24 w-24 opacity-5">
+                  <FileText className="h-full w-full" />
+                </div>
+                <h4 className="font-medium mb-2"><b>{labBooking.labPackageName || 'Unknown Package'}</b></h4>
+                <p className="text-sm mb-4">Booked on {labBooking.date ? new Date(labBooking.date).toLocaleDateString() : 'Unknown Date'}</p>
+                <div className="mt-auto flex items-center justify-between">
+                  {Array.isArray(labBooking.reportLink) && labBooking.reportLink.length > 0 ? (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant={"outline"} size="sm">View Reports</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogTitle>Lab Reports</DialogTitle>
+                        <div className="flex flex-wrap gap-2">
+                          {labBooking.reportLink.map((url, index) => {
+                            const fileName = decodeURIComponent(url.split("/").pop() || `LabReport-${index + 1}`);
+                            return (
+                              <a key={index} href={url} target="_blank" rel="noopener noreferrer">
+                                <Button variant="outline" size="sm" className="whitespace-nowrap">{fileName}</Button>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  ) : (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="sm" onClick={() => setUploadingAppointmentId(labBooking.id)}>
+                          Upload Report
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogTitle>Upload Lab Report PDF</DialogTitle>
+                        <UploadDropZone type="labReport" />
+                        {uploading && <p>Uploading...</p>}
+                        {uploadSuccess && (
+                          <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
+                        )}
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </Card>
+    );
+  };
 
-  const AppointmentPrescriptionsSection = () => (
-    <Card className="rounded-lg p-4 bg-custom-mutedgreen">
-      <h3 className="font-semibold text-xl mb-4">Appointment Prescriptions</h3>
-      <div className="flex flex-wrap gap-4">
-        {(patientDetails?.doctorAppointments || []).map(appointment => (
-          <Card key={appointment.id}
-            className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center">
-            <Badge variant="outline" className="mb-2 text-secondary">
-              # {appointment.id}
-            </Badge>
-            <h4 className="font-medium mb-2">{appointment.doctorName || 'Unknown Doctor'}</h4>
-            <p className="text-sm mb-2">
-              Date: {appointment.date ? new Date(appointment.date).toLocaleDateString('en-GB') : 'Unknown Date'}
-            </p>
-            <div className="mt-auto flex flex-col items-center gap-2">
-              {appointment.prescriptionLink ? (
-                <a
-                  href={appointment.prescriptionLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button variant="outline" size="sm">View</Button>
-                </a>
-              ) : (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="sm" onClick={() => setUploadingAppointmentId(appointment.id)}>
-                      Upload Prescription
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogTitle>Upload Prescription PDF</DialogTitle>
-                    <UploadDropZone type="prescription" />
-                    {uploading && <p>Uploading...</p>}
-                    {uploadSuccess && (
-                      <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
-                    )}
-                  </DialogContent>
-                </Dialog>
-              )}
+  const AppointmentPrescriptionsSection = () => {
+    const appointments = patientDetails?.doctorAppointments || [];
+    
+    return (
+      <Card className="rounded-lg p-4 bg-custom-mutedgreen">
+        <h3 className="font-semibold text-xl mb-4">Appointment Prescriptions</h3>
+        {appointments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="mb-4 opacity-20">
+              <FileText className="h-16 w-16 text-gray-500" />
             </div>
-          </Card>
-        ))}
-      </div>
-    </Card>
-  );
+            <p className="text-gray-600 font-medium">No prescriptions available</p>
+            <p className="text-sm text-gray-500 mt-1">Prescriptions will appear here once they are uploaded.</p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-4">
+            {appointments.map(appointment => (
+              <Card key={appointment.id}
+                className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center">
+                <Badge variant="outline" className="mb-2 text-secondary">
+                  # {appointment.id}
+                </Badge>
+                <h4 className="font-medium mb-2">{appointment.doctorName || 'Unknown Doctor'}</h4>
+                <p className="text-sm mb-2">
+                  Date: {appointment.date ? new Date(appointment.date).toLocaleDateString('en-GB') : 'Unknown Date'}
+                </p>
+                <div className="mt-auto flex flex-col items-center gap-2">
+                  {appointment.prescriptionLink ? (
+                    <a
+                      href={appointment.prescriptionLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button variant="outline" size="sm">View</Button>
+                    </a>
+                  ) : (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="sm" onClick={() => setUploadingAppointmentId(appointment.id)}>
+                          Upload Prescription
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogTitle>Upload Prescription PDF</DialogTitle>
+                        <UploadDropZone type="prescription" />
+                        {uploading && <p>Uploading...</p>}
+                        {uploadSuccess && (
+                          <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
+                        )}
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </Card>
+    );
+  };
 
-  const DietPlansSection = () => (
-    <Card className="rounded-lg p-4 bg-slate-50">
-      <h3 className="font-semibold text-xl mb-4">Diet Plans</h3>
-      <div className="flex flex-wrap gap-4">
-        {(patientDetails?.dieticianAppointments || []).map(appointment => (
-          <Card key={appointment.id}
-            className="group relative overflow-hidden border border-gray-100 bg-custom-mutedgreen shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center">
-            <Badge variant="outline" className="mb-2 text-primary bg-neutral-50">
-              # {appointment.id}
-            </Badge>
-            <h4 className="font-medium mb-2">{appointment.doctorName}</h4>
-            <p className="text-sm mb-2">
-              Date: {new Date(appointment.date).toLocaleDateString('en-GB')}
-            </p>
-            <div className="mt-auto flex flex-col items-center gap-2">
-              {appointment.dietPlanLink ? (
-                <a
-                  href={appointment.dietPlanLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button variant="outline" size="sm">View</Button>
-                </a>
-              ) : (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="sm" onClick={() => setUploadingAppointmentId(appointment.id)}>
-                      Upload Diet Plan
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogTitle>Upload Diet Plan PDF</DialogTitle>
-                    <UploadDropZone type="dietPlan" />
-                    {uploading && <p>Uploading...</p>}
-                    {uploadSuccess && (
-                      <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
-                    )}
-                  </DialogContent>
-                </Dialog>
-              )}
+  const DietPlansSection = () => {
+    const appointments = patientDetails?.dieticianAppointments || [];
+    
+    return (
+      <Card className="rounded-lg p-4 bg-slate-50">
+        <h3 className="font-semibold text-xl mb-4">Diet Plans</h3>
+        {appointments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="mb-4 opacity-20">
+              <FileText className="h-16 w-16 text-gray-500" />
             </div>
-          </Card>
-        ))}
-      </div>
-    </Card>
-  );
+            <p className="text-gray-600 font-medium">No diet plans available</p>
+            <p className="text-sm text-gray-500 mt-1">Diet plans will appear here once they are uploaded.</p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-4">
+            {appointments.map(appointment => (
+              <Card key={appointment.id}
+                className="group relative overflow-hidden border border-gray-100 bg-custom-mutedgreen shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center">
+                <Badge variant="outline" className="mb-2 text-primary bg-neutral-50">
+                  # {appointment.id}
+                </Badge>
+                <h4 className="font-medium mb-2">{appointment.doctorName}</h4>
+                <p className="text-sm mb-2">
+                  Date: {new Date(appointment.date).toLocaleDateString('en-GB')}
+                </p>
+                <div className="mt-auto flex flex-col items-center gap-2">
+                  {appointment.dietPlanLink ? (
+                    <a
+                      href={appointment.dietPlanLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button variant="outline" size="sm">View</Button>
+                    </a>
+                  ) : (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="sm" onClick={() => setUploadingAppointmentId(appointment.id)}>
+                          Upload Diet Plan
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogTitle>Upload Diet Plan PDF</DialogTitle>
+                        <UploadDropZone type="dietPlan" />
+                        {uploading && <p>Uploading...</p>}
+                        {uploadSuccess && (
+                          <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
+                        )}
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </Card>
+    );
+  };
 
   // Manual payment collection handler
   const handleCollectPayment = async (paymentId: number) => {
@@ -766,8 +808,8 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
             }}
           />
 
-          {/* Appointment Dates */}
-          <AppointmentDatesSection />
+          {/* Appointment Dates - Only show if patient is subscribed */}
+          {activeSubscription && <AppointmentDatesSection />}
 
           {/* Lab Reports */}
           <LabReportsSection />

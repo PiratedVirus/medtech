@@ -1,40 +1,79 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
 import { normalizeStatus } from "@/lib/utils/status";
 
-// Helper to get doctorId from JWT
-async function getDoctorIdFromRequest() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
-  if (!token) return null;
-  let decoded: any;
+// Helper to get userId from JWT - supports both DOCTOR and PATHOLOGY roles
+async function getUserIdFromRequest() {
   try {
-    decoded = jwt.verify(token, process.env.JWT_SECRET!);
-  } catch (err) {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+    if (!token) {
+      console.error("[DOCTOR-SLOTS] No token found in cookies");
+      return null;
+    }
+    
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET!);
+    } catch (err) {
+      console.error("[DOCTOR-SLOTS] Token verification failed:", err);
+      return null;
+    }
+    
+    const phoneNumber = decoded.plusAddedPhoneNumber as string | undefined;
+    if (!phoneNumber) {
+      console.error("[DOCTOR-SLOTS] No plusAddedPhoneNumber in token. Token payload:", Object.keys(decoded));
+      return null;
+    }
+    
+    const user = await prisma.user.findFirst({
+      where: { phoneNumber },
+      include: { doctorProfile: true },
+    });
+    
+    if (!user) {
+      console.error("[DOCTOR-SLOTS] User not found for phoneNumber:", phoneNumber);
+      return null;
+    }
+    
+    // Allow both DOCTOR and PATHOLOGY roles to manage slots
+    // Doctors have doctorProfile, but pathology users might not
+    if (user.role === 'DOCTOR' && !user.doctorProfile?.id) {
+      console.error("[DOCTOR-SLOTS] Doctor user found but no doctorProfile. User ID:", user.id);
+      return null;
+    }
+    
+    if (user.role !== 'DOCTOR' && user.role !== 'PATHOLOGY') {
+      console.error("[DOCTOR-SLOTS] User role not authorized. User ID:", user.id, "Role:", user.role);
+      return null;
+    }
+    
+    console.log("[DOCTOR-SLOTS] Successfully authenticated user:", user.id, "Role:", user.role);
+    return user.id;
+  } catch (error) {
+    console.error("[DOCTOR-SLOTS] Error in getUserIdFromRequest:", error);
     return null;
   }
-  const phoneNumber = decoded.plusAddedPhoneNumber as string | undefined;
-  if (!phoneNumber) return null;
-  const user = await prisma.user.findFirst({
-    where: { phoneNumber },
-    include: { doctorProfile: true },
-  });
-  if (!user?.doctorProfile?.id) return null;
-  return user.id;
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const doctorId = await getDoctorIdFromRequest();
-    if (!doctorId) return new NextResponse("Unauthorized", { status: 401 });
+    const userId = await getUserIdFromRequest();
+    if (!userId) {
+      console.error("[DOCTOR-SLOTS] GET request failed: Unauthorized - userId is null");
+      return NextResponse.json(
+        { error: "Unauthorized", message: "Please log in as a doctor or pathology staff to access this resource" },
+        { status: 401 }
+      );
+    }
     const { searchParams } = new URL(request.url);
     const date = searchParams.get("date");
     if (!date) return NextResponse.json({ slots: [] });
     const slots = await prisma.doctorAvailability.findMany({
       where: {
-        userId: doctorId,
+        userId: userId,
         date: new Date(date),
         deletedAt: null,
       },
@@ -53,10 +92,16 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const doctorId = await getDoctorIdFromRequest();
-    if (!doctorId) return new NextResponse("Unauthorized", { status: 401 });
+    const userId = await getUserIdFromRequest();
+    if (!userId) {
+      console.error("[DOCTOR-SLOTS] POST request failed: Unauthorized - userId is null");
+      return NextResponse.json(
+        { error: "Unauthorized", message: "Please log in as a doctor or pathology staff to access this resource" },
+        { status: 401 }
+      );
+    }
     const body = await request.json();
     const { date, slots } = body;
     if (!date || !Array.isArray(slots)) {
@@ -74,9 +119,9 @@ export async function POST(request: Request) {
       }
       return t;
     };
-    // Remove all slots for this doctor/date (soft delete)
+    // Remove all slots for this user/date (soft delete)
     await prisma.doctorAvailability.updateMany({
-      where: { userId: doctorId, date: new Date(date) },
+      where: { userId: userId, date: new Date(date) },
       data: { deletedAt: new Date() },
     });
     // Create new slots
@@ -84,7 +129,7 @@ export async function POST(request: Request) {
       slots.map((slot: any) =>
         prisma.doctorAvailability.create({
           data: {
-            userId: doctorId,
+            userId: userId,
             date: new Date(date),
             startTime: to24h(slot.startTime),
             endTime: to24h(slot.endTime),
