@@ -1,6 +1,6 @@
 import prisma from '../../../../lib/prisma';
 
-import { generateSummary } from '@/lib/llm/unified-service';
+import { generateSummary, extractValues } from '@/lib/llm/unified-service';
 
 
 
@@ -176,60 +176,46 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
         throw summaryError;
       }
 
-      // Stage 3: Extract Lab Values using standalone extract-values API
-      console.log(`[LLM-PROCESSING][${requestId}] Stage 3: Extracting lab values via standalone API`);
+      // Stage 3: Extract Lab Values using direct function call
+      console.log(`[LLM-PROCESSING][${requestId}] Stage 3: Extracting lab values via direct function call`);
       try {
-        const extractUrl = '/api/llm-process/extract-standalone-values';
-        console.log(`[LLM-PROCESSING][${requestId}] Extract values API URL: ${extractUrl}`);
+        const groqApiKey = process.env.GROQ_API_KEY;
+        if (!groqApiKey) {
+          throw new Error('GROQ_API_KEY not configured');
+        }
         
-        const extractResponse = await fetch(extractUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            text: extractedText, 
-            reportId: reportId, 
-            force: forceRegeneration 
-          })
+        console.log(`[LLM-PROCESSING][${requestId}] Calling extractValues directly with ${extractedText.length} characters`);
+        
+        const valuesResult = await extractValues(extractedText, groqApiKey);
+        
+        allValues = valuesResult.allValues || [];
+        criticalValues = valuesResult.criticalValues || [];
+        
+        console.log(`[LLM-PROCESSING][${requestId}] Extract values result:`, {
+          allValuesCount: allValues.length,
+          criticalValuesCount: criticalValues.length
         });
-
-        console.log(`[LLM-PROCESSING][${requestId}] Extract values API response:`, {
-          status: extractResponse.status,
-          statusText: extractResponse.statusText,
-          ok: extractResponse.ok
-        });
-
-        if (extractResponse.ok) {
-          const extractData = await extractResponse.json();
-          console.log(`[LLM-PROCESSING][${requestId}] Extract values API response data:`, {
-            success: extractData.success,
-            hasData: !!extractData.data,
-            allValuesCount: extractData.data?.allValues?.length || 0,
-            criticalValuesCount: extractData.data?.criticalValues?.length || 0
-          });
-          
-          if (extractData.success) {
-            allValues = extractData.data.allValues || [];
-            criticalValues = extractData.data.criticalValues || [];
-            console.log(`[LLM-PROCESSING][${requestId}] Stage 3: Lab values extraction completed via standalone API (${allValues.length} total, ${criticalValues.length} critical)`);
-            
-            if (allValues.length > 0) {
-              console.log(`[LLM-PROCESSING][${requestId}] Sample extracted values:`, allValues.slice(0, 3));
-            }
-            if (criticalValues.length > 0) {
-              console.log(`[LLM-PROCESSING][${requestId}] Critical values:`, criticalValues.slice(0, 3));
-            }
-          } else {
-            console.error(`[LLM-PROCESSING][${requestId}] Extract values API returned error:`, extractData.error);
-            throw new Error(extractData.error || 'Failed to extract values via standalone API');
+        
+        // Fallback: If criticalValues is empty but allValues has abnormal values, populate criticalValues
+        if (criticalValues.length === 0 && allValues.length > 0) {
+          const abnormal = allValues.filter((v: any) => 
+            v && 
+            (v.isAbnormal === true || 
+             (v.severity && v.severity !== 'NORMAL' && v.severity !== 'normal'))
+          );
+          if (abnormal.length > 0) {
+            criticalValues = abnormal;
+            console.log(`[LLM-PROCESSING][${requestId}] Fallback: Populated ${criticalValues.length} critical values from allValues (AI did not populate criticalValues)`);
           }
-        } else {
-          const errorText = await extractResponse.text();
-          console.error(`[LLM-PROCESSING][${requestId}] Extract values API failed:`, {
-            status: extractResponse.status,
-            statusText: extractResponse.statusText,
-            errorText
-          });
-          throw new Error(`Standalone extract values API failed: ${extractResponse.status} ${errorText}`);
+        }
+        
+        console.log(`[LLM-PROCESSING][${requestId}] Stage 3: Lab values extraction completed (${allValues.length} total, ${criticalValues.length} critical)`);
+        
+        if (allValues.length > 0) {
+          console.log(`[LLM-PROCESSING][${requestId}] Sample extracted values:`, allValues.slice(0, 3));
+        }
+        if (criticalValues.length > 0) {
+          console.log(`[LLM-PROCESSING][${requestId}] Critical values:`, criticalValues.slice(0, 3));
         }
         
       } catch (valuesError) {

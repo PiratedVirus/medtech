@@ -339,7 +339,9 @@ export default function UnifiedAnalysisModal({
       console.log('[UI][PROCESS] Standalone process response:', data);
 
       if (data.success) {
-        toast.success('Standalone analysis started!');
+        toast.success('Analysis regeneration initiated', {
+          description: 'Processing has started. Check the notification for progress updates.'
+        });
         // Polling will handle the updates
       } else {
         throw new Error(data.error || 'Process failed');
@@ -409,7 +411,27 @@ export default function UnifiedAnalysisModal({
 
 
   const getFilteredValues = () => {
-    const values = showAllValues ? (analysis?.allValues || standaloneAnalysis?.allValues || []) : (analysis?.criticalValues || standaloneAnalysis?.criticalValues || []);
+    let values: any[] = [];
+    
+    if (showAllValues) {
+      // Show all values
+      values = analysis?.allValues || standaloneAnalysis?.allValues || [];
+    } else {
+      // Show only abnormal values (critical or abnormal)
+      // First try criticalValues, but if empty, filter allValues for abnormal ones
+      const criticalVals = analysis?.criticalValues || standaloneAnalysis?.criticalValues || [];
+      if (criticalVals.length > 0) {
+        values = criticalVals;
+      } else {
+        // Fallback: filter allValues for abnormal values
+        const allVals = analysis?.allValues || standaloneAnalysis?.allValues || [];
+        values = allVals.filter((value: any) => 
+          value.isAbnormal === true || 
+          (value.severity && value.severity !== 'NORMAL' && value.severity !== 'normal')
+        );
+      }
+    }
+    
     if (!searchTerm) return values;
 
     return values.filter((value: any) =>
@@ -962,7 +984,7 @@ export default function UnifiedAnalysisModal({
                         <div className="text-center py-8">
                           <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                           <p className="text-gray-500">
-                            {searchTerm ? 'No values match your search.' : showAllValues ? 'No values found in this report.' : 'No critical values detected.'}
+                            {searchTerm ? 'No values match your search.' : showAllValues ? 'No values found in this report.' : 'No abnormal values detected.'}
                           </p>
                         </div>
                       );

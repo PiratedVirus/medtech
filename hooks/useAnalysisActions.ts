@@ -1,4 +1,7 @@
+'use client';
+
 import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 export function useAnalysisActions(
   fetchData: () => void,
@@ -6,6 +9,7 @@ export function useAnalysisActions(
   updateNotificationStages: (notificationId: string, stages: any[]) => void,
   updateProcessingNotification: (notificationId: string, updates: any) => void
 ) {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -127,11 +131,16 @@ export function useAnalysisActions(
     setLoading(true);
     setError(null);
     
-    // Add progress notification
+    // Add progress notification with all stages (like upload flow)
     const notificationId = addProcessingNotification({
       title: `Standalone Report - ${analysisType.replace('_', ' ')}`,
       type: 'standalone-report',
-      stages: [],
+      stages: [
+        { stage: 'Initializing', status: 'processing', message: 'Starting regeneration...', timestamp: new Date() },
+        { stage: 'Text Extraction', status: 'pending', message: 'Waiting to start...', timestamp: new Date() },
+        { stage: 'Summary Generation', status: 'pending', message: 'Waiting to start...', timestamp: new Date() },
+        { stage: 'Value Extraction', status: 'pending', message: 'Waiting to start...', timestamp: new Date() }
+      ],
       overallStatus: 'processing',
       reportId,
       analysisType
@@ -144,13 +153,19 @@ export function useAnalysisActions(
         body: JSON.stringify({ reportId, analysisType })
       });
       
-      if (!res.ok) throw new Error('Failed to regenerate analysis');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to regenerate analysis');
+      }
       
-      // Update notification to show processing started
-      updateNotificationStages(notificationId, [
-        { stage: 'Initializing', status: 'completed', message: 'Regeneration started', timestamp: new Date() },
-        { stage: 'Processing', status: 'processing', message: 'Analysis in progress...', timestamp: new Date() }
-      ]);
+      const data = await res.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to regenerate analysis');
+      }
+      
+      // Don't update stages yet - let the polling mechanism update based on actual backend status
+      // The notification was already created with all stages marked as pending
       
       await fetchData(); // Refresh the data
     } catch (e: any) {
@@ -160,7 +175,7 @@ export function useAnalysisActions(
         overallStatus: 'failed',
         stages: [
           { stage: 'Initializing', status: 'completed', message: 'Regeneration started', timestamp: new Date() },
-          { stage: 'Processing', status: 'failed', message: e?.message || 'Failed to regenerate', timestamp: new Date() }
+          { stage: 'Text Extraction', status: 'failed', message: e?.message || 'Failed to regenerate', timestamp: new Date() }
         ]
       });
     } finally {

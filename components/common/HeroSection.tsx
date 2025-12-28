@@ -26,10 +26,10 @@ export default function HeroSection() {
           {/* 60% width column */}
           <div className="w-[60%] relative">
             <Image
-              src="/images/iphone-large.png"
+              src="/images/brahmarx-laptop.png"
               alt="Large image"
-              width={400}
-              height={300}
+              width={800}
+              height={600}
               className="absolute bottom-0 left-1/2 transform -translate-x-1/2"
             />
           </div>

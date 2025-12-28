@@ -80,7 +80,20 @@ export async function POST(request: NextRequest) {
     // Call Groq to extract values
     try {
       console.log('[EXTRACT-STANDALONE-VALUES] Calling Groq');
-      const { allValues, criticalValues } = await extractValues(text, apiKey);
+      let { allValues, criticalValues } = await extractValues(text, apiKey);
+      
+      // Fallback: If criticalValues is empty but allValues has abnormal values, populate criticalValues
+      if ((!criticalValues || criticalValues.length === 0) && allValues && allValues.length > 0) {
+        const abnormal = allValues.filter((v: any) => 
+          v && 
+          (v.isAbnormal === true || 
+           (v.severity && v.severity !== 'NORMAL' && v.severity !== 'normal'))
+        );
+        if (abnormal.length > 0) {
+          criticalValues = abnormal;
+          console.log('[EXTRACT-STANDALONE-VALUES] Fallback: Populated', criticalValues.length, 'critical values from allValues (AI did not populate criticalValues)');
+        }
+      }
       
       console.log('[EXTRACT-STANDALONE-VALUES] Successfully extracted values:', { 
         allValuesCount: allValues?.length || 0, 

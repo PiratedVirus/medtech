@@ -404,8 +404,21 @@ ${finalText}`;
     const parsed = tryParseLooseJson(content);
     
     if (parsed && (Array.isArray(parsed.allValues) || Array.isArray(parsed.criticalValues))) {
-      const allValues = Array.isArray(parsed.allValues) ? parsed.allValues : [];
-      const criticalValues = Array.isArray(parsed.criticalValues) ? parsed.criticalValues : [];
+      let allValues = Array.isArray(parsed.allValues) ? parsed.allValues : [];
+      let criticalValues = Array.isArray(parsed.criticalValues) ? parsed.criticalValues : [];
+      
+      // Fallback: If criticalValues is empty but allValues has abnormal values, populate criticalValues
+      if (criticalValues.length === 0 && allValues.length > 0) {
+        const abnormal = allValues.filter((v: any) => 
+          v && 
+          (v.isAbnormal === true || 
+           (v.severity && v.severity !== 'NORMAL' && v.severity !== 'normal'))
+        );
+        if (abnormal.length > 0) {
+          criticalValues = abnormal;
+          console.log(`[LLM-PROC][VALUES] Fallback: Populated ${criticalValues.length} critical values from allValues (AI did not populate criticalValues)`);
+        }
+      }
       
       // Log warning if too many values are extracted (potential hallucination)
       const totalValues = allValues.length + criticalValues.length;
