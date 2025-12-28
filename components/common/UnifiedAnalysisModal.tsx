@@ -339,9 +339,7 @@ export default function UnifiedAnalysisModal({
       console.log('[UI][PROCESS] Standalone process response:', data);
 
       if (data.success) {
-        toast.success('Analysis regeneration initiated', {
-          description: 'Processing has started. Check the notification for progress updates.'
-        });
+        toast.success('Analysis regeneration initiated. Processing has started. Check the notification for progress updates.');
         // Polling will handle the updates
       } else {
         throw new Error(data.error || 'Process failed');
