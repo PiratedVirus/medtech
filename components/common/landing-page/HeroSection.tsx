@@ -75,7 +75,7 @@ export default function HeroSection() {
             <div className="hidden md:flex justify-center mb-8">
               <Image
                 className="object-cover"
-                alt="Brand Logo"
+                alt="Logo"
                 width={420}
                 height={320}
                 src="/images/new-logo.png"
