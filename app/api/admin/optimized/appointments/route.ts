@@ -311,9 +311,7 @@ export async function PUT(request: Request) {
 
     // Handle regular appointment updates (status, doctor, time slot, etc.)
     if (data.patientId) data.patientId = parseInt(data.patientId, 10);
-    if (data.doctorId) {
-      data.doctorId = typeof data.doctorId === 'string' ? Number(JSON.parse(data.doctorId).doctorId) : Number(data.doctorId);
-    }
+    if (data.doctorId) data.doctorId = parseInt(data.doctorId, 10);
     if (data.doctorAvailabilityId) data.doctorAvailabilityId = parseInt(data.doctorAvailabilityId, 10);
 
     // Transaction for slot updates and appointment update

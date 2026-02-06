@@ -18,7 +18,7 @@ export default function DoctorsPage() {
 
   const router = useRouter();
   const dispatch = useDispatch();
-  const { clinicId, isLoading: profileLoading, profile } = useDecryptedProfile();
+  const { isLoading: profileLoading, profile } = useDecryptedProfile();
 
 
   const handleBookAppointment = (doctor: any, type: "video" | "clinic") => {
@@ -28,16 +28,15 @@ export default function DoctorsPage() {
 
   // Fetch doctors using React Query
   const { data: doctors, isLoading, isError } = useQuery({
-    queryKey: ["doctors", clinicId], // Unique cache key
+    queryKey: ["doctors"], // Unique cache key
     queryFn: async () => {
-      if (!clinicId) return [];
       const response = await axios.get(
-        `/api/doctors/get-doctors?clinicId=${clinicId}`,
+        `/api/doctors/get-doctors`,
         { withCredentials: true }
       );
       return response.data.success ? response.data.doctors : [];
     },
-    enabled: !!clinicId && !!profile?.id, // Only run when clinicId and profile.id exist
+    enabled: !!profile?.id, // Only run when profile exists
     staleTime: 15 * 60 * 1000,  // 15 minutes - doctor list rarely changes
     refetchOnMount: false,      // Use cached data when available
   });

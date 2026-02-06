@@ -277,7 +277,34 @@ export function PlanUsageMinimal({
   if (isLoading) {
     return <PlanUsageMinimalSkeleton />
   }
-  if (isError || !data?.success || !subscriptionId) {
+  
+  // Handle actual errors (network issues, server errors)
+  if (isError || !data?.success) {
+    return (
+      <Card className="group relative w-full h-[184px] overflow-hidden bg-custom-mutedgreen shadow-none transition-all duration-300">
+        <div className="relative flex h-full flex-col items-center justify-center p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-red-500/10 to-orange-500/10">
+              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-red-600">
+                <path
+                  d="M12 9v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <span className="text-xl font-semibold">Plan Usage</span>
+          </div>
+          <p className="text-red-600 text-center">Error loading plan usage.</p>
+        </div>
+      </Card>
+    )
+  }
+  
+  // Handle no subscription (patient not subscribed)
+  if (!subscriptionId) {
     return (
       <Card className="group relative w-full h-[184px] overflow-hidden bg-custom-mutedgreen shadow-none transition-all duration-300">
         {/* Large chart outline in background */}

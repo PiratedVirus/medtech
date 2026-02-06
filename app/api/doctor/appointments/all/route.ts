@@ -54,10 +54,7 @@ const getAllAppointmentsHandler = async (request: NextRequest) => {
         doctorAvailability: { select: { date: true, startTime: true, endTime: true } },
         prescription: { select: { id: true } },
       },
-      orderBy: [
-        { doctorAvailability: { date: "asc" } },
-        { doctorAvailability: { startTime: "asc" } },
-      ],
+      orderBy: { doctorAvailability: { date: "asc" } },
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
@@ -81,10 +78,7 @@ const getAllAppointmentsHandler = async (request: NextRequest) => {
         doctorAvailability: { select: { date: true, startTime: true, endTime: true } },
         prescription: { select: { id: true } },
       },
-      orderBy: [
-        { doctorAvailability: { date: "desc" } },
-        { doctorAvailability: { startTime: "desc" } },
-      ],
+      orderBy: { doctorAvailability: { date: "desc" } },
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
@@ -95,28 +89,28 @@ const getAllAppointmentsHandler = async (request: NextRequest) => {
     // Single query to get appointment counts per patient (to determine if first appointment)
     // Multi-tenancy: Ensure we only count appointments within the same clinic
     const appointmentCounts = await prisma.appointment.groupBy({
-      by: ['patientId'],
+      by: ["patientId"],
       where: {
         userId: doctorId,
         patientId: { in: allPatientIds },
         deletedAt: null,
         patient: {
-          clinicId: clinicId
+          clinicId: clinicId,
         },
       },
       _count: {
-        id: true,
+        _all: true,
       },
     });
     
     // Create a map for O(1) lookup
     const patientAppointmentCountMap = new Map(
-      appointmentCounts.map(item => [item.patientId, item._count.id])
+      appointmentCounts.map((item) => [item.patientId, item._count._all])
     );
 
     // Add extra info to each appointment (no async needed now)
     function enrichAppointments(list: any[], isPast: boolean) {
-      return list.map((appt) => {
+      const enriched = list.map((appt) => {
         const appointmentCount = patientAppointmentCountMap.get(appt.patient.id) || 0;
         const isFirst = appointmentCount === 1;
         
@@ -138,6 +132,21 @@ const getAllAppointmentsHandler = async (request: NextRequest) => {
           meetingRoomLink: user?.doctorProfile?.meetingRoomLink || null, // Add meetingRoomLink
           ownerToken1: user?.doctorProfile?.ownerToken1 || null, // Add ownerToken1
         };
+      });
+      
+      // Sort by time within the same date (in-memory sorting for secondary sort)
+      return enriched.sort((a, b) => {
+        // First sort by date
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        const dateDiff = isPast ? dateB - dateA : dateA - dateB;
+        
+        if (dateDiff !== 0) return dateDiff;
+        
+        // Then sort by startTime
+        const timeA = a.startTime || '';
+        const timeB = b.startTime || '';
+        return isPast ? timeB.localeCompare(timeA) : timeA.localeCompare(timeB);
       });
     }
 

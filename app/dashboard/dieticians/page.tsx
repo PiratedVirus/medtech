@@ -16,13 +16,12 @@ export default function DoctorsPage() {
   const activeTab: 'doctors' | 'dieticians' = 'dieticians';
   const router = useRouter();
   const dispatch = useDispatch();
-  const { clinicId, isLoading: profileLoading, profile } = useDecryptedProfile();
+  const { isLoading: profileLoading, profile } = useDecryptedProfile();
 
   // Debug logging (only in development with debug flag)
   if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && window.location.search.includes('debug=dieticians')) {
     console.log('[DieticiansPage] Debug Info:', {
       profileLoading,
-      clinicId,
       profileId: profile?.id,
       hasProfile: !!profile,
     });
@@ -39,17 +38,16 @@ export default function DoctorsPage() {
 
   // Fetch dieticians using React Query
   const { data: dieticians, isLoading, isError, error } = useQuery({
-    queryKey: ["dieticians", clinicId], // Unique cache key
+    queryKey: ["dieticians"], // Unique cache key
     queryFn: async () => {
-      if (!clinicId) return [];
       const response = await axios.get(
-        `/api/dieticians/get-dieticians?clinicId=${clinicId}`,
+        `/api/dieticians/get-dieticians`,
         { withCredentials: true }
       );
       return response.data.success ? response.data.dieticians : [];
     },
     // Use optimized cache settings for better performance
-    enabled: !!clinicId && !!profile?.id, // Only run when clinicId and profile.id exist
+    enabled: !!profile?.id, // Only run when profile exists
     staleTime: 5 * 60 * 1000, // 5 minutes - dieticians data doesn't change frequently
     refetchOnMount: false, // Use cached data when available
   });
