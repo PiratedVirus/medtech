@@ -17,8 +17,11 @@ interface LabCardProps {
 
 export default function LabCard({ labPackage, handleBookAppointment }: LabCardProps) {
     let parsedParameters: Record<string, string[]> = {};
+    let parameterCount = 0;
+    
     try {
       if (typeof labPackage.parameters === "string") {
+        // Try to parse as JSON first
         parsedParameters = JSON.parse(labPackage.parameters);
       } else if (
         typeof labPackage.parameters === "object" &&
@@ -26,10 +29,17 @@ export default function LabCard({ labPackage, handleBookAppointment }: LabCardPr
       ) {
         parsedParameters = labPackage.parameters;
       }
+      parameterCount = Object.values(parsedParameters).reduce((acc, arr) => acc + arr.length, 0);
     } catch (e) {
-      console.error("Failed to parse lab parameters", e);
+      // If JSON parsing fails, treat as comma-separated string (legacy format)
+      console.warn("Failed to parse lab parameters as JSON, treating as comma-separated string", e);
+      if (typeof labPackage.parameters === "string") {
+        const params = labPackage.parameters.split(",").map(p => p.trim()).filter(p => p);
+        parsedParameters = { "Parameters": params };
+        parameterCount = params.length;
+      }
     }
-    const parameterCount = Object.values(parsedParameters).reduce((acc, arr) => acc + arr.length, 0);
+    
     const [open, setOpen] = useState(false);
 
     return (
