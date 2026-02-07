@@ -9,40 +9,57 @@ export async function GET(request: NextRequest) {
   try {
     // Get clinic ID from subdomain for multi-tenancy
     const { clinicId: subdomainClinicId } = await getSubdomainClinicFromRequest(request);
-    
-    if (!subdomainClinicId) {
-      return NextResponse.json(
-        { success: false, error: "Clinic subdomain is required. Please access this page using your clinic URL." },
-        { status: 400 }
-      );
-    }
-
-    const clinicId = subdomainClinicId;
 
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
 
-    // Get the current user's doctor code if they have one
+    // Resolve user from token (needed for doctorCode filter + clinicId fallback)
     let userDoctorCode = null;
+    let tokenClinicId: number | null = null;
+    let tokenUserId: number | null = null;
     if (token) {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
           plusAddedPhoneNumber: string;
+          userId?: number;
+          clinicId?: number | null;
         };
 
-        if (decoded.plusAddedPhoneNumber) {
-          const user = await prisma.user.findFirst({
-            where: { 
-              phoneNumber: decoded.plusAddedPhoneNumber,
-              deletedAt: null
-            },
-            select: { doctorCode: true }
+        tokenClinicId = decoded.clinicId ?? null;
+        tokenUserId = decoded.userId ?? null;
+
+        // Resolve user: prefer userId, fallback to phone
+        let user = null;
+        if (decoded.userId) {
+          user = await prisma.user.findFirst({
+            where: { id: decoded.userId, deletedAt: null },
+            select: { doctorCode: true, clinicId: true },
           });
-          userDoctorCode = user?.doctorCode;
+        } else if (decoded.plusAddedPhoneNumber) {
+          user = await prisma.user.findFirst({
+            where: { phoneNumber: decoded.plusAddedPhoneNumber, deletedAt: null },
+            select: { doctorCode: true, clinicId: true },
+          });
+        }
+
+        userDoctorCode = user?.doctorCode ?? null;
+        // Use user's clinicId as another fallback
+        if (!tokenClinicId && user?.clinicId) {
+          tokenClinicId = user.clinicId;
         }
       } catch (error) {
         console.error("Error verifying token:", error);
       }
+    }
+
+    // Determine effective clinicId: subdomain > token > user record
+    const clinicId = subdomainClinicId || tokenClinicId;
+
+    if (!clinicId) {
+      return NextResponse.json(
+        { success: false, error: "Could not determine clinic. Please access using your clinic URL or re-login." },
+        { status: 400 }
+      );
     }
 
     // Build the where clause
