@@ -2,8 +2,8 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast, ToastContainer } from "react-toastify";
-import { put } from "@vercel/blob";
 import axios from "axios";
+import { useQueryClient } from "@tanstack/react-query";
 
 // UI Components
 import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -15,6 +15,9 @@ import { normalizeStatus } from "@/lib/utils/status";
 import TotalEarningsCard from "@/components/admin/TotalEarningsCard";
 import { PlanUsageMinimal } from "@/components/patients/plans/PlanUsage";
 import { HealthInsightsPanel } from "@/components/admin/HealthInsightsPanel";
+import ProcessingProgressNotification from "@/components/common/ProcessingProgressNotification";
+import { useProcessingNotifications } from "@/hooks/useProcessingNotifications";
+import ConsolidatedUploadModal from "@/components/pathology/ConsolidatedUploadModal";
 
 // Icons
 import {
@@ -72,6 +75,15 @@ interface LabBooking {
   reportLink?: string[] | null;
   labResult?: string[] | null;
   payment?: Payment | null;
+  reportAnalyses?: Array<{
+    id: number;
+    labBookingId: number;
+    labResultIndex: number;
+    processingStatus: string;
+    processingError: string | null;
+    processedAt: Date | null;
+    llmSummary: string | null;
+  }>;
 }
 
 interface DoctorAppointment {
@@ -123,9 +135,20 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
   const [patientDetails, setPatientDetails] = useState<PatientDetails | null>(null);
   const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
   const [uploadingAppointmentId, setUploadingAppointmentId] = useState<number | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
   const [activeSubscription, setActiveSubscription] = useState<Plan | null>(null);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [selectedLabBooking, setSelectedLabBooking] = useState<any>(null);
+  
+  // React Query for cache invalidation
+  const queryClient = useQueryClient();
+  
+  // Use the same progress notification system as other uploads
+  const { 
+    processingNotifications, 
+    addProcessingNotification, 
+    removeProcessingNotification,
+    updateLabAnalysisNotification 
+  } = useProcessingNotifications();
 
   // Hooks
   const router = useRouter();
@@ -185,7 +208,8 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
           status: booking.status,
           reportLink: booking.labResult,
           labResult: booking.labResult,
-          payment: booking.payment
+          payment: booking.payment,
+          reportAnalyses: booking.reportAnalyses || [] // Include analysis data for progress tracking
         })),
         doctorAppointments: (apiData.doctorAppointments || []).map((appt: any) => ({
           id: appt.id,
@@ -223,136 +247,54 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
     }
   };
 
-  // File Upload Handlers
-  const handleFileUpload = async (
-    file: File,
-    id: number,
-    type: 'prescription' | 'labReport' | 'dietPlan'
-  ) => {
-    if (!file || !id) return;
-
-    setUploading(true);
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const fileName = `${patientDetails?.name.replace(/\s+/g, "-")}-${type}-${id}-${file.name}`;
-
-      const { url } = await put(fileName, arrayBuffer, {
-        access: "public",
-        token: process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN,
-      });
-
-      const endpoint = type === 'labReport'
-        ? `/api/admin/optimized/dashboard/patients-details`
-        : `/api/admin/optimized/appointments`;
-
-      const payload = type === 'labReport'
-        ? { labBookingId: id, links: [url], status: "COMPLETED" }
-        : { appointmentId: id, link: url, status: "COMPLETED" };
-
-      await axios.put(endpoint, payload);
-
-      await fetchPatientDetails();
-      setUploadSuccess(true);
-      toast.success(`${type === 'prescription' ? 'Prescription' : type === 'dietPlan' ? 'Diet Plan' : 'Lab Report'} uploaded successfully.`);
-
-      setTimeout(() => {
-        setUploadingAppointmentId(null);
-        setUploadSuccess(false);
-      }, 10000);
-    } catch (err) {
-      console.error("Upload failed", err);
-      toast.error("Upload failed");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleMultipleFilesUpload = async (
-    files: FileList,
-    id: number,
-    type: 'labReport'
-  ) => {
-    if (!files || !id) return;
-
-    setUploading(true);
-    try {
-      const uploadedLinks: string[] = [];
-
-      for (const file of files) {
-        const arrayBuffer = await file.arrayBuffer();
-        const fileName = `${patientDetails?.name.replace(/\s+/g, "-")}-${type}-${id}-${file.name}`;
-        const { url } = await put(fileName, arrayBuffer, {
-          access: "public",
-          token: process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN,
+  const handleUploadComplete = async () => {
+    // Invalidate all relevant caches
+    await queryClient.invalidateQueries({ queryKey: ['labResults'] });
+    await queryClient.invalidateQueries({ queryKey: ['labResults', patientId] });
+    await queryClient.invalidateQueries({ queryKey: ['labs'] });
+    await queryClient.invalidateQueries({ queryKey: ['lab-analysis'] });
+    await queryClient.invalidateQueries({ queryKey: ['patient-details', patientId] });
+    await queryClient.invalidateQueries({ queryKey: ['admin-notifications'] });
+    
+    // Refresh patient details from API
+    await fetchPatientDetails();
+    
+    setUploadModalOpen(false);
+    
+    // Create processing notifications for uploaded reports
+    const labBooking = patientDetails?.labBookings?.find(b => b.id === selectedLabBooking?.id);
+    if (labBooking?.reportAnalyses) {
+      labBooking.reportAnalyses.forEach((analysis: any, index: number) => {
+        addProcessingNotification({
+          title: `Lab Report ${index + 1}`,
+          type: 'lab-analysis',
+          stages: [
+            {
+              stage: 'Upload',
+              status: 'completed',
+              message: 'File uploaded successfully',
+              timestamp: new Date()
+            },
+            {
+              stage: 'Initializing',
+              status: 'processing',
+              message: 'Starting AI analysis...',
+              timestamp: new Date()
+            }
+          ],
+          overallStatus: 'processing',
+          reportId: selectedLabBooking?.id,
+          labResultIndex: analysis.labResultIndex
         });
-        uploadedLinks.push(url);
-      }
-
-      await axios.put(`/api/admin/optimized/dashboard/patients-details`, {
-        labBookingId: id,
-        links: uploadedLinks,
-        status: "COMPLETED"
       });
-
-      await fetchPatientDetails();
-      setUploadSuccess(true);
-      toast.success("Lab reports uploaded successfully.");
-
-      setTimeout(() => {
-        setUploadingAppointmentId(null);
-        setUploadSuccess(false);
-      }, 1500);
-    } catch (err) {
-      console.error("Upload failed", err);
-      toast.error("Upload failed");
-    } finally {
-      setUploading(false);
     }
+    setSelectedLabBooking(null);
+    
+    // Force a hard refresh after a delay to ensure all components get updated data
+    setTimeout(() => {
+      fetchPatientDetails();
+    }, 1000);
   };
-
-  // UI Components
-  const UploadDropZone = ({ type }: { type: 'prescription' | 'labReport' | 'dietPlan' }) => (
-    <div
-      className="w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary transition"
-      onDrop={async (e) => {
-        e.preventDefault();
-        const file = e.dataTransfer.files?.[0];
-        if (file && uploadingAppointmentId) {
-          await handleFileUpload(file, uploadingAppointmentId, type);
-        }
-      }}
-      onDragOver={(e) => e.preventDefault()}
-    >
-      <div className="flex flex-col items-center gap-2">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-8 w-8 text-gray-500"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16v-4m0 0l-2 2m2-2l2 2m6 4H6a2 2 0 01-2-2V7a2 2 0 012-2h3.586a1 1 0 01.707.293l1.414 1.414A1 1 0 0012 7h8a2 2 0 012 2v7a2 2 0 01-2 2z" />
-        </svg>
-        <p className="text-sm text-gray-600">Drag & drop a PDF here or click below</p>
-        <label className="cursor-pointer bg-muted px-3 py-1 text-sm rounded border border-gray-300 mt-2 hover:bg-primary hover:text-white transition">
-          Browse files
-          <input
-            type="file"
-            accept="application/pdf"
-            multiple={type === 'labReport'}
-            hidden
-            onChange={async (e) => {
-              if (type === 'labReport' && uploadingAppointmentId && e.target.files) {
-                await handleMultipleFilesUpload(e.target.files, uploadingAppointmentId, type);
-              } else if (uploadingAppointmentId && e.target.files?.[0]) {
-                await handleFileUpload(e.target.files[0], uploadingAppointmentId, type);
-              }
-            }}
-          />
-        </label>
-      </div>
-    </div>
-  );
 
   const ProfileInfoCard = () => (
     <Card className="col-span-full relative overflow-hidden rounded-lg bg-slate-50 text-gray-700 p-6">
@@ -484,21 +426,19 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
                       </DialogContent>
                     </Dialog>
                   ) : (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button size="sm" onClick={() => setUploadingAppointmentId(labBooking.id)}>
-                          Upload Report
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogTitle>Upload Lab Report PDF</DialogTitle>
-                        <UploadDropZone type="labReport" />
-                        {uploading && <p>Uploading...</p>}
-                        {uploadSuccess && (
-                          <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
-                        )}
-                      </DialogContent>
-                    </Dialog>
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        setSelectedLabBooking({
+                          id: labBooking.id,
+                          labPackageName: labBooking.labPackageName,
+                          labResult: labBooking.labResult || []
+                        });
+                        setUploadModalOpen(true);
+                      }}
+                    >
+                      Upload Report
+                    </Button>
                   )}
                 </div>
               </Card>
@@ -635,6 +575,12 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
   const handleCollectPayment = async (paymentId: number) => {
     try {
       await axios.put("/api/admin/optimized/dashboard/patients-details", { paymentId });
+      
+      // Invalidate caches to ensure fresh data
+      await queryClient.invalidateQueries({ queryKey: ['patient-details', patientId] });
+      await queryClient.invalidateQueries({ queryKey: ['payments'] });
+      await queryClient.invalidateQueries({ queryKey: ['userProfile'] });
+      
       await fetchPatientDetails();
       toast.success("Payment marked as PAID.");
     } catch (err) {
@@ -779,6 +725,30 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
   return (
     <>
       <ToastContainer />
+      {/* Progress Notifications - Same component used by other upload operations */}
+      <ProcessingProgressNotification
+        notifications={processingNotifications}
+        onRemove={removeProcessingNotification}
+      />
+      {/* Upload Modal - Same component used by pathology */}
+      {selectedLabBooking && (
+        <ConsolidatedUploadModal
+          isOpen={uploadModalOpen}
+          onClose={() => {
+            setUploadModalOpen(false);
+            setSelectedLabBooking(null);
+          }}
+          booking={{
+            id: selectedLabBooking.id,
+            labPackageName: selectedLabBooking.labPackageName,
+            labBooking: {
+              labResult: selectedLabBooking.labResult
+            }
+          }}
+          patientName={patientDetails?.name || 'Patient'}
+          onUploadComplete={handleUploadComplete}
+        />
+      )}
       <div className="container mx-auto p-4">
         {/* Dashboard Grid */}
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2">

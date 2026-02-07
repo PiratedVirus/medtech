@@ -21,11 +21,15 @@ import { toast } from "react-toastify";
 
 interface LabReport {
   id: number;
-  labPackageName: string;
-  date: string;
-  status: string;
+  labPackageName?: string;
+  date?: string;
+  status?: string;
   reportLink?: string[] | null;
   labResult?: string[] | null;
+  // Shape from /api/labs completed (dashboard lab-generated)
+  resultName?: string;
+  resultDate?: string;
+  reports?: { name?: string; pdfUrl?: string }[];
 }
 
 interface StandaloneReport {
@@ -98,6 +102,8 @@ interface UnifiedAnalysisModalProps {
   labReports: LabReport[];
   standaloneReports?: StandaloneReport[];
   preSelectedStandaloneReportId?: number | null;
+  preSelectedLabReportId?: number | null;
+  preSelectedLabResultIndex?: number | null;
   hideAIAnalysis?: boolean; // When true, only shows lab values section
 }
 
@@ -108,6 +114,8 @@ export default function UnifiedAnalysisModal({
   labReports,
   standaloneReports = [],
   preSelectedStandaloneReportId = null,
+  preSelectedLabReportId = null,
+  preSelectedLabResultIndex = null,
   hideAIAnalysis = false
 }: UnifiedAnalysisModalProps) {
   
@@ -166,13 +174,13 @@ export default function UnifiedAnalysisModal({
         return !hasFailedAnalysis;
       });
 
-  // Handle pre-selection when modal opens
+  // Handle pre-selection when modal opens (standalone report)
   useEffect(() => {
     if (isOpen && preSelectedStandaloneReportId) {
       setActiveTab('standalone-reports');
       setSelectedStandaloneReportId(preSelectedStandaloneReportId);
-      
-      // Find and set the analysis for the pre-selected report
+      setSelectedReportId(null);
+      setSelectedLabResultIndex(null);
       const preSelectedReport = allStandaloneReports.find(r => r.id === preSelectedStandaloneReportId);
       if (preSelectedReport?.reportAnalyses?.length && preSelectedReport.reportAnalyses.length > 0) {
         const completedAnalysis = preSelectedReport.reportAnalyses.find(a => a.processingStatus === 'COMPLETED');
@@ -181,6 +189,17 @@ export default function UnifiedAnalysisModal({
       }
     }
   }, [isOpen, preSelectedStandaloneReportId, allStandaloneReports]);
+
+  // Handle pre-selection when modal opens (lab-generated report)
+  useEffect(() => {
+    if (isOpen && preSelectedLabReportId) {
+      setActiveTab('lab-reports');
+      setSelectedReportId(preSelectedLabReportId);
+      setSelectedLabResultIndex(preSelectedLabResultIndex ?? 0);
+      setSelectedStandaloneReportId(null);
+      setStandaloneAnalysis(null);
+    }
+  }, [isOpen, preSelectedLabReportId, preSelectedLabResultIndex]);
 
   // Polling mechanism for standalone reports
   useEffect(() => {
@@ -512,8 +531,11 @@ export default function UnifiedAnalysisModal({
             <CarouselContent className="-ml-2">
               {activeTab === 'lab-reports' ? (
               filteredLabReports.map((report) => {
-              // Use labResult if available, otherwise fall back to reportLink
-              const results = report.labResult || report.reportLink || [];
+              // Support both shapes: reportLink/labResult (URL arrays) or reports (from /api/labs)
+              const results = (report as any).reports?.map((r: any) => r.pdfUrl).filter(Boolean)
+                || report.labResult || report.reportLink || [];
+              const displayName = report.labPackageName ?? (report as any).resultName ?? 'Lab Report';
+              const displayDate = report.date ?? (report as any).resultDate;
               
               if (results.length === 0) {
                 // No results available
@@ -526,9 +548,9 @@ export default function UnifiedAnalysisModal({
                       >
                         <span className="relative z-10 inline-flex items-center gap-2">
                           <FileText className="h-4 w-4 text-gray-400" />
-                          <span className="font-semibold">{report.labPackageName}</span>
+                          <span className="font-semibold">{displayName}</span>
                           <span className="ml-2 text-xs rounded-full px-2 py-0.5 bg-gray-200 text-gray-500">
-                            {new Date(report.date).toLocaleDateString('en-GB')}
+                            {displayDate ? new Date(displayDate).toLocaleDateString('en-GB') : '—'}
                           </span>
                         </span>
                       </button>
@@ -563,9 +585,9 @@ export default function UnifiedAnalysisModal({
                       >
                         <span className="relative z-10 inline-flex items-center gap-2">
                           <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
-                          <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>{report.labPackageName}</span>
+                          <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>{displayName}</span>
                           <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
-                            {new Date(report.date).toLocaleDateString('en-GB')}
+                            {displayDate ? new Date(displayDate).toLocaleDateString('en-GB') : '—'}
                           </span>
                         </span>
                       </button>
@@ -602,10 +624,10 @@ export default function UnifiedAnalysisModal({
                         <span className="relative z-10 inline-flex items-center gap-2">
                           <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
                           <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>
-                            {report.labPackageName}-{index + 1}
+                            {displayName}-{index + 1}
                           </span>
                           <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
-                            {new Date(report.date).toLocaleDateString('en-GB')}
+                            {displayDate ? new Date(displayDate).toLocaleDateString('en-GB') : '—'}
                           </span>
                         </span>
                       </button>

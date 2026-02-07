@@ -3,11 +3,13 @@ import prisma from '@/lib/prisma';
 import * as jose from 'jose';
 import { generateSummary, extractValues } from '@/lib/llm/unified-service';
 
-// JWT payload interface
+// JWT payload interface (match verify-otp token shape for multi-clinic)
 interface JWTPayload {
   plusAddedPhoneNumber: string;
-  userExists: boolean;
-  userRole: string;
+  userExists?: boolean;
+  userRole?: string;
+  userId?: number;
+  clinicId?: number | null;
 }
 
 // Function to verify JWT token and get user
@@ -22,23 +24,32 @@ async function verifyUserToken(token: string): Promise<JWTPayload | null> {
   }
 }
 
-// Function to get user from request
+// Function to get user from request (use userId from token when present for correct segregation)
 async function getUserFromRequest(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   if (!token) return null;
-  
+
   const decoded = await verifyUserToken(token);
   if (!decoded) return null;
-  
-  // Get user from database using phone number from JWT
+
+  // Prefer userId from token so we resolve the same user as frontend profile (multi-clinic safe)
+  if (decoded.userId) {
+    const user = await prisma.user.findFirst({
+      where: { id: decoded.userId, deletedAt: null },
+      select: { id: true, name: true, role: true, phoneNumber: true },
+    });
+    return user;
+  }
+
+  // Fallback: resolve by phone (old tokens)
   const user = await prisma.user.findFirst({
-    where: { 
+    where: {
       phoneNumber: decoded.plusAddedPhoneNumber,
-      deletedAt: null
+      deletedAt: null,
     },
-    select: { id: true, name: true, role: true, phoneNumber: true }
+    select: { id: true, name: true, role: true, phoneNumber: true },
   });
-  
+
   return user;
 }
 
@@ -424,16 +435,24 @@ export async function POST(request: NextRequest) {
 
     console.log(`[UPLOAD][${requestId}] File validation passed: ${file.name} (${file.size} bytes, ${file.type})`);
 
-    const isPatient = user.id === Number(patientId);
     const isDoctor = user.role === 'DOCTOR' || user.role === 'DIETICIAN';
     const isAdmin = user.role === 'ADMIN';
+    const isPatientRole = user.role === 'PATIENT';
+    // Patient can only upload for themselves. StandaloneReport.patientId is User.id, so use user.id.
+    // Frontend may send PatientProfile.id; we allow PATIENT upload and force patientId to user.id.
+    const isPatientUploadingForSelf = isPatientRole;
+    const isPatient = isPatientUploadingForSelf || user.id === Number(patientId);
+    
+    // Resolve effective patientId: for PATIENT role, always use their User.id (report owner)
+    const effectivePatientId = isPatientRole ? user.id : Number(patientId);
     
     console.log(`[UPLOAD][${requestId}] Permission check:`, {
       isPatient,
       isDoctor,
       isAdmin,
       userId: user.id,
-      patientId: Number(patientId),
+      patientIdFromForm: Number(patientId),
+      effectivePatientId,
       userRole: user.role
     });
     
@@ -473,7 +492,7 @@ export async function POST(request: NextRequest) {
     console.log(`[UPLOAD][${requestId}] Creating report record in database...`);
     const report = await prisma.standaloneReport.create({
       data: {
-        patientId: Number(patientId),
+        patientId: effectivePatientId,
         uploadedByUserId: user.id,
         reportType,
         fileName: file.name,
@@ -580,7 +599,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Get reports for a patient
+// Get reports for a patient (strict segregation: patients only see their own reports)
 export async function GET(request: NextRequest) {
   try {
     const user = await getUserFromRequest(request);
@@ -595,10 +614,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Patient ID required' }, { status: 400 });
     }
 
-    // Check permissions
-    const isPatient = user.id === Number(patientId);
+    // Segregation: PATIENT only ever sees their own reports (effectivePatientId = user.id)
     const isDoctor = user.role === 'DOCTOR' || user.role === 'DIETICIAN';
     const isAdmin = user.role === 'ADMIN';
+    const isPatientRole = user.role === 'PATIENT';
+    const effectivePatientId = isPatientRole ? user.id : Number(patientId);
+    const isPatient = isPatientRole || user.id === Number(patientId);
     
     if (!isPatient && !isDoctor && !isAdmin) {
       return NextResponse.json({ 
@@ -609,7 +630,7 @@ export async function GET(request: NextRequest) {
 
     const reports = await prisma.standaloneReport.findMany({
       where: {
-        patientId: Number(patientId),
+        patientId: effectivePatientId,
         deletedAt: null
       },
       include: {
@@ -624,7 +645,10 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' }
     });
 
-    return NextResponse.json({ success: true, reports });
+    // Enforce segregation: only return reports for this patient (defensive)
+    const filteredReports = reports.filter((r) => r.patientId === effectivePatientId);
+
+    return NextResponse.json({ success: true, reports: filteredReports });
 
   } catch (error: any) {
     console.error('Get reports error:', error);

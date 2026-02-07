@@ -836,19 +836,22 @@ model ReportTrendData {
   isAbnormal     Boolean            @default(false)
   severity       TrendSeverity?
   reportDate     DateTime
-  labBookingId   Int
+  labBookingId   Int?               // Made optional to support standalone reports
   sourceReportId Int?
+  standaloneReportId Int?           // New field to link to standalone reports
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   deletedAt      DateTime?
-  labBooking     LabBooking         @relation(fields: [labBookingId], references: [id])
+  labBooking     LabBooking?        @relation(fields: [labBookingId], references: [id])
   patient        User               @relation("PatientTrendData", fields: [patientId], references: [id])
   sourceReport   LabReportAnalysis? @relation("SourceReportTrend", fields: [sourceReportId], references: [id])
+  standaloneReport StandaloneReport? @relation("StandaloneReportTrend", fields: [standaloneReportId], references: [id])
 
   @@index([patientId])
   @@index([parameter])
   @@index([reportDate])
   @@index([labBookingId])
+  @@index([standaloneReportId])
   @@index([deletedAt])
 }
 
@@ -1093,6 +1096,7 @@ model StandaloneReport {
   patient        User                       @relation("StandaloneReportPatient", fields: [patientId], references: [id])
   uploadedBy     User                       @relation("StandaloneReportUploader", fields: [uploadedByUserId], references: [id])
   reportAnalyses StandaloneReportAnalysis[]
+  trendData      ReportTrendData[]          @relation("StandaloneReportTrend")
 
   @@index([patientId, deletedAt])
   @@index([uploadedByUserId, deletedAt])

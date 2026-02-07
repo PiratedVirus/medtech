@@ -62,6 +62,15 @@ export async function GET(request: NextRequest) {
               }
             }
           }
+        },
+        // Include report analyses for processing status
+        reportAnalyses: {
+          where: {
+            deletedAt: null
+          },
+          orderBy: {
+            labResultIndex: 'asc'
+          }
         }
       },
       orderBy: {
@@ -90,23 +99,34 @@ export async function GET(request: NextRequest) {
         resultGeneratedBy: "Lab Technician",
         resultName: `${b.patient.name} - ${b.labPackage.name} - ${new Date(b.labDate).toLocaleDateString("en-GB")}`,
         reports: Array.isArray(b.labResult)
-          ? b.labResult.map((url) => {
+          ? b.labResult.map((url, index) => {
               const raw = decodeURIComponent(url.split("/").pop() || "");
               const cleaned = raw
                 .replace(/\.pdf$/, "")
                 .replace(/^.*?-lab-\d+-/, "")
                 .replace(/[-_]/g, " ")
                 .trim();
+              
+              // Find corresponding analysis for this report
+              const analysis = b.reportAnalyses?.find(a => a.labResultIndex === index);
+              
               return {
                 name: cleaned || "Unknown Report",
                 pdfUrl: url,
                 values: "",
+                // Include analysis status for UI updates
+                analysisStatus: analysis?.processingStatus || null,
+                analysisId: analysis?.id || null,
+                hasAnalysis: analysis?.processingStatus === 'COMPLETED' && (analysis?.summary || analysis?.allValues),
               };
             })
           : [],
         status: b.status,
         phlebotomist: b.labAssignments[0]?.phlebotomist?.user?.name || "Not assigned",
         labAssignmentId: b.labAssignments[0]?.id,
+        // Include overall analysis status for the booking
+        hasAnyPendingAnalysis: b.reportAnalyses?.some(a => a.processingStatus === 'PENDING' || a.processingStatus === 'PROCESSING'),
+        reportAnalyses: b.reportAnalyses || [],
       }));
 
     return NextResponse.json({ scheduled, completed });

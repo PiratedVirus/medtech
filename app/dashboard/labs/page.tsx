@@ -7,11 +7,11 @@ import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import axios from "axios";
 import CdLoader from "@/components/ui/custom/cd-loader";
 import { CircleCheckBig, TestTube, Package } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import LabCard from "@/components/patients/labs/view/LabCard";
 // Removed labResult import, using live data from API
 import LabResultCard from "@/components/patients/labs/view/LabResultCard";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ReportUploadButton from "@/components/common/ReportUploadButton";
 import StandaloneReportCard from "@/components/patients/labs/view/StandaloneReportCard";
 import UnifiedAnalysisModal from "@/components/common/UnifiedAnalysisModal";
@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 export default function LabsPage() {
   const router = useRouter();
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
   const { profile, isLoading: profileLoading } = useDecryptedProfile();
   const patientId = profile?.id;
   const clinicId = profile?.clinicId;
@@ -33,6 +34,21 @@ export default function LabsPage() {
     staleTime: 5 * 60 * 1000,  // 5 minutes - lab results change moderately
     refetchOnMount: false,     // Use cached data when available
   });
+  
+  // Check if there are any pending analyses and enable polling
+  const hasPendingAnalyses = labData.completed?.some((booking: any) => booking.hasAnyPendingAnalysis) || false;
+  
+  // Auto-refresh when there are pending analyses (poll every 3 seconds)
+  useEffect(() => {
+    if (!hasPendingAnalyses) return;
+    
+    const pollInterval = setInterval(() => {
+      console.log('[PATIENT-BOOKINGS] Polling for analysis updates...');
+      fetchLabData();
+    }, 3000); // Poll every 3 seconds
+    
+    return () => clearInterval(pollInterval);
+  }, [hasPendingAnalyses, fetchLabData]);
 
   // Fetch standalone reports (manually uploaded)
   const { data: standaloneReports = [], isLoading: loadingStandaloneReports, refetch: fetchStandaloneReports } = useQuery({
@@ -53,13 +69,28 @@ export default function LabsPage() {
 
   const handleViewStandaloneAnalysis = (report: any) => {
     setSelectedStandaloneReport(report);
+    setSelectedLabResult(null);
     setAnalysisModalOpen(true);
   };
 
-  const handleUploadSuccess = () => {
+  const handleViewLabAnalysis = (reportId: number) => {
+    setSelectedLabResult({ id: reportId });
+    setSelectedStandaloneReport(null);
+    setAnalysisModalOpen(true);
+  };
+
+  const handleUploadSuccess = async () => {
+    // Invalidate all relevant caches to force fresh data
+    await queryClient.invalidateQueries({ queryKey: ['labResults'] });
+    await queryClient.invalidateQueries({ queryKey: ['labResults', patientId] });
+    await queryClient.invalidateQueries({ queryKey: ['standaloneReports'] });
+    await queryClient.invalidateQueries({ queryKey: ['standaloneReports', patientId] });
+    await queryClient.invalidateQueries({ queryKey: ['labs'] });
+    await queryClient.invalidateQueries({ queryKey: ['lab-analysis'] });
+    
     // Refresh both lab data and standalone reports after upload
-    fetchLabData();
-    fetchStandaloneReports();
+    await fetchLabData();
+    await fetchStandaloneReports();
   };
 
 
@@ -85,6 +116,7 @@ export default function LabsPage() {
   const [reportTab, setReportTab] = useState<'lab-generated' | 'manually-uploaded'>("lab-generated");
   const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
   const [selectedStandaloneReport, setSelectedStandaloneReport] = useState<any>(null);
+  const [selectedLabResult, setSelectedLabResult] = useState<any>(null);
 
   const labPackages = (labs || [])
     .filter((lab: any) => lab.isLabPackage === true)
@@ -93,6 +125,22 @@ export default function LabsPage() {
   const individualTests = (labs || [])
     .filter((lab: any) => lab.isLabPackage === false)
     .filter((lab: any) => lab.name.toLowerCase().includes(searchTests.toLowerCase()));
+
+  const labGeneratedReports = (labData.completed || []).map((result: any) => {
+    const firstReport = result.reports?.[0];
+    return {
+      id: result.id,
+      fileName: result.resultName || firstReport?.name || "Lab Report",
+      reportType: "lab_report",
+      createdAt: result.resultDate,
+      fileUrl: firstReport?.pdfUrl || "",
+      uploadedBy: {
+        name: result.resultGeneratedBy || "Lab",
+        role: "LAB",
+      },
+      reportAnalyses: result.reportAnalyses || [],
+    };
+  });
 
   if (profileLoading || isLoading) {
     return <CdLoader />;
@@ -248,62 +296,7 @@ export default function LabsPage() {
           )}
         </div>
       </div>
-      <div className="bookPackages">
-        <div className="bg-muted h-fit px-4 sm:px-8 md:px-12 lg:px-20 pb-4">
-          <div className="py-7 mb-5 flex flex-col md:flex-row md:items-center justify-between border-b-2">
-            <div>
-              <>
-                {individualTests.length > 0 && (
-                  <>
-                    <p className="text-4xl font-bold text-gray-800">
-                      {individualTests.length} tests available for booking
-                    </p>
-                    <div className="flex items-center gap-2 mt-5">
-                      <CircleCheckBig className="text-green-700 h-6 w-6" />
-                      <p className="text-lg">
-                        Book Lab tests with certified Lab Technicians
-                      </p>
-                    </div>
-                  </>
-                )}
-                {individualTests.length === 0 && (
-                  <p className="text-2xl font-semibold text-gray-700">
-                    Individual Lab Tests
-                  </p>
-                )}
-              </>
 
-            </div>
-            <div className="mt-4 md:mt-0">
-              <input
-                type="text"
-                placeholder="Search lab tests..."
-                className="border border-gray-300 rounded-md px-4 py-2 w-full md:w-80 text-gray-500 focus:border-primary focus:outline-none"
-                value={searchTests}
-                onChange={(e) => setSearchTests(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {individualTests.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
-              {individualTests.map((lab: any) => (
-                <LabCard key={lab.id} labPackage={lab} handleBookAppointment={handleBookAppointment} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-16 mt-10">
-              <TestTube className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-xl font-semibold text-gray-700 mb-2">No Lab Tests Available</p>
-              <p className="text-gray-500">
-                {searchTests 
-                  ? "No tests match your search. Try a different search term."
-                  : "Individual lab tests are not currently available for this clinic. Please check back later or contact your clinic for more information."}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
       </>
       )}
       {/* Past Lab Bookings Section */}
@@ -332,7 +325,7 @@ export default function LabsPage() {
           {labData.scheduled.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {labData.scheduled.map((result: any) => (
-                <LabResultCard key={result.id} result={result} />
+                <LabResultCard key={result.id} result={result} onViewAnalysis={() => handleViewLabAnalysis(result.id)} />
               ))}
             </div>
           ) : (
@@ -395,10 +388,14 @@ export default function LabsPage() {
           {/* Lab Generated Reports Tab */}
           {reportTab === 'lab-generated' && (
             <>
-              {labData.completed.length > 0 ? (
+              {labGeneratedReports.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {labData.completed.map((result: any) => (
-                    <LabResultCard key={result.id} result={result} />
+                  {labGeneratedReports.map((report: any) => (
+                    <StandaloneReportCard
+                      key={report.id}
+                      report={report}
+                      onViewAnalysis={() => handleViewLabAnalysis(report.id)}
+                    />
                   ))}
                 </div>
               ) : (
@@ -443,11 +440,14 @@ export default function LabsPage() {
         onClose={() => {
           setAnalysisModalOpen(false);
           setSelectedStandaloneReport(null);
+          setSelectedLabResult(null);
         }}
         patientId={String(profile?.id)}
         labReports={labData.completed}
         standaloneReports={standaloneReports}
-        preSelectedStandaloneReportId={selectedStandaloneReport?.id || null}
+        preSelectedStandaloneReportId={selectedStandaloneReport?.id ?? null}
+        preSelectedLabReportId={selectedLabResult?.id ?? null}
+        preSelectedLabResultIndex={0}
       />
 
     </>

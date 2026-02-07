@@ -28,31 +28,40 @@ const lato = Lato({
 // Client-side only component to wrap children once localStorage is available
 function ClientSideWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 10 * 60 * 1000,       // 10 minutes - keep data fresh longer
-        gcTime: 30 * 60 * 1000,          // 30 minutes - keep in cache much longer
-        refetchOnWindowFocus: false,     // Prevent unnecessary refetches on tab focus
-        refetchOnMount: false,           // Use cached data when component mounts
-        refetchOnReconnect: false,       // Don't refetch on network reconnect for better UX
-        refetchInterval: false,          // No automatic refetching
-        networkMode: 'offlineFirst',     // Prioritize cache over network
-        retry: (failureCount, error: any) => {
-          // Smart retry logic - don't retry auth errors
-          if (error?.response?.status === 401 || error?.response?.status === 403) {
-            return false;
-          }
-          return failureCount < 1; // Reduce retry attempts for faster response
+  const [queryClient] = useState(() => {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: {
+          staleTime: 10 * 60 * 1000,       // 10 minutes - keep data fresh longer
+          gcTime: 30 * 60 * 1000,          // 30 minutes - keep in cache much longer
+          refetchOnWindowFocus: false,     // Prevent unnecessary refetches on tab focus
+          refetchOnMount: false,           // Use cached data when component mounts
+          refetchOnReconnect: false,       // Don't refetch on network reconnect for better UX
+          refetchInterval: false,          // No automatic refetching
+          networkMode: 'offlineFirst',     // Prioritize cache over network
+          retry: (failureCount, error: any) => {
+            // Smart retry logic - don't retry auth errors
+            if (error?.response?.status === 401 || error?.response?.status === 403) {
+              return false;
+            }
+            return failureCount < 1; // Reduce retry attempts for faster response
+          },
+          retryDelay: 1000, // Fixed 1 second delay instead of exponential backoff
         },
-        retryDelay: 1000, // Fixed 1 second delay instead of exponential backoff
+        mutations: {
+          retry: 1, // Retry mutations only once
+          retryDelay: 1000,
+        },
       },
-      mutations: {
-        retry: 1, // Retry mutations only once
-        retryDelay: 1000,
-      },
-    },
-  }));
+    });
+    
+    // Store queryClient globally for cache invalidation in hooks
+    if (typeof window !== 'undefined') {
+      (window as any).__REACT_QUERY_CLIENT__ = client;
+    }
+    
+    return client;
+  });
   const [persister, setPersister] = useState<any>(null);
   const [isReady, setIsReady] = useState(false);
 

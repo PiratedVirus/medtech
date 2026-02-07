@@ -125,18 +125,49 @@ export function useProcessingNotifications() {
     if (analysisData.processingStatus === 'COMPLETED') {
       stages.push(
         { stage: 'Text Extraction', status: 'completed', message: 'Text extracted successfully', timestamp: new Date() },
-        { stage: 'LLM Processing', status: 'completed', message: 'Analysis completed successfully', timestamp: new Date() }
+        { stage: 'Summary Generation', status: 'completed', message: 'Summary generated successfully', timestamp: new Date() },
+        { stage: 'Value Extraction', status: 'completed', message: 'Lab values extracted successfully', timestamp: new Date() }
       );
       overallStatus = 'completed';
+      
+      // Invalidate all lab-related caches when analysis completes
+      if (typeof window !== 'undefined' && (window as any).__REACT_QUERY_CLIENT__) {
+        const queryClient = (window as any).__REACT_QUERY_CLIENT__;
+        queryClient.invalidateQueries({ queryKey: ['labResults'] });
+        queryClient.invalidateQueries({ queryKey: ['labs'] });
+        queryClient.invalidateQueries({ queryKey: ['lab-analysis'] });
+        queryClient.invalidateQueries({ queryKey: ['patient-details'] });
+      }
       
       // Auto-remove completed notification after 5 seconds
       setTimeout(() => {
         removeProcessingNotification(notificationId);
       }, 5000);
     } else if (analysisData.processingStatus === 'FAILED') {
-      stages.push(
-        { stage: 'Processing', status: 'failed', message: analysisData.processingError || 'Failed', timestamp: new Date() }
-      );
+      // Parse error message to determine which stage failed
+      const errorMsg = analysisData.processingError || '';
+      
+      if (errorMsg.includes('Stage 1') || errorMsg.includes('Stage 2') || errorMsg.includes('OCR')) {
+        stages.push(
+          { stage: 'Text Extraction', status: 'failed', message: errorMsg || 'Text extraction failed', timestamp: new Date() }
+        );
+      } else if (errorMsg.includes('Stage 3a') || errorMsg.includes('Summary')) {
+        stages.push(
+          { stage: 'Text Extraction', status: 'completed', message: 'Text extracted successfully', timestamp: new Date() },
+          { stage: 'Summary Generation', status: 'failed', message: errorMsg || 'Summary generation failed', timestamp: new Date() }
+        );
+      } else if (errorMsg.includes('Stage 3b') || errorMsg.includes('Values')) {
+        stages.push(
+          { stage: 'Text Extraction', status: 'completed', message: 'Text extracted successfully', timestamp: new Date() },
+          { stage: 'Summary Generation', status: 'completed', message: 'Summary generated successfully', timestamp: new Date() },
+          { stage: 'Value Extraction', status: 'failed', message: errorMsg || 'Value extraction failed', timestamp: new Date() }
+        );
+      } else {
+        stages.push(
+          { stage: 'Processing', status: 'failed', message: errorMsg || 'Processing failed', timestamp: new Date() }
+        );
+      }
+      
       overallStatus = 'failed';
       
       // Auto-remove failed notification after 10 seconds
@@ -144,10 +175,42 @@ export function useProcessingNotifications() {
         removeProcessingNotification(notificationId);
       }, 10000);
     } else if (analysisData.processingStatus === 'PROCESSING') {
-      stages.push(
-        { stage: 'Text Extraction', status: 'completed', message: 'Text extracted successfully', timestamp: new Date() },
-        { stage: 'LLM Processing', status: 'processing', message: 'Generating analysis...', timestamp: new Date() }
-      );
+      // Parse processing error to determine current stage (from unified processor)
+      const errorMsg = analysisData.processingError || '';
+      
+      if (errorMsg.includes('Stage 1') || errorMsg.includes('Initializing')) {
+        stages.push(
+          { stage: 'Initializing', status: 'processing', message: 'Starting analysis...', timestamp: new Date() }
+        );
+      } else if (errorMsg.includes('Stage 2') || errorMsg.includes('Extracting text')) {
+        stages.push(
+          { stage: 'Text Extraction', status: 'processing', message: 'Extracting text from PDF...', timestamp: new Date() }
+        );
+      } else if (errorMsg.includes('Stage 3a') || errorMsg.includes('Generating summary')) {
+        stages.push(
+          { stage: 'Text Extraction', status: 'completed', message: 'Text extracted successfully', timestamp: new Date() },
+          { stage: 'Summary Generation', status: 'processing', message: 'Generating AI summary...', timestamp: new Date() }
+        );
+      } else if (errorMsg.includes('Stage 3b') || errorMsg.includes('Extracting lab values')) {
+        stages.push(
+          { stage: 'Text Extraction', status: 'completed', message: 'Text extracted successfully', timestamp: new Date() },
+          { stage: 'Summary Generation', status: 'completed', message: 'Summary generated successfully', timestamp: new Date() },
+          { stage: 'Value Extraction', status: 'processing', message: 'Extracting lab values...', timestamp: new Date() }
+        );
+      } else if (errorMsg.includes('Stage 4') || errorMsg.includes('Finalizing')) {
+        stages.push(
+          { stage: 'Text Extraction', status: 'completed', message: 'Text extracted successfully', timestamp: new Date() },
+          { stage: 'Summary Generation', status: 'completed', message: 'Summary generated successfully', timestamp: new Date() },
+          { stage: 'Value Extraction', status: 'completed', message: 'Lab values extracted successfully', timestamp: new Date() },
+          { stage: 'Finalizing', status: 'processing', message: 'Finalizing results...', timestamp: new Date() }
+        );
+      } else {
+        // Default: show basic processing state
+        stages.push(
+          { stage: 'Text Extraction', status: 'completed', message: 'Text extracted successfully', timestamp: new Date() },
+          { stage: 'LLM Processing', status: 'processing', message: 'Generating analysis...', timestamp: new Date() }
+        );
+      }
     } else {
       stages.push(
         { stage: 'Initializing', status: 'processing', message: 'Starting analysis...', timestamp: new Date() }
