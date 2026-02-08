@@ -434,9 +434,9 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
       select: { patientId: true, createdAt: true }
     });
 
-    // Determine the actual report date: prefer extracted date from report text, fallback to upload date
-    const actualReportDate = extractedReportDate ? new Date(extractedReportDate) : (reportMeta?.createdAt || new Date());
-    console.log(`[LLM-PROCESSING][${requestId}][DEBUG] Report date: extractedReportDate=${extractedReportDate ?? 'null'}, actualReportDate=${actualReportDate.toISOString()} (${extractedReportDate ? 'EXTRACTED' : 'FALLBACK upload date'})`);
+    // Determine the actual report date: prefer extracted date from report text, otherwise leave unset
+    const actualReportDate = extractedReportDate ? new Date(extractedReportDate) : null;
+    console.log(`[LLM-PROCESSING][${requestId}][DEBUG] Report date: extractedReportDate=${extractedReportDate ?? 'null'}, actualReportDate=${actualReportDate ? actualReportDate.toISOString() : 'NOT EXTRACTED'}`);
 
     await prisma.standaloneReportAnalysis.updateMany({
       where: { reportId, analysisType },
@@ -451,12 +451,14 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
         keyFindings,
         recommendations,
         urgency,
-        trendAnalysis: { reportDate: actualReportDate.toISOString() },
+        trendAnalysis: actualReportDate
+          ? { reportDate: actualReportDate.toISOString() }
+          : { reportDate: null },
       },
     });
 
     // Create trend data for standalone lab reports
-    if (analysisType === 'lab_analysis' && Array.isArray(allValues) && allValues.length > 0 && reportMeta) {
+    if (analysisType === 'lab_analysis' && Array.isArray(allValues) && allValues.length > 0 && reportMeta && actualReportDate) {
       console.log(`[LLM-PROCESSING][${requestId}] Creating trend data for ${allValues.length} parameters`);
       
       // Delete old trend data for this standalone report (in case of regeneration)

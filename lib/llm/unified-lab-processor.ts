@@ -264,12 +264,28 @@ async function processLabAnalysis(
       }
     }
 
+    let extractedReportDate: Date | undefined;
+    if (valuesResult.reportDate) {
+      const parsed = new Date(valuesResult.reportDate);
+      if (!Number.isNaN(parsed.getTime())) {
+        extractedReportDate = parsed;
+      }
+    }
+
+    const actualReportDate = extractedReportDate || context.reportDate;
+    if (actualReportDate) {
+      context.reportDate = actualReportDate;
+    }
+
     await updateAnalysisResults(context, {
       allValues: valuesResult.allValues || [],
-      criticalValues: finalCriticalValues
+      criticalValues: finalCriticalValues,
+      trendAnalysis: actualReportDate
+        ? { reportDate: actualReportDate.toISOString() }
+        : { reportDate: null }
     });
 
-    console.log(`[UNIFIED-LLM][${requestId}] Stage 3b: Values extraction completed (${valuesResult.allValues?.length || 0} total, ${finalCriticalValues.length} critical)`);
+    console.log(`[UNIFIED-LLM][${requestId}] Stage 3b: Values extraction completed (${valuesResult.allValues?.length || 0} total, ${finalCriticalValues.length} critical). Report date: ${actualReportDate ? actualReportDate.toISOString() : 'NOT EXTRACTED'}`);
     await updateProgressIfAvailable(updateProgress, 'Stage 3b: Lab values extracted');
   } catch (valuesError) {
     const errorMsg = valuesError instanceof Error ? valuesError.message : 'Unknown error';
@@ -452,6 +468,7 @@ async function updateAnalysisResults(
     keyFindings?: any[];
     recommendations?: any[];
     urgency?: string;
+    trendAnalysis?: any;
   }
 ) {
   const updateData: any = {};
@@ -462,6 +479,7 @@ async function updateAnalysisResults(
   if (results.keyFindings !== undefined) updateData.keyFindings = results.keyFindings;
   if (results.recommendations !== undefined) updateData.recommendations = results.recommendations;
   if (results.urgency !== undefined) updateData.urgency = results.urgency;
+  if (results.trendAnalysis !== undefined) updateData.trendAnalysis = results.trendAnalysis;
   
   updateData.llmModel = process.env.GROQ_SUMMARY_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct';
 
@@ -550,7 +568,11 @@ async function createTrendData(
   allValues: any[],
   criticalValues: any[]
 ) {
-  const reportDate = context.reportDate || new Date();
+  const reportDate = context.reportDate;
+  if (!reportDate) {
+    console.warn('[UNIFIED-LLM] Skipping trend data creation: reportDate not available');
+    return;
+  }
   const valuesToProcess = criticalValues.length > 0 ? criticalValues : allValues;
 
   for (const value of valuesToProcess) {

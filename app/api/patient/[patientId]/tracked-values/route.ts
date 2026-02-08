@@ -81,9 +81,21 @@ export async function GET(
       isTracked: boolean;
     }> = [];
 
+    const getAnalysisReportDate = (analysis: any) => {
+      const reportDateRaw = (analysis?.trendAnalysis as any)?.reportDate;
+      if (!reportDateRaw) return null;
+      const parsed = new Date(reportDateRaw);
+      if (Number.isNaN(parsed.getTime())) return null;
+      return parsed.toISOString().split("T")[0];
+    };
+
     // Process lab bookings
     labBookings.forEach((booking) => {
-      const analysis = booking.reportAnalyses as any;
+      const analyses = booking.reportAnalyses as any[];
+      const reportDateStr = analyses?.map(getAnalysisReportDate).find(Boolean) || null;
+      if (!reportDateStr) return;
+
+      const analysis = analyses?.[0];
       const criticalList: any[] = Array.isArray(analysis?.criticalValues) ? analysis.criticalValues : [];
       const allList: any[] = Array.isArray(analysis?.allValues) ? analysis.allValues : [];
 
@@ -100,7 +112,7 @@ export async function GET(
           isAbnormal: value.isAbnormal ?? true,
           severity: value.severity || "HIGH",
           category: value.category,
-          reportDate: booking.labDate.toISOString().split("T")[0],
+          reportDate: reportDateStr,
           labPackageName: booking.labPackage?.name || "Unknown",
           reportId: booking.id,
           isTracked,
@@ -120,7 +132,7 @@ export async function GET(
           isAbnormal: value.isAbnormal ?? false,
           severity: value.severity || "NORMAL",
           category: value.category,
-          reportDate: booking.labDate.toISOString().split("T")[0],
+          reportDate: reportDateStr,
           labPackageName: booking.labPackage?.name || "Unknown",
           reportId: booking.id,
           isTracked,
@@ -134,10 +146,8 @@ export async function GET(
         if (analysis.analysisType !== "lab_analysis") continue;
 
         // Use extracted report date from trendAnalysis when available
-        const reportDateObj = (analysis.trendAnalysis as any)?.reportDate
-          ? new Date((analysis.trendAnalysis as any).reportDate)
-          : report.createdAt;
-        const reportDateStr = reportDateObj.toISOString().split("T")[0];
+        const reportDateStr = getAnalysisReportDate(analysis);
+        if (!reportDateStr) continue;
 
         const criticalList: any[] = Array.isArray(analysis.criticalValues) ? analysis.criticalValues : [];
         const allList: any[] = Array.isArray(analysis.allValues) ? analysis.allValues : [];

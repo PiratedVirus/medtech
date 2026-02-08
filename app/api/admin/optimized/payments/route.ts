@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
-import { getAdminClinicId, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
+import { getAdminClinicId } from "@/lib/admin-clinic-middleware";
 
-// Optimized payments API with single aggregated query for earnings
+// Optimized payments API with clinic filtering
 export async function GET(request: NextRequest) {
   try {
     // Get admin's clinic ID for filtering
@@ -21,100 +21,157 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const search = searchParams.get("search") || "";
 
-    // Create clinic filter for payments
-    const userClinicFilter = createUserClinicFilter(clinicId);
-    const paymentFilter = {
-      OR: [
-        { appointment: { doctor: userClinicFilter.user } },
-        { subscription: { user: userClinicFilter.user } },
-        { labBooking: { patient: userClinicFilter.user } }
-      ]
-    };
+    // Build where clause with clinic filtering through relations
+    // Payment has optional relations: appointment?, labBooking?, subscription?
+    // For optional relations, use `is` for the nested filter
+    const clinicOR: any[] = [
+      // Appointment payments: match clinic by doctor or patient
+      { appointment: { is: { doctor: { clinicId } } } },
+      { appointment: { is: { patient: { clinicId } } } },
+      // Lab bookings: match clinic by lab package or patient
+      { labBooking: { is: { labPackage: { clinicId } } } },
+      { labBooking: { is: { patient: { clinicId } } } },
+      // SubscriptionTracker.user -> PatientProfile (no clinicId), go through PatientProfile.user -> User
+      { subscription: { is: { user: { user: { clinicId } } } } },
+    ];
 
-    // Build where clause with clinic filtering
-    const whereClause = {
-      ...paymentFilter,
+    const clinicPaymentFilter: any = {
       deletedAt: null,
-      ...(status && { paymentStatus: status }),
-      ...(search && {
-        OR: [
-          { razorpayPaymentId: { contains: search, mode: 'insensitive' } },
-          { razorpayOrderId: { contains: search, mode: 'insensitive' } }
-        ]
-      })
+      OR: clinicOR,
+      ...(status ? { paymentStatus: status } : {}),
     };
 
-    // Single optimized query for both payments and earnings
-    const [paymentsWithEarnings] = await prisma.$queryRaw<Array<{
-      payments: any[];
-      total_count: bigint;
-      lab_earnings: bigint | null;
-      appointment_earnings: bigint | null;
-      subscription_earnings: bigint | null;
-      total_earnings: bigint | null;
-    }>>`
-      WITH filtered_payments AS (
-        SELECT 
-          p.*,
-          CASE WHEN p."appointmentId" IS NOT NULL THEN 'appointment'
-               WHEN p."labBookingId" IS NOT NULL THEN 'lab'
-               WHEN p."subscriptionId" IS NOT NULL THEN 'subscription'
-               ELSE 'unknown' END as payment_type
-        FROM "Payment" p
-        WHERE p."deletedAt" IS NULL
-        ${status ? `AND p."paymentStatus" = '${status}'` : ''}
-        ${search ? `AND (p."razorpayPaymentId" ILIKE '%${search}%' OR p."razorpayOrderId" ILIKE '%${search}%')` : ''}
-      ),
-      paginated_payments AS (
-        SELECT *
-        FROM filtered_payments
-        ORDER BY "createdAt" DESC
-        LIMIT ${pageSize}
-        OFFSET ${(page - 1) * pageSize}
-      )
-      SELECT 
-        JSON_AGG(
-          JSON_BUILD_OBJECT(
-            'id', p.id,
-            'amount', p.amount,
-            'currency', p.currency,
-            'paymentStatus', p."paymentStatus",
-            'paymentMethod', p."paymentMethod",
-            'razorpayOrderId', p."razorpayOrderId",
-            'razorpayPaymentId', p."razorpayPaymentId",
-            'createdAt', p."createdAt",
-            'appointmentId', p."appointmentId",
-            'labBookingId', p."labBookingId",
-            'subscriptionId', p."subscriptionId",
-            'paymentType', p.payment_type
-          )
-        ) as payments,
-        (SELECT COUNT(*) FROM filtered_payments) as total_count,
-        (SELECT COALESCE(SUM(amount), 0) FROM filtered_payments WHERE payment_type = 'lab') as lab_earnings,
-        (SELECT COALESCE(SUM(amount), 0) FROM filtered_payments WHERE payment_type = 'appointment') as appointment_earnings,
-        (SELECT COALESCE(SUM(amount), 0) FROM filtered_payments WHERE payment_type = 'subscription') as subscription_earnings,
-        (SELECT COALESCE(SUM(amount), 0) FROM filtered_payments) as total_earnings
-      FROM paginated_payments p
-    `;
+    // If search is provided, add it as an AND condition to avoid overriding OR
+    if (search) {
+      clinicPaymentFilter.AND = [
+        {
+          OR: [
+            { razorpayPaymentId: { contains: search, mode: 'insensitive' } },
+            { razorpayOrderId: { contains: search, mode: 'insensitive' } },
+          ]
+        }
+      ];
+    }
 
-    const result = paymentsWithEarnings;
-    const payments = result.payments || [];
-    const totalCount = Number(result.total_count || 0);
+    // Get total count and payments in parallel
+    const [totalCount, payments, earningsData] = await Promise.all([
+      prisma.payment.count({ where: clinicPaymentFilter }),
+      prisma.payment.findMany({
+        where: clinicPaymentFilter,
+        include: {
+          appointment: {
+            select: {
+              id: true,
+              createdAt: true,
+              doctor: {
+                select: { id: true, name: true }
+              },
+              patient: {
+                select: { id: true, name: true }
+              }
+            }
+          },
+          labBooking: {
+            select: {
+              id: true,
+              labDate: true,
+              patient: {
+                select: { id: true, name: true }
+              },
+              labPackage: {
+                select: { name: true }
+              }
+            }
+          },
+          subscription: {
+            select: {
+              subscriptionId: true,
+              user: {
+                select: {
+                  id: true,
+                  user: {
+                    select: { id: true, name: true, clinicId: true }
+                  }
+                }
+              }
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      // Aggregate earnings by type
+      prisma.payment.findMany({
+        where: clinicPaymentFilter,
+        select: {
+          amount: true,
+          appointmentId: true,
+          labBookingId: true,
+          subscriptionId: true,
+        }
+      }),
+    ]);
 
-    const earnings = {
-      lab: Number(result.lab_earnings || 0),
-      appointment: Number(result.appointment_earnings || 0),
-      subscription: Number(result.subscription_earnings || 0),
-      total: Number(result.total_earnings || 0),
-    };
+    // Calculate earnings
+    let labEarnings = 0;
+    let appointmentEarnings = 0;
+    let subscriptionEarnings = 0;
+    for (const p of earningsData) {
+      if (p.labBookingId) labEarnings += p.amount;
+      else if (p.appointmentId) appointmentEarnings += p.amount;
+      else if (p.subscriptionId) subscriptionEarnings += p.amount;
+    }
+
+    // Transform payments to include useful display info
+    const data = payments.map(p => {
+      let paymentType = 'unknown';
+      let reference = '';
+      let patientName = '';
+      
+      if (p.labBookingId && p.labBooking) {
+        paymentType = 'Lab Booking';
+        reference = p.labBooking.labPackage?.name || `Lab #${p.labBookingId}`;
+        patientName = p.labBooking.patient?.name || '';
+      } else if (p.appointmentId && p.appointment) {
+        paymentType = 'Appointment';
+        reference = `Dr. ${p.appointment.doctor?.name || 'Unknown'}`;
+        patientName = p.appointment.patient?.name || '';
+      } else if (p.subscriptionId && p.subscription) {
+        paymentType = 'Subscription';
+        patientName = p.subscription.user?.user?.name || '';
+      }
+
+      return {
+        id: p.id,
+        amount: p.amount,
+        currency: p.currency,
+        paymentStatus: p.paymentStatus,
+        paymentMethod: p.paymentMethod,
+        razorpayOrderId: p.razorpayOrderId,
+        razorpayPaymentId: p.razorpayPaymentId,
+        createdAt: p.createdAt,
+        appointmentId: p.appointmentId,
+        labBookingId: p.labBookingId,
+        subscriptionId: p.subscriptionId,
+        paymentType,
+        reference,
+        patientName,
+      };
+    });
 
     return NextResponse.json({
-      data: payments,
+      data,
       total: totalCount,
       page,
       pageSize,
       totalPages: Math.ceil(totalCount / pageSize),
-      earnings,
+      earnings: {
+        lab: labEarnings,
+        appointment: appointmentEarnings,
+        subscription: subscriptionEarnings,
+        total: labEarnings + appointmentEarnings + subscriptionEarnings,
+      },
     });
   } catch (error) {
     console.error("Optimized payments query error:", error);

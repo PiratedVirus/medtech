@@ -418,7 +418,7 @@ ${finalText}`;
     console.log('[LLM-PROC][VALUES][DEBUG] LLM response top-level keys:', debugKeys.join(', '));
     console.log('[LLM-PROC][VALUES][DEBUG] parsed.reportDate (raw):', parsed?.reportDate, '(type:', typeof parsed?.reportDate, ')');
     if (parsed && !parsed.reportDate && debugKeys.length) {
-      console.warn('[LLM-PROC][VALUES][DEBUG] No reportDate in LLM response. Text excerpt (first 400 chars):', typeof finalText === 'string' ? finalText.slice(0, 400).replace(/\n/g, ' ') : 'N/A');
+      console.warn('[LLM-PROC][VALUES][DEBUG] No reportDate in LLM response. Text excerpt (first 400 chars):', typeof finalText === 'string' ? finalText.slice(0, 4000).replace(/\n/g, ' ') : 'N/A');
     }
     
     if (parsed && (Array.isArray(parsed.allValues) || Array.isArray(parsed.criticalValues))) {

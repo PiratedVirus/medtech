@@ -134,17 +134,30 @@ export default function ParameterTrendsModal({ isOpen, onClose, patientId }: Par
     }
   };
 
+  const parseReportDate = (value?: string) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
   const formatChartData = (values: ParameterValue[]) => {
     return values
-      .sort((a, b) => new Date(a.reportDate).getTime() - new Date(b.reportDate).getTime())
-      .map((value, index) => ({
-        date: new Date(value.reportDate).toLocaleDateString('en-GB'),
-        value: parseFloat(value.value) || 0,
-        unit: value.unit,
-        isAbnormal: value.isAbnormal,
-        severity: value.severity,
-        fullDate: value.reportDate
-      }));
+      .map((value) => {
+        const parsedDate = parseReportDate(value.reportDate);
+        if (!parsedDate) return null;
+        return {
+          date: parsedDate.toLocaleDateString('en-GB'),
+          value: parseFloat(value.value) || 0,
+          unit: value.unit,
+          isAbnormal: value.isAbnormal,
+          severity: value.severity,
+          fullDate: parsedDate.toLocaleDateString('en-GB'),
+          sortKey: parsedDate.getTime()
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => (a!.sortKey - b!.sortKey))
+      .map(({ sortKey, ...rest }) => rest);
   };
 
   const parseNormalRange = (normalRange: string) => {

@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
                 // Include analysis status for UI updates
                 analysisStatus: analysis?.processingStatus || null,
                 analysisId: analysis?.id || null,
-                hasAnalysis: analysis?.processingStatus === 'COMPLETED' && (analysis?.summary || analysis?.allValues),
+                hasAnalysis: analysis?.processingStatus === 'COMPLETED' && (analysis?.llmSummary || analysis?.allValues),
               };
             })
           : [],
@@ -165,6 +165,9 @@ export async function POST(request: NextRequest) {
       subscriptionId,
       labTestsDates,
     } = body;
+    const normalizedPaymentOption = typeof paymentOption === "string"
+      ? paymentOption.trim().toUpperCase()
+      : "";
 
     if (!patientId || !packageId) {
       console.error("Missing required fields", { patientId, packageId });
@@ -211,7 +214,7 @@ export async function POST(request: NextRequest) {
           mobile,
           email,
           address,
-          paymentOption,
+          paymentOption: normalizedPaymentOption || paymentOption,
           labDate: new Date(date),
           status: "PENDING", // Single status for entire workflow
         },
@@ -224,7 +227,7 @@ export async function POST(request: NextRequest) {
       console.log("Manual assignment policy active: no auto-creation/linking of LabAssignment for booking:", booking.id);
 
       // Update subscription tracker if using plan
-      if (paymentOption === "plan") {
+      if (normalizedPaymentOption === "PLAN") {
         console.log("Updating subscriptionTracker for subscriptionId:", subscriptionId, "with labTestsDates:", labTestsDates);
         await tx.subscriptionTracker.update({
           where: { subscriptionId },
@@ -234,7 +237,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Create payment record if online
-      if (paymentOption === "online" && razorpayResponse) {
+      if (normalizedPaymentOption === "ONLINE" && razorpayResponse) {
         console.log("Creating payment record for bookingId:", booking.id, "with razorpayResponse:", razorpayResponse);
         await tx.payment.create({
           data: {
@@ -243,20 +246,20 @@ export async function POST(request: NextRequest) {
             razorpayPaymentId: razorpayResponse.razorpay_payment_id,
             amount: razorpayResponse.amount,
             currency: razorpayResponse.currency || "INR",
-            paymentStatus: "Paid",
+            paymentStatus: "PAID",
             paymentMethod: razorpayResponse.method || "upi",
           },
         });
         console.log("Payment record created");
       }
 
-      if(paymentOption === "clinic") {
+      if (normalizedPaymentOption === "CLINIC") {
         await tx.payment.create({
           data: {
             labBookingId: booking.id,
             amount: Number(labPackageFees)*100,
             currency: "INR",
-            paymentStatus: "Pending",
+            paymentStatus: "PENDING",
             paymentMethod: "offline",
           },
         });

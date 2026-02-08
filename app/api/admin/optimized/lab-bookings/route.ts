@@ -162,7 +162,8 @@ export async function PATCH(request: Request) {
       select: { 
         id: true,
         labResult: true,
-        patientId: true
+        patientId: true,
+        labDate: true
       }
     });
 
@@ -244,8 +245,8 @@ export async function PATCH(request: Request) {
             }
           });
 
-          // Import and trigger background AI processing
-          const { processWithOpenRouter } = await import('@/lib/llm/process-service');
+          // Import and trigger background AI processing (unified pipeline with date extraction)
+          const { processWithOpenRouter } = await import('@/lib/llm/unified-lab-processor-adapters');
           processWithOpenRouter(analysis.id, pdfUrl, existing.patientId, id).catch((error: any) => {
             console.error(`[LAB-BOOKINGS-UPLOAD] AI processing failed for analysis ${analysis.id}:`, error);
           });

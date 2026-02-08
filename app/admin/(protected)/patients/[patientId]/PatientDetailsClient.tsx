@@ -4,6 +4,7 @@ import { useRouter, useParams } from "next/navigation";
 import { toast, ToastContainer } from "react-toastify";
 import axios from "axios";
 import { useQueryClient } from "@tanstack/react-query";
+import { put } from "@vercel/blob";
 
 // UI Components
 import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -130,11 +131,52 @@ interface PatientDetailsClientProps {
   patientId: string;
 }
 
+const UploadDropZone = ({
+  onFileSelect,
+  type,
+}: {
+  onFileSelect: (file: File) => Promise<void> | void;
+  type?: string;
+}) => (
+  <div
+    className="w-full h-36 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary transition"
+    onDrop={async (e) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files?.[0];
+      if (file) {
+        await onFileSelect(file);
+      }
+    }}
+    onDragOver={(e) => e.preventDefault()}
+  >
+    <div className="flex flex-col items-center gap-2">
+      <FileText className="h-8 w-8 text-gray-500" />
+      <p className="text-sm text-gray-600">Drag & drop PDF here or click below</p>
+      <label className="cursor-pointer bg-muted px-3 py-1 text-sm rounded border border-gray-300 mt-2 hover:bg-primary hover:text-white transition">
+        Browse file
+        <input
+          type="file"
+          accept="application/pdf"
+          hidden
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              await onFileSelect(file);
+            }
+          }}
+        />
+      </label>
+    </div>
+  </div>
+);
+
 const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
   // State Management
   const [patientDetails, setPatientDetails] = useState<PatientDetails | null>(null);
   const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
   const [uploadingAppointmentId, setUploadingAppointmentId] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
   const [activeSubscription, setActiveSubscription] = useState<Plan | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedLabBooking, setSelectedLabBooking] = useState<any>(null);
@@ -294,6 +336,40 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
     setTimeout(() => {
       fetchPatientDetails();
     }, 1000);
+  };
+
+  const handleFileUpload = async (
+    file: File,
+    appointmentId: number,
+    type: "prescription" | "dietPlan"
+  ) => {
+    if (!file || !appointmentId) return;
+    setUploading(true);
+    setUploadSuccess(false);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "-");
+      const fileName = `appointment-${appointmentId}-${type}-${Date.now()}-${safeName}`;
+      const { url } = await put(fileName, arrayBuffer, {
+        access: "public",
+        token: process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN,
+      });
+
+      await axios.put("/api/admin/optimized/appointments", {
+        appointmentId,
+        link: url,
+      });
+
+      await fetchPatientDetails();
+      setUploadSuccess(true);
+      toast.success(`${type === "prescription" ? "Prescription" : "Diet plan"} uploaded successfully.`);
+      setTimeout(() => setUploadSuccess(false), 1500);
+    } catch (error) {
+      console.error("Upload failed:", error);
+      toast.error("Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const ProfileInfoCard = () => (
@@ -493,7 +569,15 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
                       </DialogTrigger>
                       <DialogContent>
                         <DialogTitle>Upload Prescription PDF</DialogTitle>
-                        <UploadDropZone type="prescription" />
+                        <UploadDropZone
+                          onFileSelect={async (file) => {
+                            if (!uploadingAppointmentId) {
+                              toast.error("Please select an appointment first.");
+                              return;
+                            }
+                            await handleFileUpload(file, uploadingAppointmentId, "prescription");
+                          }}
+                        />
                         {uploading && <p>Uploading...</p>}
                         {uploadSuccess && (
                           <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
@@ -554,7 +638,15 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
                       </DialogTrigger>
                       <DialogContent>
                         <DialogTitle>Upload Diet Plan PDF</DialogTitle>
-                        <UploadDropZone type="dietPlan" />
+                        <UploadDropZone
+                          onFileSelect={async (file) => {
+                            if (!uploadingAppointmentId) {
+                              toast.error("Please select an appointment first.");
+                              return;
+                            }
+                            await handleFileUpload(file, uploadingAppointmentId, "dietPlan");
+                          }}
+                        />
                         {uploading && <p>Uploading...</p>}
                         {uploadSuccess && (
                           <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>

@@ -96,12 +96,22 @@ export default function PatientsAnalysisPage() {
   };
 
   // Helper function to format date
-  const formatDate = (dateString: string | Date) => {
-    try {
-      return new Date(dateString).toLocaleDateString();
-    } catch {
-      return 'Invalid Date';
-    }
+  const formatDate = (dateValue?: string | Date | null) => {
+    if (!dateValue) return '-';
+    const parsed = new Date(dateValue);
+    return Number.isNaN(parsed.getTime()) ? '-' : parsed.toLocaleDateString();
+  };
+
+  const getLabBookingReportDate = (booking: LabBooking) => {
+    const analysisWithDate = booking.analyses?.find((analysis: any) => {
+      const reportDate = (analysis?.trendAnalysis as any)?.reportDate;
+      return Boolean(reportDate);
+    }) as any;
+    return (analysisWithDate?.trendAnalysis as any)?.reportDate || null;
+  };
+
+  const getStandaloneReportDate = (report: StandaloneReport) => {
+    return (report.analyses?.[0] as any)?.trendAnalysis?.reportDate || null;
   };
 
   // Helper function to get document type display name
@@ -335,7 +345,7 @@ export default function PatientsAnalysisPage() {
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs">{formatDate(booking.createdAt || new Date())}</span>
+                            <span className="text-xs">{formatDate(getLabBookingReportDate(booking))}</span>
                           </div>
                         </td>
                         <td className="px-3 py-2">
@@ -438,7 +448,7 @@ export default function PatientsAnalysisPage() {
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs">{formatDate((report.analyses?.[0] as any)?.trendAnalysis?.reportDate || report.createdAt)}</span>
+                            <span className="text-xs">{formatDate(getStandaloneReportDate(report))}</span>
                           </div>
                         </td>
                         <td className="px-3 py-2">
@@ -535,7 +545,7 @@ export default function PatientsAnalysisPage() {
         labReports={labBookings.map(booking => ({
           id: booking.id,
           labPackageName: booking.labPackageName,
-          date: new Date().toISOString(), // Use current date as fallback
+          date: getLabBookingReportDate(booking) || undefined,
           status: "COMPLETED", // Default status
           labResult: booking.labResult
         }))}

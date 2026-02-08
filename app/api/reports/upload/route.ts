@@ -441,9 +441,9 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
       criticalValuesSample: Array.isArray(criticalValues) && criticalValues.length > 0 ? criticalValues[0] : 'none'
     });
     
-    // Determine the actual report date: prefer extracted date from report text, fallback to upload date
-    const actualReportDate = extractedReportDate ? new Date(extractedReportDate) : report.createdAt;
-    console.log(`[UPLOAD][${reportId}][DEBUG] Report date decision: extractedReportDate=${extractedReportDate ?? 'null'}, report.createdAt=${report.createdAt.toISOString()}, actualReportDate=${actualReportDate.toISOString()} (${extractedReportDate ? 'EXTRACTED' : 'FALLBACK upload date'})`);
+    // Determine the actual report date: prefer extracted date from report text, otherwise leave unset
+    const actualReportDate = extractedReportDate ? new Date(extractedReportDate) : null;
+    console.log(`[UPLOAD][${reportId}][DEBUG] Report date decision: extractedReportDate=${extractedReportDate ?? 'null'}, actualReportDate=${actualReportDate ? actualReportDate.toISOString() : 'NOT EXTRACTED'}`);
 
     await prisma.standaloneReportAnalysis.updateMany({
       where: { reportId, analysisType },
@@ -456,7 +456,9 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
         keyFindings,
         recommendations,
         urgency,
-        trendAnalysis: { reportDate: actualReportDate.toISOString() },
+        trendAnalysis: actualReportDate
+          ? { reportDate: actualReportDate.toISOString() }
+          : { reportDate: null },
         llmModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
         processedAt: new Date(),
         processingError: null
@@ -464,7 +466,7 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
     });
     
     // Create trend data for standalone reports
-    if (analysisType === 'lab_analysis' && Array.isArray(allValues) && allValues.length > 0) {
+    if (analysisType === 'lab_analysis' && Array.isArray(allValues) && allValues.length > 0 && actualReportDate) {
       console.log(`[UPLOAD][${reportId}] Creating trend data for ${allValues.length} parameters`);
       
       try {

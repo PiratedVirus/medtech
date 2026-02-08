@@ -42,6 +42,12 @@ const AllValuesModal = forwardRef<AllValuesModalRef, AllValuesModalProps>(
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
 
+    const formatReportDate = (value?: string | Date | null) => {
+      if (!value) return '-';
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? '-' : parsed.toLocaleDateString();
+    };
+
     const fetchRows = async () => {
       setLoading(true);
       setError(null);
@@ -211,13 +217,15 @@ const AllValuesModal = forwardRef<AllValuesModalRef, AllValuesModalProps>(
                     <td className="py-2 pr-2">
                       <div className="flex flex-wrap gap-1.5">
                         {row.values.map((v, idx) => {
-                          const date = v.labDate || new Date(v.reportDate || 0);
+                          const dateLabel = v.labDate
+                            ? formatReportDate(v.labDate)
+                            : formatReportDate(v.reportDate);
                           const sourceColor = v.source === 'standalone_report' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700';
                           return (
                             <span key={idx} className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[13px] ${sourceColor}`}>
                               <span className="font-semibold">{v.value}</span>
                               {v.unit && <span className="text-gray-500">{v.unit}</span>}
-                              <span className="text-gray-400">· {date.toLocaleDateString()}</span>
+                              <span className="text-gray-400">· {dateLabel}</span>
                               {v.severity && v.severity !== 'NORMAL' && (
                                 <span className="ml-1 rounded bg-orange-100 px-1.5 py-0.5 text-[11px] text-orange-700">{v.severity}</span>
                               )}

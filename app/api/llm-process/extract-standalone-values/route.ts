@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     if (!text || typeof text !== 'string' || text.trim().length < 20) {
       return NextResponse.json({ success: false, error: 'Missing or too-short text' }, { status: 400 });
     }
-    
+    console.log('[EXTRACT-FULL-TEXT22] Text:', text);
     // reportId is optional - if not provided, skip caching/validation (used by lab booking regenerate)
     const standaloneReportId = reportId ? Number(reportId) : null;
     let standaloneReport = null;

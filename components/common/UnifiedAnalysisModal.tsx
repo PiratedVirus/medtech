@@ -81,6 +81,20 @@ interface TrendData {
   dateRange: string;
 }
 
+const formatReportDate = (value?: string | null) => {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? '-' : parsed.toLocaleDateString('en-GB');
+};
+
+const getLabReportDate = (report: any, resultIndex?: number) => {
+  const analyses = report?.reportAnalyses || report?.analyses || [];
+  const analysis = typeof resultIndex === 'number'
+    ? analyses.find((item: any) => item?.labResultIndex === resultIndex)
+    : analyses.find((item: any) => item?.trendAnalysis?.reportDate);
+  return analysis?.trendAnalysis?.reportDate || null;
+};
+
 interface LabReportAnalysis {
   id: number;
   llmSummary: string;
@@ -536,7 +550,7 @@ export default function UnifiedAnalysisModal({
               const results = (report as any).reports?.map((r: any) => r.pdfUrl).filter(Boolean)
                 || report.labResult || report.reportLink || [];
               const displayName = report.labPackageName ?? (report as any).resultName ?? 'Lab Report';
-              const displayDate = report.date ?? (report as any).resultDate;
+              const displayDate = getLabReportDate(report);
               
               if (results.length === 0) {
                 // No results available
@@ -551,7 +565,7 @@ export default function UnifiedAnalysisModal({
                           <FileText className="h-4 w-4 text-gray-400" />
                           <span className="font-semibold">{displayName}</span>
                           <span className="ml-2 text-xs rounded-full px-2 py-0.5 bg-gray-200 text-gray-500">
-                            {displayDate ? new Date(displayDate).toLocaleDateString('en-GB') : '—'}
+                            {formatReportDate(displayDate)}
                           </span>
                         </span>
                       </button>
@@ -588,7 +602,7 @@ export default function UnifiedAnalysisModal({
                           <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
                           <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>{displayName}</span>
                           <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
-                            {displayDate ? new Date(displayDate).toLocaleDateString('en-GB') : '—'}
+                            {formatReportDate(displayDate)}
                           </span>
                         </span>
                       </button>
@@ -601,6 +615,7 @@ export default function UnifiedAnalysisModal({
               return results.map((result: string, index: number) => {
                 const resultId = `${report.id}-${index}`;
                 const isActive = selectedReportId === report.id && selectedLabResultIndex === index;
+                const resultDate = getLabReportDate(report, index);
                 return (
                   <CarouselItem key={resultId} className="pl-2 basis-auto">
                     <div className="relative">
@@ -628,7 +643,7 @@ export default function UnifiedAnalysisModal({
                             {displayName}-{index + 1}
                           </span>
                           <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
-                            {displayDate ? new Date(displayDate).toLocaleDateString('en-GB') : '—'}
+                            {formatReportDate(resultDate)}
                           </span>
                         </span>
                       </button>
@@ -684,7 +699,7 @@ export default function UnifiedAnalysisModal({
                             {report.fileName}
                           </span>
                           <span className={`ml-2 text-xs rounded-full px-2 py-0.5 flex-shrink-0 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
-                            {new Date((report.reportAnalyses?.[0]?.trendAnalysis as any)?.reportDate || report.createdAt).toLocaleDateString('en-GB')}
+                            {formatReportDate((report.reportAnalyses?.[0]?.trendAnalysis as any)?.reportDate)}
                           </span>
                           {/* Status indicator */}
                           {report.reportAnalyses && report.reportAnalyses.length > 0 && (
@@ -808,7 +823,7 @@ export default function UnifiedAnalysisModal({
                               {selectedStandaloneReport.reportType}
                             </Badge> */}
                             <span className="text-xs text-gray-600">
-                              Report Date: {new Date((selectedStandaloneReport.reportAnalyses?.[0]?.trendAnalysis as any)?.reportDate || selectedStandaloneReport.createdAt).toLocaleDateString('en-GB')}
+                              Report Date: {formatReportDate((selectedStandaloneReport.reportAnalyses?.[0]?.trendAnalysis as any)?.reportDate)}
                             </span>
                             {selectedStandaloneReport.fileUrl && (
                               <Button

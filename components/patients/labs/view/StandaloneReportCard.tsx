@@ -93,9 +93,12 @@ export default function StandaloneReportCard({ report, onViewAnalysis }: Standal
   const hasAnalysis = latestAnalysis && latestAnalysis.processingStatus === 'COMPLETED';
   const hasCriticalValues = latestAnalysis?.criticalValues && latestAnalysis.criticalValues.length > 0;
 
-  // Use extracted report date from trendAnalysis if available, fallback to createdAt (upload date)
+  // Use extracted report date from trendAnalysis if available
   const trendAnalysis = latestAnalysis?.trendAnalysis as any;
-  const reportDate = trendAnalysis?.reportDate || report.createdAt;
+  const reportDate = trendAnalysis?.reportDate;
+  const reportDateLabel = reportDate && !Number.isNaN(new Date(reportDate).getTime())
+    ? format(new Date(reportDate), "dd/MM/yyyy")
+    : '-';
 
   return (
     <div className="bg-white shadow-md rounded-3xl p-6">
@@ -106,7 +109,7 @@ export default function StandaloneReportCard({ report, onViewAnalysis }: Standal
             <p className="text-lg font-bold text-primary">{report.fileName}</p>
             <p className="text-sm text-gray-500">{getReportTypeLabel(report.reportType)}</p>
             <p className="text-sm text-gray-400">
-              Report Date: {format(new Date(reportDate), "dd/MM/yyyy")}
+              Report Date: {reportDateLabel}
             </p>
             <p className="text-sm text-gray-400">
               By: {report.uploadedBy.name} ({report.uploadedBy.role})

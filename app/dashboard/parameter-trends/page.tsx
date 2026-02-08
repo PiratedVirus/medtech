@@ -208,26 +208,36 @@ export default function ParameterTrendsPage() {
     }
   };
 
+  const parseReportDate = (value?: string) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
   const formatChartData = (values: ParameterValue[]) => {
     return values
-      .sort((a, b) => new Date(a.reportDate).getTime() - new Date(b.reportDate).getTime())
-      .map((value, index) => ({
-        date: new Date(value.reportDate).toLocaleDateString('en-GB', { 
+      .map((value) => {
+        const parsed = parseReportDate(value.reportDate);
+        if (!parsed) return null;
+        const label = parsed.toLocaleDateString('en-GB', { 
           day: '2-digit', 
           month: 'short', 
           year: '2-digit' 
-        }),
-        value: parseFloat(value.value) || 0,
-        unit: value.unit,
-        isAbnormal: value.isAbnormal,
-        severity: value.severity,
-        fullDate: new Date(value.reportDate).toLocaleDateString('en-GB', { 
-          day: '2-digit', 
-          month: 'short', 
-          year: '2-digit' 
-        }),
-        reportSource: value.reportSource || 'Unknown Report'
-      }));
+        });
+        return {
+          date: label,
+          value: parseFloat(value.value) || 0,
+          unit: value.unit,
+          isAbnormal: value.isAbnormal,
+          severity: value.severity,
+          fullDate: label,
+          sortKey: parsed.getTime(),
+          reportSource: value.reportSource || 'Unknown Report'
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => (a!.sortKey - b!.sortKey))
+      .map(({ sortKey, ...rest }) => rest);
   };
 
   const parseNormalRange = (normalRange: string) => {

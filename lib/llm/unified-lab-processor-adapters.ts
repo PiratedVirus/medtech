@@ -49,9 +49,11 @@ export async function triggerLLMProcessingForStandaloneReport(
     });
   }
 
-  // Use extracted report date from trendAnalysis if available, fallback to upload date
+  // Use extracted report date from trendAnalysis if available
   const existingReportDate = (analysis.trendAnalysis as any)?.reportDate;
-  const reportDate = existingReportDate ? new Date(existingReportDate) : report.createdAt;
+  const reportDate = existingReportDate && !Number.isNaN(new Date(existingReportDate).getTime())
+    ? new Date(existingReportDate)
+    : undefined;
 
   // Create context for unified processor
   const context: LabReportProcessingContext = {
@@ -118,7 +120,9 @@ export async function processLabBookingReportWithLLM(
     labResultIndex: analysis.labResultIndex,
     pdfUrl: pdfUrl,
     patientId: patientId,
-    reportDate: analysis.labBooking?.labDate || new Date()
+    reportDate: (analysis.trendAnalysis as any)?.reportDate
+      ? new Date((analysis.trendAnalysis as any).reportDate)
+      : undefined
   };
 
   // Process with unified processor
