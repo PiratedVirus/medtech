@@ -76,8 +76,8 @@ export async function GET(
 
     // Calculate trends for each parameter
     const trends = Array.from(parameterGroups.entries()).map(([parameter, values]) => {
-      if (values.length < 2) {
-        return null; // Skip parameters with less than 2 values (need 2+ for trends)
+      if (values.length === 0) {
+        return null; // Skip empty groups
       }
 
       // Sort by date

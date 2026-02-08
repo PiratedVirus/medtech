@@ -300,6 +300,51 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
       },
     });
 
+    // Create trend data for standalone lab reports
+    if (analysisType === 'lab_analysis' && Array.isArray(allValues) && allValues.length > 0) {
+      console.log(`[LLM-PROCESSING][${requestId}] Creating trend data for ${allValues.length} parameters`);
+      
+      // Get the report to find patientId
+      const report = await prisma.standaloneReport.findUnique({
+        where: { id: reportId },
+        select: { patientId: true, createdAt: true }
+      });
+
+      if (report) {
+        // Delete old trend data for this standalone report (in case of regeneration)
+        await prisma.reportTrendData.deleteMany({
+          where: { standaloneReportId: reportId }
+        });
+
+        for (const value of allValues) {
+          if (value.parameter && value.value) {
+            try {
+              await prisma.reportTrendData.create({
+                data: {
+                  patientId: report.patientId,
+                  parameter: String(value.parameter),
+                  value: String(value.value),
+                  unit: value.unit ? String(value.unit) : null,
+                  normalRange: value.normalRange ? String(value.normalRange) : null,
+                  isAbnormal: Boolean(value.isAbnormal),
+                  severity: value.severity && ['LOW','NORMAL','HIGH','CRITICAL'].includes(String(value.severity).toUpperCase())
+                    ? String(value.severity).toUpperCase() as 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'
+                    : null,
+                  reportDate: report.createdAt,
+                  labBookingId: null,
+                  standaloneReportId: reportId,
+                  sourceReportId: null
+                }
+              });
+            } catch (trendError) {
+              console.log(`[LLM-PROCESSING][${requestId}] Error creating trend data for ${value.parameter}: ${trendError instanceof Error ? trendError.message : 'Unknown error'}`);
+            }
+          }
+        }
+        console.log(`[LLM-PROCESSING][${requestId}] Trend data creation completed`);
+      }
+    }
+
     console.log(`[LLM-PROCESSING][${requestId}] Analysis completed successfully for report ${reportId}`);
 
   } catch (error) {

@@ -318,41 +318,33 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
       console.log(`[UPLOAD][${reportId}] Creating trend data for ${allValues.length} parameters`);
       
       try {
-        // Get the first available lab booking for standalone reports
-        const firstLabBooking = await prisma.labBooking.findFirst({
-          where: { deletedAt: null }
-        });
-
-        if (firstLabBooking) {
-          // Create trend data for each parameter
-          for (const value of allValues) {
-            if (value.parameter && value.value) {
-              try {
-                await prisma.reportTrendData.create({
-                  data: {
-                    patientId: report.patientId,
-                    parameter: String(value.parameter),
-                    value: String(value.value),
-                    unit: value.unit ? String(value.unit) : null,
-                    normalRange: value.normalRange ? String(value.normalRange) : null,
-                    isAbnormal: Boolean(value.isAbnormal),
-                    severity: value.severity && ['LOW','NORMAL','HIGH','CRITICAL'].includes(String(value.severity).toUpperCase())
-                      ? String(value.severity).toUpperCase() as 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'
-                      : null,
-                    reportDate: report.createdAt,
-                    labBookingId: firstLabBooking.id, // Use existing lab booking for standalone reports
-                    sourceReportId: null // Standalone reports don't have sourceReportId
-                  }
-                });
-              } catch (trendError) {
-                console.log(`[UPLOAD][${reportId}] Error creating trend data for ${value.parameter}: ${trendError instanceof Error ? trendError.message : 'Unknown error'}`);
-              }
+        // Create trend data for each parameter (no lab booking required for standalone reports)
+        for (const value of allValues) {
+          if (value.parameter && value.value) {
+            try {
+              await prisma.reportTrendData.create({
+                data: {
+                  patientId: report.patientId,
+                  parameter: String(value.parameter),
+                  value: String(value.value),
+                  unit: value.unit ? String(value.unit) : null,
+                  normalRange: value.normalRange ? String(value.normalRange) : null,
+                  isAbnormal: Boolean(value.isAbnormal),
+                  severity: value.severity && ['LOW','NORMAL','HIGH','CRITICAL'].includes(String(value.severity).toUpperCase())
+                    ? String(value.severity).toUpperCase() as 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'
+                    : null,
+                  reportDate: report.createdAt,
+                  labBookingId: null, // Standalone reports don't need a lab booking
+                  standaloneReportId: reportId, // Link to the standalone report
+                  sourceReportId: null // Standalone reports don't have sourceReportId
+                }
+              });
+            } catch (trendError) {
+              console.log(`[UPLOAD][${reportId}] Error creating trend data for ${value.parameter}: ${trendError instanceof Error ? trendError.message : 'Unknown error'}`);
             }
           }
-          console.log(`[UPLOAD][${reportId}] Trend data creation completed`);
-        } else {
-          console.log(`[UPLOAD][${reportId}] No lab booking found, skipping trend data creation`);
         }
+        console.log(`[UPLOAD][${reportId}] Trend data creation completed`);
       } catch (trendError) {
         console.error(`[UPLOAD][${reportId}] Error creating trend data:`, trendError);
         // Don't fail the upload, just log the error
