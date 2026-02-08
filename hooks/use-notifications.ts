@@ -151,7 +151,7 @@ export const useDeleteNotifications = () => {
 };
 
 // Push notification registration hook
-export const usePushNotifications = () => {
+export const usePushNotifications = (userType?: 'admin' | 'patient') => {
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
@@ -223,6 +223,7 @@ export const usePushNotifications = () => {
         body: JSON.stringify({
           deviceToken: JSON.stringify(subscription),
           platform: 'web',
+          ...(userType ? { userType } : {}),
         }),
       });
 
@@ -242,7 +243,7 @@ export const usePushNotifications = () => {
       console.error('Error registering for push notifications:', error);
       throw error;
     }
-  }, [isSupported]);
+  }, [isSupported, userType]);
 
   const unregisterFromPush = useCallback(async () => {
     if (!registration) return;

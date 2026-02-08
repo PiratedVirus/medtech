@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { SmartCacheInvalidation } from "@/lib/cache-dependencies";
+import { NotificationService } from "@/lib/notification-service";
 import { getSubdomainClinicFromRequest } from "@/lib/clinic-auth";
 
 export async function GET(request: NextRequest) {
@@ -269,6 +270,19 @@ export async function POST(request: NextRequest) {
     });
 
     console.log("Lab booking transaction completed successfully, ID:", newLabBooking.id);
+
+    // Notify clinic admins about new lab booking (push)
+    if (subdomainClinicId) {
+      NotificationService.sendAdminLabBookingNotification(
+        subdomainClinicId,
+        patient.name || "Patient",
+        labPackage.name || "Lab Test",
+        newLabBooking.labDate.toISOString(),
+        newLabBooking.id
+      ).catch((error) => {
+        console.error("[LAB-BOOKING] Failed to send admin push notification:", error);
+      });
+    }
 
     // ✅ MEDIUM PRIORITY: Smart cache invalidation for lab results
     try {

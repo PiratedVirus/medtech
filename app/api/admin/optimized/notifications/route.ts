@@ -81,6 +81,27 @@ export async function GET(request: NextRequest) {
       UNION ALL
 
       SELECT 
+        'new_lab_bookings' as type,
+        COUNT(*) as count,
+        'medium' as priority,
+        JSON_AGG(
+          JSON_BUILD_OBJECT(
+            'id', lb.id,
+            'patient_name', p.name,
+            'lab_package', lp.name,
+            'created_at', lb."createdAt"
+          )
+        ) FILTER (WHERE lb.id IS NOT NULL) as sample_data
+      FROM "LabBooking" lb
+      JOIN "User" p ON lb."patientId" = p.id
+      JOIN "LabPackage" lp ON lb."labPackageId" = lp.id
+      WHERE lb."createdAt" >= ${last24Hours}
+        AND lb."deletedAt" IS NULL
+        AND p."clinicId" = ${clinicId}
+
+      UNION ALL
+
+      SELECT 
         'failed_payments' as type,
         COUNT(*) as count,
         'high' as priority,
@@ -270,6 +291,7 @@ function getNotificationTitle(type: string): string {
   const titles = {
     'upcoming_appointments': 'Upcoming Appointments',
     'pending_lab_collections': 'Pending Lab Collections',
+    'new_lab_bookings': 'New Lab Bookings',
     'failed_payments': 'Failed Payments',
     'expiring_subscriptions': 'Expiring Subscriptions',
     'new_signups': 'New Patient Signups',
@@ -292,6 +314,7 @@ function getNotificationIcon(type: string): string {
   const icons = {
     'upcoming_appointments': 'Calendar',
     'pending_lab_collections': 'FlaskConical',
+    'new_lab_bookings': 'FlaskConical',
     'failed_payments': 'CreditCard',
     'expiring_subscriptions': 'Clock',
     'new_signups': 'UserPlus',

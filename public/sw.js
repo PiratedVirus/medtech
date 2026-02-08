@@ -90,7 +90,9 @@ self.addEventListener('notificationclick', (event) => {
   let url = '/dashboard';
 
   // Navigate based on notification type
-  if (data?.action) {
+  if (data?.type === 'ADMIN_LAB_BOOKING') {
+    url = '/admin/lab-bookings';
+  } else if (data?.action) {
     switch (data.action) {
       case 'VIEW_APPOINTMENT':
         url = '/dashboard/appointments';

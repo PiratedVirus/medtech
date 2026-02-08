@@ -3,6 +3,35 @@ import { sendNotification } from '@/lib/firebase-admin';
 import { NotificationType } from '@prisma/client';
 
 export class NotificationService {
+  // Get all active device tokens for admins in a clinic
+  private static async getAdminDeviceTokens(clinicId: number): Promise<string[]> {
+    // First check how many admins exist for this clinic
+    const adminCount = await prisma.user.count({
+      where: { clinicId, role: 'ADMIN', deletedAt: null },
+    });
+    console.log(`[ADMIN-PUSH] Clinic ${clinicId} has ${adminCount} active admin(s)`);
+
+    const tokens = await prisma.patientDeviceToken.findMany({
+      where: {
+        isActive: true,
+        patient: {
+          clinicId,
+          role: 'ADMIN',
+          deletedAt: null,
+        },
+      },
+      select: {
+        deviceToken: true,
+        patientId: true,
+      },
+    });
+
+    console.log(`[ADMIN-PUSH] Found ${tokens.length} device token(s) for admins in clinic ${clinicId}:`, 
+      tokens.map(t => ({ patientId: t.patientId, tokenLen: t.deviceToken.length }))
+    );
+
+    return tokens.map(token => token.deviceToken);
+  }
   // Get all active device tokens for a patient
   private static async getPatientDeviceTokens(patientId: number): Promise<string[]> {
     const tokens = await prisma.patientDeviceToken.findMany({
@@ -226,6 +255,43 @@ export class NotificationService {
         action: 'VIEW_LAB_BOOKING',
       }
     );
+  }
+
+  // Admin notification for new lab booking
+  static async sendAdminLabBookingNotification(
+    clinicId: number,
+    patientName: string,
+    labPackageName: string,
+    labDate: string,
+    bookingId: number
+  ) {
+    try {
+      console.log(`[ADMIN-PUSH] Looking for admin device tokens for clinicId: ${clinicId}`);
+      const deviceTokens = await this.getAdminDeviceTokens(clinicId);
+      console.log(`[ADMIN-PUSH] Found ${deviceTokens.length} admin device token(s)`);
+      if (deviceTokens.length === 0) {
+        console.log('[ADMIN-PUSH] No admin device tokens found, skipping push notification');
+        return;
+      }
+
+      const formattedDate = new Date(labDate).toLocaleDateString();
+      const title = 'New Lab Booking';
+      const message = `${patientName} booked ${labPackageName} for ${formattedDate}.`;
+
+      await sendNotification(deviceTokens, {
+        title,
+        body: message,
+        data: {
+          type: 'ADMIN_LAB_BOOKING',
+          bookingId: bookingId.toString(),
+          clinicId: clinicId.toString(),
+        },
+      });
+
+      console.log(`Admin lab booking notification sent for booking ${bookingId}`);
+    } catch (error) {
+      console.error('Error sending admin lab booking notification:', error);
+    }
   }
 
   static async sendFollowUpAppointment(patientId: number, doctorName: string) {
