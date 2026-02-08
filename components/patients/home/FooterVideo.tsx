@@ -3,9 +3,16 @@
 import { useState } from "react"
 import Image from "next/image"
 import { Play, X } from "lucide-react"
+import { useClinicFeatures } from "@/hooks/use-clinic-features"
 
 export default function FooterVideo() {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const { subdomain } = useClinicFeatures()
+  const shouldShowVideo = subdomain?.toLowerCase() === "carediabetics" || subdomain?.toLowerCase() === "cd"
+
+  if (!shouldShowVideo) {
+    return null
+  }
 
   const openModal = () => setIsModalOpen(true)
   const closeModal = () => setIsModalOpen(false)

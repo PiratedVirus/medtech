@@ -10,7 +10,6 @@ import {
   FileText,
   ShieldPlus,
   TestTubeDiagonal,
-  TrendingUp,
   UtensilsCrossed,
   MoreHorizontal as MoreIcon,
 } from "lucide-react";
@@ -37,7 +36,6 @@ const getFullNavigation = (hasPlans: boolean) => [
   { name: "Doctors", href: "/dashboard/doctors", current: false, icon: ShieldPlus },
   { name: "Dieticians", href: "/dashboard/dieticians", current: false, icon: ShieldPlus },
   { name: "Labs & Reports", href: "/dashboard/labs", current: false, icon: Clipboard },
-  { name: "Parameter Trends", href: "/dashboard/parameter-trends", current: false, icon: TrendingUp },
   { name: "Prescriptions", href: "/dashboard/prescriptions", current: false, icon: FileText },
   { name: "Appointments", href: "/dashboard/appointments", current: false, icon: TestTubeDiagonal },
   // Only show Plans for CD subdomain
@@ -50,7 +48,6 @@ const getMobileNavigation = (hasPlans: boolean) => [
   // Only show Plans for CD subdomain
   ...(hasPlans ? [{ name: "Plans", href: "/dashboard/plans", icon: LayoutGrid }] : []),
   { name: "Labs & Reports", href: "/dashboard/labs", icon: TestTubeDiagonal },
-  { name: "Parameter Trends", href: "/dashboard/parameter-trends", icon: TrendingUp },
   { name: "Profile", href: "/dashboard/profile", icon: User },
 ];
 
