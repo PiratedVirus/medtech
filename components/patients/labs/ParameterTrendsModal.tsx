@@ -155,8 +155,8 @@ export default function ParameterTrendsModal({ isOpen, onClose, patientId }: Par
           sortKey: parsedDate.getTime()
         };
       })
-      .filter(Boolean)
-      .sort((a, b) => (a!.sortKey - b!.sortKey))
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((a, b) => (a.sortKey - b.sortKey))
       .map(({ sortKey, ...rest }) => rest);
   };
 
