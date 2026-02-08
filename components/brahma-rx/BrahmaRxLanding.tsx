@@ -14,7 +14,7 @@ import { Footer } from '@/components/brahma-rx/Footer';
 
 export default function BrahmaRxLanding() {
   return (
-    <div className="brahma-rx-theme relative min-h-screen overflow-x-hidden font-sans" style={{ color: '#E8ECF1' }}>
+    <div className="brahma-rx-theme relative isolate min-h-screen overflow-x-hidden font-sans" style={{ color: '#E8ECF1' }}>
       {/* Parallax Background: Stars + Cosmic glow */}
       <ParallaxBackground />
 
@@ -22,7 +22,7 @@ export default function BrahmaRxLanding() {
       <Header />
 
       {/* Main Content */}
-      <main className="relative">
+      <main className="relative z-10">
         {/* Hero with Fibonacci Lotus + Brand Title + USP Badges */}
         <HeroSection />
 

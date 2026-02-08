@@ -205,6 +205,16 @@ input::placeholder {
   50% { opacity: 0.3; transform: scale(0.8); }
 }
 
+@keyframes brahma-nebula-drift {
+  0% { transform: translate3d(-12px, -8px, 0) scale(1); }
+  100% { transform: translate3d(12px, 10px, 0) scale(1.06); }
+}
+
+@keyframes brahma-nebula-drift-slow {
+  0% { transform: translate3d(10px, -6px, 0) scale(1.02); }
+  100% { transform: translate3d(-14px, 14px, 0) scale(1.08); }
+}
+
 @keyframes brahma-breathe {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.03); }
