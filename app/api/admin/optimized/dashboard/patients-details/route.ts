@@ -111,6 +111,19 @@ export async function GET(request: NextRequest) {
                   razorpayPaymentId: true,
                   createdAt: true
                 }
+              },
+              reportAnalyses: {
+                where: { deletedAt: null },
+                select: {
+                  id: true,
+                  labBookingId: true,
+                  labResultIndex: true,
+                  processingStatus: true,
+                  processingError: true,
+                  processedAt: true,
+                  llmSummary: true
+                },
+                orderBy: { createdAt: 'desc' }
               }
             }
           }
@@ -186,10 +199,29 @@ export async function PUT(request: Request) {
     const { labBookingId, links, status, paymentId } = body;
 
     if (labBookingId && links) {
-      // Update lab booking with new links
+      // Get existing lab booking to append new links
+      const existing = await prisma.labBooking.findUnique({
+        where: { id: labBookingId },
+        select: { 
+          labResult: true,
+          patientId: true,
+          labDate: true
+        }
+      });
+
+      if (!existing) {
+        return NextResponse.json({ error: "Lab booking not found" }, { status: 404 });
+      }
+
+      // Update lab booking with new links (append to existing)
       const updatedLabBooking = await prisma.labBooking.update({
         where: { id: labBookingId },
-        data: { labResult: { set: links } },
+        data: { 
+          labResult: {
+            set: [...(existing.labResult || []), ...links]
+          },
+          ...(status ? { status: normalizeLabAssignmentStatus(status) } : {})
+        },
         select: {
           id: true,
           labResult: true,
@@ -201,6 +233,76 @@ export async function PUT(request: Request) {
           }
         }
       });
+
+      // Trigger automatic AI processing for newly uploaded lab reports using unified processor
+      if (links && links.length > 0) {
+        console.log(`[ADMIN-UPLOAD] Triggering unified LLM processing for ${links.length} new reports`);
+        
+        // Get the starting index for new reports
+        const existingCount = existing.labResult?.length || 0;
+        
+        // Trigger processing for each new report
+        for (let i = 0; i < links.length; i++) {
+          const labResultIndex = existingCount + i;
+          const pdfUrl = links[i];
+          
+          try {
+            // Create or update analysis record
+            const analysis = await prisma.labReportAnalysis.upsert({
+              where: {
+                labBookingId_labResultIndex: {
+                  labBookingId: labBookingId,
+                  labResultIndex: labResultIndex
+                }
+              },
+              update: {
+                reportUrl: pdfUrl,
+                processingStatus: 'PENDING',
+                processingError: null,
+                processedAt: null,
+                deletedAt: null
+              },
+              create: {
+                labBookingId: labBookingId,
+                labResultIndex: labResultIndex,
+                reportUrl: pdfUrl,
+                processingStatus: 'PENDING'
+              }
+            });
+
+            // Use unified processor instead of old processWithOpenRouter
+            const { processLabReportWithLLM } = await import('@/lib/llm/unified-lab-processor');
+            
+            const context = {
+              reportType: 'labBooking' as const,
+              labBookingId: labBookingId,
+              labReportAnalysisId: analysis.id,
+              labResultIndex: labResultIndex,
+              pdfUrl: pdfUrl,
+              patientId: existing.patientId,
+              reportDate: existing.labDate || new Date()
+            };
+
+            // Process in background with progress tracking
+            processLabReportWithLLM(context, {
+              analysisType: 'lab_analysis',
+              updateProgress: async (stage, message) => {
+                // Update progress in database for polling
+                await prisma.labReportAnalysis.update({
+                  where: { id: analysis.id },
+                  data: { processingError: message }
+                });
+              }
+            }).catch((error: any) => {
+              console.error(`[ADMIN-UPLOAD] Unified LLM processing failed for analysis ${analysis.id}:`, error);
+            });
+            
+            console.log(`[ADMIN-UPLOAD] Unified LLM processing started for analysis ${analysis.id}, index ${labResultIndex}`);
+          } catch (error) {
+            console.error(`[ADMIN-UPLOAD] Failed to trigger LLM processing for report at index ${labResultIndex}:`, error);
+          }
+        }
+      }
 
       return NextResponse.json({
         success: true,

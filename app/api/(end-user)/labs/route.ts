@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { SmartCacheInvalidation } from "@/lib/cache-dependencies";
+import { NotificationService } from "@/lib/notification-service";
 import { getSubdomainClinicFromRequest } from "@/lib/clinic-auth";
 
 export async function GET(request: NextRequest) {
@@ -62,6 +63,15 @@ export async function GET(request: NextRequest) {
               }
             }
           }
+        },
+        // Include report analyses for processing status
+        reportAnalyses: {
+          where: {
+            deletedAt: null
+          },
+          orderBy: {
+            labResultIndex: 'asc'
+          }
         }
       },
       orderBy: {
@@ -90,23 +100,34 @@ export async function GET(request: NextRequest) {
         resultGeneratedBy: "Lab Technician",
         resultName: `${b.patient.name} - ${b.labPackage.name} - ${new Date(b.labDate).toLocaleDateString("en-GB")}`,
         reports: Array.isArray(b.labResult)
-          ? b.labResult.map((url) => {
+          ? b.labResult.map((url, index) => {
               const raw = decodeURIComponent(url.split("/").pop() || "");
               const cleaned = raw
                 .replace(/\.pdf$/, "")
                 .replace(/^.*?-lab-\d+-/, "")
                 .replace(/[-_]/g, " ")
                 .trim();
+              
+              // Find corresponding analysis for this report
+              const analysis = b.reportAnalyses?.find(a => a.labResultIndex === index);
+              
               return {
                 name: cleaned || "Unknown Report",
                 pdfUrl: url,
                 values: "",
+                // Include analysis status for UI updates
+                analysisStatus: analysis?.processingStatus || null,
+                analysisId: analysis?.id || null,
+                hasAnalysis: analysis?.processingStatus === 'COMPLETED' && (analysis?.llmSummary || analysis?.allValues),
               };
             })
           : [],
         status: b.status,
         phlebotomist: b.labAssignments[0]?.phlebotomist?.user?.name || "Not assigned",
         labAssignmentId: b.labAssignments[0]?.id,
+        // Include overall analysis status for the booking
+        hasAnyPendingAnalysis: b.reportAnalyses?.some(a => a.processingStatus === 'PENDING' || a.processingStatus === 'PROCESSING'),
+        reportAnalyses: b.reportAnalyses || [],
       }));
 
     return NextResponse.json({ scheduled, completed });
@@ -145,6 +166,9 @@ export async function POST(request: NextRequest) {
       subscriptionId,
       labTestsDates,
     } = body;
+    const normalizedPaymentOption = typeof paymentOption === "string"
+      ? paymentOption.trim().toUpperCase()
+      : "";
 
     if (!patientId || !packageId) {
       console.error("Missing required fields", { patientId, packageId });
@@ -191,7 +215,7 @@ export async function POST(request: NextRequest) {
           mobile,
           email,
           address,
-          paymentOption,
+          paymentOption: normalizedPaymentOption || paymentOption,
           labDate: new Date(date),
           status: "PENDING", // Single status for entire workflow
         },
@@ -204,7 +228,7 @@ export async function POST(request: NextRequest) {
       console.log("Manual assignment policy active: no auto-creation/linking of LabAssignment for booking:", booking.id);
 
       // Update subscription tracker if using plan
-      if (paymentOption === "plan") {
+      if (normalizedPaymentOption === "PLAN") {
         console.log("Updating subscriptionTracker for subscriptionId:", subscriptionId, "with labTestsDates:", labTestsDates);
         await tx.subscriptionTracker.update({
           where: { subscriptionId },
@@ -214,7 +238,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Create payment record if online
-      if (paymentOption === "online" && razorpayResponse) {
+      if (normalizedPaymentOption === "ONLINE" && razorpayResponse) {
         console.log("Creating payment record for bookingId:", booking.id, "with razorpayResponse:", razorpayResponse);
         await tx.payment.create({
           data: {
@@ -223,20 +247,20 @@ export async function POST(request: NextRequest) {
             razorpayPaymentId: razorpayResponse.razorpay_payment_id,
             amount: razorpayResponse.amount,
             currency: razorpayResponse.currency || "INR",
-            paymentStatus: "Paid",
+            paymentStatus: "PAID",
             paymentMethod: razorpayResponse.method || "upi",
           },
         });
         console.log("Payment record created");
       }
 
-      if(paymentOption === "clinic") {
+      if (normalizedPaymentOption === "CLINIC") {
         await tx.payment.create({
           data: {
             labBookingId: booking.id,
             amount: Number(labPackageFees)*100,
             currency: "INR",
-            paymentStatus: "Pending",
+            paymentStatus: "PENDING",
             paymentMethod: "offline",
           },
         });
@@ -246,6 +270,19 @@ export async function POST(request: NextRequest) {
     });
 
     console.log("Lab booking transaction completed successfully, ID:", newLabBooking.id);
+
+    // Notify clinic admins about new lab booking (push)
+    if (subdomainClinicId) {
+      NotificationService.sendAdminLabBookingNotification(
+        subdomainClinicId,
+        patient.name || "Patient",
+        labPackage.name || "Lab Test",
+        newLabBooking.labDate.toISOString(),
+        newLabBooking.id
+      ).catch((error) => {
+        console.error("[LAB-BOOKING] Failed to send admin push notification:", error);
+      });
+    }
 
     // ✅ MEDIUM PRIORITY: Smart cache invalidation for lab results
     try {

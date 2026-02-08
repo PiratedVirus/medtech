@@ -245,21 +245,74 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const { id, ...data } = await request.json();
-    console.log("Updating appointment with ID:", id, " with data :", data);
-    data.patientId = parseInt(data.patientId, 10);
-    data.doctorId = Number(JSON.parse(data.doctorId).doctorId);
-    data.doctorAvailabilityId = parseInt(data.doctorAvailabilityId, 10);
+    const body = await request.json();
+    // Handle both 'id' and 'appointmentId' for backward compatibility
+    const appointmentId = body.id || body.appointmentId;
+    const { link, ...data } = body;
+    
+    console.log("Updating appointment with ID:", appointmentId, " with data :", { ...data, hasLink: !!link });
     
     // Get existing appointment
     const existingAppointment = await prisma.appointment.findUnique({
-      where: { id },
-      include: { doctorAvailability: true }
+      where: { id: appointmentId },
+      include: { 
+        doctorAvailability: true,
+        prescription: true,
+        patient: true
+      }
     });
 
     if (!existingAppointment) {
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
     }
+
+    // Handle prescription upload (when 'link' is provided)
+    if (link) {
+      console.log(`[ADMIN-PRESCRIPTION-UPLOAD] Updating prescription link for appointment ${appointmentId}`);
+      
+      // Update appointment with prescription link
+      const updated = await prisma.appointment.update({
+        where: { id: appointmentId },
+        data: {
+          prescriptionLink: link,
+          ...(data.status ? { status: normalizeStatus(data.status) } : {})
+        }
+      });
+
+      // Trigger AI analysis if prescription exists
+      if (existingAppointment.prescription?.id) {
+        console.log(`[ADMIN-PRESCRIPTION-UPLOAD] Triggering AI processing for prescription ${existingAppointment.prescription.id}`);
+        
+        // Trigger background processing asynchronously
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+        fetch(`${baseUrl}/api/prescription/process`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            appointmentId: appointmentId,
+            pdfUrl: link,
+            patientId: existingAppointment.patientId,
+            prescriptionId: existingAppointment.prescription.id
+          }),
+        }).catch(error => {
+          console.error(`[ADMIN-PRESCRIPTION-UPLOAD] Background processing trigger failed:`, error);
+          // Don't fail the upload if background processing fails
+        });
+        
+        console.log(`[ADMIN-PRESCRIPTION-UPLOAD] Background processing triggered for prescription ${existingAppointment.prescription.id}`);
+      } else {
+        console.log(`[ADMIN-PRESCRIPTION-UPLOAD] No prescription record found for appointment ${appointmentId}, skipping AI analysis`);
+      }
+
+      return NextResponse.json({ data: updated, message: "Prescription uploaded successfully" });
+    }
+
+    // Handle regular appointment updates (status, doctor, time slot, etc.)
+    if (data.patientId) data.patientId = parseInt(data.patientId, 10);
+    if (data.doctorId) data.doctorId = parseInt(data.doctorId, 10);
+    if (data.doctorAvailabilityId) data.doctorAvailabilityId = parseInt(data.doctorAvailabilityId, 10);
 
     // Transaction for slot updates and appointment update
     const result = await prisma.$transaction(async (tx) => {
@@ -288,15 +341,16 @@ export async function PUT(request: Request) {
       }
 
       // Update appointment
+      const updateData: any = {};
+      if (data.status) updateData.status = normalizeStatus(data.status);
+      if (data.doctorId) updateData.userId = data.doctorId;
+      if (data.doctorAvailabilityId) updateData.doctorAvailabilityId = data.doctorAvailabilityId;
+      if (data.consultationType) updateData.consultationType = data.consultationType;
+      if (data.patientId) updateData.patientId = data.patientId;
+
       return await tx.appointment.update({
-        where: { id },
-        data: {
-          status: normalizeStatus(data.status),
-          userId: data.doctorId,
-          doctorAvailabilityId: data.doctorAvailabilityId,
-          consultationType: data.consultationType,
-          patientId: data.patientId,
-        }
+        where: { id: appointmentId },
+        data: updateData
       });
     });
 

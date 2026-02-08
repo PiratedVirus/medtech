@@ -22,8 +22,12 @@ if (!admin.apps.length) {
 }
 
 // Configure web-push for Web Push API
+if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+  console.error('VAPID keys are missing! Push notifications will not work.');
+}
+
 webpush.setVapidDetails(
-  'mailto:your-email@example.com',
+  'mailto:support@carediabetics.com',
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
   process.env.VAPID_PRIVATE_KEY!
 );
@@ -41,6 +45,8 @@ export const sendNotification = async (
     console.log('No device tokens provided for notification');
     return { success: false, error: 'No device tokens' };
   }
+
+  console.log(`[PUSH] Preparing to send to ${deviceTokens.length} devices. Title: ${notification.title}`);
 
   const payload = JSON.stringify({
     title: notification.title,
@@ -74,23 +80,41 @@ export const sendNotification = async (
     for (const token of deviceTokens) {
       try {
         // Parse the subscription object from the token
-        const subscription = JSON.parse(token);
+        let subscription;
+        try {
+          subscription = JSON.parse(token);
+        } catch (e) {
+          console.error(`[PUSH] Invalid token format (not JSON): ${token.substring(0, 20)}...`);
+          failureCount++;
+          responses.push({ success: false, error: 'Invalid token format' });
+          continue;
+        }
         
         await webpush.sendNotification(subscription, payload);
         successCount++;
         responses.push({ success: true });
-        console.log(`Notification sent successfully to ${subscription.endpoint}`);
-      } catch (error) {
+        console.log(`[PUSH] Notification sent successfully to endpoint ending in ...${subscription.endpoint.slice(-20)}`);
+      } catch (error: any) {
         failureCount++;
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const statusCode = error.statusCode;
+        
         responses.push({ 
           success: false, 
-          error: error instanceof Error ? error.message : 'Unknown error' 
+          error: errorMessage,
+          statusCode
         });
-        console.log(`Failed to send to token ${token}:`, error);
+        
+        if (statusCode === 410) {
+          console.log(`[PUSH] Token expired/gone (410). Endpoint: ...${JSON.parse(token).endpoint?.slice(-20)}`);
+          // TODO: Remove this token from DB
+        } else {
+          console.log(`[PUSH] Failed to send to token:`, error);
+        }
       }
     }
     
-    console.log(`Notification sent to ${successCount} devices, failed: ${failureCount}`);
+    console.log(`[PUSH] Summary: Sent to ${successCount} devices, failed: ${failureCount}`);
     
     return {
       success: true,
@@ -99,7 +123,7 @@ export const sendNotification = async (
       responses
     };
   } catch (error) {
-    console.error('Error sending notification:', error);
+    console.error('[PUSH] Fatal error sending notification:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 };

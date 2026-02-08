@@ -21,11 +21,15 @@ import { toast } from "react-toastify";
 
 interface LabReport {
   id: number;
-  labPackageName: string;
-  date: string;
-  status: string;
+  labPackageName?: string;
+  date?: string;
+  status?: string;
   reportLink?: string[] | null;
   labResult?: string[] | null;
+  // Shape from /api/labs completed (dashboard lab-generated)
+  resultName?: string;
+  resultDate?: string;
+  reports?: { name?: string; pdfUrl?: string }[];
 }
 
 interface StandaloneReport {
@@ -55,6 +59,7 @@ interface StandaloneReportAnalysis {
   llmModel?: string;
   processedAt?: string;
   processingError?: string;
+  trendAnalysis?: any;
 }
 
 interface LabValue {
@@ -75,6 +80,20 @@ interface TrendData {
   currentValue: string;
   dateRange: string;
 }
+
+const formatReportDate = (value?: string | null) => {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? '-' : parsed.toLocaleDateString('en-GB');
+};
+
+const getLabReportDate = (report: any, resultIndex?: number) => {
+  const analyses = report?.reportAnalyses || report?.analyses || [];
+  const analysis = typeof resultIndex === 'number'
+    ? analyses.find((item: any) => item?.labResultIndex === resultIndex)
+    : analyses.find((item: any) => item?.trendAnalysis?.reportDate);
+  return analysis?.trendAnalysis?.reportDate || null;
+};
 
 interface LabReportAnalysis {
   id: number;
@@ -98,6 +117,8 @@ interface UnifiedAnalysisModalProps {
   labReports: LabReport[];
   standaloneReports?: StandaloneReport[];
   preSelectedStandaloneReportId?: number | null;
+  preSelectedLabReportId?: number | null;
+  preSelectedLabResultIndex?: number | null;
   hideAIAnalysis?: boolean; // When true, only shows lab values section
 }
 
@@ -108,6 +129,8 @@ export default function UnifiedAnalysisModal({
   labReports,
   standaloneReports = [],
   preSelectedStandaloneReportId = null,
+  preSelectedLabReportId = null,
+  preSelectedLabResultIndex = null,
   hideAIAnalysis = false
 }: UnifiedAnalysisModalProps) {
   
@@ -166,13 +189,13 @@ export default function UnifiedAnalysisModal({
         return !hasFailedAnalysis;
       });
 
-  // Handle pre-selection when modal opens
+  // Handle pre-selection when modal opens (standalone report)
   useEffect(() => {
     if (isOpen && preSelectedStandaloneReportId) {
       setActiveTab('standalone-reports');
       setSelectedStandaloneReportId(preSelectedStandaloneReportId);
-      
-      // Find and set the analysis for the pre-selected report
+      setSelectedReportId(null);
+      setSelectedLabResultIndex(null);
       const preSelectedReport = allStandaloneReports.find(r => r.id === preSelectedStandaloneReportId);
       if (preSelectedReport?.reportAnalyses?.length && preSelectedReport.reportAnalyses.length > 0) {
         const completedAnalysis = preSelectedReport.reportAnalyses.find(a => a.processingStatus === 'COMPLETED');
@@ -181,6 +204,17 @@ export default function UnifiedAnalysisModal({
       }
     }
   }, [isOpen, preSelectedStandaloneReportId, allStandaloneReports]);
+
+  // Handle pre-selection when modal opens (lab-generated report)
+  useEffect(() => {
+    if (isOpen && preSelectedLabReportId) {
+      setActiveTab('lab-reports');
+      setSelectedReportId(preSelectedLabReportId);
+      setSelectedLabResultIndex(preSelectedLabResultIndex ?? 0);
+      setSelectedStandaloneReportId(null);
+      setStandaloneAnalysis(null);
+    }
+  }, [isOpen, preSelectedLabReportId, preSelectedLabResultIndex]);
 
   // Polling mechanism for standalone reports
   useEffect(() => {
@@ -339,7 +373,7 @@ export default function UnifiedAnalysisModal({
       console.log('[UI][PROCESS] Standalone process response:', data);
 
       if (data.success) {
-        toast.success('Standalone analysis started!');
+        toast.success('Analysis regeneration initiated. Processing has started. Check the notification for progress updates.');
         // Polling will handle the updates
       } else {
         throw new Error(data.error || 'Process failed');
@@ -409,7 +443,27 @@ export default function UnifiedAnalysisModal({
 
 
   const getFilteredValues = () => {
-    const values = showAllValues ? (analysis?.allValues || standaloneAnalysis?.allValues || []) : (analysis?.criticalValues || standaloneAnalysis?.criticalValues || []);
+    let values: any[] = [];
+    
+    if (showAllValues) {
+      // Show all values
+      values = analysis?.allValues || standaloneAnalysis?.allValues || [];
+    } else {
+      // Show only abnormal values (critical or abnormal)
+      // First try criticalValues, but if empty, filter allValues for abnormal ones
+      const criticalVals = analysis?.criticalValues || standaloneAnalysis?.criticalValues || [];
+      if (criticalVals.length > 0) {
+        values = criticalVals;
+      } else {
+        // Fallback: filter allValues for abnormal values
+        const allVals = analysis?.allValues || standaloneAnalysis?.allValues || [];
+        values = allVals.filter((value: any) => 
+          value.isAbnormal === true || 
+          (value.severity && value.severity !== 'NORMAL' && value.severity !== 'normal')
+        );
+      }
+    }
+    
     if (!searchTerm) return values;
 
     return values.filter((value: any) =>
@@ -492,8 +546,11 @@ export default function UnifiedAnalysisModal({
             <CarouselContent className="-ml-2">
               {activeTab === 'lab-reports' ? (
               filteredLabReports.map((report) => {
-              // Use labResult if available, otherwise fall back to reportLink
-              const results = report.labResult || report.reportLink || [];
+              // Support both shapes: reportLink/labResult (URL arrays) or reports (from /api/labs)
+              const results = (report as any).reports?.map((r: any) => r.pdfUrl).filter(Boolean)
+                || report.labResult || report.reportLink || [];
+              const displayName = report.labPackageName ?? (report as any).resultName ?? 'Lab Report';
+              const displayDate = getLabReportDate(report);
               
               if (results.length === 0) {
                 // No results available
@@ -506,9 +563,9 @@ export default function UnifiedAnalysisModal({
                       >
                         <span className="relative z-10 inline-flex items-center gap-2">
                           <FileText className="h-4 w-4 text-gray-400" />
-                          <span className="font-semibold">{report.labPackageName}</span>
+                          <span className="font-semibold">{displayName}</span>
                           <span className="ml-2 text-xs rounded-full px-2 py-0.5 bg-gray-200 text-gray-500">
-                            {new Date(report.date).toLocaleDateString('en-GB')}
+                            {formatReportDate(displayDate)}
                           </span>
                         </span>
                       </button>
@@ -543,9 +600,9 @@ export default function UnifiedAnalysisModal({
                       >
                         <span className="relative z-10 inline-flex items-center gap-2">
                           <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
-                          <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>{report.labPackageName}</span>
+                          <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>{displayName}</span>
                           <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
-                            {new Date(report.date).toLocaleDateString('en-GB')}
+                            {formatReportDate(displayDate)}
                           </span>
                         </span>
                       </button>
@@ -558,6 +615,7 @@ export default function UnifiedAnalysisModal({
               return results.map((result: string, index: number) => {
                 const resultId = `${report.id}-${index}`;
                 const isActive = selectedReportId === report.id && selectedLabResultIndex === index;
+                const resultDate = getLabReportDate(report, index);
                 return (
                   <CarouselItem key={resultId} className="pl-2 basis-auto">
                     <div className="relative">
@@ -582,10 +640,10 @@ export default function UnifiedAnalysisModal({
                         <span className="relative z-10 inline-flex items-center gap-2">
                           <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
                           <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>
-                            {report.labPackageName}-{index + 1}
+                            {displayName}-{index + 1}
                           </span>
                           <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
-                            {new Date(report.date).toLocaleDateString('en-GB')}
+                            {formatReportDate(resultDate)}
                           </span>
                         </span>
                       </button>
@@ -641,7 +699,7 @@ export default function UnifiedAnalysisModal({
                             {report.fileName}
                           </span>
                           <span className={`ml-2 text-xs rounded-full px-2 py-0.5 flex-shrink-0 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
-                            {new Date(report.createdAt).toLocaleDateString('en-GB')}
+                            {formatReportDate((report.reportAnalyses?.[0]?.trendAnalysis as any)?.reportDate)}
                           </span>
                           {/* Status indicator */}
                           {report.reportAnalyses && report.reportAnalyses.length > 0 && (
@@ -765,7 +823,7 @@ export default function UnifiedAnalysisModal({
                               {selectedStandaloneReport.reportType}
                             </Badge> */}
                             <span className="text-xs text-gray-600">
-                              Uploaded: {new Date(selectedStandaloneReport.createdAt).toLocaleDateString()}
+                              Report Date: {formatReportDate((selectedStandaloneReport.reportAnalyses?.[0]?.trendAnalysis as any)?.reportDate)}
                             </span>
                             {selectedStandaloneReport.fileUrl && (
                               <Button
@@ -962,7 +1020,7 @@ export default function UnifiedAnalysisModal({
                         <div className="text-center py-8">
                           <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                           <p className="text-gray-500">
-                            {searchTerm ? 'No values match your search.' : showAllValues ? 'No values found in this report.' : 'No critical values detected.'}
+                            {searchTerm ? 'No values match your search.' : showAllValues ? 'No values found in this report.' : 'No abnormal values detected.'}
                           </p>
                         </div>
                       );

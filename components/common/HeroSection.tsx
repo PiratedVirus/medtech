@@ -1,6 +1,16 @@
 import Image from "next/image"
 
-export default function HeroSection() {
+interface HeroSectionProps {
+  branding?: {
+    name?: string | null;
+    subtitle?: string | null;
+  };
+}
+
+export default function HeroSection({ branding }: HeroSectionProps) {
+  const clinicName = branding?.name || "Care Diabetics";
+  const clinicSubtitle = branding?.subtitle || null;
+
   return (
     <div className="w-7/12 flex flex-col relative bg-[#f9fafb]">
       {/* Background Image */}
@@ -17,8 +27,12 @@ export default function HeroSection() {
       <div className="relative z-10 flex flex-col h-full">
         {/* Top half */}
         <div className="flex-1 mb-4 px-10 mt-20">
-          <h1 className="text-6xl font-semibold text-black-700">Care Diabetics: Sweet Life, Better Control</h1>
-          <p className="text-3xl mt-9 text-black-500">India’s leading virtual platform for diabetes care.</p>
+          <h1 className="text-6xl font-semibold text-black-700">
+            {clinicName}
+          </h1>
+          {clinicSubtitle && (
+            <p className="text-3xl mt-9 text-black-500">{clinicSubtitle}</p>
+          )}
         </div>
 
         {/* Bottom half with 3 columns */}
@@ -26,10 +40,10 @@ export default function HeroSection() {
           {/* 60% width column */}
           <div className="w-[60%] relative">
             <Image
-              src="/images/iphone-large.png"
+              src="/images/brahmarx-laptop.png"
               alt="Large image"
-              width={400}
-              height={300}
+              width={800}
+              height={600}
               className="absolute bottom-0 left-1/2 transform -translate-x-1/2"
             />
           </div>

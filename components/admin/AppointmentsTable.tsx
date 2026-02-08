@@ -5,6 +5,7 @@ import axios from "axios";
 import { Badge } from "@/components/ui/badge";
 import { normalizeStatus } from "@/lib/utils/status";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import CdLoader from "@/components/ui/custom/cd-loader";
 
 export function AppointmentsTable() {
   interface Appointment {
@@ -95,9 +96,9 @@ export function AppointmentsTable() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="text-gray-500">Loading appointments...</div>
-      </div>
+      <div className="flex items-center justify-center py-12">
+        <CdLoader />
+    </div>
     );
   }
 

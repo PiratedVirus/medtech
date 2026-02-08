@@ -4,6 +4,7 @@ import axios from "axios";
 import { Calendar, Clock, FileText, Link2, Pill, User, Building2, Video, CreditCard, Banknote, Play, Clock3, Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import CdLoader from "@/components/ui/custom/cd-loader";
 
 function formatDate(dateString: string) {
   if (!dateString) return "-";
@@ -261,7 +262,9 @@ export default function DoctorAppointmentsPage() {
       <div className="container w-full bg-mutedbg p-4">
         <h2 className="text-2xl font-semibold mb-6">Appointments</h2>
         {loading ? (
-          <div className="text-center text-gray-600 py-12">Loading appointments...</div>
+          <div className="flex items-center justify-center py-12">
+            <CdLoader />
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Scheduled Appointments - Left Column */}

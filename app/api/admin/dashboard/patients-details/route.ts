@@ -294,13 +294,34 @@ export async function PUT(request: Request) {
             }
           });
 
-          // Import and trigger background AI processing
-          const { processWithOpenRouter } = await import('@/lib/llm/process-service');
-          processWithOpenRouter(analysis.id, pdfUrl, updated.patientId, labBookingId).catch((error: any) => {
-            console.error(`[PATHOLOGY-UPLOAD] AI processing failed for analysis ${analysis.id}:`, error);
+          // Use unified processor instead of old processWithOpenRouter
+          const { processLabReportWithLLM } = await import('@/lib/llm/unified-lab-processor');
+          
+          const context = {
+            reportType: 'labBooking' as const,
+            labBookingId: labBookingId,
+            labReportAnalysisId: analysis.id,
+            labResultIndex: labResultIndex,
+            pdfUrl: pdfUrl,
+            patientId: updated.patientId,
+            reportDate: updated.labDate || new Date()
+          };
+
+          // Process in background with progress tracking
+          processLabReportWithLLM(context, {
+            analysisType: 'lab_analysis',
+            updateProgress: async (stage, message) => {
+              // Update progress in database for polling
+              await prisma.labReportAnalysis.update({
+                where: { id: analysis.id },
+                data: { processingError: message }
+              });
+            }
+          }).catch((error: any) => {
+            console.error(`[PATHOLOGY-UPLOAD] Unified LLM processing failed for analysis ${analysis.id}:`, error);
           });
           
-          console.log(`[PATHOLOGY-UPLOAD] AI processing started for analysis ${analysis.id}, index ${labResultIndex}`);
+          console.log(`[PATHOLOGY-UPLOAD] Unified LLM processing started for analysis ${analysis.id}, index ${labResultIndex}`);
         } catch (error) {
           console.error(`[PATHOLOGY-UPLOAD] Failed to trigger AI processing for report at index ${labResultIndex}:`, error);
         }

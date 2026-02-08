@@ -49,6 +49,7 @@ import { ChevronDown, ArrowUpDown, EditIcon, Trash, EyeIcon } from "lucide-react
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ViewParametersDialog from "@/components/common/ViewParametersDialog";
+import LabParametersEditor from "@/components/admin/LabParametersEditor";
 
 interface Lab {
   id: number;
@@ -146,7 +147,7 @@ export default function LabsPage() {
   const [selectedLab, setSelectedLab] = useState<Lab | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewParametersOpen, setViewParametersOpen] = useState(false);
-  const { register, handleSubmit, reset, setValue } = useForm<FormData>();
+  const { register, handleSubmit, reset, setValue, control, watch } = useForm<FormData>();
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -226,12 +227,24 @@ export default function LabsPage() {
       id: "parameters",
       header: "Parameters",
       cell: ({ row }) => {
-        const params: string[] = row.original.parameters && typeof row.original.parameters === 'string'
-        ? row.original.parameters.split(",").map((p: string) => p.trim())
-        : [];
+        let paramCount = 0;
+        try {
+          if (row.original.parameters) {
+            const parsed = typeof row.original.parameters === 'string' 
+              ? JSON.parse(row.original.parameters) 
+              : row.original.parameters;
+            paramCount = Object.values(parsed).reduce((acc: number, arr: any) => 
+              acc + (Array.isArray(arr) ? arr.length : 0), 0);
+          }
+        } catch (e) {
+          // If not JSON, treat as comma-separated
+          paramCount = row.original.parameters 
+            ? row.original.parameters.split(",").length 
+            : 0;
+        }
         return (
           <div className="flex items-center justify-center gap-2">
-            <span className="text-sm text-gray-700">{params.length} parameters</span>
+            <span className="text-sm text-gray-700">{paramCount} parameters</span>
             <Button
               size="sm"
               variant="ghost"
@@ -256,10 +269,16 @@ export default function LabsPage() {
             onClick={() => {
               setSelectedLab(row.original);
               setValue("name", row.original.name);
+              setValue("shortDescription", row.original.shortDescription);
               setValue("description", row.original.description);
               setValue("price", row.original.price);
-              setValue("parameters", row.original.parameters);
+              // Convert parameters to JSON string if it's an object
+              const parametersValue = typeof row.original.parameters === 'object' 
+                ? JSON.stringify(row.original.parameters) 
+                : row.original.parameters;
+              setValue("parameters", parametersValue);
               setValue("criticalRequirements", row.original.criticalRequirements);
+              setValue("isLabPackage", row.original.isLabPackage);
               setDialogOpen(true);
             }}
           >
@@ -518,7 +537,7 @@ export default function LabsPage() {
         </div>
       </div>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selectedLab ? "Edit Lab" : "Create New Lab"}</DialogTitle>
           </DialogHeader>
@@ -527,8 +546,24 @@ export default function LabsPage() {
             <Input {...register("shortDescription")} placeholder="Short Description" />
             <Input {...register("description")} placeholder="Description" />
             <Input type="number" {...register("price", { required: true })} placeholder="Price" />
-            <Input {...register("parameters")} placeholder="Parameters (comma-separated)" />
-            <Input {...register("criticalRequirements")} placeholder="Critical Requirements" />
+            
+            {/* Lab Parameters Editor */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Parameters</label>
+              <Controller
+                name="parameters"
+                control={control}
+                defaultValue=""
+                render={({ field }) => (
+                  <LabParametersEditor
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </div>
+
+            <Input {...register("criticalRequirements")} placeholder="Critical Requirements (comma-separated)" />
             <label className="flex items-center space-x-2">
               <input type="checkbox" {...register("isLabPackage")} />
               <span>Is it a Lab Package Test?</span>
@@ -540,6 +575,7 @@ export default function LabsPage() {
                 onClick={() => {
                   setDialogOpen(false);
                   setSelectedLab(null);
+                  reset();
                 }}
               >
                 Cancel
@@ -553,11 +589,22 @@ export default function LabsPage() {
         open={viewParametersOpen}
         onOpenChange={setViewParametersOpen}
         // @ts-ignore
-        parameters={
-          selectedLab?.parameters && typeof selectedLab.parameters === 'string'
-            ? selectedLab.parameters.split(",").map((p) => p.trim())
-            : []
-        }
+        parameters={(() => {
+          try {
+            if (selectedLab?.parameters) {
+              const parsed = typeof selectedLab.parameters === 'string'
+                ? JSON.parse(selectedLab.parameters)
+                : selectedLab.parameters;
+              return parsed;
+            }
+            return {};
+          } catch (e) {
+            // Fallback for old comma-separated format
+            return selectedLab?.parameters && typeof selectedLab.parameters === 'string'
+              ? selectedLab.parameters.split(",").map((p) => p.trim())
+              : [];
+          }
+        })()}
       />
     </div>
   );

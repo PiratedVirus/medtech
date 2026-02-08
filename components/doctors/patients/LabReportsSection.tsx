@@ -27,6 +27,12 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
   const [loading, setLoading] = useState(false);
   const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
 
+  const formatReportDate = (value?: string | null) => {
+    if (!value) return '-';
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? '-' : parsed.toLocaleDateString('en-GB');
+  };
+
   // Fetch standalone reports
   useEffect(() => {
     if (patientId) {
@@ -73,18 +79,24 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
       if (!displayName || displayName.trim() === '') {
         displayName = `Lab Report ${report.id}`;
       }
-      
+      // Use extracted report date from trendAnalysis when available
+      const reportDate = (report.reportAnalyses?.[0]?.trendAnalysis as any)?.reportDate;
+
       return {
         id: `standalone-${report.id}`,
         type: 'standalone',
         name: displayName,
-        date: report.createdAt,
+        date: reportDate,
         status: 'COMPLETED',
         reportLink: [report.fileUrl || report.reportUrl],
         labResult: null
       };
     })
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  ].sort((a, b) => {
+    const timeA = a.date ? new Date(a.date).getTime() : 0;
+    const timeB = b.date ? new Date(b.date).getTime() : 0;
+    return timeB - timeA;
+  });
 
   const recentReports = allReports.slice(0, 3);
 
@@ -100,7 +112,7 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
             {report.name}
           </h4>
           <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full whitespace-nowrap">
-            {report.date ? new Date(report.date).toLocaleDateString('en-GB') : 'No date'}
+            {formatReportDate(report.date)}
           </span>
           <div className="ml-auto">
             <Button
@@ -124,7 +136,7 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
             {report.name}
           </h4>
           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
-            {report.date ? new Date(report.date).toLocaleDateString('en-GB') : 'No date'}
+            {formatReportDate(report.date)}
           </span>
           <div className="ml-auto">
             <Button
@@ -147,7 +159,7 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
           {report.name}-{index + 1}
         </h4>
         <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
-          {report.date ? new Date(report.date).toLocaleDateString('en-GB') : 'No date'}
+          {formatReportDate(report.date)}
         </span>
         <div className="ml-auto">
           <Button

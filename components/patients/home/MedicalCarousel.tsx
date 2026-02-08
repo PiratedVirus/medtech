@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ChevronRight } from "lucide-react"
@@ -9,6 +9,7 @@ import "keen-slider/keen-slider.min.css"
 import { Arrow } from "@radix-ui/react-dropdown-menu"
 import ArrowButton from "@/components/ui/custom/cd-arrow-button"
 import Link from "next/link";
+import { useClinicFeatures } from "@/hooks/use-clinic-features"
 
 const slides = [
   {
@@ -40,6 +41,12 @@ const slides = [
 export default function MedicalCarousel() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [currentSlide, setCurrentSlide] = useState(0)
+  const { subdomain } = useClinicFeatures()
+  const allowVideo = subdomain?.toLowerCase() === "carediabetics" || subdomain?.toLowerCase() === "cd"
+
+  const visibleSlides = useMemo(() => {
+    return allowVideo ? slides : slides.filter((slide) => slide.type !== "video")
+  }, [allowVideo])
 
   const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
     loop: true,
@@ -55,15 +62,19 @@ export default function MedicalCarousel() {
   })
 
   useEffect(() => {
-    if (slides[currentSlide].type === "video" && videoRef.current) {
+    setCurrentSlide(0)
+  }, [visibleSlides.length])
+
+  useEffect(() => {
+    if (visibleSlides[currentSlide]?.type === "video" && videoRef.current) {
       videoRef.current.play().catch((e) => console.error("Video failed to play", e))
     }
-  }, [currentSlide])
+  }, [currentSlide, visibleSlides])
 
   return (
     <div className="flex flex-col items-center justify-center">
       <div ref={sliderRef} className="keen-slider w-[250px]">
-        {slides.map((slide, idx) => (
+        {visibleSlides.map((slide, idx) => (
           <div className="keen-slider__slide" key={idx}>
             <Card className="border-0 overflow-hidden rounded-xl shadow-lg">
               <CardContent className="p-0 relative h-[398px]">

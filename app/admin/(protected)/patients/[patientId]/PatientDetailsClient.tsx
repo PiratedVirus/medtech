@@ -2,8 +2,9 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast, ToastContainer } from "react-toastify";
-import { put } from "@vercel/blob";
 import axios from "axios";
+import { useQueryClient } from "@tanstack/react-query";
+import { put } from "@vercel/blob";
 
 // UI Components
 import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -15,6 +16,9 @@ import { normalizeStatus } from "@/lib/utils/status";
 import TotalEarningsCard from "@/components/admin/TotalEarningsCard";
 import { PlanUsageMinimal } from "@/components/patients/plans/PlanUsage";
 import { HealthInsightsPanel } from "@/components/admin/HealthInsightsPanel";
+import ProcessingProgressNotification from "@/components/common/ProcessingProgressNotification";
+import { useProcessingNotifications } from "@/hooks/useProcessingNotifications";
+import ConsolidatedUploadModal from "@/components/pathology/ConsolidatedUploadModal";
 
 // Icons
 import {
@@ -72,6 +76,15 @@ interface LabBooking {
   reportLink?: string[] | null;
   labResult?: string[] | null;
   payment?: Payment | null;
+  reportAnalyses?: Array<{
+    id: number;
+    labBookingId: number;
+    labResultIndex: number;
+    processingStatus: string;
+    processingError: string | null;
+    processedAt: Date | null;
+    llmSummary: string | null;
+  }>;
 }
 
 interface DoctorAppointment {
@@ -118,6 +131,45 @@ interface PatientDetailsClientProps {
   patientId: string;
 }
 
+const UploadDropZone = ({
+  onFileSelect,
+  type,
+}: {
+  onFileSelect: (file: File) => Promise<void> | void;
+  type?: string;
+}) => (
+  <div
+    className="w-full h-36 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary transition"
+    onDrop={async (e) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files?.[0];
+      if (file) {
+        await onFileSelect(file);
+      }
+    }}
+    onDragOver={(e) => e.preventDefault()}
+  >
+    <div className="flex flex-col items-center gap-2">
+      <FileText className="h-8 w-8 text-gray-500" />
+      <p className="text-sm text-gray-600">Drag & drop PDF here or click below</p>
+      <label className="cursor-pointer bg-muted px-3 py-1 text-sm rounded border border-gray-300 mt-2 hover:bg-primary hover:text-white transition">
+        Browse file
+        <input
+          type="file"
+          accept="application/pdf"
+          hidden
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              await onFileSelect(file);
+            }
+          }}
+        />
+      </label>
+    </div>
+  </div>
+);
+
 const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
   // State Management
   const [patientDetails, setPatientDetails] = useState<PatientDetails | null>(null);
@@ -126,6 +178,19 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [activeSubscription, setActiveSubscription] = useState<Plan | null>(null);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [selectedLabBooking, setSelectedLabBooking] = useState<any>(null);
+  
+  // React Query for cache invalidation
+  const queryClient = useQueryClient();
+  
+  // Use the same progress notification system as other uploads
+  const { 
+    processingNotifications, 
+    addProcessingNotification, 
+    removeProcessingNotification,
+    updateLabAnalysisNotification 
+  } = useProcessingNotifications();
 
   // Hooks
   const router = useRouter();
@@ -185,7 +250,8 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
           status: booking.status,
           reportLink: booking.labResult,
           labResult: booking.labResult,
-          payment: booking.payment
+          payment: booking.payment,
+          reportAnalyses: booking.reportAnalyses || [] // Include analysis data for progress tracking
         })),
         doctorAppointments: (apiData.doctorAppointments || []).map((appt: any) => ({
           id: appt.id,
@@ -223,136 +289,88 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
     }
   };
 
-  // File Upload Handlers
+  const handleUploadComplete = async () => {
+    // Invalidate all relevant caches
+    await queryClient.invalidateQueries({ queryKey: ['labResults'] });
+    await queryClient.invalidateQueries({ queryKey: ['labResults', patientId] });
+    await queryClient.invalidateQueries({ queryKey: ['labs'] });
+    await queryClient.invalidateQueries({ queryKey: ['lab-analysis'] });
+    await queryClient.invalidateQueries({ queryKey: ['patient-details', patientId] });
+    await queryClient.invalidateQueries({ queryKey: ['admin-notifications'] });
+    
+    // Refresh patient details from API
+    await fetchPatientDetails();
+    
+    setUploadModalOpen(false);
+    
+    // Create processing notifications for uploaded reports
+    const labBooking = patientDetails?.labBookings?.find(b => b.id === selectedLabBooking?.id);
+    if (labBooking?.reportAnalyses) {
+      labBooking.reportAnalyses.forEach((analysis: any, index: number) => {
+        addProcessingNotification({
+          title: `Lab Report ${index + 1}`,
+          type: 'lab-analysis',
+          stages: [
+            {
+              stage: 'Upload',
+              status: 'completed',
+              message: 'File uploaded successfully',
+              timestamp: new Date()
+            },
+            {
+              stage: 'Initializing',
+              status: 'processing',
+              message: 'Starting AI analysis...',
+              timestamp: new Date()
+            }
+          ],
+          overallStatus: 'processing',
+          reportId: selectedLabBooking?.id,
+          labResultIndex: analysis.labResultIndex
+        });
+      });
+    }
+    setSelectedLabBooking(null);
+    
+    // Force a hard refresh after a delay to ensure all components get updated data
+    setTimeout(() => {
+      fetchPatientDetails();
+    }, 1000);
+  };
+
   const handleFileUpload = async (
     file: File,
-    id: number,
-    type: 'prescription' | 'labReport' | 'dietPlan'
+    appointmentId: number,
+    type: "prescription" | "dietPlan"
   ) => {
-    if (!file || !id) return;
-
+    if (!file || !appointmentId) return;
     setUploading(true);
+    setUploadSuccess(false);
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const fileName = `${patientDetails?.name.replace(/\s+/g, "-")}-${type}-${id}-${file.name}`;
-
+      const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "-");
+      const fileName = `appointment-${appointmentId}-${type}-${Date.now()}-${safeName}`;
       const { url } = await put(fileName, arrayBuffer, {
         access: "public",
         token: process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN,
       });
 
-      const endpoint = type === 'labReport'
-        ? `/api/admin/optimized/dashboard/patients-details`
-        : `/api/admin/optimized/appointments`;
-
-      const payload = type === 'labReport'
-        ? { labBookingId: id, links: [url], status: "COMPLETED" }
-        : { appointmentId: id, link: url, status: "COMPLETED" };
-
-      await axios.put(endpoint, payload);
-
-      await fetchPatientDetails();
-      setUploadSuccess(true);
-      toast.success(`${type === 'prescription' ? 'Prescription' : type === 'dietPlan' ? 'Diet Plan' : 'Lab Report'} uploaded successfully.`);
-
-      setTimeout(() => {
-        setUploadingAppointmentId(null);
-        setUploadSuccess(false);
-      }, 10000);
-    } catch (err) {
-      console.error("Upload failed", err);
-      toast.error("Upload failed");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleMultipleFilesUpload = async (
-    files: FileList,
-    id: number,
-    type: 'labReport'
-  ) => {
-    if (!files || !id) return;
-
-    setUploading(true);
-    try {
-      const uploadedLinks: string[] = [];
-
-      for (const file of files) {
-        const arrayBuffer = await file.arrayBuffer();
-        const fileName = `${patientDetails?.name.replace(/\s+/g, "-")}-${type}-${id}-${file.name}`;
-        const { url } = await put(fileName, arrayBuffer, {
-          access: "public",
-          token: process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN,
-        });
-        uploadedLinks.push(url);
-      }
-
-      await axios.put(`/api/admin/optimized/dashboard/patients-details`, {
-        labBookingId: id,
-        links: uploadedLinks,
-        status: "COMPLETED"
+      await axios.put("/api/admin/optimized/appointments", {
+        appointmentId,
+        link: url,
       });
 
       await fetchPatientDetails();
       setUploadSuccess(true);
-      toast.success("Lab reports uploaded successfully.");
-
-      setTimeout(() => {
-        setUploadingAppointmentId(null);
-        setUploadSuccess(false);
-      }, 1500);
-    } catch (err) {
-      console.error("Upload failed", err);
-      toast.error("Upload failed");
+      toast.success(`${type === "prescription" ? "Prescription" : "Diet plan"} uploaded successfully.`);
+      setTimeout(() => setUploadSuccess(false), 1500);
+    } catch (error) {
+      console.error("Upload failed:", error);
+      toast.error("Upload failed. Please try again.");
     } finally {
       setUploading(false);
     }
   };
-
-  // UI Components
-  const UploadDropZone = ({ type }: { type: 'prescription' | 'labReport' | 'dietPlan' }) => (
-    <div
-      className="w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary transition"
-      onDrop={async (e) => {
-        e.preventDefault();
-        const file = e.dataTransfer.files?.[0];
-        if (file && uploadingAppointmentId) {
-          await handleFileUpload(file, uploadingAppointmentId, type);
-        }
-      }}
-      onDragOver={(e) => e.preventDefault()}
-    >
-      <div className="flex flex-col items-center gap-2">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-8 w-8 text-gray-500"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16v-4m0 0l-2 2m2-2l2 2m6 4H6a2 2 0 01-2-2V7a2 2 0 012-2h3.586a1 1 0 01.707.293l1.414 1.414A1 1 0 0012 7h8a2 2 0 012 2v7a2 2 0 01-2 2z" />
-        </svg>
-        <p className="text-sm text-gray-600">Drag & drop a PDF here or click below</p>
-        <label className="cursor-pointer bg-muted px-3 py-1 text-sm rounded border border-gray-300 mt-2 hover:bg-primary hover:text-white transition">
-          Browse files
-          <input
-            type="file"
-            accept="application/pdf"
-            multiple={type === 'labReport'}
-            hidden
-            onChange={async (e) => {
-              if (type === 'labReport' && uploadingAppointmentId && e.target.files) {
-                await handleMultipleFilesUpload(e.target.files, uploadingAppointmentId, type);
-              } else if (uploadingAppointmentId && e.target.files?.[0]) {
-                await handleFileUpload(e.target.files[0], uploadingAppointmentId, type);
-              }
-            }}
-          />
-        </label>
-      </div>
-    </div>
-  );
 
   const ProfileInfoCard = () => (
     <Card className="col-span-full relative overflow-hidden rounded-lg bg-slate-50 text-gray-700 p-6">
@@ -437,162 +455,224 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
     );
   };
 
-  const LabReportsSection = () => (
-    <Card className="rounded-lg p-4 bg-custom-mutedgreen">
-      <h3 className="font-semibold text-xl mb-4">Lab Reports</h3>
-      <div className="flex flex-wrap gap-4">
-        {(patientDetails?.labBookings || []).map(labBooking => (
-          <Card
-            key={labBooking.id}
-            className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center"
-          >
-            <div className="absolute -right-4 -top-4 h-24 w-24 opacity-5">
-              <FileText className="h-full w-full" />
+  const LabReportsSection = () => {
+    const labBookings = patientDetails?.labBookings || [];
+    
+    return (
+      <Card className="rounded-lg p-4 bg-custom-mutedgreen">
+        <h3 className="font-semibold text-xl mb-4">Lab Reports</h3>
+        {labBookings.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="mb-4 opacity-20">
+              <FileText className="h-16 w-16 text-gray-500" />
             </div>
-            <h4 className="font-medium mb-2"><b>{labBooking.labPackageName || 'Unknown Package'}</b></h4>
-            <p className="text-sm mb-4">Booked on {labBooking.date ? new Date(labBooking.date).toLocaleDateString() : 'Unknown Date'}</p>
-            <div className="mt-auto flex items-center justify-between">
-              {Array.isArray(labBooking.reportLink) && labBooking.reportLink.length > 0 ? (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant={"outline"} size="sm">View Reports</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogTitle>Lab Reports</DialogTitle>
-                    <div className="flex flex-wrap gap-2">
-                      {labBooking.reportLink.map((url, index) => {
-                        const fileName = decodeURIComponent(url.split("/").pop() || `LabReport-${index + 1}`);
-                        return (
-                          <a key={index} href={url} target="_blank" rel="noopener noreferrer">
-                            <Button variant="outline" size="sm" className="whitespace-nowrap">{fileName}</Button>
-                          </a>
-                        );
-                      })}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              ) : (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="sm" onClick={() => setUploadingAppointmentId(labBooking.id)}>
+            <p className="text-gray-600 font-medium">No lab reports available</p>
+            <p className="text-sm text-gray-500 mt-1">Lab reports will appear here once they are uploaded.</p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-4">
+            {labBookings.map(labBooking => (
+              <Card
+                key={labBooking.id}
+                className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center"
+              >
+                <div className="absolute -right-4 -top-4 h-24 w-24 opacity-5">
+                  <FileText className="h-full w-full" />
+                </div>
+                <h4 className="font-medium mb-2"><b>{labBooking.labPackageName || 'Unknown Package'}</b></h4>
+                <p className="text-sm mb-4">Booked on {labBooking.date ? new Date(labBooking.date).toLocaleDateString() : 'Unknown Date'}</p>
+                <div className="mt-auto flex items-center justify-between">
+                  {Array.isArray(labBooking.reportLink) && labBooking.reportLink.length > 0 ? (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant={"outline"} size="sm">View Reports</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogTitle>Lab Reports</DialogTitle>
+                        <div className="flex flex-wrap gap-2">
+                          {labBooking.reportLink.map((url, index) => {
+                            const fileName = decodeURIComponent(url.split("/").pop() || `LabReport-${index + 1}`);
+                            return (
+                              <a key={index} href={url} target="_blank" rel="noopener noreferrer">
+                                <Button variant="outline" size="sm" className="whitespace-nowrap">{fileName}</Button>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  ) : (
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        setSelectedLabBooking({
+                          id: labBooking.id,
+                          labPackageName: labBooking.labPackageName,
+                          labResult: labBooking.labResult || []
+                        });
+                        setUploadModalOpen(true);
+                      }}
+                    >
                       Upload Report
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogTitle>Upload Lab Report PDF</DialogTitle>
-                    <UploadDropZone type="labReport" />
-                    {uploading && <p>Uploading...</p>}
-                    {uploadSuccess && (
-                      <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
-                    )}
-                  </DialogContent>
-                </Dialog>
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
-    </Card>
-  );
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </Card>
+    );
+  };
 
-  const AppointmentPrescriptionsSection = () => (
-    <Card className="rounded-lg p-4 bg-custom-mutedgreen">
-      <h3 className="font-semibold text-xl mb-4">Appointment Prescriptions</h3>
-      <div className="flex flex-wrap gap-4">
-        {(patientDetails?.doctorAppointments || []).map(appointment => (
-          <Card key={appointment.id}
-            className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center">
-            <Badge variant="outline" className="mb-2 text-secondary">
-              # {appointment.id}
-            </Badge>
-            <h4 className="font-medium mb-2">{appointment.doctorName || 'Unknown Doctor'}</h4>
-            <p className="text-sm mb-2">
-              Date: {appointment.date ? new Date(appointment.date).toLocaleDateString('en-GB') : 'Unknown Date'}
-            </p>
-            <div className="mt-auto flex flex-col items-center gap-2">
-              {appointment.prescriptionLink ? (
-                <a
-                  href={appointment.prescriptionLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button variant="outline" size="sm">View</Button>
-                </a>
-              ) : (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="sm" onClick={() => setUploadingAppointmentId(appointment.id)}>
-                      Upload Prescription
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogTitle>Upload Prescription PDF</DialogTitle>
-                    <UploadDropZone type="prescription" />
-                    {uploading && <p>Uploading...</p>}
-                    {uploadSuccess && (
-                      <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
-                    )}
-                  </DialogContent>
-                </Dialog>
-              )}
+  const AppointmentPrescriptionsSection = () => {
+    const appointments = patientDetails?.doctorAppointments || [];
+    
+    return (
+      <Card className="rounded-lg p-4 bg-custom-mutedgreen">
+        <h3 className="font-semibold text-xl mb-4">Appointment Prescriptions</h3>
+        {appointments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="mb-4 opacity-20">
+              <FileText className="h-16 w-16 text-gray-500" />
             </div>
-          </Card>
-        ))}
-      </div>
-    </Card>
-  );
+            <p className="text-gray-600 font-medium">No prescriptions available</p>
+            <p className="text-sm text-gray-500 mt-1">Prescriptions will appear here once they are uploaded.</p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-4">
+            {appointments.map(appointment => (
+              <Card key={appointment.id}
+                className="group relative overflow-hidden border border-gray-100 bg-stone-50 shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center">
+                <Badge variant="outline" className="mb-2 text-secondary">
+                  # {appointment.id}
+                </Badge>
+                <h4 className="font-medium mb-2">{appointment.doctorName || 'Unknown Doctor'}</h4>
+                <p className="text-sm mb-2">
+                  Date: {appointment.date ? new Date(appointment.date).toLocaleDateString('en-GB') : 'Unknown Date'}
+                </p>
+                <div className="mt-auto flex flex-col items-center gap-2">
+                  {appointment.prescriptionLink ? (
+                    <a
+                      href={appointment.prescriptionLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button variant="outline" size="sm">View</Button>
+                    </a>
+                  ) : (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="sm" onClick={() => setUploadingAppointmentId(appointment.id)}>
+                          Upload Prescription
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogTitle>Upload Prescription PDF</DialogTitle>
+                        <UploadDropZone
+                          onFileSelect={async (file) => {
+                            if (!uploadingAppointmentId) {
+                              toast.error("Please select an appointment first.");
+                              return;
+                            }
+                            await handleFileUpload(file, uploadingAppointmentId, "prescription");
+                          }}
+                        />
+                        {uploading && <p>Uploading...</p>}
+                        {uploadSuccess && (
+                          <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
+                        )}
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </Card>
+    );
+  };
 
-  const DietPlansSection = () => (
-    <Card className="rounded-lg p-4 bg-slate-50">
-      <h3 className="font-semibold text-xl mb-4">Diet Plans</h3>
-      <div className="flex flex-wrap gap-4">
-        {(patientDetails?.dieticianAppointments || []).map(appointment => (
-          <Card key={appointment.id}
-            className="group relative overflow-hidden border border-gray-100 bg-custom-mutedgreen shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center">
-            <Badge variant="outline" className="mb-2 text-primary bg-neutral-50">
-              # {appointment.id}
-            </Badge>
-            <h4 className="font-medium mb-2">{appointment.doctorName}</h4>
-            <p className="text-sm mb-2">
-              Date: {new Date(appointment.date).toLocaleDateString('en-GB')}
-            </p>
-            <div className="mt-auto flex flex-col items-center gap-2">
-              {appointment.dietPlanLink ? (
-                <a
-                  href={appointment.dietPlanLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button variant="outline" size="sm">View</Button>
-                </a>
-              ) : (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="sm" onClick={() => setUploadingAppointmentId(appointment.id)}>
-                      Upload Diet Plan
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogTitle>Upload Diet Plan PDF</DialogTitle>
-                    <UploadDropZone type="dietPlan" />
-                    {uploading && <p>Uploading...</p>}
-                    {uploadSuccess && (
-                      <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
-                    )}
-                  </DialogContent>
-                </Dialog>
-              )}
+  const DietPlansSection = () => {
+    const appointments = patientDetails?.dieticianAppointments || [];
+    
+    return (
+      <Card className="rounded-lg p-4 bg-slate-50">
+        <h3 className="font-semibold text-xl mb-4">Diet Plans</h3>
+        {appointments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="mb-4 opacity-20">
+              <FileText className="h-16 w-16 text-gray-500" />
             </div>
-          </Card>
-        ))}
-      </div>
-    </Card>
-  );
+            <p className="text-gray-600 font-medium">No diet plans available</p>
+            <p className="text-sm text-gray-500 mt-1">Diet plans will appear here once they are uploaded.</p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-4">
+            {appointments.map(appointment => (
+              <Card key={appointment.id}
+                className="group relative overflow-hidden border border-gray-100 bg-custom-mutedgreen shadow-sm transition-all duration-300 rounded-lg p-4 w-36 h-48 flex flex-col items-center text-center">
+                <Badge variant="outline" className="mb-2 text-primary bg-neutral-50">
+                  # {appointment.id}
+                </Badge>
+                <h4 className="font-medium mb-2">{appointment.doctorName}</h4>
+                <p className="text-sm mb-2">
+                  Date: {new Date(appointment.date).toLocaleDateString('en-GB')}
+                </p>
+                <div className="mt-auto flex flex-col items-center gap-2">
+                  {appointment.dietPlanLink ? (
+                    <a
+                      href={appointment.dietPlanLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button variant="outline" size="sm">View</Button>
+                    </a>
+                  ) : (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="sm" onClick={() => setUploadingAppointmentId(appointment.id)}>
+                          Upload Diet Plan
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogTitle>Upload Diet Plan PDF</DialogTitle>
+                        <UploadDropZone
+                          onFileSelect={async (file) => {
+                            if (!uploadingAppointmentId) {
+                              toast.error("Please select an appointment first.");
+                              return;
+                            }
+                            await handleFileUpload(file, uploadingAppointmentId, "dietPlan");
+                          }}
+                        />
+                        {uploading && <p>Uploading...</p>}
+                        {uploadSuccess && (
+                          <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
+                        )}
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </Card>
+    );
+  };
 
   // Manual payment collection handler
   const handleCollectPayment = async (paymentId: number) => {
     try {
       await axios.put("/api/admin/optimized/dashboard/patients-details", { paymentId });
+      
+      // Invalidate caches to ensure fresh data
+      await queryClient.invalidateQueries({ queryKey: ['patient-details', patientId] });
+      await queryClient.invalidateQueries({ queryKey: ['payments'] });
+      await queryClient.invalidateQueries({ queryKey: ['userProfile'] });
+      
       await fetchPatientDetails();
       toast.success("Payment marked as PAID.");
     } catch (err) {
@@ -737,6 +817,30 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
   return (
     <>
       <ToastContainer />
+      {/* Progress Notifications - Same component used by other upload operations */}
+      <ProcessingProgressNotification
+        notifications={processingNotifications}
+        onRemove={removeProcessingNotification}
+      />
+      {/* Upload Modal - Same component used by pathology */}
+      {selectedLabBooking && (
+        <ConsolidatedUploadModal
+          isOpen={uploadModalOpen}
+          onClose={() => {
+            setUploadModalOpen(false);
+            setSelectedLabBooking(null);
+          }}
+          booking={{
+            id: selectedLabBooking.id,
+            labPackageName: selectedLabBooking.labPackageName,
+            labBooking: {
+              labResult: selectedLabBooking.labResult
+            }
+          }}
+          patientName={patientDetails?.name || 'Patient'}
+          onUploadComplete={handleUploadComplete}
+        />
+      )}
       <div className="container mx-auto p-4">
         {/* Dashboard Grid */}
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
@@ -766,8 +870,8 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
             }}
           />
 
-          {/* Appointment Dates */}
-          <AppointmentDatesSection />
+          {/* Appointment Dates - Only show if patient is subscribed */}
+          {activeSubscription && <AppointmentDatesSection />}
 
           {/* Lab Reports */}
           <LabReportsSection />

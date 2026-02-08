@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
       allValues: existing.allValues || [],
       extractedText: existing.extractedText || null,
       processingStatus: existing.processingStatus,
+      processingError: existing.processingError, // Include for progress tracking
       processedAt: existing.processedAt,
       llmModel: existing.llmModel
     });

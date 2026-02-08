@@ -198,7 +198,10 @@ const getAllValuesHandler = async (
       for (const analysis of report.reportAnalyses) {
         const criticalList: any[] = Array.isArray(analysis?.criticalValues) ? analysis.criticalValues : [];
         const allList: any[] = Array.isArray(analysis?.allValues) ? analysis.allValues : [];
-        
+        // Use extracted report date from trendAnalysis when available
+        const reportDateRaw = (analysis.trendAnalysis as any)?.reportDate;
+        const reportDate = reportDateRaw ? new Date(reportDateRaw).toISOString() : null;
+
         // Process critical values from standalone reports
         for (const item of criticalList) {
           if (item.parameter && item.value) {
@@ -208,14 +211,14 @@ const getAllValuesHandler = async (
             }
             criticalValuesMap.get(key)!.push({
               ...item,
-              reportDate: report.createdAt,
+              reportDate: reportDate || undefined,
               reportId: report.id,
               source: 'standalone_report',
               isCritical: true // Mark as critical value
             });
           }
         }
-        
+
         // Process all values from standalone reports
         for (const item of allList) {
           if (item.parameter && item.value) {
@@ -225,7 +228,7 @@ const getAllValuesHandler = async (
             }
             allValuesMap.get(key)!.push({
               ...item,
-              reportDate: report.createdAt,
+              reportDate: reportDate || undefined,
               reportId: report.id,
               source: 'standalone_report',
               isCritical: false // Mark as non-critical value

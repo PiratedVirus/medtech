@@ -16,14 +16,21 @@ export async function POST(req: NextRequest) {
     const userIdsFilter: number[] = Array.isArray(userIds) ? userIds : [];
 
     // Determine target users
+    console.log(`[BROADCAST] Filtering users with roles: ${JSON.stringify(rolesFilter)} and userIds: ${JSON.stringify(userIdsFilter)}`);
+    
     const users = await prisma.user.findMany({
       where: {
         deletedAt: null,
         ...(rolesFilter.length ? { role: { in: rolesFilter } } : {}),
         ...(userIdsFilter.length ? { id: { in: userIdsFilter } } : {}),
       },
-      select: { id: true, name: true },
+      select: { id: true, name: true, role: true },
     });
+
+    console.log(`[BROADCAST] Found ${users.length} matching users`);
+    if (users.length > 0) {
+      console.log(`[BROADCAST] First few users: ${JSON.stringify(users.slice(0, 3))}`);
+    }
 
     if (users.length === 0) {
       return NextResponse.json({ success: true, message: 'No users matched filters', count: 0 });
@@ -37,6 +44,17 @@ export async function POST(req: NextRequest) {
       },
       select: { deviceToken: true, patientId: true },
     });
+
+    console.log(`[BROADCAST] Found ${tokens.length} active device tokens for these users`);
+    
+    // Log token distribution by role
+    const userRoleMap = new Map(users.map(u => [u.id, u.role]));
+    const tokensByRole: Record<string, number> = {};
+    tokens.forEach(t => {
+      const role = userRoleMap.get(t.patientId) || 'UNKNOWN';
+      tokensByRole[role] = (tokensByRole[role] || 0) + 1;
+    });
+    console.log(`[BROADCAST] Token count by role: ${JSON.stringify(tokensByRole)}`);
 
     const deviceTokens = tokens.map(t => t.deviceToken);
 

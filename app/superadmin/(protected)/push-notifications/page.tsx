@@ -87,7 +87,7 @@ export default function PushNotificationsAdminPage() {
             <div className="space-y-4">
               <Label className="block text-sm font-medium">Select Roles</Label>
               <div className="space-y-3">
-                {["PATIENT","DOCTOR","DIETICIAN"].map((r) => (
+                {["PATIENT","DOCTOR","DIETICIAN","ADMIN"].map((r) => (
                   <div key={r} className="flex items-center gap-2">
                     <Checkbox id={`role-${r}`} checked={selectedRoles.includes(r as Role)} onCheckedChange={() => toggleRole(r as Role)} />
                     <Label htmlFor={`role-${r}`}>{r}</Label>

@@ -1,6 +1,7 @@
 import { format } from "date-fns";
-import { DownloadIcon, Eye, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { Eye, Clock, CheckCircle, AlertCircle, Loader2, Sparkles, Bot } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { getStatusDisplay, getStatusColor } from "@/lib/utils/statusMapping";
 import { LabAssignmentStatus } from "@prisma/client";
 
@@ -13,10 +14,15 @@ interface LabResult {
     name: string;
     pdfUrl: string;
     values: string;
+    analysisStatus?: string | null;
+    analysisId?: number | null;
+    hasAnalysis?: boolean;
   }[];
   phlebotomist?: string;
   labAssignmentId?: number;
   status?: string;
+  hasAnyPendingAnalysis?: boolean;
+  reportAnalyses?: any[];
 }
 
 const getStatusIcon = (status: string) => {
@@ -54,7 +60,14 @@ const getStatusText = (status: string) => {
   }
 };
 
-export default function LabResultCard({ result }: { result: LabResult }) {
+interface LabResultCardProps {
+  result: LabResult;
+  onViewAnalysis?: (result: LabResult) => void;
+}
+
+export default function LabResultCard({ result, onViewAnalysis }: LabResultCardProps) {
+  const firstReportPdfUrl = result.reports?.[0]?.pdfUrl;
+
   return (
     <div className="bg-white shadow-md rounded-3xl p-6">
       <div className="flex items-start justify-between">
@@ -82,9 +95,39 @@ export default function LabResultCard({ result }: { result: LabResult }) {
         {result.reports.length > 0 ? (
           <div className="flex overflow-x-auto space-x-4 mt-4 pb-2 scrollbar-hide">
             {result.reports.map((report, index) => (
-              <div key={index} className="bg-custom-mutedgreen p-4 rounded-lg flex flex-col items-center min-w-[200px]">
+              <div key={index} className="bg-custom-mutedgreen p-4 rounded-lg flex flex-col items-center min-w-[200px] relative">
                 <p className="text-lg font-bold text-gray-800 text-center">{report.name}</p>
-                {/* <p className="text-sm text-gray-500 text-center">Values: {report.values}</p> */}
+                
+                {/* Analysis Status Badge */}
+                {report.analysisStatus && (
+                  <div className="mt-2">
+                    {report.analysisStatus === 'PENDING' && (
+                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
+                        <Clock className="w-3 h-3 mr-1" />
+                        Analysis Pending
+                      </Badge>
+                    )}
+                    {report.analysisStatus === 'PROCESSING' && (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        Analyzing...
+                      </Badge>
+                    )}
+                    {report.analysisStatus === 'COMPLETED' && report.hasAnalysis && (
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        Analysis Ready
+                      </Badge>
+                    )}
+                    {report.analysisStatus === 'FAILED' && (
+                      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs">
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        Analysis Failed
+                      </Badge>
+                    )}
+                  </div>
+                )}
+                
                 <a
                   href={report.pdfUrl}
                   target="_blank"
@@ -99,6 +142,29 @@ export default function LabResultCard({ result }: { result: LabResult }) {
         ) : (
           <p className="text-gray-500 mt-4">Reports are not available at the moment.</p>
         )}
+      </div>
+
+      {/* Action Buttons - consistent with StandaloneReportCard */}
+      <div className="flex gap-2 mt-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => firstReportPdfUrl && window.open(firstReportPdfUrl, "_blank")}
+          disabled={!firstReportPdfUrl}
+          className="flex-1"
+        >
+          <Eye className="w-4 h-4 mr-2" />
+          View Report
+        </Button>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={() => onViewAnalysis?.(result)}
+          className="flex-1"
+        >
+          <Bot className="w-4 h-4 mr-2" />
+          View Analysis
+        </Button>
       </div>
     </div>
   );

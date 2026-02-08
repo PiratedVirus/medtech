@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+
 import { useToast } from '@/hooks/use-toast';
 import { Upload, FileText, Microscope, Pill, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
 import axios from 'axios';
@@ -36,7 +37,6 @@ interface ProcessingNotification {
 const REPORT_TYPES = [
   { value: 'lab_report', label: 'Lab Report', icon: Microscope },
   { value: 'prescription', label: 'Prescription', icon: Pill },
-  { value: 'medical_document', label: 'Medical Document', icon: FileText },
 ];
 
 export default function ReportUploadButton({
@@ -49,7 +49,7 @@ export default function ReportUploadButton({
 }: ReportUploadButtonProps) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
-  const [reportType, setReportType] = useState('');
+  const [reportType, setReportType] = useState('lab_report');
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [processingNotifications, setProcessingNotifications] = useState<ProcessingNotification[]>([]);
@@ -218,7 +218,7 @@ export default function ReportUploadButton({
         });
         
         setIsOpen(false);
-        setReportType('');
+        setReportType('lab_report');
         setFile(null);
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
@@ -256,7 +256,7 @@ export default function ReportUploadButton({
 
   const handleOpenDialog = () => {
     setIsOpen(true);
-    setReportType('');
+    setReportType('lab_report');
     setFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -379,21 +379,27 @@ export default function ReportUploadButton({
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium mb-2 block">Report Type</label>
-              <Select value={reportType} onValueChange={setReportType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select report type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {REPORT_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      <div className="flex items-center gap-2">
-                        {getReportTypeIcon(type.value)}
-                        {type.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-2 gap-3">
+                {REPORT_TYPES.map((type) => {
+                  const Icon = type.icon;
+                  const isSelected = reportType === type.value;
+                  return (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => setReportType(type.value)}
+                      className={`flex items-center justify-center gap-2 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-all ${
+                        isSelected
+                          ? 'border-primary bg-primary/5 text-primary'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Icon className={`h-5 w-5 ${isSelected ? 'text-primary' : 'text-gray-400'}`} />
+                      {type.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div>
@@ -406,7 +412,7 @@ export default function ReportUploadButton({
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Supported formats: PDF, JPG, PNG. Max size: 10MB
+                Supported formats: PDF. Max size: 4MB
               </p>
             </div>
 

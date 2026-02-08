@@ -103,7 +103,8 @@ const getStandaloneReportsHandler = async (request: NextRequest) => {
           urgency: analysis.urgency,
           llmModel: analysis.llmModel,
           processedAt: analysis.processedAt?.toISOString(),
-          createdAt: analysis.createdAt.toISOString()
+          createdAt: analysis.createdAt.toISOString(),
+          trendAnalysis: analysis.trendAnalysis
         }))
       };
     });

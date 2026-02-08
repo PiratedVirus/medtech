@@ -146,6 +146,125 @@ export async function PUT(request: Request) {
   }
 }
 
+// PATCH endpoint for uploading lab reports with LLM analysis
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, links, remove } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "Lab booking ID is required" }, { status: 400 });
+    }
+
+    // Get existing lab booking
+    const existing = await prisma.labBooking.findUnique({
+      where: { id },
+      select: { 
+        id: true,
+        labResult: true,
+        patientId: true,
+        labDate: true
+      }
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Lab booking not found" }, { status: 404 });
+    }
+
+    let updatedLabResult: string[] = [...(existing.labResult || [])];
+
+    // Handle removal of a specific link
+    if (remove) {
+      updatedLabResult = updatedLabResult.filter(link => link !== remove);
+    }
+
+    // Handle addition of new links
+    if (links && Array.isArray(links) && links.length > 0) {
+      updatedLabResult = [...updatedLabResult, ...links];
+    }
+
+    // Update lab booking
+    const updated = await prisma.labBooking.update({
+      where: { id },
+      data: {
+        labResult: {
+          set: updatedLabResult
+        }
+      },
+      select: {
+        id: true,
+        status: true,
+        labResult: true,
+        patient: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        labPackage: {
+          select: {
+            name: true
+          }
+        }
+      }
+    });
+
+    // Trigger automatic AI processing for newly uploaded lab reports
+    if (links && links.length > 0) {
+      console.log(`[LAB-BOOKINGS-UPLOAD] Triggering AI processing for ${links.length} new reports`);
+      
+      // Get the starting index for new reports
+      const existingCount = (existing.labResult || []).length;
+      
+      // Trigger processing for each new report
+      for (let i = 0; i < links.length; i++) {
+        const labResultIndex = existingCount + i;
+        const pdfUrl = links[i];
+        
+        try {
+          // Create or update analysis record
+          const analysis = await prisma.labReportAnalysis.upsert({
+            where: {
+              labBookingId_labResultIndex: {
+                labBookingId: id,
+                labResultIndex: labResultIndex
+              }
+            },
+            update: {
+              reportUrl: pdfUrl,
+              processingStatus: 'PENDING',
+              processingError: null,
+              processedAt: null,
+              deletedAt: null
+            },
+            create: {
+              labBookingId: id,
+              labResultIndex: labResultIndex,
+              reportUrl: pdfUrl,
+              processingStatus: 'PENDING'
+            }
+          });
+
+          // Import and trigger background AI processing (unified pipeline with date extraction)
+          const { processWithOpenRouter } = await import('@/lib/llm/unified-lab-processor-adapters');
+          processWithOpenRouter(analysis.id, pdfUrl, existing.patientId, id).catch((error: any) => {
+            console.error(`[LAB-BOOKINGS-UPLOAD] AI processing failed for analysis ${analysis.id}:`, error);
+          });
+          
+          console.log(`[LAB-BOOKINGS-UPLOAD] AI processing started for analysis ${analysis.id}, index ${labResultIndex}`);
+        } catch (error) {
+          console.error(`[LAB-BOOKINGS-UPLOAD] Failed to trigger AI processing for report at index ${labResultIndex}:`, error);
+        }
+      }
+    }
+
+    return NextResponse.json({ data: updated });
+  } catch (error) {
+    console.error("Lab booking PATCH error:", error);
+    return NextResponse.json({ error: "Failed to update lab booking" }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: Request) {
   try {
     const data = await request.json();

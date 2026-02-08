@@ -95,6 +95,8 @@ export default function PrescriptionForm({
   const finalTranscriptRef = useRef<string>("");
   // Ref to mark if recording was cancelled (e.g., via Clear All)
   const recordingCancelledRef = useRef<boolean>(false);
+  // Ref to track pending field name for voice input (used in onstart handler)
+  const pendingVoiceFieldRef = useRef<string | null>(null);
   // Current images state
   const [currentImages, setCurrentImages] = useState<Array<{id?: number; url: string}>>([]);
   const [isUploadingCurrent, setIsUploadingCurrent] = useState(false);
@@ -674,6 +676,22 @@ export default function PrescriptionForm({
         setIsClearingVoice(false);
         finalTranscriptRef.current = "";
         recordingCancelledRef.current = false;
+        // Only show success toast when recording actually starts
+        // Use ref to check pending field name since state might not be updated yet
+        const fieldName = pendingVoiceFieldRef.current;
+        if (!fieldName) {
+          toast({
+            title: "🎤 AI Mic Activated",
+            description: "Listening for prescription details...",
+          });
+        } else {
+          toast({
+            title: "🎤 Recording",
+            description: `Recording for ${fieldName.replace(/([A-Z])/g, ' $1').toLowerCase()}...`,
+          });
+        }
+        // Clear the pending field ref after use
+        pendingVoiceFieldRef.current = null;
       };
 
       recognitionInstance.onresult = (event: any) => {
@@ -698,15 +716,41 @@ export default function PrescriptionForm({
           processVoiceInput(finalTranscriptRef.current.trim());
         }
         setCurrentVoiceField(null);
+        pendingVoiceFieldRef.current = null;
       };
 
       recognitionInstance.onerror = (event: any) => {
         setIsVoiceRecording(false);
+        setCurrentVoiceField(null);
+        pendingVoiceFieldRef.current = null;
         // Don't show error toast if we're clearing voice data or if recording was cancelled
         if (!isClearingVoice && !recordingCancelledRef.current) {
+          let errorMessage = "There was an issue with speech recognition. Please try again.";
+          
+          // Provide more specific error messages
+          switch (event.error) {
+            case 'not-allowed':
+              errorMessage = "Microphone permission denied. Please allow microphone access and try again.";
+              break;
+            case 'no-speech':
+              errorMessage = "No speech detected. Please speak clearly and try again.";
+              break;
+            case 'audio-capture':
+              errorMessage = "No microphone found. Please check your microphone connection.";
+              break;
+            case 'network':
+              errorMessage = "Network error. Please check your internet connection.";
+              break;
+            case 'aborted':
+              // Don't show error for aborted (user-initiated stop)
+              return;
+            default:
+              errorMessage = `Speech recognition error: ${event.error || 'Unknown error'}. Please try again.`;
+          }
+          
           toast({
             title: "Speech Recognition Error",
-            description: "There was an issue with speech recognition. Please try again.",
+            description: errorMessage,
             variant: "destructive",
           });
         }
@@ -1139,7 +1183,16 @@ export default function PrescriptionForm({
       // Update advice and tests only if voice data has content
       advice: voiceData.advice?.trim() || prescriptionData.advice,
       testsRequested: voiceData.testsRequested?.trim() || prescriptionData.testsRequested,
-      historyOfCurrentIllness: voiceData.historyOfCurrentIllness?.trim() || prescriptionData.historyOfCurrentIllness,
+      // Append History of Presenting Illness if both existing and new content exist
+      historyOfCurrentIllness: (() => {
+        const existing = prescriptionData.historyOfCurrentIllness?.trim() || "";
+        const newValue = voiceData.historyOfCurrentIllness?.trim() || "";
+        if (!existing && !newValue) return "";
+        if (!existing) return newValue;
+        if (!newValue) return existing;
+        // Append with period and space for better readability
+        return `${existing}. ${newValue}`;
+      })(),
       // Append medical history fields instead of replacing them
       medicalHistory: {
         allergies: appendMedicalHistory(
@@ -1199,16 +1252,25 @@ export default function PrescriptionForm({
     } else {
       // Start recording
       if (recognition) {
-        setVoiceTranscript("");
-        setIsVoiceRecording(true);
-        setIsClearingVoice(false);
-        finalTranscriptRef.current = "";
-        recordingCancelledRef.current = false;
-        recognition.start();
-        toast({
-          title: "🎤 AI Mic Activated",
-          description: "Listening for prescription details...",
-        });
+        // Check if recognition is already running (in case of stale state)
+        try {
+          setVoiceTranscript("");
+          setIsClearingVoice(false);
+          finalTranscriptRef.current = "";
+          recordingCancelledRef.current = false;
+          pendingVoiceFieldRef.current = null; // Clear any pending field for AI mic
+          // Don't set isVoiceRecording here - let onstart handler do it
+          // Don't show toast here - let onstart handler do it when recording actually starts
+          recognition.start();
+        } catch (error) {
+          console.error("Error starting recognition:", error);
+          pendingVoiceFieldRef.current = null;
+          toast({
+            title: "Speech Recognition Error",
+            description: "Failed to start speech recognition. Please try again.",
+            variant: "destructive",
+          });
+        }
       } else {
         toast({
           title: "Speech Recognition Not Available",
@@ -1271,20 +1333,30 @@ export default function PrescriptionForm({
         recognition.stop();
       }
       setCurrentVoiceField(null);
+      pendingVoiceFieldRef.current = null;
     } else {
       // Start recording for specific field
-      setCurrentVoiceField(fieldName);
       if (recognition) {
-        setVoiceTranscript("");
-        setIsVoiceRecording(true);
-        setIsClearingVoice(false);
-        finalTranscriptRef.current = "";
-        recordingCancelledRef.current = false;
-        recognition.start();
-        toast({
-          title: "🎤 Recording",
-          description: `Recording for ${fieldName.replace(/([A-Z])/g, ' $1').toLowerCase()}...`,
-        });
+        setCurrentVoiceField(fieldName);
+        pendingVoiceFieldRef.current = fieldName; // Store in ref for onstart handler
+        try {
+          setVoiceTranscript("");
+          setIsClearingVoice(false);
+          finalTranscriptRef.current = "";
+          recordingCancelledRef.current = false;
+          // Don't set isVoiceRecording here - let onstart handler do it
+          // Don't show toast here - let onstart handler do it when recording actually starts
+          recognition.start();
+        } catch (error) {
+          console.error("Error starting recognition:", error);
+          setCurrentVoiceField(null);
+          pendingVoiceFieldRef.current = null;
+          toast({
+            title: "Speech Recognition Error",
+            description: "Failed to start speech recognition. Please try again.",
+            variant: "destructive",
+          });
+        }
       } else {
         toast({
           title: "Speech Recognition Not Available",
@@ -1302,6 +1374,7 @@ export default function PrescriptionForm({
     // Mark as cancelled and clear transcript ref before aborting recognition
     recordingCancelledRef.current = true;
     finalTranscriptRef.current = "";
+    pendingVoiceFieldRef.current = null;
     // Stop any ongoing recognition
     if (recognition) {
       recognition.abort();

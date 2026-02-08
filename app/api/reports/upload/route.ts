@@ -1,12 +1,138 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import * as jose from 'jose';
+import { generateSummary, extractValues } from '@/lib/llm/unified-service';
 
-// JWT payload interface
+// Parse a DD/MM/YYYY or DD-MM-YYYY date string (with optional time) into a Date object
+function parseDMYDate(dateStr: string): Date | null {
+  const m = dateStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (!m) return null;
+  const day = parseInt(m[1]);
+  const month = parseInt(m[2]) - 1; // JS months are 0-indexed
+  let year = parseInt(m[3]);
+  if (year < 100) year += 2000;
+  if (day < 1 || day > 31 || month < 0 || month > 11) return null;
+  const d = new Date(year, month, day);
+  if (isNaN(d.getTime()) || d.getFullYear() < 2000 || d.getFullYear() > 2100) return null;
+  return d;
+}
+
+// Parse "DD Mon YYYY" or "DD Month YYYY" style dates
+function parseNamedMonthDate(dateStr: string): Date | null {
+  const m = dateStr.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s,]+(\d{4})/i);
+  if (!m) return null;
+  const d = new Date(`${m[2]} ${m[1]}, ${m[3]}`);
+  if (isNaN(d.getTime()) || d.getFullYear() < 2000 || d.getFullYear() > 2100) return null;
+  return d;
+}
+
+// Extract date from OCR text using robust pattern matching
+function extractDateFromOCRText(text: string): string | null {
+  if (!text) return null;
+
+  // Normalize: collapse \r\n to \n
+  const normalized = text.replace(/\r\n/g, '\n');
+
+  // ── STEP 1: Label-associated dates ──
+  // Labels in priority order (collection/sample > reported/received > generic date)
+  const labelGroups = [
+    // Highest priority: sample/collection dates
+    [
+      'sample\\s*collected',
+      'sample\\s*collection\\s*date',
+      'collection\\s*date',
+      'collected\\s*on',
+      'collected',
+      'date\\s*of\\s*collection',
+      'drawn\\s*on',
+      'sample\\s*date',
+      'specimen\\s*collected',
+      'received\\s*on',
+      'received',
+    ],
+    // Medium priority: report/test dates
+    [
+      'reported',
+      'report\\s*date',
+      'reporting\\s*date',
+      'date\\s*of\\s*report',
+      'test\\s*date',
+      'date\\s*of\\s*test',
+      'registered',
+      'registration\\s*date',
+    ],
+  ];
+
+  for (const labels of labelGroups) {
+    for (const label of labels) {
+      // Allow label, then optional newlines/spaces/colons/tabs, then a date
+      // This handles: "Reported\n: 28/08/2025 03:24 PM" and "Collection Date : 28/08/2025"
+      const re = new RegExp(
+        label + '[\\s\\n\\r]*[:\\-]?[\\s\\n\\r]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})',
+        'im'
+      );
+      const match = normalized.match(re);
+      if (match && match[1]) {
+        const d = parseDMYDate(match[1]);
+        if (d) {
+          console.log(`[OCR-DATE] Matched label "${label}" → ${match[1]} → ${d.toISOString()}`);
+          return d.toISOString();
+        }
+      }
+
+      // Also try "DD Mon YYYY" style after a label
+      const re2 = new RegExp(
+        label + '[\\s\\n\\r]*[:\\-]?[\\s\\n\\r]*(\\d{1,2}\\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\\s,]+\\d{4})',
+        'im'
+      );
+      const match2 = normalized.match(re2);
+      if (match2 && match2[1]) {
+        const d = parseNamedMonthDate(match2[1]);
+        if (d) {
+          console.log(`[OCR-DATE] Matched label "${label}" → ${match2[1]} → ${d.toISOString()}`);
+          return d.toISOString();
+        }
+      }
+    }
+  }
+
+  // ── STEP 2: Fallback – grab the first DD/MM/YYYY anywhere in the text ──
+  const allDatesRegex = /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/g;
+  let firstDate: Date | null = null;
+  let firstDateStr = '';
+  let matchArr;
+  while ((matchArr = allDatesRegex.exec(normalized)) !== null) {
+    const d = parseDMYDate(matchArr[0]);
+    if (d) {
+      if (!firstDate) { firstDate = d; firstDateStr = matchArr[0]; }
+    }
+  }
+  if (firstDate) {
+    console.log(`[OCR-DATE] No label matched, using first date in text: ${firstDateStr} → ${firstDate.toISOString()}`);
+    return firstDate.toISOString();
+  }
+
+  // ── STEP 3: Try named-month dates anywhere ──
+  const namedMonthRegex = /(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s,]+\d{4})/gi;
+  let nmMatch;
+  while ((nmMatch = namedMonthRegex.exec(normalized)) !== null) {
+    const d = parseNamedMonthDate(nmMatch[1]);
+    if (d) {
+      console.log(`[OCR-DATE] No label matched, using first named-month date: ${nmMatch[1]} → ${d.toISOString()}`);
+      return d.toISOString();
+    }
+  }
+
+  return null;
+}
+
+// JWT payload interface (match verify-otp token shape for multi-clinic)
 interface JWTPayload {
   plusAddedPhoneNumber: string;
-  userExists: boolean;
-  userRole: string;
+  userExists?: boolean;
+  userRole?: string;
+  userId?: number;
+  clinicId?: number | null;
 }
 
 // Function to verify JWT token and get user
@@ -21,376 +147,36 @@ async function verifyUserToken(token: string): Promise<JWTPayload | null> {
   }
 }
 
-// Function to get user from request
+// Function to get user from request (use userId from token when present for correct segregation)
 async function getUserFromRequest(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   if (!token) return null;
-  
+
   const decoded = await verifyUserToken(token);
   if (!decoded) return null;
-  
-  // Get user from database using phone number from JWT
+
+  // Prefer userId from token so we resolve the same user as frontend profile (multi-clinic safe)
+  if (decoded.userId) {
+    const user = await prisma.user.findFirst({
+      where: { id: decoded.userId, deletedAt: null },
+      select: { id: true, name: true, role: true, phoneNumber: true },
+    });
+    return user;
+  }
+
+  // Fallback: resolve by phone (old tokens)
   const user = await prisma.user.findFirst({
-    where: { 
+    where: {
       phoneNumber: decoded.plusAddedPhoneNumber,
-      deletedAt: null
+      deletedAt: null,
     },
-    select: { id: true, name: true, role: true, phoneNumber: true }
+    select: { id: true, name: true, role: true, phoneNumber: true },
   });
-  
+
   return user;
 }
 
-// Function to generate summary for standalone reports
-async function generateStandaloneSummary(text: string): Promise<{ summary: string; keyFindings: any[]; recommendations: any[]; urgency: string }> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    throw new Error('GROQ_API_KEY not configured');
-  }
-
-  try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a medical lab report analyzer. Analyze the provided lab report and return a JSON response with the following structure: { "summary": "clinical summary in 200-250 words", "keyFindings": ["finding1", "finding2"], "recommendations": ["recommendation1", "recommendation2"], "urgency": "ROUTINE|SOON|URGENT" }'
-          },
-          {
-            role: 'user',
-            content: `Analyze this lab report and return JSON only:\n\n${text}`
-          }
-        ],
-        max_tokens: 1000,
-        temperature: 0.1,
-        response_format: { type: 'json_object' }
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Groq API error: ${response.status} ${errorText}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
-    
-    if (!content) {
-      throw new Error('No content received from Groq API');
-    }
-
-    try {
-      const parsed = JSON.parse(content);
-      return {
-        summary: parsed.summary || 'Analysis completed successfully.',
-        keyFindings: Array.isArray(parsed.keyFindings) ? parsed.keyFindings : [],
-        recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
-        urgency: parsed.urgency || 'ROUTINE'
-      };
-    } catch (parseError) {
-      // Fallback if JSON parsing fails
-      return {
-        summary: content.substring(0, 500),
-        keyFindings: [],
-        recommendations: [],
-        urgency: 'ROUTINE'
-      };
-    }
-  } catch (error) {
-    console.error('Standalone summary generation failed:', error);
-    throw error;
-  }
-}
-
-// Function to extract values for standalone reports
-async function extractStandaloneValues(text: string): Promise<{ allValues: any[]; criticalValues: any[] }> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    throw new Error('GROQ_API_KEY not configured');
-  }
-
-  try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a medical lab report analyzer. Extract ONLY the test parameters and values that are explicitly mentioned in the provided lab report text. DO NOT generate, invent, or hallucinate any values not present in the text. Return ONLY valid JSON with this exact structure: {"allValues": [{"parameter": "name", "value": "value", "unit": "unit", "normalRange": "range", "isAbnormal": true/false, "severity": "LOW|NORMAL|HIGH|CRITICAL", "category": "CBC|LFT|KFT|LIPID|DIABETES"}], "criticalValues": [same structure for abnormal values only]}. Use only double quotes, no trailing commas, and ensure all values are properly formatted.'
-          },
-          {
-            role: 'user',
-            content: `Extract ONLY the test parameters and values that are explicitly mentioned in this lab report. DO NOT generate, invent, or hallucinate any values not present in the text. Return ONLY the JSON object:\n\n${text}`
-          }
-        ],
-        max_tokens: 2000,
-        temperature: 0.1,
-        response_format: { type: 'json_object' }
-      })
-    });
-
-    let content = '';
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[UPLOAD] Groq API returned ${response.status}: ${errorText}`);
-      
-      // Check if the error response contains valid JSON data
-      try {
-        const errorData = JSON.parse(errorText);
-        if (errorData.error && errorData.error.failed_generation) {
-          // Groq sometimes returns valid JSON in failed_generation field
-          content = errorData.error.failed_generation;
-          console.log(`[UPLOAD] Found valid JSON in failed_generation field`);
-        } else {
-          throw new Error(`Groq API error: ${response.status} ${errorText}`);
-        }
-      } catch (parseError) {
-        throw new Error(`Groq API error: ${response.status} ${errorText}`);
-      }
-    } else {
-      const data = await response.json();
-      content = data.choices[0]?.message?.content;
-      
-      if (!content) {
-        throw new Error('No content received from Groq API response');
-      }
-    }
-    
-    if (!content) {
-      throw new Error('No content received from Groq API');
-    }
-
-    try {
-      const parsed = JSON.parse(content);
-      return {
-        allValues: Array.isArray(parsed.allValues) ? parsed.allValues : [],
-        criticalValues: Array.isArray(parsed.criticalValues) ? parsed.criticalValues : []
-      };
-    } catch (parseError) {
-      console.error('Failed to parse JSON content:', parseError);
-      console.log('Raw content:', content);
-      
-      // Try to repair the JSON before giving up
-      try {
-        console.log('[UPLOAD] Attempting JSON repair...');
-        const repairedContent = repairJsonString(content);
-        const parsed = JSON.parse(repairedContent);
-        
-        console.log('[UPLOAD] JSON repair successful, extracted data:', {
-          allValuesCount: Array.isArray(parsed.allValues) ? parsed.allValues.length : 0,
-          criticalValuesCount: Array.isArray(parsed.criticalValues) ? parsed.criticalValues.length : 0
-        });
-        
-        return {
-          allValues: Array.isArray(parsed.allValues) ? parsed.allValues : [],
-          criticalValues: Array.isArray(parsed.criticalValues) ? parsed.criticalValues : []
-        };
-      } catch (repairError) {
-        console.error('JSON repair also failed:', repairError);
-        
-        // Fallback if JSON parsing fails
-        return {
-          allValues: [],
-          criticalValues: []
-        };
-      }
-    }
-  } catch (error) {
-    console.error('Standalone values extraction failed:', error);
-    throw error;
-  }
-}
-
-// Function to repair common JSON syntax errors
-function repairJsonString(jsonString: string): string {
-  try {
-    // First try to parse as-is
-    JSON.parse(jsonString);
-    return jsonString;
-  } catch (error) {
-    console.log('[UPLOAD] JSON parsing failed, attempting to repair...');
-    
-    let repaired = jsonString;
-    
-    // Fix missing closing brackets for arrays
-    if (repaired.includes('"allValues":[') && !repaired.includes('"allValues":[]')) {
-      // Count opening brackets after "allValues":[
-      const allValuesStart = repaired.indexOf('"allValues":[');
-      let bracketCount = 0;
-      let inString = false;
-      let escapeNext = false;
-      
-      for (let i = allValuesStart + 13; i < repaired.length; i++) {
-        const char = repaired[i];
-        
-        if (escapeNext) {
-          escapeNext = false;
-          continue;
-        }
-        
-        if (char === '\\') {
-          escapeNext = true;
-          continue;
-        }
-        
-        if (char === '"' && !escapeNext) {
-          inString = !inString;
-          continue;
-        }
-        
-        if (!inString) {
-          if (char === '[') bracketCount++;
-          if (char === ']') bracketCount--;
-          
-          // If we hit a closing brace and have unmatched brackets, add missing array close
-          if (char === '}' && bracketCount > 0) {
-            repaired = repaired.slice(0, i) + ']' + repaired.slice(i);
-            break;
-          }
-        }
-      }
-      
-      // If we still have unmatched brackets, add them at the end
-      if (bracketCount > 0) {
-        repaired = repaired.replace(/}}$/, ']}');
-      }
-    }
-    
-    // Fix missing closing brackets for criticalValues array
-    if (repaired.includes('"criticalValues":[') && !repaired.includes('"criticalValues":[]')) {
-      const criticalValuesStart = repaired.indexOf('"criticalValues":[');
-      let bracketCount = 0;
-      let inString = false;
-      let escapeNext = false;
-      
-      for (let i = criticalValuesStart + 18; i < repaired.length; i++) {
-        const char = repaired[i];
-        
-        if (escapeNext) {
-          escapeNext = false;
-          continue;
-        }
-        
-        if (char === '\\') {
-          escapeNext = true;
-          continue;
-        }
-        
-        if (char === '"' && !escapeNext) {
-          inString = !inString;
-          continue;
-        }
-        
-        if (!inString) {
-          if (char === '[') bracketCount++;
-          if (char === ']') bracketCount--;
-          
-          if (char === '}' && bracketCount > 0) {
-            repaired = repaired.slice(0, i) + ']' + repaired.slice(i);
-            break;
-          }
-        }
-      }
-      
-      if (bracketCount > 0) {
-        repaired = repaired.replace(/}}$/, ']}');
-      }
-    }
-    
-    // Try to parse the repaired JSON
-    try {
-      JSON.parse(repaired);
-      console.log('[UPLOAD] JSON repair successful');
-      return repaired;
-    } catch (repairError) {
-      console.log('[UPLOAD] JSON repair failed, attempting manual extraction...');
-      
-      // Last resort: try to extract arrays manually using regex
-      const allValuesMatch = repaired.match(/"allValues":\s*\[([\s\S]*?)(?=\s*,\s*"criticalValues"|$)/);
-      const criticalValuesMatch = repaired.match(/"criticalValues":\s*\[([\s\S]*?)(?=\s*}$|$)/);
-      
-      if (allValuesMatch || criticalValuesMatch) {
-        const manualJson = {
-          allValues: allValuesMatch ? parseArrayFromString(allValuesMatch[1]) : [],
-          criticalValues: criticalValuesMatch ? parseArrayFromString(criticalValuesMatch[1]) : []
-        };
-        
-        console.log('[UPLOAD] Manual extraction successful');
-        return JSON.stringify(manualJson);
-      }
-      
-      throw repairError;
-    }
-  }
-}
-
-// Helper function to parse array elements from string
-function parseArrayFromString(arrayString: string): any[] {
-  try {
-    // Try to parse as JSON first
-    return JSON.parse('[' + arrayString + ']');
-  } catch {
-    // If that fails, try to extract individual objects
-    const objects: any[] = [];
-    let currentObject = '';
-    let braceCount = 0;
-    let inString = false;
-    let escapeNext = false;
-    
-    for (let i = 0; i < arrayString.length; i++) {
-      const char = arrayString[i];
-      
-      if (escapeNext) {
-        escapeNext = false;
-        currentObject += char;
-        continue;
-      }
-      
-      if (char === '\\') {
-        escapeNext = true;
-        currentObject += char;
-        continue;
-      }
-      
-      if (char === '"' && !escapeNext) {
-        inString = !inString;
-        currentObject += char;
-        continue;
-      }
-      
-      if (!inString) {
-        if (char === '{') braceCount++;
-        if (char === '}') braceCount--;
-      }
-      
-      currentObject += char;
-      
-      if (braceCount === 0 && char === '}' && currentObject.trim()) {
-        try {
-          const obj = JSON.parse(currentObject.trim());
-          objects.push(obj);
-        } catch {
-          // Skip malformed objects
-        }
-        currentObject = '';
-      }
-    }
-    
-    return objects;
-  }
-}
+// Removed local duplicate functions - using unified-service instead
 
 // Function to trigger LLM processing for standalone reports
 async function triggerLLMProcessing(reportId: number, analysisType: string) {
@@ -425,6 +211,7 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
     });
 
     let extractedText = '';
+    let extractedReportDate: string | undefined; // Date extracted from report OCR text
     try {
       if (report.fileUrl.startsWith('http')) {
         // Use existing parse-text API for remote files
@@ -437,6 +224,16 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
           extractedText = await ocrExtractPdfTextFromUrl(report.fileUrl);
           
           console.log(`[UPLOAD][${reportId}] Direct OCR extraction completed (${extractedText.length} chars)`);
+          console.log(`[UPLOAD][${reportId}][DEBUG] OCR text preview (first 800 chars):`, extractedText.substring(0, 800));
+          
+          // Extract date immediately from OCR text
+          const ocrExtractedDate = extractDateFromOCRText(extractedText);
+          if (ocrExtractedDate) {
+            extractedReportDate = ocrExtractedDate;
+            console.log(`[UPLOAD][${reportId}][DEBUG] ✓ Date extracted from OCR: ${extractedReportDate}`);
+          } else {
+            console.warn(`[UPLOAD][${reportId}][DEBUG] ✗ No date found in OCR text using regex patterns`);
+          }
           
           // Update database with extracted text and progress
           await prisma.standaloneReportAnalysis.updateMany({
@@ -481,7 +278,8 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
       // Stage 2: Generate Summary
       console.log(`[UPLOAD][${reportId}] Stage 2: Generating summary`);
       try {
-        const summaryResult = await generateStandaloneSummary(extractedText);
+        const groqApiKey = process.env.GROQ_API_KEY || '';
+        const summaryResult = await generateSummary(extractedText, groqApiKey);
         llmSummary = summaryResult.summary;
         keyFindings = summaryResult.keyFindings;
         recommendations = summaryResult.recommendations;
@@ -515,11 +313,23 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
       // Stage 3: Extract Lab Values
       console.log(`[UPLOAD][${reportId}] Stage 3: Extracting lab values`);
       try {
-        const valuesResult = await extractStandaloneValues(extractedText);
+        const groqApiKey = process.env.GROQ_API_KEY || '';
+        const valuesResult = await extractValues(extractedText, groqApiKey);
         allValues = valuesResult.allValues;
         criticalValues = valuesResult.criticalValues;
         
-        console.log(`[UPLOAD][${reportId}] Stage 3: Lab values extraction completed (${allValues.length} total, ${criticalValues.length} critical)`);
+        // Use LLM-extracted date if present, otherwise use OCR regex-extracted date
+        if (valuesResult.reportDate) {
+          extractedReportDate = valuesResult.reportDate;
+          console.log(`[UPLOAD][${reportId}][DEBUG] Using LLM-extracted date: ${extractedReportDate}`);
+        } else if (extractedReportDate) {
+          console.log(`[UPLOAD][${reportId}][DEBUG] LLM didn't extract date, using OCR regex-extracted date: ${extractedReportDate}`);
+        } else {
+          console.warn(`[UPLOAD][${reportId}][DEBUG] No date extracted by either OCR regex or LLM`);
+        }
+
+        console.log(`[UPLOAD][${reportId}][DEBUG] valuesResult.reportDate:`, valuesResult.reportDate ?? '(undefined)');
+        console.log(`[UPLOAD][${reportId}] Stage 3: Lab values extraction completed (${allValues.length} total, ${criticalValues.length} critical, reportDate: ${extractedReportDate || 'NOT EXTRACTED'})`);
         
         // Log some sample values for debugging
         if (allValues.length > 0) {
@@ -631,6 +441,10 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
       criticalValuesSample: Array.isArray(criticalValues) && criticalValues.length > 0 ? criticalValues[0] : 'none'
     });
     
+    // Determine the actual report date: prefer extracted date from report text, otherwise leave unset
+    const actualReportDate = extractedReportDate ? new Date(extractedReportDate) : null;
+    console.log(`[UPLOAD][${reportId}][DEBUG] Report date decision: extractedReportDate=${extractedReportDate ?? 'null'}, actualReportDate=${actualReportDate ? actualReportDate.toISOString() : 'NOT EXTRACTED'}`);
+
     await prisma.standaloneReportAnalysis.updateMany({
       where: { reportId, analysisType },
       data: { 
@@ -642,6 +456,9 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
         keyFindings,
         recommendations,
         urgency,
+        trendAnalysis: actualReportDate
+          ? { reportDate: actualReportDate.toISOString() }
+          : { reportDate: null },
         llmModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
         processedAt: new Date(),
         processingError: null
@@ -649,45 +466,37 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
     });
     
     // Create trend data for standalone reports
-    if (analysisType === 'lab_analysis' && Array.isArray(allValues) && allValues.length > 0) {
+    if (analysisType === 'lab_analysis' && Array.isArray(allValues) && allValues.length > 0 && actualReportDate) {
       console.log(`[UPLOAD][${reportId}] Creating trend data for ${allValues.length} parameters`);
       
       try {
-        // Get the first available lab booking for standalone reports
-        const firstLabBooking = await prisma.labBooking.findFirst({
-          where: { deletedAt: null }
-        });
-
-        if (firstLabBooking) {
-          // Create trend data for each parameter
-          for (const value of allValues) {
-            if (value.parameter && value.value) {
-              try {
-                await prisma.reportTrendData.create({
-                  data: {
-                    patientId: report.patientId,
-                    parameter: String(value.parameter),
-                    value: String(value.value),
-                    unit: value.unit ? String(value.unit) : null,
-                    normalRange: value.normalRange ? String(value.normalRange) : null,
-                    isAbnormal: Boolean(value.isAbnormal),
-                    severity: value.severity && ['LOW','NORMAL','HIGH','CRITICAL'].includes(String(value.severity).toUpperCase())
-                      ? String(value.severity).toUpperCase() as 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'
-                      : null,
-                    reportDate: report.createdAt,
-                    labBookingId: firstLabBooking.id, // Use existing lab booking for standalone reports
-                    sourceReportId: null // Standalone reports don't have sourceReportId
-                  }
-                });
-              } catch (trendError) {
-                console.log(`[UPLOAD][${reportId}] Error creating trend data for ${value.parameter}: ${trendError instanceof Error ? trendError.message : 'Unknown error'}`);
-              }
+        // Create trend data for each parameter (no lab booking required for standalone reports)
+        for (const value of allValues) {
+          if (value.parameter && value.value) {
+            try {
+              await prisma.reportTrendData.create({
+                data: {
+                  patientId: report.patientId,
+                  parameter: String(value.parameter),
+                  value: String(value.value),
+                  unit: value.unit ? String(value.unit) : null,
+                  normalRange: value.normalRange ? String(value.normalRange) : null,
+                  isAbnormal: Boolean(value.isAbnormal),
+                  severity: value.severity && ['LOW','NORMAL','HIGH','CRITICAL'].includes(String(value.severity).toUpperCase())
+                    ? String(value.severity).toUpperCase() as 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'
+                    : null,
+                  reportDate: actualReportDate, // Use date from report text, not upload date
+                  labBookingId: null,
+                  standaloneReportId: reportId,
+                  sourceReportId: null
+                }
+              });
+            } catch (trendError) {
+              console.log(`[UPLOAD][${reportId}] Error creating trend data for ${value.parameter}: ${trendError instanceof Error ? trendError.message : 'Unknown error'}`);
             }
           }
-          console.log(`[UPLOAD][${reportId}] Trend data creation completed`);
-        } else {
-          console.log(`[UPLOAD][${reportId}] No lab booking found, skipping trend data creation`);
         }
+        console.log(`[UPLOAD][${reportId}] Trend data creation completed`);
       } catch (trendError) {
         console.error(`[UPLOAD][${reportId}] Error creating trend data:`, trendError);
         // Don't fail the upload, just log the error
@@ -770,16 +579,24 @@ export async function POST(request: NextRequest) {
 
     console.log(`[UPLOAD][${requestId}] File validation passed: ${file.name} (${file.size} bytes, ${file.type})`);
 
-    const isPatient = user.id === Number(patientId);
     const isDoctor = user.role === 'DOCTOR' || user.role === 'DIETICIAN';
     const isAdmin = user.role === 'ADMIN';
+    const isPatientRole = user.role === 'PATIENT';
+    // Patient can only upload for themselves. StandaloneReport.patientId is User.id, so use user.id.
+    // Frontend may send PatientProfile.id; we allow PATIENT upload and force patientId to user.id.
+    const isPatientUploadingForSelf = isPatientRole;
+    const isPatient = isPatientUploadingForSelf || user.id === Number(patientId);
+    
+    // Resolve effective patientId: for PATIENT role, always use their User.id (report owner)
+    const effectivePatientId = isPatientRole ? user.id : Number(patientId);
     
     console.log(`[UPLOAD][${requestId}] Permission check:`, {
       isPatient,
       isDoctor,
       isAdmin,
       userId: user.id,
-      patientId: Number(patientId),
+      patientIdFromForm: Number(patientId),
+      effectivePatientId,
       userRole: user.role
     });
     
@@ -819,7 +636,7 @@ export async function POST(request: NextRequest) {
     console.log(`[UPLOAD][${requestId}] Creating report record in database...`);
     const report = await prisma.standaloneReport.create({
       data: {
-        patientId: Number(patientId),
+        patientId: effectivePatientId,
         uploadedByUserId: user.id,
         reportType,
         fileName: file.name,
@@ -926,7 +743,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Get reports for a patient
+// Get reports for a patient (strict segregation: patients only see their own reports)
 export async function GET(request: NextRequest) {
   try {
     const user = await getUserFromRequest(request);
@@ -941,10 +758,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Patient ID required' }, { status: 400 });
     }
 
-    // Check permissions
-    const isPatient = user.id === Number(patientId);
+    // Segregation: PATIENT only ever sees their own reports (effectivePatientId = user.id)
     const isDoctor = user.role === 'DOCTOR' || user.role === 'DIETICIAN';
     const isAdmin = user.role === 'ADMIN';
+    const isPatientRole = user.role === 'PATIENT';
+    const effectivePatientId = isPatientRole ? user.id : Number(patientId);
+    const isPatient = isPatientRole || user.id === Number(patientId);
     
     if (!isPatient && !isDoctor && !isAdmin) {
       return NextResponse.json({ 
@@ -955,7 +774,7 @@ export async function GET(request: NextRequest) {
 
     const reports = await prisma.standaloneReport.findMany({
       where: {
-        patientId: Number(patientId),
+        patientId: effectivePatientId,
         deletedAt: null
       },
       include: {
@@ -970,7 +789,21 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' }
     });
 
-    return NextResponse.json({ success: true, reports });
+    // Enforce segregation: only return reports for this patient (defensive)
+    const filteredReports = reports.filter((r) => r.patientId === effectivePatientId);
+
+    // DEBUG: Log report date payload when ?debug=reportDates is present
+    if (searchParams.get('debug') === 'reportDates') {
+      console.log('[REPORTS][DEBUG] Report date payload (what UI receives):', filteredReports.map((r: any) => ({
+        id: r.id,
+        fileName: r.fileName,
+        createdAt: r.createdAt?.toISOString?.() ?? r.createdAt,
+        trendReportDate: r.reportAnalyses?.[0]?.trendAnalysis?.reportDate ?? '(none)',
+        hasTrendAnalysis: !!r.reportAnalyses?.[0]?.trendAnalysis,
+      })));
+    }
+
+    return NextResponse.json({ success: true, reports: filteredReports });
 
   } catch (error: any) {
     console.error('Get reports error:', error);

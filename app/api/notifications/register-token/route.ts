@@ -6,7 +6,7 @@ import { getSubdomainClinicFromRequest } from '@/lib/clinic-auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const { deviceToken, platform = 'web' } = await request.json();
+    const { deviceToken, platform = 'web', userType } = await request.json();
 
     if (!deviceToken) {
       return NextResponse.json(
@@ -18,11 +18,17 @@ export async function POST(request: NextRequest) {
     // Get subdomain clinic ID for multi-tenancy validation
     const { clinicId: subdomainClinicId } = await getSubdomainClinicFromRequest(request);
 
-    // Get patient ID from JWT token
+    // Get user from JWT token (patient or admin)
+    // When userType is 'admin', prefer admin_token to avoid registering under the patient user
     const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-    
+    const patientToken = cookieStore.get('token')?.value;
+    const adminToken = cookieStore.get('admin_token')?.value;
+    const token = userType === 'admin' ? (adminToken || patientToken) : (patientToken || adminToken);
+
+    console.log(`[REGISTER-TOKEN] Request received. userType=${userType || 'patient'}, hasAdminToken=${!!adminToken}, hasPatientToken=${!!patientToken}, subdomainClinicId=${subdomainClinicId}`);
+
     if (!token) {
+      console.log('[REGISTER-TOKEN] No valid token found');
       return NextResponse.json(
         { success: false, error: 'Authentication required' },
         { status: 401 }
@@ -32,39 +38,46 @@ export async function POST(request: NextRequest) {
     let decoded: any;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET!);
+      console.log(`[REGISTER-TOKEN] Decoded token: userId=${decoded.userId}, role=${decoded.role}, clinicId=${decoded.clinicId}`);
     } catch (err) {
+      console.error('[REGISTER-TOKEN] JWT verify failed:', err);
       return NextResponse.json(
         { success: false, error: 'Invalid token' },
         { status: 401 }
       );
     }
 
-    const phoneNumber = decoded.plusAddedPhoneNumber as string;
-    if (!phoneNumber) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid token data' },
-        { status: 401 }
-      );
+    let user = null;
+    if (decoded?.userId) {
+      user = await prisma.user.findFirst({
+        where: {
+          id: decoded.userId,
+          ...(subdomainClinicId ? { clinicId: subdomainClinicId } : {}),
+        },
+      });
+    } else if (decoded?.plusAddedPhoneNumber) {
+      const phoneNumber = decoded.plusAddedPhoneNumber as string;
+      user = await prisma.user.findFirst({
+        where: { 
+          phoneNumber,
+          ...(subdomainClinicId ? { clinicId: subdomainClinicId } : {}),
+        },
+      });
     }
 
-    // Find user by phone number
-    // If subdomain clinic ID is available, use it for more specific lookup
-    const user = await prisma.user.findFirst({
-      where: { 
-        phoneNumber,
-        ...(subdomainClinicId ? { clinicId: subdomainClinicId } : {}),
-      },
-    });
-
     if (!user) {
+      console.log(`[REGISTER-TOKEN] User not found for userId=${decoded?.userId}`);
       return NextResponse.json(
         { success: false, error: 'User not found' },
         { status: 404 }
       );
     }
+    
+    console.log(`[REGISTER-TOKEN] Found user: id=${user.id}, role=${user.role}, clinicId=${user.clinicId}`);
 
-    // Validate clinic access - patient's clinic must match subdomain clinic
+    // Validate clinic access - user's clinic must match subdomain clinic
     if (subdomainClinicId && user.clinicId !== subdomainClinicId) {
+      console.log(`[REGISTER-TOKEN] Clinic mismatch: user.clinicId=${user.clinicId}, subdomainClinicId=${subdomainClinicId}`);
       return NextResponse.json(
         { 
           success: false, 
@@ -75,17 +88,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If user is not a patient, return success without storing token
-    // (Device tokens are currently only supported for patients)
-    if (user.role !== 'PATIENT') {
-      return NextResponse.json({
-        success: true,
-        message: 'Device token registration not available for this user type',
-      });
-    }
-
     // Upsert device token
-    await prisma.patientDeviceToken.upsert({
+    const upserted = await prisma.patientDeviceToken.upsert({
       where: {
         patientId_deviceToken: {
           patientId: user.id,
@@ -104,6 +108,8 @@ export async function POST(request: NextRequest) {
         isActive: true,
       },
     });
+
+    console.log(`[REGISTER-TOKEN] Successfully registered token for user ${user.id} (${user.role}). ID: ${upserted.id}`);
 
     return NextResponse.json({
       success: true,
@@ -132,9 +138,11 @@ export async function DELETE(request: NextRequest) {
     // Get subdomain clinic ID for multi-tenancy validation
     const { clinicId: subdomainClinicId } = await getSubdomainClinicFromRequest(request);
 
-    // Get patient ID from JWT token
+    // Get user from JWT token (patient or admin)
     const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
+    const patientToken = cookieStore.get('token')?.value;
+    const adminToken = cookieStore.get('admin_token')?.value;
+    const token = patientToken || adminToken;
     
     if (!token) {
       return NextResponse.json(
@@ -153,22 +161,23 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const phoneNumber = decoded.plusAddedPhoneNumber as string;
-    if (!phoneNumber) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid token data' },
-        { status: 401 }
-      );
+    let user = null;
+    if (decoded?.userId) {
+      user = await prisma.user.findFirst({
+        where: {
+          id: decoded.userId,
+          ...(subdomainClinicId ? { clinicId: subdomainClinicId } : {}),
+        },
+      });
+    } else if (decoded?.plusAddedPhoneNumber) {
+      const phoneNumber = decoded.plusAddedPhoneNumber as string;
+      user = await prisma.user.findFirst({
+        where: { 
+          phoneNumber,
+          ...(subdomainClinicId ? { clinicId: subdomainClinicId } : {}),
+        },
+      });
     }
-
-    // Find user by phone number
-    // If subdomain clinic ID is available, use it for more specific lookup
-    const user = await prisma.user.findFirst({
-      where: { 
-        phoneNumber,
-        ...(subdomainClinicId ? { clinicId: subdomainClinicId } : {}),
-      },
-    });
 
     if (!user) {
       return NextResponse.json(
@@ -187,14 +196,6 @@ export async function DELETE(request: NextRequest) {
         },
         { status: 403 }
       );
-    }
-
-    // If user is not a patient, return success without doing anything
-    if (user.role !== 'PATIENT') {
-      return NextResponse.json({
-        success: true,
-        message: 'No device token to remove',
-      });
     }
 
     // Deactivate device token

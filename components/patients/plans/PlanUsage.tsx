@@ -277,8 +277,81 @@ export function PlanUsageMinimal({
   if (isLoading) {
     return <PlanUsageMinimalSkeleton />
   }
+  
+  // Handle actual errors (network issues, server errors)
   if (isError || !data?.success) {
-    return <div className="p-4">Error loading plan usage.</div>
+    return (
+      <Card className="group relative w-full h-[184px] overflow-hidden bg-custom-mutedgreen shadow-none transition-all duration-300">
+        <div className="relative flex h-full flex-col items-center justify-center p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-red-500/10 to-orange-500/10">
+              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-red-600">
+                <path
+                  d="M12 9v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <span className="text-xl font-semibold">Plan Usage</span>
+          </div>
+          <p className="text-red-600 text-center">Error loading plan usage.</p>
+        </div>
+      </Card>
+    )
+  }
+  
+  // Handle no subscription (patient not subscribed)
+  if (!subscriptionId) {
+    return (
+      <Card className="group relative w-full h-[184px] overflow-hidden bg-custom-mutedgreen shadow-none transition-all duration-300">
+        {/* Large chart outline in background */}
+        <div className="absolute -right-8 -top-4 h-40 w-40 opacity-5">
+          <svg viewBox="0 0 24 24" fill="none" className="h-full w-full text-[#174b30]">
+            <path
+              d="M21 21H4.6c-.56 0-1.1-.22-1.48-.62C2.76 20 2.53 19.46 2.5 18.9V3"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M21 7L15.5 12.5L11.5 8.5L3 17"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+        <div className="relative flex h-full flex-col items-center justify-center p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#F28A2E]/10 to-[#56A67C]/10">
+              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-[#134F30]">
+                <path
+                  d="M21 21H4.6c-1.1 0-2-.9-2-2V3"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M9 9l4 4 4-4"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <span className="text-xl font-semibold">Plan Usage</span>
+          </div>
+          <p className="text-gray-600 text-center">Patient is not subscribed to any plans.</p>
+        </div>
+      </Card>
+    )
   }
 
   const { subscriptionTracker, planFeatures } = data.data as {

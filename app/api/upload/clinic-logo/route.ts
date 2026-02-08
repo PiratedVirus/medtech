@@ -8,14 +8,11 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;
-    const clinicId = formData.get("clinicId") as string;
+    const clinicId = formData.get("clinicId") as string | null;
+    const logoType = (formData.get("logoType") as string | null) || "logo";
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
-    }
-
-    if (!clinicId) {
-      return NextResponse.json({ error: "No clinic ID provided" }, { status: 400 });
     }
 
     // Validate file type
@@ -39,8 +36,10 @@ export async function POST(request: NextRequest) {
 
     // Generate unique filename
     const timestamp = Date.now();
-    const fileExtension = file.name.split('.').pop();
-    const filename = `clinic-${clinicId}-${timestamp}.${fileExtension}`;
+    const fileExtension = file.name.split('.').pop() || 'png';
+    const clinicSegment = clinicId && clinicId.trim() !== '' ? clinicId.trim() : 'temp';
+    const typeSegment = logoType === 'footerLogo' ? 'footer' : 'logo';
+    const filename = `clinic-${clinicSegment}-${typeSegment}-${timestamp}.${fileExtension}`;
     const filepath = join(uploadsDir, filename);
 
     // Write file to disk

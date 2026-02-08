@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     const [
       upcomingAppointments,
       pendingLabCollections,
+      newLabBookings,
       failedPayments,
       expiringSubscriptions,
       suspendedUsers,
@@ -98,6 +99,28 @@ export async function GET(request: NextRequest) {
         take: 5
       }).catch(error => {
         console.error("Error fetching pending lab collections:", error);
+        return [];
+      }),
+
+      // New lab bookings (last 24 hours)
+      prisma.labBooking.findMany({
+        where: {
+          createdAt: {
+            gte: new Date(now.getTime() - 24 * 60 * 60 * 1000)
+          },
+          deletedAt: null,
+          patient: {
+            clinicId: clinicId
+          }
+        },
+        include: {
+          patient: { select: { name: true } },
+          labPackage: { select: { name: true } }
+        },
+        take: 5,
+        orderBy: { createdAt: 'desc' }
+      }).catch(error => {
+        console.error("Error fetching new lab bookings:", error);
         return [];
       }),
 
@@ -542,6 +565,30 @@ export async function GET(request: NextRequest) {
             type: 'lab' as const,
             title: 'Lab Sample Pending Collection',
             description: `${labBooking.patient?.name || 'Patient'} has ${labBooking.labPackage?.name || 'lab test'} pending collection on ${formattedDate}`,
+            count: 1,
+            priority: 'medium' as const,
+            icon: 'FlaskConical',
+            color: '#F28A2E',
+            bgColor: 'rgba(242,138,46,0.1)',
+            timestamp: now.toISOString(),
+            isRead: false,
+            data: labBooking
+          };
+        }) : []),
+
+        // New lab bookings - individual notifications
+        ...(newLabBookings.length > 0 ? newLabBookings.map((labBooking, index) => {
+          const createdAt = new Date(labBooking.createdAt);
+          const formattedDate = createdAt.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+          });
+
+          return {
+            id: `new-lab-booking-${labBooking.id}`,
+            type: 'lab' as const,
+            title: 'New Lab Booking',
+            description: `${labBooking.patient?.name || 'Patient'} booked ${labBooking.labPackage?.name || 'a lab test'} on ${formattedDate}`,
             count: 1,
             priority: 'medium' as const,
             icon: 'FlaskConical',

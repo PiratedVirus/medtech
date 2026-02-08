@@ -385,7 +385,7 @@ export default function SignInForm() {
           </div>
 
           {/* Doctor Sign In */}
-          {step === "signIn" && (
+          {/* {step === "signIn" && (
             <div className="text-center text-[15px] text-gray-600">
               Are you a doctor?{" "}
               <Link href="#" className="text-custom-green">
@@ -393,7 +393,7 @@ export default function SignInForm() {
               </Link>{" "}
               here
             </div>
-          )}
+          )} */}
         </div>
       </div>
     </div>

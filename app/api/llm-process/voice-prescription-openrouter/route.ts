@@ -43,8 +43,20 @@ Rules:
 - Extract only clearly mentioned information
 - If no specific date mentioned, use default nextVisit: {"type": "days", "value": 7}
 - Keep response concise and focused
-- historyOfCurrentIllness: Describe current illness, symptoms, duration, and progression
-- medicalHistory: Extract longitudinal patient data (allergies, personal history, past medical history, family history)`;
+
+Field Extraction Guidelines:
+- historyOfCurrentIllness (History of Presenting Illness): Extract detailed narrative about the CURRENT visit's illness. Include:
+  * Onset: When did symptoms start?
+  * Duration: How long has the patient been experiencing this?
+  * Progression: How has the condition evolved over time?
+  * Symptom details: What are the specific symptoms and their characteristics?
+  * Severity: How severe are the symptoms?
+  * Triggers/Aggravating factors: What makes it worse?
+  * Relieving factors: What makes it better?
+  * Associated symptoms: Any other related symptoms?
+  This is VISIT-SPECIFIC information about the current presenting complaint, not historical medical data.
+
+- medicalHistory: Extract LONGITUDINAL patient data (allergies, personal history, past medical history, family history). This is historical information about the patient's overall health, not the current visit.`;
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -143,6 +155,7 @@ Rules:
                      parsedData.medicines?.length > 0 || 
                      parsedData.advice || 
                      parsedData.testsRequested ||
+                     parsedData.historyOfCurrentIllness?.trim() ||
                      (parsedData.vitals && (parsedData.vitals.bloodPressure || parsedData.vitals.pulse || parsedData.vitals.height || parsedData.vitals.weight));
       
       if (!hasData) {

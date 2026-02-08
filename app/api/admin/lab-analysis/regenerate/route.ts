@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     // Trigger actual LLM processing
     try {
       // Import and call the LLM processing function
-      const { processWithOpenRouter } = await import('@/lib/llm/process-service');
+      const { processWithOpenRouter } = await import('@/lib/llm/unified-lab-processor-adapters');
       
       // Start processing in background (don't await to avoid blocking the response)
       processWithOpenRouter(newAnalysis.id, pdfUrl, labBooking.patientId, labBookingId).catch((error: any) => {

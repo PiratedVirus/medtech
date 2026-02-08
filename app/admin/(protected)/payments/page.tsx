@@ -60,8 +60,11 @@ interface Payment {
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   paymentMethod?: string;
+  paymentType?: string;
+  reference?: string;
+  patientName?: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
   deletedAt?: string;
 }
 
@@ -185,57 +188,50 @@ export default function PaymentsPage() {
       ),
     },
     {
-      accessorKey: "appointmentId",
+      accessorKey: "paymentType",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Appointment ID <ArrowUpDown className="ml-2 h-4 w-4" />
+          Type <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
+      cell: ({ row }) => {
+        const type = row.original.paymentType || "Unknown";
+        const colors: Record<string, string> = {
+          "Appointment": "bg-blue-100 text-blue-800",
+          "Lab Booking": "bg-green-100 text-green-800",
+          "Subscription": "bg-purple-100 text-purple-800",
+        };
+        return (
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[type] || "bg-gray-100 text-gray-800"}`}>
+            {type}
+          </span>
+        );
+      },
       enableSorting: true,
     },
     {
-      accessorKey: "labBookingId",
+      accessorKey: "patientName",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Lab Booking ID <ArrowUpDown className="ml-2 h-4 w-4" />
+          Patient <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
+      cell: ({ row }) => row.original.patientName || "—",
       enableSorting: true,
     },
     {
-      accessorKey: "subscriptionId",
-      header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Subscription ID <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      enableSorting: true,
-    },
-    {
-      accessorKey: "razorpayOrderId",
-      header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Razorpay Order ID <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      enableSorting: true,
-    },
-    {
-      accessorKey: "razorpayPaymentId",
-      header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Razorpay Payment ID <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      enableSorting: true,
+      accessorKey: "reference",
+      header: () => <span>Reference</span>,
+      cell: ({ row }) => row.original.reference || "—",
     },
     {
       accessorKey: "paymentMethod",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Payment Method <ArrowUpDown className="ml-2 h-4 w-4" />
+          Method <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
+      cell: ({ row }) => row.original.paymentMethod || "—",
       enableSorting: true,
     },
     {
@@ -245,17 +241,8 @@ export default function PaymentsPage() {
           Amount <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
-      // enableSorting: true, // Remove or keep as needed
-      cell: ({ row }) => (row.original.amount / 100).toFixed(2),
-    },
-    {
-      accessorKey: "currency",
-      header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Currency <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
       enableSorting: true,
+      cell: ({ row }) => `${row.original.currency === "INR" ? "₹" : row.original.currency} ${row.original.amount.toFixed(2)}`,
     },
     {
       accessorKey: "paymentStatus",
@@ -264,6 +251,23 @@ export default function PaymentsPage() {
           Status <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
+      cell: ({ row }) => {
+        const status = row.original.paymentStatus;
+        const colors: Record<string, string> = {
+          "PAID": "bg-green-100 text-green-800",
+          "captured": "bg-green-100 text-green-800",
+          "PENDING": "bg-yellow-100 text-yellow-800",
+          "created": "bg-yellow-100 text-yellow-800",
+          "FAILED": "bg-red-100 text-red-800",
+          "failed": "bg-red-100 text-red-800",
+          "REFUNDED": "bg-gray-100 text-gray-800",
+        };
+        return (
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status] || "bg-gray-100 text-gray-800"}`}>
+            {status}
+          </span>
+        );
+      },
       enableSorting: true,
     },
     {
@@ -433,10 +437,10 @@ export default function PaymentsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Input
-            placeholder="Search payments..."
-            value={(table.getColumn("appointmentId")?.getFilterValue() as string) ?? ""}
+            placeholder="Search by patient name..."
+            value={(table.getColumn("patientName")?.getFilterValue() as string) ?? ""}
             onChange={(event) =>
-              table.getColumn("appointmentId")?.setFilterValue(event.target.value)
+              table.getColumn("patientName")?.setFilterValue(event.target.value)
             }
             className="max-w-sm"
           />
