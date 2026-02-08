@@ -19,6 +19,7 @@ import HowWorks from "@/components/common/landing-page/HowCardDBWorks";
 import CareDiabeticsWorkflow from "@/components/common/landing-page/HowCdWorks";
 import { useClinicContext } from "@/hooks/use-clinic-context";
 import CdLoader from "@/components/ui/custom/cd-loader";
+import BrahmaRxLanding from "@/components/brahma-rx/BrahmaRxLanding";
 
 export default function LandingPageTailwind() {
   // Validate clinic context for subdomain-based access
@@ -33,6 +34,13 @@ export default function LandingPageTailwind() {
   if (isError && subdomain) {
     return <CdLoader />;
   }
+  
+  // If there is no subdomain (i.e. root domain), show BrahmaRX Landing Page
+  if (!subdomain) {
+    return <BrahmaRxLanding />;
+  }
+
+  // If there is a subdomain (e.g. clinic1.abc.com), show the clinic landing page
   return (
     <>
       {/* <InfoBar /> */}

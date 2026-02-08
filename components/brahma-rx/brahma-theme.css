@@ -1,0 +1,172 @@
+/*
+  BrahmaRx AI - Scoped Dark Theme
+  This CSS overrides the default light CSS variables when inside .brahma-rx-theme
+  so that all Tailwind utility classes (bg-background, text-foreground, etc.) 
+  resolve to the dark cosmic theme.
+*/
+
+/* Import fonts used by BrahmaRx */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+.brahma-rx-theme {
+  /* BrahmaRx AI Brand Colors - Deep Space Theme */
+  --background: 220 40% 6%;        /* #0B1020 - Deep cosmic blue */
+  --foreground: 216 20% 92%;       /* #E8ECF1 - Soft white text */
+
+  --card: 220 35% 8%;
+  --card-foreground: 216 20% 92%;
+
+  --popover: 220 38% 7%;
+  --popover-foreground: 216 20% 92%;
+
+  /* Brand gradient anchors */
+  --primary: 243 85% 70%;          /* #6C63FF - BrahmaRx purple */
+  --primary-foreground: 216 20% 92%;
+
+  --gold: 43 87% 70%;              /* #F3C969 - Accent gold */
+  --gold-foreground: 220 40% 6%;
+
+  --secondary: 220 30% 15%;
+  --secondary-foreground: 216 20% 92%;
+
+  --muted: 220 25% 18%;
+  --muted-foreground: 215 15% 60%;
+
+  --accent: 243 85% 70%;
+  --accent-foreground: 216 20% 92%;
+
+  --destructive: 0 70% 60%;
+  --destructive-foreground: 216 20% 92%;
+
+  --border: 220 25% 20%;
+  --input: 220 25% 18%;
+  --ring: 243 85% 70%;
+
+  --radius: 0.75rem;
+
+  /* Gradients */
+  --gradient-brand: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--gold)));
+  --gradient-subtle: linear-gradient(180deg, transparent, hsl(var(--background) / 0.6));
+  --gradient-glow: radial-gradient(circle at center, hsl(var(--primary) / 0.15), transparent 70%);
+
+  /* Shadows & Glows */
+  --shadow-premium: 0 10px 40px -10px hsl(var(--primary) / 0.3);
+  --shadow-gold: 0 0 30px hsl(var(--gold) / 0.2);
+  --glow-primary: 0 0 20px hsl(var(--primary) / 0.4);
+
+  /* Animations */
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Apply dark background and text */
+  color: hsl(216 20% 92%);
+  background-color: hsl(220 40% 6%);
+}
+
+/* Font overrides inside BrahmaRx theme */
+.brahma-rx-theme {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.brahma-rx-theme h1,
+.brahma-rx-theme h2,
+.brahma-rx-theme h3,
+.brahma-rx-theme h4,
+.brahma-rx-theme h5,
+.brahma-rx-theme h6 {
+  font-family: 'Manrope', 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+}
+
+/* BrahmaRx utility classes */
+.brahma-rx-theme .text-gradient-brand {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--gold)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.brahma-rx-theme .glass-card {
+  background: linear-gradient(135deg, hsl(var(--card) / 0.6), hsl(var(--card) / 0.3));
+  backdrop-filter: blur(20px);
+  border: 1px solid hsl(var(--border) / 0.5);
+}
+
+.brahma-rx-theme .glow-primary {
+  box-shadow: var(--glow-primary);
+}
+
+.brahma-rx-theme .glow-gold {
+  box-shadow: var(--shadow-gold);
+}
+
+/* Twinkle animation for stars */
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+}
+
+/* Breathe animation */
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+/* Float animations */
+@keyframes float-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float-subtle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.brahma-rx-theme .animate-breathe {
+  animation: breathe 3.5s ease-in-out infinite;
+}
+
+.brahma-rx-theme .animate-float-up {
+  animation: float-up 0.6s ease-out forwards;
+}
+
+.brahma-rx-theme .animate-float-subtle {
+  animation: float-subtle 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brahma-rx-theme .animate-breathe,
+  .brahma-rx-theme .animate-float-up,
+  .brahma-rx-theme .animate-float-subtle {
+    animation: none;
+  }
+}
+
+/* Ensure the fixed parallax background inherits the scoped variables */
+.brahma-rx-theme .fixed {
+  --background: 220 40% 6%;
+  --primary: 243 85% 70%;
+  --accent: 243 85% 70%;
+  --gold: 43 87% 70%;
+}
