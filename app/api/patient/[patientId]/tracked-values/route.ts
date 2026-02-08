@@ -132,7 +132,13 @@ export async function GET(
     standaloneReports.forEach((report) => {
       for (const analysis of report.reportAnalyses) {
         if (analysis.analysisType !== "lab_analysis") continue;
-        
+
+        // Use extracted report date from trendAnalysis when available
+        const reportDateObj = (analysis.trendAnalysis as any)?.reportDate
+          ? new Date((analysis.trendAnalysis as any).reportDate)
+          : report.createdAt;
+        const reportDateStr = reportDateObj.toISOString().split("T")[0];
+
         const criticalList: any[] = Array.isArray(analysis.criticalValues) ? analysis.criticalValues : [];
         const allList: any[] = Array.isArray(analysis.allValues) ? analysis.allValues : [];
 
@@ -149,7 +155,7 @@ export async function GET(
             isAbnormal: value.isAbnormal ?? true,
             severity: value.severity || "HIGH",
             category: value.category,
-            reportDate: report.createdAt.toISOString().split("T")[0],
+            reportDate: reportDateStr,
             labPackageName: `Standalone Report (${report.reportType})`,
             reportId: report.id,
             isTracked,
@@ -169,7 +175,7 @@ export async function GET(
             isAbnormal: value.isAbnormal ?? false,
             severity: value.severity || "NORMAL",
             category: value.category,
-            reportDate: report.createdAt.toISOString().split("T")[0],
+            reportDate: reportDateStr,
             labPackageName: `Standalone Report (${report.reportType})`,
             reportId: report.id,
             isTracked,

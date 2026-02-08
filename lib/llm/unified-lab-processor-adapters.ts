@@ -49,6 +49,10 @@ export async function triggerLLMProcessingForStandaloneReport(
     });
   }
 
+  // Use extracted report date from trendAnalysis if available, fallback to upload date
+  const existingReportDate = (analysis.trendAnalysis as any)?.reportDate;
+  const reportDate = existingReportDate ? new Date(existingReportDate) : report.createdAt;
+
   // Create context for unified processor
   const context: LabReportProcessingContext = {
     reportType: 'standalone',
@@ -56,7 +60,7 @@ export async function triggerLLMProcessingForStandaloneReport(
     standaloneAnalysisId: analysis.id,
     pdfUrl: report.fileUrl,
     patientId: report.patientId,
-    reportDate: report.createdAt
+    reportDate
   };
 
   // Create progress updater

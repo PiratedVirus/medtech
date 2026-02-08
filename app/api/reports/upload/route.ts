@@ -3,6 +3,129 @@ import prisma from '@/lib/prisma';
 import * as jose from 'jose';
 import { generateSummary, extractValues } from '@/lib/llm/unified-service';
 
+// Parse a DD/MM/YYYY or DD-MM-YYYY date string (with optional time) into a Date object
+function parseDMYDate(dateStr: string): Date | null {
+  const m = dateStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (!m) return null;
+  const day = parseInt(m[1]);
+  const month = parseInt(m[2]) - 1; // JS months are 0-indexed
+  let year = parseInt(m[3]);
+  if (year < 100) year += 2000;
+  if (day < 1 || day > 31 || month < 0 || month > 11) return null;
+  const d = new Date(year, month, day);
+  if (isNaN(d.getTime()) || d.getFullYear() < 2000 || d.getFullYear() > 2100) return null;
+  return d;
+}
+
+// Parse "DD Mon YYYY" or "DD Month YYYY" style dates
+function parseNamedMonthDate(dateStr: string): Date | null {
+  const m = dateStr.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s,]+(\d{4})/i);
+  if (!m) return null;
+  const d = new Date(`${m[2]} ${m[1]}, ${m[3]}`);
+  if (isNaN(d.getTime()) || d.getFullYear() < 2000 || d.getFullYear() > 2100) return null;
+  return d;
+}
+
+// Extract date from OCR text using robust pattern matching
+function extractDateFromOCRText(text: string): string | null {
+  if (!text) return null;
+
+  // Normalize: collapse \r\n to \n
+  const normalized = text.replace(/\r\n/g, '\n');
+
+  // ── STEP 1: Label-associated dates ──
+  // Labels in priority order (collection/sample > reported/received > generic date)
+  const labelGroups = [
+    // Highest priority: sample/collection dates
+    [
+      'sample\\s*collected',
+      'sample\\s*collection\\s*date',
+      'collection\\s*date',
+      'collected\\s*on',
+      'collected',
+      'date\\s*of\\s*collection',
+      'drawn\\s*on',
+      'sample\\s*date',
+      'specimen\\s*collected',
+      'received\\s*on',
+      'received',
+    ],
+    // Medium priority: report/test dates
+    [
+      'reported',
+      'report\\s*date',
+      'reporting\\s*date',
+      'date\\s*of\\s*report',
+      'test\\s*date',
+      'date\\s*of\\s*test',
+      'registered',
+      'registration\\s*date',
+    ],
+  ];
+
+  for (const labels of labelGroups) {
+    for (const label of labels) {
+      // Allow label, then optional newlines/spaces/colons/tabs, then a date
+      // This handles: "Reported\n: 28/08/2025 03:24 PM" and "Collection Date : 28/08/2025"
+      const re = new RegExp(
+        label + '[\\s\\n\\r]*[:\\-]?[\\s\\n\\r]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})',
+        'im'
+      );
+      const match = normalized.match(re);
+      if (match && match[1]) {
+        const d = parseDMYDate(match[1]);
+        if (d) {
+          console.log(`[OCR-DATE] Matched label "${label}" → ${match[1]} → ${d.toISOString()}`);
+          return d.toISOString();
+        }
+      }
+
+      // Also try "DD Mon YYYY" style after a label
+      const re2 = new RegExp(
+        label + '[\\s\\n\\r]*[:\\-]?[\\s\\n\\r]*(\\d{1,2}\\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\\s,]+\\d{4})',
+        'im'
+      );
+      const match2 = normalized.match(re2);
+      if (match2 && match2[1]) {
+        const d = parseNamedMonthDate(match2[1]);
+        if (d) {
+          console.log(`[OCR-DATE] Matched label "${label}" → ${match2[1]} → ${d.toISOString()}`);
+          return d.toISOString();
+        }
+      }
+    }
+  }
+
+  // ── STEP 2: Fallback – grab the first DD/MM/YYYY anywhere in the text ──
+  const allDatesRegex = /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/g;
+  let firstDate: Date | null = null;
+  let firstDateStr = '';
+  let matchArr;
+  while ((matchArr = allDatesRegex.exec(normalized)) !== null) {
+    const d = parseDMYDate(matchArr[0]);
+    if (d) {
+      if (!firstDate) { firstDate = d; firstDateStr = matchArr[0]; }
+    }
+  }
+  if (firstDate) {
+    console.log(`[OCR-DATE] No label matched, using first date in text: ${firstDateStr} → ${firstDate.toISOString()}`);
+    return firstDate.toISOString();
+  }
+
+  // ── STEP 3: Try named-month dates anywhere ──
+  const namedMonthRegex = /(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s,]+\d{4})/gi;
+  let nmMatch;
+  while ((nmMatch = namedMonthRegex.exec(normalized)) !== null) {
+    const d = parseNamedMonthDate(nmMatch[1]);
+    if (d) {
+      console.log(`[OCR-DATE] No label matched, using first named-month date: ${nmMatch[1]} → ${d.toISOString()}`);
+      return d.toISOString();
+    }
+  }
+
+  return null;
+}
+
 // JWT payload interface (match verify-otp token shape for multi-clinic)
 interface JWTPayload {
   plusAddedPhoneNumber: string;
@@ -88,6 +211,7 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
     });
 
     let extractedText = '';
+    let extractedReportDate: string | undefined; // Date extracted from report OCR text
     try {
       if (report.fileUrl.startsWith('http')) {
         // Use existing parse-text API for remote files
@@ -100,6 +224,16 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
           extractedText = await ocrExtractPdfTextFromUrl(report.fileUrl);
           
           console.log(`[UPLOAD][${reportId}] Direct OCR extraction completed (${extractedText.length} chars)`);
+          console.log(`[UPLOAD][${reportId}][DEBUG] OCR text preview (first 800 chars):`, extractedText.substring(0, 800));
+          
+          // Extract date immediately from OCR text
+          const ocrExtractedDate = extractDateFromOCRText(extractedText);
+          if (ocrExtractedDate) {
+            extractedReportDate = ocrExtractedDate;
+            console.log(`[UPLOAD][${reportId}][DEBUG] ✓ Date extracted from OCR: ${extractedReportDate}`);
+          } else {
+            console.warn(`[UPLOAD][${reportId}][DEBUG] ✗ No date found in OCR text using regex patterns`);
+          }
           
           // Update database with extracted text and progress
           await prisma.standaloneReportAnalysis.updateMany({
@@ -184,7 +318,18 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
         allValues = valuesResult.allValues;
         criticalValues = valuesResult.criticalValues;
         
-        console.log(`[UPLOAD][${reportId}] Stage 3: Lab values extraction completed (${allValues.length} total, ${criticalValues.length} critical)`);
+        // Use LLM-extracted date if present, otherwise use OCR regex-extracted date
+        if (valuesResult.reportDate) {
+          extractedReportDate = valuesResult.reportDate;
+          console.log(`[UPLOAD][${reportId}][DEBUG] Using LLM-extracted date: ${extractedReportDate}`);
+        } else if (extractedReportDate) {
+          console.log(`[UPLOAD][${reportId}][DEBUG] LLM didn't extract date, using OCR regex-extracted date: ${extractedReportDate}`);
+        } else {
+          console.warn(`[UPLOAD][${reportId}][DEBUG] No date extracted by either OCR regex or LLM`);
+        }
+
+        console.log(`[UPLOAD][${reportId}][DEBUG] valuesResult.reportDate:`, valuesResult.reportDate ?? '(undefined)');
+        console.log(`[UPLOAD][${reportId}] Stage 3: Lab values extraction completed (${allValues.length} total, ${criticalValues.length} critical, reportDate: ${extractedReportDate || 'NOT EXTRACTED'})`);
         
         // Log some sample values for debugging
         if (allValues.length > 0) {
@@ -296,6 +441,10 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
       criticalValuesSample: Array.isArray(criticalValues) && criticalValues.length > 0 ? criticalValues[0] : 'none'
     });
     
+    // Determine the actual report date: prefer extracted date from report text, fallback to upload date
+    const actualReportDate = extractedReportDate ? new Date(extractedReportDate) : report.createdAt;
+    console.log(`[UPLOAD][${reportId}][DEBUG] Report date decision: extractedReportDate=${extractedReportDate ?? 'null'}, report.createdAt=${report.createdAt.toISOString()}, actualReportDate=${actualReportDate.toISOString()} (${extractedReportDate ? 'EXTRACTED' : 'FALLBACK upload date'})`);
+
     await prisma.standaloneReportAnalysis.updateMany({
       where: { reportId, analysisType },
       data: { 
@@ -307,6 +456,7 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
         keyFindings,
         recommendations,
         urgency,
+        trendAnalysis: { reportDate: actualReportDate.toISOString() },
         llmModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
         processedAt: new Date(),
         processingError: null
@@ -333,10 +483,10 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
                   severity: value.severity && ['LOW','NORMAL','HIGH','CRITICAL'].includes(String(value.severity).toUpperCase())
                     ? String(value.severity).toUpperCase() as 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'
                     : null,
-                  reportDate: report.createdAt,
-                  labBookingId: null, // Standalone reports don't need a lab booking
-                  standaloneReportId: reportId, // Link to the standalone report
-                  sourceReportId: null // Standalone reports don't have sourceReportId
+                  reportDate: actualReportDate, // Use date from report text, not upload date
+                  labBookingId: null,
+                  standaloneReportId: reportId,
+                  sourceReportId: null
                 }
               });
             } catch (trendError) {
@@ -639,6 +789,17 @@ export async function GET(request: NextRequest) {
 
     // Enforce segregation: only return reports for this patient (defensive)
     const filteredReports = reports.filter((r) => r.patientId === effectivePatientId);
+
+    // DEBUG: Log report date payload when ?debug=reportDates is present
+    if (searchParams.get('debug') === 'reportDates') {
+      console.log('[REPORTS][DEBUG] Report date payload (what UI receives):', filteredReports.map((r: any) => ({
+        id: r.id,
+        fileName: r.fileName,
+        createdAt: r.createdAt?.toISOString?.() ?? r.createdAt,
+        trendReportDate: r.reportAnalyses?.[0]?.trendAnalysis?.reportDate ?? '(none)',
+        hasTrendAnalysis: !!r.reportAnalyses?.[0]?.trendAnalysis,
+      })));
+    }
 
     return NextResponse.json({ success: true, reports: filteredReports });
 

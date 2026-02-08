@@ -59,6 +59,7 @@ interface StandaloneReportAnalysis {
   llmModel?: string;
   processedAt?: string;
   processingError?: string;
+  trendAnalysis?: any;
 }
 
 interface LabValue {
@@ -683,7 +684,7 @@ export default function UnifiedAnalysisModal({
                             {report.fileName}
                           </span>
                           <span className={`ml-2 text-xs rounded-full px-2 py-0.5 flex-shrink-0 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
-                            {new Date(report.createdAt).toLocaleDateString('en-GB')}
+                            {new Date((report.reportAnalyses?.[0]?.trendAnalysis as any)?.reportDate || report.createdAt).toLocaleDateString('en-GB')}
                           </span>
                           {/* Status indicator */}
                           {report.reportAnalyses && report.reportAnalyses.length > 0 && (
@@ -807,7 +808,7 @@ export default function UnifiedAnalysisModal({
                               {selectedStandaloneReport.reportType}
                             </Badge> */}
                             <span className="text-xs text-gray-600">
-                              Uploaded: {new Date(selectedStandaloneReport.createdAt).toLocaleDateString()}
+                              Report Date: {new Date((selectedStandaloneReport.reportAnalyses?.[0]?.trendAnalysis as any)?.reportDate || selectedStandaloneReport.createdAt).toLocaleDateString('en-GB')}
                             </span>
                             {selectedStandaloneReport.fileUrl && (
                               <Button

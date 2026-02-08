@@ -24,6 +24,7 @@ interface StandaloneReport {
     recommendations?: any[];
     urgency?: string;
     processedAt?: string;
+    trendAnalysis?: any;
   }[];
 }
 
@@ -92,6 +93,10 @@ export default function StandaloneReportCard({ report, onViewAnalysis }: Standal
   const hasAnalysis = latestAnalysis && latestAnalysis.processingStatus === 'COMPLETED';
   const hasCriticalValues = latestAnalysis?.criticalValues && latestAnalysis.criticalValues.length > 0;
 
+  // Use extracted report date from trendAnalysis if available, fallback to createdAt (upload date)
+  const trendAnalysis = latestAnalysis?.trendAnalysis as any;
+  const reportDate = trendAnalysis?.reportDate || report.createdAt;
+
   return (
     <div className="bg-white shadow-md rounded-3xl p-6">
       <div className="flex items-start justify-between mb-4">
@@ -101,7 +106,7 @@ export default function StandaloneReportCard({ report, onViewAnalysis }: Standal
             <p className="text-lg font-bold text-primary">{report.fileName}</p>
             <p className="text-sm text-gray-500">{getReportTypeLabel(report.reportType)}</p>
             <p className="text-sm text-gray-400">
-              Uploaded: {format(new Date(report.createdAt), "dd/MM/yyyy")}
+              Report Date: {format(new Date(reportDate), "dd/MM/yyyy")}
             </p>
             <p className="text-sm text-gray-400">
               By: {report.uploadedBy.name} ({report.uploadedBy.role})

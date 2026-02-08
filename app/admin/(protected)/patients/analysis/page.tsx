@@ -438,7 +438,7 @@ export default function PatientsAnalysisPage() {
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs">{formatDate(report.createdAt)}</span>
+                            <span className="text-xs">{formatDate((report.analyses?.[0] as any)?.trendAnalysis?.reportDate || report.createdAt)}</span>
                           </div>
                         </td>
                         <td className="px-3 py-2">

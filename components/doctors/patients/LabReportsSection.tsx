@@ -73,12 +73,14 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
       if (!displayName || displayName.trim() === '') {
         displayName = `Lab Report ${report.id}`;
       }
-      
+      // Use extracted report date from trendAnalysis when available
+      const reportDate = (report.reportAnalyses?.[0]?.trendAnalysis as any)?.reportDate || report.createdAt;
+
       return {
         id: `standalone-${report.id}`,
         type: 'standalone',
         name: displayName,
-        date: report.createdAt,
+        date: reportDate,
         status: 'COMPLETED',
         reportLink: [report.fileUrl || report.reportUrl],
         labResult: null

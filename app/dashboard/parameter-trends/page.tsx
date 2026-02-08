@@ -263,13 +263,9 @@ export default function ParameterTrendsPage() {
               Latest: {trend.latestValue} {trend.unit}
             </span>
             {trend.normalRange && <span>Range: {trend.normalRange}</span>}
-            {trend.values.length > 1 ? (
-              <span className={`font-medium ${trend.changePercent > 0 ? 'text-red-600' : trend.changePercent < 0 ? 'text-green-600' : 'text-gray-600'}`}>
-                Change: {trend.changePercent > 0 ? '+' : ''}{trend.changePercent.toFixed(1)}%
-              </span>
-            ) : (
-              <span className="text-gray-500 text-xs">Single reading</span>
-            )}
+            <span className={`font-medium ${trend.changePercent > 0 ? 'text-red-600' : trend.changePercent < 0 ? 'text-green-600' : 'text-gray-600'}`}>
+              Change: {trend.changePercent > 0 ? '+' : ''}{trend.changePercent.toFixed(1)}%
+            </span>
           </div>
         </CardHeader>
         <CardContent>

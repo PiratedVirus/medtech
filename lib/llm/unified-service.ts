@@ -27,6 +27,7 @@ export interface SummaryResult {
 export interface ValuesResult {
   allValues: any[];
   criticalValues: any[];
+  reportDate?: string; // Date extracted from the report text (ISO string or natural date)
 }
 
 export interface UnifiedAnalysisResult {
@@ -338,8 +339,14 @@ CRITICAL RULES:
 - DO NOT add common lab tests that might be expected but are not in the report
 - If a test is not mentioned in the report, DO NOT include it in the results
 
+REPORT DATE (REQUIRED):
+- You MUST extract the date of the report from the document text. Look for: "Sample Collection Date", "Collection Date", "Report Date", "Date of Sample", "Test Date", "Sample Date", "Collected on", "Drawn on", or any date printed on the report header/footer.
+- Output it as "reportDate" in strict format YYYY-MM-DD (e.g. 2024-03-15). If the document shows DD/MM/YYYY or DD-MM-YYYY, convert to YYYY-MM-DD.
+- If you truly find no date anywhere in the text, use null for reportDate. Do NOT use today's date.
+
 Return ONLY valid JSON in this exact format (no extra text, no markdown):
 {
+  "reportDate": "YYYY-MM-DD",
   "allValues": [
     {
       "parameter": "Test Name",
@@ -372,10 +379,13 @@ Rules:
 5. NO extra text, comments, or markdown formatting
 6. Use double quotes for all strings
 7. NO trailing commas
-8. DO NOT add any tests not present in the original report`;
+8. DO NOT add any tests not present in the original report
+9. reportDate is REQUIRED: scan the entire document for any date (collection date, report date, sample date). Output as YYYY-MM-DD. Prefer "sample collection" or "collection" date over "report printed" date. If no date found in document, use null.`;
 
   // Use production profile valuesPrompt only if it's substantial, otherwise use default
   const defaultValuesPrompt = `Please extract all lab test parameters and values from the following lab report text. Return ONLY valid JSON in the exact format specified in the system prompt.
+
+IMPORTANT - Report date: Before extracting parameters, look through the document for the date of the report. Common labels: "Sample Collection Date", "Collection Date", "Report Date", "Date of Sample", "Collected on", "Drawn on". Extract that date and set "reportDate" to YYYY-MM-DD. If no date appears in the document, set "reportDate" to null.
 
 Lab Report Text:
 ${finalText}`;
@@ -402,6 +412,14 @@ ${finalText}`;
   try {
     const content = await callGroqAPIWithProfile(userPrompt, apiKey, finalModel, maxTokens, temperature, systemPrompt);
     const parsed = tryParseLooseJson(content);
+
+    // DEBUG: Log what the LLM returned for report date and top-level keys
+    const debugKeys = parsed && typeof parsed === 'object' ? Object.keys(parsed) : [];
+    console.log('[LLM-PROC][VALUES][DEBUG] LLM response top-level keys:', debugKeys.join(', '));
+    console.log('[LLM-PROC][VALUES][DEBUG] parsed.reportDate (raw):', parsed?.reportDate, '(type:', typeof parsed?.reportDate, ')');
+    if (parsed && !parsed.reportDate && debugKeys.length) {
+      console.warn('[LLM-PROC][VALUES][DEBUG] No reportDate in LLM response. Text excerpt (first 400 chars):', typeof finalText === 'string' ? finalText.slice(0, 400).replace(/\n/g, ' ') : 'N/A');
+    }
     
     if (parsed && (Array.isArray(parsed.allValues) || Array.isArray(parsed.criticalValues))) {
       let allValues = Array.isArray(parsed.allValues) ? parsed.allValues : [];
@@ -426,11 +444,27 @@ ${finalText}`;
         console.warn(`[LLM-PROC][VALUES] Warning: Extracted ${totalValues} values, which seems high. Please verify against original report.`);
       }
       
+      // Extract reportDate if present
+      let reportDate: string | undefined;
+      if (parsed.reportDate != null && parsed.reportDate !== '' && String(parsed.reportDate).toLowerCase() !== 'null') {
+        const rawReportDate = String(parsed.reportDate).trim();
+        const parsedDate = new Date(rawReportDate);
+        if (!isNaN(parsedDate.getTime())) {
+          reportDate = parsedDate.toISOString();
+          console.log(`[LLM-PROC][VALUES] Extracted report date: ${reportDate} (from LLM raw: "${rawReportDate}")`);
+        } else {
+          console.warn(`[LLM-PROC][VALUES] Could not parse report date (invalid): "${rawReportDate}"`);
+        }
+      } else {
+        console.warn('[LLM-PROC][VALUES][DEBUG] reportDate missing or null from LLM – UI will show upload date as fallback.');
+      }
+
       console.log(`[LLM-PROC][VALUES] Extracted ${allValues.length} all values and ${criticalValues.length} critical values`);
       
       return {
         allValues,
-        criticalValues
+        criticalValues,
+        reportDate
       };
     }
     
