@@ -69,7 +69,7 @@ export const ModulesSection = () => {
                     {module.description}
                   </CardDescription>
 
-                  {isLive && <Button variant="hero" className="w-full" size="sm" onClick={() => {
+                  {isLive && <Button variant="gradient" className="w-full" size="sm" onClick={() => {
                 const contactSection = document.getElementById('contact');
                 if (contactSection) {
                   contactSection.scrollIntoView({
