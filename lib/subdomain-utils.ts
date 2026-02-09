@@ -14,9 +14,20 @@
  * - yourdomain.com -> null (no subdomain)
  */
 export function extractSubdomain(hostname: string): string | null {
-  // Remove port if present
   const hostWithoutPort = hostname.split(':')[0];
   
+  // Custom Domain Mapping (Add your custom domains here)
+  // This allows mapping a specific domain (like app.brahmarex.com) to a specific clinic slug
+  const customMappings: Record<string, string> = {
+    'app.brahmarex.com': 'brahmarex',
+    'portal.brahmarex.com': 'brahmarex',
+    // Add more mappings as needed
+  };
+  
+  if (customMappings[hostWithoutPort]) {
+    return customMappings[hostWithoutPort];
+  }
+
   // Skip localhost and IP addresses
   if (hostWithoutPort === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(hostWithoutPort)) {
     return null;

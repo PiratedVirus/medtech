@@ -391,15 +391,11 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // Root path redirect - require subdomain
+  // Root path - allow through for both subdomain and root domain
+  // The page component (app/page.tsx) handles the logic:
+  //   - No subdomain → BrahmaRx Landing Page
+  //   - With subdomain → Clinic Landing Page
   if (pathname === "/") {
-    // If no subdomain, redirect to clinic-not-found
-    if (!subdomain) {
-      const redirectUrl = new URL("/clinic-not-found", request.url);
-      redirectUrl.searchParams.set('error', 'no_subdomain');
-      return NextResponse.redirect(redirectUrl);
-    }
-    // If subdomain exists, allow through (will be handled by the page)
     const response = NextResponse.next();
     if (subdomain) {
       response.headers.set('x-clinic-subdomain', subdomain);

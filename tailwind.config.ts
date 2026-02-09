@@ -39,6 +39,11 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // BrahmaRX Brand Colors
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          foreground: "hsl(var(--gold-foreground))",
+        },
         custom: {
           green: "#56A67C",
           orange: "#F28A2E",
@@ -49,9 +54,13 @@ module.exports = {
       },
       fontFamily: {
         sans: ["var(--font-lato)", ...fontFamily.sans],
+        display: ["Manrope", "Inter", "system-ui", "sans-serif"], // BrahmaRX font
       },
       boxShadow: {
         custom: "0 8px 20px rgba(242, 138, 46, 0.2)",
+        // BrahmaRX Shadows
+        premium: "var(--shadow-premium)",
+        gold: "var(--shadow-gold)",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -63,12 +72,33 @@ module.exports = {
           '0%, 100%': { transform: 'scale(1)' },
           '50%': { transform: 'scale(1.1)' },
         },
+        // BrahmaRX Animations
+        breathe: {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.03)' },
+        },
+        'float-up': {
+          from: { opacity: '0', transform: 'translateY(10px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        'float-subtle': {
+          '0%, 100%': { transform: 'translateY(0px)' },
+          '50%': { transform: 'translateY(-6px)' },
+        },
+        twinkle: {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.3', transform: 'scale(0.8)' },
+        },
       },
       animation: {
         beat: 'beat 1.5s infinite ease-in-out',
+        // BrahmaRX Animations
+        breathe: 'breathe 3.5s ease-in-out infinite',
+        'float-up': 'float-up 0.6s ease-out forwards',
+        'float-subtle': 'float-subtle 3s ease-in-out infinite',
+        twinkle: 'twinkle 3s ease-in-out infinite',
       },
     },
   },
   plugins: [require("tailwindcss-animate")],
 }
-
