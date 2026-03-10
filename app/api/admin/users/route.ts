@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getAdminClinicId, createClinicFilter } from "@/lib/admin-clinic-middleware";
 import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
 import { CacheEvents } from "@/lib/cache-events";
+import { normalizeIndianPhoneNumber } from "@/lib/phone-number";
 
 // Enhanced GET endpoint with filtering and role counts
 const getUsersHandler = async (request: NextRequest) => {
@@ -86,7 +87,20 @@ const getUsersHandler = async (request: NextRequest) => {
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    const user = await prisma.user.create({ data });
+    const userData = { ...data };
+
+    if (typeof userData.phoneNumber === "string") {
+      try {
+        userData.phoneNumber = normalizeIndianPhoneNumber(userData.phoneNumber);
+      } catch (error) {
+        return NextResponse.json(
+          { error: error instanceof Error ? error.message : "Invalid phone number" },
+          { status: 400 }
+        );
+      }
+    }
+
+    const user = await prisma.user.create({ data: userData });
     return NextResponse.json({ data: user, message: "User created successfully" });
   } catch (error) {
     return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
@@ -96,9 +110,22 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const { id, ...data } = await request.json();
+    const updateData = { ...data };
+
+    if (typeof updateData.phoneNumber === "string") {
+      try {
+        updateData.phoneNumber = normalizeIndianPhoneNumber(updateData.phoneNumber);
+      } catch (error) {
+        return NextResponse.json(
+          { error: error instanceof Error ? error.message : "Invalid phone number" },
+          { status: 400 }
+        );
+      }
+    }
+
     const user = await prisma.user.update({
       where: { id },
-      data,
+      data: updateData,
     });
     return NextResponse.json({ data: user, message: "User updated successfully" });
   } catch (error) {
