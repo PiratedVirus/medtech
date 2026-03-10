@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import axios from 'axios'
+import { toast } from 'react-toastify'
 
 interface Clinic {
   id: number
@@ -42,6 +43,7 @@ export default function ClinicsPage() {
   const [clinics, setClinics] = useState<Clinic[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [deletingClinicId, setDeletingClinicId] = useState<number | null>(null)
 
   useEffect(() => {
     const fetchClinics = async () => {
@@ -63,6 +65,28 @@ export default function ClinicsPage() {
     clinic.subdomain?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     clinic.domain?.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  const handleDeleteClinic = async (clinicId: number, clinicName: string) => {
+    const confirmed = window.confirm(
+      `Delete clinic "${clinicName}"? This action will hide the clinic from active lists.`
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      setDeletingClinicId(clinicId)
+      await axios.delete(`/api/superadmin/clinics/${clinicId}`)
+      setClinics((prevClinics) => prevClinics.filter((clinic) => clinic.id !== clinicId))
+      toast.success('Clinic deleted successfully')
+    } catch (error) {
+      console.error('Failed to delete clinic:', error)
+      toast.error('Failed to delete clinic')
+    } finally {
+      setDeletingClinicId(null)
+    }
+  }
 
   if (loading) {
     return (
@@ -176,6 +200,14 @@ export default function ClinicsPage() {
                     <Users className="h-4 w-4 mr-1" />
                     Admins
                   </Link>
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleDeleteClinic(clinic.id, clinic.name)}
+                  disabled={deletingClinicId === clinic.id}
+                >
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </CardContent>
