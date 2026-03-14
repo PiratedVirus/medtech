@@ -1699,6 +1699,7 @@ export default function PrescriptionForm({
           <div className="flex items-center gap-3">
             <ReportUploadButton
               patientId={parseInt(patientInfo?.patientId || patientInfo?.id || "0", 10)}
+              patientName={patientInfo?.name}
               variant="outline"
               size="sm"
               onUploadSuccess={() => {
@@ -1706,7 +1707,7 @@ export default function PrescriptionForm({
                 labValuesModalRef.current?.refresh();
               }}
             >
-              Upload report
+              Upload lab report
             </ReportUploadButton>
             <Button
               size="sm"

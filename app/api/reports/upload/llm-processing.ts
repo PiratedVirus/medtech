@@ -361,6 +361,13 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
         if (criticalValues.length > 0) {
           console.log(`[LLM-PROCESSING][${requestId}] Critical values:`, criticalValues.slice(0, 3));
         }
+
+        await prisma.standaloneReportAnalysis.updateMany({
+          where: { reportId, analysisType },
+          data: {
+            processingError: 'Stage 4: Detecting report date and preparing trend timeline...',
+          },
+        });
         
       } catch (valuesError) {
         console.error(`[LLM-PROCESSING][${requestId}] Lab values extraction failed:`, {
@@ -440,6 +447,13 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
     console.log(
       `[LLM-PROCESSING][${requestId}][DEBUG] Report date: extractedReportDate=${extractedReportDate ?? 'null'}, actualReportDate=${actualReportDate.toISOString()}, usedFallbackDate=${usedFallbackDate}`
     );
+
+    await prisma.standaloneReportAnalysis.updateMany({
+      where: { reportId, analysisType },
+      data: {
+        processingError: 'Stage 6: Saving analysis results...',
+      },
+    });
 
     await prisma.standaloneReportAnalysis.updateMany({
       where: { reportId, analysisType },

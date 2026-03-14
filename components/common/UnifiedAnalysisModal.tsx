@@ -88,11 +88,29 @@ const formatReportDate = (value?: string | null) => {
 };
 
 const getLabReportDate = (report: any, resultIndex?: number) => {
-  const analyses = report?.reportAnalyses || report?.analyses || [];
-  const analysis = typeof resultIndex === 'number'
-    ? analyses.find((item: any) => item?.labResultIndex === resultIndex)
-    : analyses.find((item: any) => item?.trendAnalysis?.reportDate);
-  return analysis?.trendAnalysis?.reportDate || null;
+  if (!report) return null;
+
+  const analyses: any[] = report.reportAnalyses || report.analyses || [];
+
+  if (analyses.length === 0) return null;
+
+  // Only use dates that were actually extracted into trendAnalysis.reportDate.
+  // Do NOT silently fall back to booking dates – UI should show "-" when
+  // no OCR/LLM report date is available.
+  const analysis =
+    typeof resultIndex === 'number'
+      ? analyses.find((item: any) => item?.labResultIndex === resultIndex && item?.trendAnalysis?.reportDate)
+      : analyses.find((item: any) => item?.trendAnalysis?.reportDate);
+
+  const trendDate = (analysis?.trendAnalysis as any)?.reportDate as string | undefined;
+  return trendDate ?? null;
+};
+
+const getLabReportResultUrls = (report: LabReport) => {
+  return ((report as any).reports?.map((r: any) => r.pdfUrl).filter(Boolean)
+    || report.labResult
+    || report.reportLink
+    || []) as string[];
 };
 
 interface LabReportAnalysis {
@@ -180,9 +198,13 @@ export default function UnifiedAnalysisModal({
   const isFallbackReportDate = Boolean(selectedTrendAnalysis?.isFallbackDate);
   
   // Filter reports based on showFailedReports state
-  const filteredLabReports = showFailedReports 
-    ? labReports 
-    : labReports.filter(report => report.status !== 'FAILED');
+  const filteredLabReports = showFailedReports
+    ? labReports
+    : labReports.filter((report) => {
+        const isFailed = report.status === 'FAILED';
+        const hasNoResults = getLabReportResultUrls(report).length === 0;
+        return !isFailed && !hasNoResults;
+      });
   
   const filteredStandaloneReports = showFailedReports
     ? allStandaloneReports
@@ -599,10 +621,10 @@ export default function UnifiedAnalysisModal({
               {activeTab === 'lab-reports' ? (
               filteredLabReports.map((report) => {
               // Support both shapes: reportLink/labResult (URL arrays) or reports (from /api/labs)
-              const results = (report as any).reports?.map((r: any) => r.pdfUrl).filter(Boolean)
-                || report.labResult || report.reportLink || [];
+              const results = getLabReportResultUrls(report);
               const displayName = report.labPackageName ?? (report as any).resultName ?? 'Lab Report';
               const displayDate = getLabReportDate(report);
+              const hasOcrDate = Boolean(displayDate);
               
               if (results.length === 0) {
                 // No results available
@@ -616,7 +638,14 @@ export default function UnifiedAnalysisModal({
                         <span className="relative z-10 inline-flex items-center gap-2">
                           <FileText className="h-4 w-4 text-gray-400" />
                           <span className="font-semibold">{displayName}</span>
-                          <span className="ml-2 text-xs rounded-full px-2 py-0.5 bg-gray-200 text-gray-500">
+                          <span
+                            className="ml-2 text-xs rounded-full px-2 py-0.5 bg-gray-200 text-gray-500"
+                            title={
+                              hasOcrDate
+                                ? 'Report date detected from report content.'
+                                : 'Report date could not be detected from report content. Trends may be using the lab booking date as a fallback.'
+                            }
+                          >
                             {formatReportDate(displayDate)}
                           </span>
                         </span>
@@ -653,7 +682,14 @@ export default function UnifiedAnalysisModal({
                         <span className="relative z-10 inline-flex items-center gap-2">
                           <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
                           <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>{displayName}</span>
-                          <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
+                          <span
+                            className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}
+                            title={
+                              hasOcrDate
+                                ? 'Report date detected from report content.'
+                                : 'Report date could not be detected from report content. Trends may be using the lab booking date as a fallback.'
+                            }
+                          >
                             {formatReportDate(displayDate)}
                           </span>
                         </span>
@@ -668,6 +704,7 @@ export default function UnifiedAnalysisModal({
                 const resultId = `${report.id}-${index}`;
                 const isActive = selectedReportId === report.id && selectedLabResultIndex === index;
                 const resultDate = getLabReportDate(report, index);
+                const hasOcrDate = Boolean(resultDate);
                 return (
                   <CarouselItem key={resultId} className="pl-2 basis-auto">
                     <div className="relative">
@@ -694,7 +731,14 @@ export default function UnifiedAnalysisModal({
                           <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>
                             {displayName}-{index + 1}
                           </span>
-                          <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
+                          <span
+                            className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}
+                            title={
+                              hasOcrDate
+                                ? 'Report date detected from report content.'
+                                : 'Report date could not be detected from report content. Trends may be using the lab booking date as a fallback.'
+                            }
+                          >
                             {formatReportDate(resultDate)}
                           </span>
                         </span>

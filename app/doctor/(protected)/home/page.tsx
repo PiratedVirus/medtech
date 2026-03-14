@@ -10,6 +10,7 @@ import { BicepsFlexed, FileText, LineChart, Users, Video, VideoIcon, Videotape, 
 import { useDecryptedProfile } from '@/hooks/use-centralized-profile';
 import Link from 'next/link';
 import DieticianRequestsWidget from '../../../../components/doctors/home/DieticianRequestsWidget';
+import { ensureDoctorPrefix } from '@/lib/utils';
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -48,7 +49,7 @@ export default function DoctorDashboardPage() {
     <div className="min-h-screen bg-[#F8FAF9] px-8 py-8">
       {/* Top Row: Upcoming Appointment, Earnings, Manage Slots */}
       <div className="text-3xl font-bold text-[#134F30] mb-4">
-          {getGreeting()}, Dr. {doctorName}! 
+          {getGreeting()}, {ensureDoctorPrefix(doctorName)}! 
         </div>
       <div className="grid grid-cols-12 gap-6 mb-8 items-stretch">
         <div className="col-span-12 md:col-span-6 flex flex-col">

@@ -346,6 +346,13 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
           criticalValuesType: typeof criticalValues,
           criticalValuesLength: Array.isArray(criticalValues) ? criticalValues.length : 'not array'
         });
+
+        await prisma.standaloneReportAnalysis.updateMany({
+          where: { reportId, analysisType },
+          data: {
+            processingError: 'Stage 4: Detecting report date and preparing trend timeline...'
+          }
+        });
         
       } catch (valuesError) {
         console.error('Lab values extraction failed:', valuesError);
@@ -447,6 +454,13 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
     console.log(
       `[UPLOAD][${reportId}][DEBUG] Report date decision: extractedReportDate=${extractedReportDate ?? 'null'}, actualReportDate=${actualReportDate.toISOString()}, usedFallbackDate=${usedFallbackDate}`
     );
+
+    await prisma.standaloneReportAnalysis.updateMany({
+      where: { reportId, analysisType },
+      data: {
+        processingError: 'Stage 6: Saving analysis results...'
+      }
+    });
 
     await prisma.standaloneReportAnalysis.updateMany({
       where: { reportId, analysisType },
@@ -620,7 +634,7 @@ export async function POST(request: NextRequest) {
     try {
       const { put } = await import('@vercel/blob');
       const arrayBuffer = await file.arrayBuffer();
-      const fileName = `standalone-report-${Date.now()}-${file.name}`;
+      const fileName = file.name;
       
       console.log(`[UPLOAD][${requestId}] Uploading file: ${fileName} (${arrayBuffer.byteLength} bytes)`);
       
@@ -676,25 +690,26 @@ export async function POST(request: NextRequest) {
         siteUrl: process.env.NEXT_PUBLIC_SITE_URL
       });
       
-      try {
-        await triggerLLMProcessing(report.id, 'lab_analysis');
-        console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for report ${report.id}`);
-      } catch (error) {
-        console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for report ${report.id}:`, {
-          error,
-          message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined
+      triggerLLMProcessing(report.id, 'lab_analysis')
+        .then(() => {
+          console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for report ${report.id}`);
+        })
+        .catch(async (error) => {
+          console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for report ${report.id}:`, {
+            error,
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
+          });
+
+          // Update the analysis record with the error
+          await prisma.standaloneReportAnalysis.updateMany({
+            where: { reportId: report.id, analysisType: 'lab_analysis' },
+            data: {
+              processingStatus: 'FAILED',
+              processingError: `LLM processing trigger failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+            }
+          });
         });
-        
-        // Update the analysis record with the error
-        await prisma.standaloneReportAnalysis.updateMany({
-          where: { reportId: report.id, analysisType: 'lab_analysis' },
-          data: {
-            processingStatus: 'FAILED',
-            processingError: `LLM processing trigger failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-          }
-        });
-      }
     } else if (reportType === 'prescription') {
       console.log(`[UPLOAD][${requestId}] Creating prescription analysis record...`);
       await prisma.standaloneReportAnalysis.create({
@@ -707,12 +722,13 @@ export async function POST(request: NextRequest) {
 
       // Trigger automatic LLM processing for prescriptions
       console.log(`[UPLOAD][${requestId}] Triggering LLM processing for prescription ${report.id}...`);
-      try {
-        await triggerLLMProcessing(report.id, 'prescription_analysis');
-        console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for prescription ${report.id}`);
-      } catch (error) {
-        console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for prescription ${report.id}:`, error);
-      }
+      triggerLLMProcessing(report.id, 'prescription_analysis')
+        .then(() => {
+          console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for prescription ${report.id}`);
+        })
+        .catch((error) => {
+          console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for prescription ${report.id}:`, error);
+        });
     } else {
       console.log(`[UPLOAD][${requestId}] Creating document summary analysis record...`);
       await prisma.standaloneReportAnalysis.create({
@@ -725,12 +741,13 @@ export async function POST(request: NextRequest) {
 
       // Trigger automatic LLM processing for medical documents
       console.log(`[UPLOAD][${requestId}] Triggering LLM processing for document ${report.id}...`);
-      try {
-        await triggerLLMProcessing(report.id, 'document_summary');
-        console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for document ${report.id}`);
-      } catch (error) {
-        console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for document ${report.id}:`, error);
-      }
+      triggerLLMProcessing(report.id, 'document_summary')
+        .then(() => {
+          console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for document ${report.id}`);
+        })
+        .catch((error) => {
+          console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for document ${report.id}:`, error);
+        });
     }
 
     console.log(`[UPLOAD][${requestId}] Upload process completed successfully for report ${report.id}`);

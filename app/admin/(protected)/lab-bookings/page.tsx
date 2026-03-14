@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { EditIcon, Trash } from "lucide-react";
+import { CheckCircle2, Clock3, EditIcon, FileText, ReceiptIndianRupee, Trash } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -33,40 +33,94 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { useReportUploadNotifications } from "@/hooks/context/ReportUploadNotificationsContext";
 
 interface LabBooking {
   id: number;
   labDate: string;
   status: string;
   labResult: string[];
+  payment?: {
+    id: number;
+    amount: number;
+    paymentStatus: string;
+    createdAt: string;
+  } | null;
   patient: { name: string };
   labPackage: { name: string };
 }
 
+interface LabBookingSummary {
+  paymentPending: number;
+  paymentDone: number;
+  reportsUploaded: number;
+  reportsPending: number;
+  paymentPendingAmount: number;
+  paymentDoneAmount: number;
+}
+
 const statusOptions = [
-  "pending",
-  "confirmed",
-  "assigned to lab admin",
-  "sample collected",
-  "result generated",
-  "completed",
-];
+  { value: "PENDING", label: "Pending" },
+  { value: "ASSIGNED", label: "Assigned" },
+  { value: "PHLEBOTOMIST_LEFT", label: "Phlebotomist Left" },
+  { value: "SAMPLE_COLLECTED", label: "Sample Collected" },
+  { value: "IN_LAB", label: "In Lab" },
+  { value: "ANALYZING", label: "Analyzing" },
+  { value: "COMPLETED", label: "Completed" },
+  { value: "CANCELLED", label: "Cancelled" },
+] as const;
 
 const fetchLabBookings = async (pageIndex: number, pageSize: number) => {
   const res = await axios.get(
     `/api/admin/optimized/lab-bookings?page=${pageIndex + 1}&pageSize=${pageSize}`
   );
-  return res.data as { data: LabBooking[]; total: number };
+  return res.data as { data: LabBooking[]; total: number; summary?: LabBookingSummary };
 };
 
 const updateStatus = async (id: number, status: string) => {
   await axios.put(`/api/admin/optimized/lab-bookings`, { id, status });
 };
 
+function getReportLabelFromUrl(url: string, index: number): string {
+  try {
+    const pathname = new URL(url).pathname;
+    const filename = pathname.split("/").pop();
+    if (!filename) return `Report ${index + 1}`;
+    return decodeURIComponent(filename);
+  } catch {
+    return `Report ${index + 1}`;
+  }
+}
+
+function toUploadNamePart(value: string): string {
+  return value.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function buildReportUploadFileName(patientName: string, originalName: string): string {
+  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const extension = originalName.split(".").pop();
+  const fileNameWithoutExt = toUploadNamePart(originalName.replace(/\.[^/.]+$/, "")) || "report";
+  const patientPart = toUploadNamePart(patientName) || "patient";
+  return `${patientPart}_${fileNameWithoutExt}_${datePart}.${extension}`;
+}
+
 export default function AdminLabBookingsPage() {
+  const {
+    createUploadNotification,
+    markLabBookingUploadSucceeded,
+    markUploadFailed,
+  } = useReportUploadNotifications();
   const [data, setData] = useState<{ bookings: LabBooking[]; total: number }>({
     bookings: [],
     total: 0,
+  });
+  const [summary, setSummary] = useState<LabBookingSummary>({
+    paymentPending: 0,
+    paymentDone: 0,
+    reportsUploaded: 0,
+    reportsPending: 0,
+    paymentPendingAmount: 0,
+    paymentDoneAmount: 0,
   });
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
@@ -74,6 +128,8 @@ export default function AdminLabBookingsPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [reportsDialogOpen, setReportsDialogOpen] = useState(false);
+  const [collectingPaymentId, setCollectingPaymentId] = useState<number | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<LabBooking | null>(null);
   const [editStatus, setEditStatus] = useState<string>("");
 
@@ -105,34 +161,108 @@ export default function AdminLabBookingsPage() {
       ),
     },
     {
+      id: "payment",
+      header: "Payment",
+      cell: ({ row }) => {
+        const payment = row.original.payment;
+        if (!payment) {
+          return <Badge variant="outline">No Payment</Badge>;
+        }
+
+        const isPaid = String(payment.paymentStatus).toUpperCase() === "PAID";
+
+        return (
+          <div className="flex items-center justify-center gap-2">
+            <Badge
+              variant={isPaid ? "default" : String(payment.paymentStatus).toUpperCase() === "PENDING" ? "destructive" : "outline"}
+              className={isPaid ? "bg-green-600 hover:bg-green-600" : ""}
+            >
+              {payment.paymentStatus}
+            </Badge>
+            <span className="text-xs text-gray-600">₹{(payment.amount / 100).toFixed(2)}</span>
+          </div>
+        );
+      },
+    },
+    {
+      id: "collectPayment",
+      header: "Collect",
+      cell: ({ row }) => {
+        const payment = row.original.payment;
+        const isPending = payment && String(payment.paymentStatus).toUpperCase() === "PENDING";
+
+        if (!payment || !isPending) {
+          return <span className="inline-block w-[92px]" aria-hidden="true" />;
+        }
+
+        return (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleCollectPayment(payment.id)}
+            disabled={collectingPaymentId === payment.id}
+            className="min-w-[92px]"
+          >
+            {collectingPaymentId === payment.id ? "Collecting..." : "Collect"}
+          </Button>
+        );
+      },
+    },
+    {
       id: "reports",
       header: "Reports",
       cell: ({ row }) => (
-        <div>
+        <div className="flex flex-wrap items-center justify-center gap-2">
           {row.original.labResult && row.original.labResult.length > 0 ? (
-            row.original.labResult.map((url, idx) => (
-              <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm" className="m-1">
-                  View {idx + 1}
-                </Button>
-              </a>
-            ))
+            <>
+              {row.original.labResult.map((url, idx) => (
+                <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm" className="max-w-[220px] truncate">
+                    {getReportLabelFromUrl(url, idx)}
+                  </Button>
+                </a>
+              ))}
+              <Button
+                size="icon"
+                variant="outline"
+                title="Manage reports"
+                onClick={() => {
+                  setSelectedBooking(row.original);
+                  setReportsDialogOpen(true);
+                }}
+              >
+                <FileText className="h-4 w-4" />
+              </Button>
+            </>
           ) : (
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size="sm" onClick={() => setUploadingBookingId(row.original.id)}>
-                  Upload
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogTitle>Upload Lab Report PDF</DialogTitle>
-                <UploadDropZone bookingId={uploadingBookingId} />
-                {uploading && <p>Uploading...</p>}
-                {uploadSuccess && (
-                  <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
-                )}
-              </DialogContent>
-            </Dialog>
+            <>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button size="sm" onClick={() => setUploadingBookingId(row.original.id)}>
+                    Upload
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogTitle>Upload Lab Report PDF</DialogTitle>
+                  <UploadDropZone bookingId={uploadingBookingId} />
+                  {uploading && <p>Uploading...</p>}
+                  {uploadSuccess && (
+                    <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
+                  )}
+                </DialogContent>
+              </Dialog>
+              <Button
+                size="icon"
+                variant="outline"
+                title="Manage reports"
+                onClick={() => {
+                  setSelectedBooking(row.original);
+                  setReportsDialogOpen(true);
+                }}
+              >
+                <FileText className="h-4 w-4" />
+              </Button>
+            </>
           )}
         </div>
       ),
@@ -147,7 +277,7 @@ export default function AdminLabBookingsPage() {
             className="bg-transparent text-primary border-0 shadow-none"
             onClick={() => {
               setSelectedBooking(row.original);
-              setEditStatus(row.original.status.toLowerCase());
+              setEditStatus(String(row.original.status).toUpperCase());
               setUploadingBookingId(row.original.id);
               setDialogOpen(true);
             }}
@@ -182,6 +312,9 @@ export default function AdminLabBookingsPage() {
   async function fetchData() {
     const result = await fetchLabBookings(pagination.pageIndex, pagination.pageSize);
     setData({ bookings: result.data, total: result.total });
+    if (result.summary) {
+      setSummary(result.summary);
+    }
   }
 
   useEffect(() => {
@@ -191,21 +324,44 @@ export default function AdminLabBookingsPage() {
   const handleMultipleFilesUpload = async (files: FileList, id: number) => {
     if (!files || !id) return;
     setUploading(true);
+    const pendingNotifications: Array<{ notificationId: string; labResultIndex: number }> = [];
     try {
       const uploadedLinks: string[] = [];
+      const booking = data.bookings.find((b) => b.id === id) || selectedBooking;
+      const existingCount = booking?.labResult?.length || 0;
+
       for (const file of Array.from(files)) {
-        const arrayBuffer = await file.arrayBuffer();
-        const fileName = `lab-${id}-${file.name}`;
-        const { url } = await put(fileName, arrayBuffer, {
-          access: "public",
-          token: process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN,
+        const renamedFileName = buildReportUploadFileName(booking?.patient?.name || "patient", file.name);
+        const notificationId = createUploadNotification({
+          fileName: renamedFileName,
+          reportType: "lab_report",
+          patientId: 0,
+          source: "lab-booking",
         });
-        uploadedLinks.push(url);
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const { url } = await put(renamedFileName, arrayBuffer, {
+            access: "public",
+            token: process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN,
+          });
+          uploadedLinks.push(url);
+          pendingNotifications.push({
+            notificationId,
+            labResultIndex: existingCount + pendingNotifications.length,
+          });
+        } catch (error) {
+          markUploadFailed(notificationId, `Failed to upload ${file.name}`);
+          throw error;
+        }
       }
 
       const res = await axios.patch(`/api/admin/optimized/lab-bookings`, {
         id,
         links: uploadedLinks,
+      });
+
+      pendingNotifications.forEach(({ notificationId, labResultIndex }) => {
+        markLabBookingUploadSucceeded(notificationId, id, labResultIndex);
       });
 
       await fetchData();
@@ -216,6 +372,9 @@ export default function AdminLabBookingsPage() {
         setUploadSuccess(false);
       }, 1500);
     } catch (err) {
+      pendingNotifications.forEach(({ notificationId }) => {
+        markUploadFailed(notificationId, "Failed to register report for analysis.");
+      });
       console.error("Upload failed", err);
       toast.error("Upload failed");
     } finally {
@@ -292,10 +451,63 @@ export default function AdminLabBookingsPage() {
     }
   };
 
+  const handleCollectPayment = async (paymentId: number) => {
+    try {
+      setCollectingPaymentId(paymentId);
+      await axios.put("/api/admin/optimized/dashboard/patients-details", { paymentId });
+      toast.success("Payment collected successfully.");
+      await fetchData();
+    } catch (error) {
+      console.error("Payment collection failed:", error);
+      toast.error("Failed to collect payment.");
+    } finally {
+      setCollectingPaymentId(null);
+    }
+  };
+
   return (
     <div className="container mx-auto p-4 space-y-4 bg-white">
       <ToastContainer />
       <h2 className="text-2xl font-bold">Lab Bookings</h2>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-lg border bg-amber-50 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-amber-800">Payment Pending</p>
+            <Clock3 className="h-4 w-4 text-amber-700" />
+          </div>
+          <p className="mt-2 text-2xl font-bold text-amber-900">{summary.paymentPending}</p>
+          <p className="text-xs text-amber-700">₹{(summary.paymentPendingAmount / 100).toFixed(2)} pending</p>
+        </div>
+
+        <div className="rounded-lg border bg-green-50 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-green-800">Payment Done</p>
+            <CheckCircle2 className="h-4 w-4 text-green-700" />
+          </div>
+          <p className="mt-2 text-2xl font-bold text-green-900">{summary.paymentDone}</p>
+          <p className="text-xs text-green-700">₹{(summary.paymentDoneAmount / 100).toFixed(2)} collected</p>
+        </div>
+
+        <div className="rounded-lg border bg-blue-50 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-blue-800">Reports Uploaded</p>
+            <FileText className="h-4 w-4 text-blue-700" />
+          </div>
+          <p className="mt-2 text-2xl font-bold text-blue-900">{summary.reportsUploaded}</p>
+          <p className="text-xs text-blue-700">Bookings with uploaded reports</p>
+        </div>
+
+        <div className="rounded-lg border bg-rose-50 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-rose-800">Reports Pending</p>
+            <ReceiptIndianRupee className="h-4 w-4 text-rose-700" />
+          </div>
+          <p className="mt-2 text-2xl font-bold text-rose-900">{summary.reportsPending}</p>
+          <p className="text-xs text-rose-700">Bookings without report uploads</p>
+        </div>
+      </div>
+
       <div className="rounded-md border">
         <Table>
           <TableHeader className="bg-custom-mutedgreen text-gray-950">
@@ -360,43 +572,16 @@ export default function AdminLabBookingsPage() {
           <div className="space-y-4">
             <Select value={editStatus} onValueChange={setEditStatus}>
               <SelectTrigger>
-                <SelectValue className="capitalize" placeholder="Select status">{editStatus}</SelectValue>
+                <SelectValue placeholder="Select status">{editStatus}</SelectValue>
               </SelectTrigger>
               <SelectContent className="bg-white text-black">
                 {statusOptions.map((s) => (
-                  <SelectItem key={s} value={s} className="capitalize">
-                    {s}
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-
-            {selectedBooking?.labResult && selectedBooking.labResult.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-2">Existing Reports</h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedBooking.labResult.map((url, idx) => (
-                    <div key={idx} className="flex items-center gap-1">
-                      <a href={url} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" size="sm" className="whitespace-nowrap">View {idx + 1}</Button>
-                      </a>
-                      <Button variant="destructive" size="icon" onClick={() => removeReport(selectedBooking.id, url)}>
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <h4 className="font-medium mb-2">Upload Reports</h4>
-              <UploadDropZone bookingId={uploadingBookingId} />
-              {uploading && <p>Uploading...</p>}
-              {uploadSuccess && (
-                <p className="text-green-600 text-sm text-center mt-2">Upload successful!</p>
-              )}
-            </div>
 
             <div className="flex justify-end space-x-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
@@ -415,6 +600,41 @@ export default function AdminLabBookingsPage() {
               >
                 Save
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reportsDialogOpen} onOpenChange={setReportsDialogOpen}>
+        <DialogContent>
+          <DialogTitle>Manage Reports</DialogTitle>
+          <div className="space-y-4">
+            {selectedBooking?.labResult && selectedBooking.labResult.length > 0 ? (
+              <div className="space-y-2">
+                {selectedBooking.labResult.map((url, idx) => (
+                  <div key={idx} className="flex items-center justify-between rounded border p-2">
+                    <a href={url} target="_blank" rel="noopener noreferrer" className="truncate">
+                      <Button variant="outline" size="sm" className="max-w-[280px] truncate">
+                        {getReportLabelFromUrl(url, idx)}
+                      </Button>
+                    </a>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => removeReport(selectedBooking.id, url)}
+                      title="Delete report"
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No reports available for this booking.</p>
+            )}
+
+            <div className="flex justify-end">
+              <Button onClick={() => setReportsDialogOpen(false)}>Done</Button>
             </div>
           </div>
         </DialogContent>

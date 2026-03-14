@@ -202,7 +202,7 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
                   Upload Report
                 </ReportUploadButton>
               )}
-              {allReports.length > 3 && (
+              {/* {allReports.length > 3 && (
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -212,7 +212,7 @@ export default function LabReportsSection({ labBookings, patientId, onViewMore, 
                   <Eye className="h-3 w-3 mr-1" />
                   View More
                 </Button>
-              )}
+              )} */}
             </div>
           </div>
 

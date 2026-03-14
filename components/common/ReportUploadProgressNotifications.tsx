@@ -1,45 +1,42 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { CheckCircle, AlertCircle, Loader2, X, FileText, TrendingUp, Upload } from 'lucide-react';
+import { CheckCircle, AlertCircle, Loader2, X, FileText, Microscope, Pill } from 'lucide-react';
 
-interface ProcessingStage {
+export interface UploadProcessingStage {
   stage: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   message: string;
   timestamp: Date;
 }
 
-interface ProcessingNotification {
+export interface UploadProcessingNotification {
   id: string;
-  title: string;
-  type: 'lab-analysis' | 'standalone-report' | 'prescription';
-  stages: ProcessingStage[];
+  fileName: string;
+  reportType: 'lab_report' | 'prescription' | 'document';
+  stages: UploadProcessingStage[];
   overallStatus: 'processing' | 'completed' | 'failed';
   reportId?: number;
-  analysisType?: string;
   labResultIndex?: number;
 }
 
-interface ProcessingProgressNotificationProps {
-  notifications: ProcessingNotification[];
+interface ReportUploadProgressNotificationsProps {
+  notifications: UploadProcessingNotification[];
   onRemove: (id: string) => void;
 }
 
-const getTypeIcon = (type: string) => {
-  switch (type) {
-    case 'lab-analysis':
-      return <TrendingUp className="h-4 w-4" />;
-    case 'standalone-report':
-      return <Upload className="h-4 w-4" />;
+const getTypeIcon = (reportType: UploadProcessingNotification['reportType']) => {
+  switch (reportType) {
+    case 'lab_report':
+      return <Microscope className="h-4 w-4" />;
     case 'prescription':
-      return <FileText className="h-4 w-4" />;
+      return <Pill className="h-4 w-4" />;
     default:
       return <FileText className="h-4 w-4" />;
   }
 };
 
-const getStageIcon = (status: string) => {
+const getStageIcon = (status: UploadProcessingStage['status']) => {
   switch (status) {
     case 'completed':
       return <CheckCircle className="h-4 w-4 text-green-500" />;
@@ -52,11 +49,17 @@ const getStageIcon = (status: string) => {
   }
 };
 
-export default function ProcessingProgressNotification({ notifications, onRemove }: ProcessingProgressNotificationProps) {
+const getTypeLabel = (reportType: UploadProcessingNotification['reportType']) => {
+  if (reportType === 'lab_report') return 'Lab report';
+  if (reportType === 'prescription') return 'Prescription';
+  return 'Document';
+};
+
+export default function ReportUploadProgressNotifications({ notifications, onRemove }: ReportUploadProgressNotificationsProps) {
   if (notifications.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 space-y-2 max-w-md">
+    <div className="fixed bottom-4 right-4 z-[100] space-y-2 max-w-md">
       {notifications.map((notification) => (
         <div
           key={notification.id}
@@ -68,10 +71,10 @@ export default function ProcessingProgressNotification({ notifications, onRemove
         >
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-2">
-              {getTypeIcon(notification.type)}
+              {getTypeIcon(notification.reportType)}
               <div>
-                <h4 className="font-medium text-sm">{notification.title}</h4>
-                <p className="text-xs text-gray-500 capitalize">{notification.type.replace('-', ' ')}</p>
+                <h4 className="font-medium text-sm">{notification.fileName}</h4>
+                <p className="text-xs text-gray-500">{getTypeLabel(notification.reportType)}</p>
               </div>
             </div>
             <Button
@@ -89,12 +92,12 @@ export default function ProcessingProgressNotification({ notifications, onRemove
               <div key={index} className="flex items-start gap-2 text-sm">
                 {getStageIcon(stage.status)}
                 <div className="flex-1 min-w-0">
-                  <p className={`${
+                  <p className={
                     stage.status === 'completed' ? 'text-green-700' :
                     stage.status === 'failed' ? 'text-red-700' :
                     stage.status === 'processing' ? 'text-blue-700' :
                     'text-gray-500'
-                  }`}>
+                  }>
                     {stage.stage}
                   </p>
                   <p className="text-xs text-gray-500">{stage.message}</p>
@@ -108,13 +111,13 @@ export default function ProcessingProgressNotification({ notifications, onRemove
 
           {notification.overallStatus === 'completed' && (
             <div className="mt-3 pt-2 border-t border-green-200">
-              <p className="text-sm text-green-700 font-medium">✅ Processing completed successfully!</p>
+              <p className="text-sm text-green-700 font-medium">Processing completed successfully.</p>
             </div>
           )}
 
           {notification.overallStatus === 'failed' && (
             <div className="mt-3 pt-2 border-t border-red-200">
-              <p className="text-sm text-red-700 font-medium">❌ Processing failed. Please try again.</p>
+              <p className="text-sm text-red-700 font-medium">Processing failed. Please try again.</p>
             </div>
           )}
         </div>

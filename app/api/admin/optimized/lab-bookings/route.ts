@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAdminClinicId, createUserClinicFilter } from "@/lib/admin-clinic-middleware";
+import { deleteLabBookingReportCascade } from "@/lib/lab-report-cascade";
+import { normalizeLabAssignmentStatus } from "@/lib/utils/status";
 
 // Optimized lab bookings API with better filtering and includes
 export async function GET(request: NextRequest) {
@@ -44,7 +46,23 @@ export async function GET(request: NextRequest) {
       })
     };
 
-    const [labBookings, total] = await prisma.$transaction([
+    const paymentPendingWhere = {
+      deletedAt: null,
+      paymentStatus: 'PENDING' as const,
+      labBooking: {
+        is: whereClause as any
+      }
+    };
+
+    const paymentDoneWhere = {
+      deletedAt: null,
+      paymentStatus: 'PAID' as const,
+      labBooking: {
+        is: whereClause as any
+      }
+    };
+
+    const [labBookings, total, paymentPendingCount, paymentDoneCount, reportsUploadedCount, reportsPendingCount, paymentPendingAmount, paymentDoneAmount] = await prisma.$transaction([
       prisma.labBooking.findMany({
         where: whereClause as any,
         skip: (page - 1) * pageSize,
@@ -95,6 +113,28 @@ export async function GET(request: NextRequest) {
         },
       }),
       prisma.labBooking.count({ where: whereClause as any }),
+      prisma.payment.count({ where: paymentPendingWhere as any }),
+      prisma.payment.count({ where: paymentDoneWhere as any }),
+      prisma.labBooking.count({
+        where: {
+          ...(whereClause as any),
+          labResult: { isEmpty: false }
+        } as any
+      }),
+      prisma.labBooking.count({
+        where: {
+          ...(whereClause as any),
+          labResult: { isEmpty: true }
+        } as any
+      }),
+      prisma.payment.aggregate({
+        where: paymentPendingWhere as any,
+        _sum: { amount: true }
+      }),
+      prisma.payment.aggregate({
+        where: paymentDoneWhere as any,
+        _sum: { amount: true }
+      }),
     ]);
 
     return NextResponse.json({
@@ -103,6 +143,14 @@ export async function GET(request: NextRequest) {
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
+      summary: {
+        paymentPending: paymentPendingCount,
+        paymentDone: paymentDoneCount,
+        reportsUploaded: reportsUploadedCount,
+        reportsPending: reportsPendingCount,
+        paymentPendingAmount: paymentPendingAmount._sum.amount || 0,
+        paymentDoneAmount: paymentDoneAmount._sum.amount || 0,
+      },
     });
   } catch (error) {
     console.error("Optimized lab bookings query error:", error);
@@ -119,9 +167,14 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
+    const normalizedStatus = normalizeLabAssignmentStatus(status);
+    if (!normalizedStatus) {
+      return NextResponse.json({ error: "Invalid status value" }, { status: 400 });
+    }
+
     const updated = await prisma.labBooking.update({
       where: { id },
-      data: { status },
+      data: { status: normalizedStatus },
       select: {
         id: true,
         status: true,
@@ -175,7 +228,13 @@ export async function PATCH(request: Request) {
 
     // Handle removal of a specific link
     if (remove) {
-      updatedLabResult = updatedLabResult.filter(link => link !== remove);
+      const removeIndex = updatedLabResult.findIndex((link) => link === remove);
+      if (removeIndex >= 0) {
+        const cascadeResult = await deleteLabBookingReportCascade(id, removeIndex);
+        updatedLabResult = cascadeResult.updatedLabResult;
+      } else {
+        updatedLabResult = updatedLabResult.filter((link) => link !== remove);
+      }
     }
 
     // Handle addition of new links
@@ -213,8 +272,8 @@ export async function PATCH(request: Request) {
     if (links && links.length > 0) {
       console.log(`[LAB-BOOKINGS-UPLOAD] Triggering AI processing for ${links.length} new reports`);
       
-      // Get the starting index for new reports
-      const existingCount = (existing.labResult || []).length;
+      // Get the starting index for new reports after any removal/reindex operation.
+      const existingCount = updatedLabResult.length - links.length;
       
       // Trigger processing for each new report
       for (let i = 0; i < links.length; i++) {

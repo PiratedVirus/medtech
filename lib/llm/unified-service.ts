@@ -93,6 +93,145 @@ function tryParseLooseJson(jsonLike: string): any | null {
   }
 }
 
+function makeUtcDate(year: number, month: number, day: number): Date | null {
+  if (year < 2000 || year > 2100) return null;
+  if (month < 1 || month > 12) return null;
+  if (day < 1 || day > 31) return null;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (Number.isNaN(date.getTime())) return null;
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return date;
+}
+
+function parseDateCandidate(raw: string): Date | null {
+  const value = raw.trim().replace(/,/g, ' ').replace(/\s+/g, ' ');
+  if (!value) return null;
+
+  // YYYY-MM-DD / YYYY/MM/DD / YYYY.MM.DD
+  let m = value.match(/^(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})$/);
+  if (m) {
+    return makeUtcDate(Number(m[1]), Number(m[2]), Number(m[3]));
+  }
+
+  // DD-MM-YYYY / MM-DD-YYYY (favor DD-MM-YYYY when ambiguous)
+  m = value.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
+  if (m) {
+    const a = Number(m[1]);
+    const b = Number(m[2]);
+    let year = Number(m[3]);
+    if (year < 100) year += 2000;
+    if (a > 12) return makeUtcDate(year, b, a); // clearly DMY
+    if (b > 12) return makeUtcDate(year, a, b); // clearly MDY
+    return makeUtcDate(year, b, a); // ambiguous; default DMY
+  }
+
+  const monthMap: Record<string, number> = {
+    jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+    jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+  };
+
+  // DD Mon YYYY
+  m = value.match(/^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{2,4})$/);
+  if (m) {
+    const day = Number(m[1]);
+    const month = monthMap[m[2].slice(0, 3).toLowerCase()];
+    let year = Number(m[3]);
+    if (year < 100) year += 2000;
+    if (!month) return null;
+    return makeUtcDate(year, month, day);
+  }
+
+  // Mon DD YYYY
+  m = value.match(/^([A-Za-z]{3,9})\s+(\d{1,2})\s+(\d{2,4})$/);
+  if (m) {
+    const month = monthMap[m[1].slice(0, 3).toLowerCase()];
+    const day = Number(m[2]);
+    let year = Number(m[3]);
+    if (year < 100) year += 2000;
+    if (!month) return null;
+    return makeUtcDate(year, month, day);
+  }
+
+  const nativeParsed = new Date(value);
+  if (!Number.isNaN(nativeParsed.getTime())) {
+    return makeUtcDate(
+      nativeParsed.getUTCFullYear(),
+      nativeParsed.getUTCMonth() + 1,
+      nativeParsed.getUTCDate()
+    );
+  }
+
+  return null;
+}
+
+function parseDateToIso(raw: string): string | undefined {
+  const parsed = parseDateCandidate(raw);
+  return parsed ? parsed.toISOString() : undefined;
+}
+
+function extractDateFromOcrText(text: string): string | undefined {
+  if (!text) return undefined;
+  const normalized = text.replace(/\r/g, '\n').replace(/\s+/g, ' ').trim();
+  if (!normalized) return undefined;
+
+  const labels = [
+    'sample\\s*collection\\s*date',
+    'sample\\s*collected',
+    'collection\\s*date',
+    'date\\s*of\\s*collection',
+    'sample\\s*date',
+    'specimen\\s*collected',
+    'collected\\s*on',
+    'collected',
+    'drawn\\s*on',
+    'report\\s*date',
+    'date\\s*of\\s*report',
+    'reporting\\s*date',
+    'reported\\s*on',
+    'reported',
+    'test\\s*date',
+    'date\\s*of\\s*test',
+    'received\\s*on',
+    'received',
+    'registered',
+    'registration\\s*date',
+  ];
+
+  const numericDatePattern = '(\\d{4}[\\/.\\-]\\d{1,2}[\\/.\\-]\\d{1,2}|\\d{1,2}[\\/.\\-]\\d{1,2}[\\/.\\-]\\d{2,4})';
+  const namedDatePattern = '((?:\\d{1,2}\\s+[A-Za-z]{3,9}\\s+\\d{2,4})|(?:[A-Za-z]{3,9}\\s+\\d{1,2}\\s+\\d{2,4}))';
+
+  for (const label of labels) {
+    const numeric = new RegExp(`${label}[\\s:\\-]{0,20}${numericDatePattern}`, 'i');
+    const numericMatch = normalized.match(numeric);
+    if (numericMatch?.[1]) {
+      const iso = parseDateToIso(numericMatch[1]);
+      if (iso) return iso;
+    }
+
+    const named = new RegExp(`${label}[\\s:\\-]{0,20}${namedDatePattern}`, 'i');
+    const namedMatch = normalized.match(named);
+    if (namedMatch?.[1]) {
+      const iso = parseDateToIso(namedMatch[1]);
+      if (iso) return iso;
+    }
+  }
+
+  const globalNumeric = new RegExp(numericDatePattern, 'g');
+  let match: RegExpExecArray | null;
+  while ((match = globalNumeric.exec(normalized)) !== null) {
+    const iso = parseDateToIso(match[1]);
+    if (iso) return iso;
+  }
+
+  const globalNamed = new RegExp(namedDatePattern, 'g');
+  while ((match = globalNamed.exec(normalized)) !== null) {
+    const iso = parseDateToIso(match[1]);
+    if (iso) return iso;
+  }
+
+  return undefined;
+}
+
 // PDF Text Extraction
 export async function extractPdfText(pdfUrl: string): Promise<string> {
   console.log('[LLM-PROC][PDF] Using OCR (Google Vision) for PDF text extraction');
@@ -444,19 +583,27 @@ ${finalText}`;
         console.warn(`[LLM-PROC][VALUES] Warning: Extracted ${totalValues} values, which seems high. Please verify against original report.`);
       }
       
-      // Extract reportDate if present
+      // Extract reportDate from LLM output first, then hard-fallback to OCR text itself.
       let reportDate: string | undefined;
       if (parsed.reportDate != null && parsed.reportDate !== '' && String(parsed.reportDate).toLowerCase() !== 'null') {
         const rawReportDate = String(parsed.reportDate).trim();
-        const parsedDate = new Date(rawReportDate);
-        if (!isNaN(parsedDate.getTime())) {
-          reportDate = parsedDate.toISOString();
+        const parsedIso = parseDateToIso(rawReportDate);
+        if (parsedIso) {
+          reportDate = parsedIso;
           console.log(`[LLM-PROC][VALUES] Extracted report date: ${reportDate} (from LLM raw: "${rawReportDate}")`);
         } else {
           console.warn(`[LLM-PROC][VALUES] Could not parse report date (invalid): "${rawReportDate}"`);
         }
-      } else {
-        console.warn('[LLM-PROC][VALUES][DEBUG] reportDate missing or null from LLM – UI will show upload date as fallback.');
+      }
+
+      if (!reportDate) {
+        const ocrExtractedDate = extractDateFromOcrText(finalText);
+        if (ocrExtractedDate) {
+          reportDate = ocrExtractedDate;
+          console.log(`[LLM-PROC][VALUES][DEBUG] Recovered report date from OCR text: ${reportDate}`);
+        } else {
+          console.warn('[LLM-PROC][VALUES][DEBUG] No report date found in LLM response or OCR text – UI will show upload date as fallback.');
+        }
       }
 
       console.log(`[LLM-PROC][VALUES] Extracted ${allValues.length} all values and ${criticalValues.length} critical values`);

@@ -99,3 +99,11 @@ export function isDoctorName(fullName: string): boolean {
   
   return nameParts[0].toLowerCase() === "dr." || nameParts[0].toLowerCase() === "dr";
 }
+
+// Ensure "Dr." prefix is present exactly once for display.
+export function ensureDoctorPrefix(name: string): string {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return "Doctor";
+  if (/^dr\.?\s+/i.test(trimmed)) return trimmed;
+  return `Dr. ${trimmed}`;
+}

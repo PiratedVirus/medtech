@@ -350,6 +350,7 @@ export default function LabsPage() {
             <div className="mt-4 md:mt-0">
               <ReportUploadButton
                 patientId={Number(profile?.id)}
+                patientName={profile?.name}
                 onUploadSuccess={handleUploadSuccess}
                 variant="default"
                 size="sm"
