@@ -254,8 +254,8 @@ export default function SignInForm() {
   };
 
   return (
-    <div className={`flex items-center justify-center p-6 h-full bg-[#f9fafb]`}>
-      <div className="w-full max-w-[400px] space-y-16">
+  <div className="flex items-start md:items-center justify-center p-4 md:p-6 h-full bg-[#f9fafb] overflow-y-auto">
+      <div className="w-full max-w-[400px] space-y-10 md:space-y-16">
         {step === "signIn" ? (
           // **Sign In View**
           <div className="text-center">
