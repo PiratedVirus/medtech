@@ -143,11 +143,12 @@ export default function UnifiedAnalysisModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showAllValues, setShowAllValues] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [correctedReportDate, setCorrectedReportDate] = useState('');
+  const [updatingReportDate, setUpdatingReportDate] = useState(false);
   const [activeTab, setActiveTab] = useState<'lab-reports' | 'standalone-reports'>('lab-reports');
   const [showFailedReports, setShowFailedReports] = useState(false);
 
   const selectedReport = labReports.find(r => r.id === selectedReportId);
-  const selectedStandaloneReport = standaloneReports.find(r => r.id === selectedStandaloneReportId);
 
   // Fetch standalone reports if not provided
   const [fetchedStandaloneReports, setFetchedStandaloneReports] = useState<StandaloneReport[]>([]);
@@ -174,6 +175,9 @@ export default function UnifiedAnalysisModal({
 
   // Use provided standalone reports or fetched ones
   const allStandaloneReports = standaloneReports.length > 0 ? standaloneReports : fetchedStandaloneReports;
+  const selectedStandaloneReport = allStandaloneReports.find(r => r.id === selectedStandaloneReportId);
+  const selectedTrendAnalysis = (selectedStandaloneReport?.reportAnalyses?.[0]?.trendAnalysis as any) || {};
+  const isFallbackReportDate = Boolean(selectedTrendAnalysis?.isFallbackDate);
   
   // Filter reports based on showFailedReports state
   const filteredLabReports = showFailedReports 
@@ -188,6 +192,22 @@ export default function UnifiedAnalysisModal({
         );
         return !hasFailedAnalysis;
       });
+
+  useEffect(() => {
+    const reportDateRaw = selectedTrendAnalysis?.reportDate as string | undefined;
+    if (!reportDateRaw) {
+      setCorrectedReportDate('');
+      return;
+    }
+
+    const parsed = new Date(reportDateRaw);
+    if (Number.isNaN(parsed.getTime())) {
+      setCorrectedReportDate('');
+      return;
+    }
+
+    setCorrectedReportDate(parsed.toISOString().slice(0, 10));
+  }, [selectedStandaloneReportId, selectedTrendAnalysis?.reportDate]);
 
   // Handle pre-selection when modal opens (standalone report)
   useEffect(() => {
@@ -383,6 +403,38 @@ export default function UnifiedAnalysisModal({
       toast.error(`Standalone process failed: ${(error as Error).message}`);
     } finally {
       // Don't set loading to false here - let polling handle it
+    }
+  };
+
+  const handleCorrectReportDate = async () => {
+    if (!selectedStandaloneReportId || !correctedReportDate) {
+      toast.error('Please select a valid report date');
+      return;
+    }
+
+    try {
+      setUpdatingReportDate(true);
+      const response = await fetch('/api/reports/upload/report-date', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reportId: selectedStandaloneReportId,
+          reportDate: correctedReportDate,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update report date');
+      }
+
+      toast.success('Report date updated and trends rebuilt');
+      await fetchStandaloneReports();
+    } catch (error) {
+      console.error('Error updating report date:', error);
+      toast.error((error as Error).message || 'Failed to update report date');
+    } finally {
+      setUpdatingReportDate(false);
     }
   };
 
@@ -825,6 +877,12 @@ export default function UnifiedAnalysisModal({
                             <span className="text-xs text-gray-600">
                               Report Date: {formatReportDate((selectedStandaloneReport.reportAnalyses?.[0]?.trendAnalysis as any)?.reportDate)}
                             </span>
+                            {isFallbackReportDate && (
+                              <Badge className="bg-amber-100 text-amber-800 border border-amber-200">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Fallback: upload date
+                              </Badge>
+                            )}
                             {selectedStandaloneReport.fileUrl && (
                               <Button
                                 variant="outline"
@@ -840,6 +898,32 @@ export default function UnifiedAnalysisModal({
                         )}
                       </div>
                     </div>
+
+                    {selectedStandaloneReport && isFallbackReportDate && (
+                      <div className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50">
+                        <p className="text-sm text-amber-900 mb-2">
+                          Exact report date could not be detected. Trends currently use upload date.
+                        </p>
+                        <div className="flex items-end gap-2">
+                          <div>
+                            <label className="text-xs text-amber-900">Set accurate report date</label>
+                            <Input
+                              type="date"
+                              value={correctedReportDate}
+                              onChange={(e) => setCorrectedReportDate(e.target.value)}
+                              className="bg-white"
+                            />
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={handleCorrectReportDate}
+                            disabled={updatingReportDate || !correctedReportDate}
+                          >
+                            {updatingReportDate ? 'Saving...' : 'Save Date'}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     
                     {analysis?.llmSummary ? (
                       <p className="text-gray-700 leading-relaxed text-justify whitespace-pre-wrap bg-white/60 rounded-lg p-4 border border-blue-100/50">

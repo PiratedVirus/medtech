@@ -96,6 +96,7 @@ export default function StandaloneReportCard({ report, onViewAnalysis }: Standal
   // Use extracted report date from trendAnalysis if available
   const trendAnalysis = latestAnalysis?.trendAnalysis as any;
   const reportDate = trendAnalysis?.reportDate;
+  const isFallbackDate = Boolean(trendAnalysis?.isFallbackDate);
   const reportDateLabel = reportDate && !Number.isNaN(new Date(reportDate).getTime())
     ? format(new Date(reportDate), "dd/MM/yyyy")
     : '-';
@@ -110,6 +111,7 @@ export default function StandaloneReportCard({ report, onViewAnalysis }: Standal
             <p className="text-sm text-gray-500">{getReportTypeLabel(report.reportType)}</p>
             <p className="text-sm text-gray-400">
               Report Date: {reportDateLabel}
+              {isFallbackDate ? ' (fallback: upload date)' : ''}
             </p>
             <p className="text-sm text-gray-400">
               By: {report.uploadedBy.name} ({report.uploadedBy.role})

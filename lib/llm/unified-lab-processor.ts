@@ -147,7 +147,7 @@ export async function processLabReportWithLLM(
       await updateProgressIfAvailable(updateProgress, 'Stage 5: Creating trend data...');
 
       try {
-        await createTrendData(context, allValues, criticalValues);
+        await createTrendData(context, allValues);
         console.log(`[UNIFIED-LLM][${requestId}] Stage 5: Trend data creation completed`);
       } catch (trendError) {
         // Don't fail the entire process if trend data creation fails
@@ -565,17 +565,25 @@ async function getFinalResults(context: LabReportProcessingContext): Promise<{
  */
 async function createTrendData(
   context: LabReportProcessingContext,
-  allValues: any[],
-  criticalValues: any[]
+  allValues: any[]
 ) {
   const reportDate = context.reportDate;
   if (!reportDate) {
     console.warn('[UNIFIED-LLM] Skipping trend data creation: reportDate not available');
     return;
   }
-  const valuesToProcess = criticalValues.length > 0 ? criticalValues : allValues;
 
-  for (const value of valuesToProcess) {
+  if (context.reportType === 'labBooking' && context.labReportAnalysisId) {
+    await prisma.reportTrendData.deleteMany({
+      where: { sourceReportId: context.labReportAnalysisId }
+    });
+  } else if (context.reportType === 'standalone' && context.standaloneReportId) {
+    await prisma.reportTrendData.deleteMany({
+      where: { standaloneReportId: context.standaloneReportId }
+    });
+  }
+
+  for (const value of allValues) {
     if (!value.parameter || !value.value) continue;
 
     try {

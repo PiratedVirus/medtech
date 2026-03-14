@@ -434,9 +434,12 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
       select: { patientId: true, createdAt: true }
     });
 
-    // Determine the actual report date: prefer extracted date from report text, otherwise leave unset
-    const actualReportDate = extractedReportDate ? new Date(extractedReportDate) : null;
-    console.log(`[LLM-PROCESSING][${requestId}][DEBUG] Report date: extractedReportDate=${extractedReportDate ?? 'null'}, actualReportDate=${actualReportDate ? actualReportDate.toISOString() : 'NOT EXTRACTED'}`);
+    // Determine actual report date: prefer extracted date; fallback to upload timestamp
+    const actualReportDate = extractedReportDate ? new Date(extractedReportDate) : (reportMeta?.createdAt || new Date());
+    const usedFallbackDate = !extractedReportDate;
+    console.log(
+      `[LLM-PROCESSING][${requestId}][DEBUG] Report date: extractedReportDate=${extractedReportDate ?? 'null'}, actualReportDate=${actualReportDate.toISOString()}, usedFallbackDate=${usedFallbackDate}`
+    );
 
     await prisma.standaloneReportAnalysis.updateMany({
       where: { reportId, analysisType },
@@ -451,14 +454,17 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
         keyFindings,
         recommendations,
         urgency,
-        trendAnalysis: actualReportDate
-          ? { reportDate: actualReportDate.toISOString() }
-          : { reportDate: null },
+        trendAnalysis: {
+          reportDate: actualReportDate.toISOString(),
+          isFallbackDate: usedFallbackDate,
+          fallbackSource: usedFallbackDate ? 'UPLOAD_DATE' : null,
+          userCorrectedDate: false,
+        },
       },
     });
 
     // Create trend data for standalone lab reports
-    if (analysisType === 'lab_analysis' && Array.isArray(allValues) && allValues.length > 0 && reportMeta && actualReportDate) {
+    if (analysisType === 'lab_analysis' && Array.isArray(allValues) && allValues.length > 0 && reportMeta) {
       console.log(`[LLM-PROCESSING][${requestId}] Creating trend data for ${allValues.length} parameters`);
       
       // Delete old trend data for this standalone report (in case of regeneration)
@@ -480,7 +486,7 @@ export async function triggerLLMProcessing(reportId: number, analysisType: strin
                 severity: value.severity && ['LOW','NORMAL','HIGH','CRITICAL'].includes(String(value.severity).toUpperCase())
                   ? String(value.severity).toUpperCase() as 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'
                   : null,
-                reportDate: actualReportDate, // Use date from report text, not upload date
+                reportDate: actualReportDate, // Extracted report date, or upload date fallback
                 labBookingId: null,
                 standaloneReportId: reportId,
                 sourceReportId: null

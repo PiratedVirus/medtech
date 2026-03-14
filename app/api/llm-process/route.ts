@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { generateSummary } from "@/lib/llm/unified-service";
-import { getActiveProductionProfile } from "@/lib/llm/profile-service";
 // Enhanced PDF processor - using dynamic import to avoid build issues
 // import { EnhancedPDFProcessor } from "@/lib/llm/enhanced-pdf-processor";
 
@@ -192,86 +191,102 @@ export async function POST(request: NextRequest) {
     try { new URL(pdfUrl); } catch { return NextResponse.json({ success: false, error: "Invalid PDF URL format", pdfUrl }, { status: 400 }); }
 
     console.log(`[LLM-PROC][POST] Request received: reportId=${reportIdNum}, patientId=${patientIdNum}`);
-
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
-    // Check if we should use production profile or default unified pipeline
-    let useProductionProfile = false;
-    let productionProfile = null;
-    try {
-      productionProfile = await getActiveProductionProfile();
-      useProductionProfile = !!productionProfile;
-    } catch (e) {
-      console.log('[LLM-PROC][POST] No production profile configured, using default unified pipeline');
-    }
-
-    if (useProductionProfile && productionProfile) {
-      console.log(`[LLM-PROC][POST] Using production profile: ${productionProfile.name}`);
-      const { summary, allValues, criticalValues } = await processWithProductionProfile(pdfUrl, productionProfile, siteUrl);
-      
-      return NextResponse.json({
-        success: true,
-        status: "completed",
-        analysis: {
-          id: null,
-          llmSummary: ensureSummary(summary, criticalValues, allValues),
-          criticalValues: criticalValues || [],
-          allValues: allValues || [],
-          trendAnalysis: {},
-          processedAt: new Date().toISOString(),
-          llmModel: productionProfile.model || OR_MODEL,
-          labBooking: { id: labBooking.id, labPackageName: labBooking.labPackage?.name || null }
-        },
-        message: `Completed with production profile: ${productionProfile.name}`
-      });
-    }
-
-    // Default unified pipeline: OCR -> GROQ summary -> internal extractor
-    console.log(`[LLM-PROC][POST] Using default unified GROQ pipeline`);
-    const text = await extractPdfText(pdfUrl);
-    let summary = 'Analysis completed.';
-    let allValues: any[] = [];
-    let criticalValues: any[] = [];
-
-    try {
-      const groqKey = process.env.GROQ_API_KEY || '';
-      const res = await generateSummary(text, groqKey);
-      summary = res.summary || summary;
-    } catch (e) {
-      console.warn('[LLM-PROC][POST] GROQ summary failed, continuing');
-    }
-
-    try {
-      const extractUrl = `${siteUrl.replace(/\/$/, '')}/api/llm-process/extract-standalone-values`;
-      const r = await fetch(extractUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, force: true }) });
-      if (r.ok) {
-        const j = await r.json();
-        if (j?.success) {
-          allValues = j.data?.allValues || [];
-          criticalValues = j.data?.criticalValues || [];
-        }
-      } else {
-        const t = await r.text();
-        console.warn('[LLM-PROC][POST] extractor non-OK:', t);
+    const existingAnalysis = await prisma.labReportAnalysis.findFirst({
+      where: {
+        labBookingId: reportIdNum,
+        labResultIndex,
+        deletedAt: null
+      },
+      select: {
+        id: true,
+        trendAnalysis: true
       }
-    } catch (e) {
-      console.warn('[LLM-PROC][POST] extractor failed');
+    });
+
+    const analysis = await prisma.labReportAnalysis.upsert({
+      where: {
+        labBookingId_labResultIndex: {
+          labBookingId: reportIdNum,
+          labResultIndex
+        }
+      },
+      update: {
+        reportUrl: pdfUrl,
+        processingStatus: 'PENDING',
+        processingError: null,
+        processedAt: null,
+        deletedAt: null
+      },
+      create: {
+        labBookingId: reportIdNum,
+        labResultIndex,
+        reportUrl: pdfUrl,
+        processingStatus: 'PENDING'
+      },
+      select: {
+        id: true,
+        trendAnalysis: true
+      }
+    });
+
+    const existingReportDateRaw = (analysis.trendAnalysis as any)?.reportDate || (existingAnalysis?.trendAnalysis as any)?.reportDate;
+    const parsedExistingReportDate =
+      typeof existingReportDateRaw === 'string' && !Number.isNaN(new Date(existingReportDateRaw).getTime())
+        ? new Date(existingReportDateRaw)
+        : undefined;
+
+    const { processLabReportWithLLM } = await import('@/lib/llm/unified-lab-processor');
+    const result = await processLabReportWithLLM(
+      {
+        reportType: 'labBooking',
+        labBookingId: reportIdNum,
+        labReportAnalysisId: analysis.id,
+        labResultIndex,
+        pdfUrl,
+        patientId: patientIdNum,
+        reportDate: parsedExistingReportDate || labBooking.labDate || new Date()
+      },
+      {
+        analysisType: 'lab_analysis'
+      }
+    );
+
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: result.error || 'LLM processing failed'
+        },
+        { status: 500 }
+      );
     }
+
+    const persistedAnalysis = await prisma.labReportAnalysis.findUnique({
+      where: { id: analysis.id },
+      select: {
+        id: true,
+        llmSummary: true,
+        criticalValues: true,
+        allValues: true,
+        trendAnalysis: true,
+        processedAt: true,
+        llmModel: true,
+        processingStatus: true,
+        processingError: true,
+        keyFindings: true,
+        recommendations: true,
+        urgency: true
+      }
+    });
 
     return NextResponse.json({
       success: true,
       status: "completed",
       analysis: {
-        id: null,
-        llmSummary: ensureSummary(summary, criticalValues, allValues),
-        criticalValues: criticalValues || [],
-        allValues: allValues || [],
-        trendAnalysis: {},
-        processedAt: new Date().toISOString(),
-        llmModel: OR_MODEL,
+        ...persistedAnalysis,
         labBooking: { id: labBooking.id, labPackageName: labBooking.labPackage?.name || null }
       },
-      message: "Completed with default unified pipeline"
+      message: "Completed with persisted lab booking pipeline"
     });
 
   } catch (error) {
