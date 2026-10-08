@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import * as jose from 'jose';
-// Relative import: Vercel bundles this as routing middleware, which doesn't resolve the @/ alias
-import { extractSubdomain } from './lib/subdomain-utils';
+import { extractSubdomain } from '@/lib/subdomain-utils';
 
 // Note: We cannot use Prisma in middleware because it runs in Edge Runtime
 // Clinic database lookup is done in API routes and pages instead
