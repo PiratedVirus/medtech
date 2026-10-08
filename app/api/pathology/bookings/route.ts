@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
 import { getSubdomainClinicFromRequest } from "@/lib/clinic-auth";
+import { tokenUserWhere } from "@/lib/clinic-auth";
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,12 +31,10 @@ export async function GET(request: NextRequest) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
     const user = await prisma.user.findFirst({
-      where: { 
-        phoneNumber,
-        clinicId: subdomainClinicId, // Verify user belongs to current clinic
-      },
+      where: await tokenUserWhere(decoded),
     });
-    if (!user || user.role !== "PATHOLOGY") {
+    // Verify user belongs to current clinic
+    if (!user || user.role !== "PATHOLOGY" || user.clinicId !== subdomainClinicId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 

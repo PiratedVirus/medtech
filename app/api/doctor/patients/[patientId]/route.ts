@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
+import { tokenUserWhere } from "@/lib/clinic-auth";
 
 export async function GET(
   request: Request,
@@ -27,7 +28,7 @@ export async function GET(
     }
 
     const user = await prisma.user.findFirst({
-      where: { phoneNumber },
+      where: await tokenUserWhere(decoded),
       include: { doctorProfile: true },
     });
 

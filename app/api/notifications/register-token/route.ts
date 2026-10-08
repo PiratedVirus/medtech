@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { getSubdomainClinicFromRequest } from '@/lib/clinic-auth';
+import { tokenUserWhere } from "@/lib/clinic-auth";
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,10 +59,7 @@ export async function POST(request: NextRequest) {
     } else if (decoded?.plusAddedPhoneNumber) {
       const phoneNumber = decoded.plusAddedPhoneNumber as string;
       user = await prisma.user.findFirst({
-        where: { 
-          phoneNumber,
-          ...(subdomainClinicId ? { clinicId: subdomainClinicId } : {}),
-        },
+        where: await tokenUserWhere(decoded),
       });
     }
 
@@ -172,10 +170,7 @@ export async function DELETE(request: NextRequest) {
     } else if (decoded?.plusAddedPhoneNumber) {
       const phoneNumber = decoded.plusAddedPhoneNumber as string;
       user = await prisma.user.findFirst({
-        where: { 
-          phoneNumber,
-          ...(subdomainClinicId ? { clinicId: subdomainClinicId } : {}),
-        },
+        where: await tokenUserWhere(decoded),
       });
     }
 

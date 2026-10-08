@@ -3,7 +3,8 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
 import { SmartCacheInvalidation } from "@/lib/cache-dependencies";
-import { cacheUtils } from "@/lib/redis";
+import { cacheUtils, CACHE_KEYS } from "@/lib/redis";
+import { tokenUserWhere } from "@/lib/clinic-auth";
 
 export async function PUT(
   request: Request,
@@ -29,7 +30,7 @@ export async function PUT(
     }
 
     const user = await prisma.user.findFirst({
-      where: { phoneNumber },
+      where: await tokenUserWhere(decoded),
       include: { doctorProfile: true },
     });
 
@@ -66,16 +67,10 @@ export async function PUT(
 
     // ✅ CACHE INVALIDATION: Invalidate doctor appointments cache and patient appointments cache
     try {
-      // Invalidate doctor appointments cache using phoneNumber (as used in cache key)
-      // Use pattern to catch all variations (all, upcoming, etc.)
-      const doctorCacheKeyPattern = `doctor:appointments:${phoneNumber}*`;
+      // Invalidate all of this doctor's appointment caches (all, upcoming, detail)
+      const doctorCacheKeyPattern = CACHE_KEYS.DOCTOR_APPOINTMENTS_PATTERN(user.id);
       await cacheUtils.invalidate(doctorCacheKeyPattern);
       console.log(`[MARK-COMPLETED] Invalidated doctor appointments cache pattern: ${doctorCacheKeyPattern}`);
-
-      // Also invalidate exact key for immediate effect
-      const doctorCacheKey = `doctor:appointments:${phoneNumber}`;
-      await cacheUtils.invalidate(doctorCacheKey);
-      console.log(`[MARK-COMPLETED] Invalidated doctor appointments cache: ${doctorCacheKey}`);
 
       // Also invalidate using SmartCacheInvalidation for comprehensive invalidation
       if (appointment.patientId) {

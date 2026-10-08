@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import * as jose from 'jose';
 import { generateSummary, extractValues } from '@/lib/llm/unified-service';
+import { tokenUserWhere } from "@/lib/clinic-auth";
 
 // Parse a DD/MM/YYYY or DD-MM-YYYY date string (with optional time) into a Date object
 function parseDMYDate(dateStr: string): Date | null {
@@ -155,21 +156,9 @@ async function getUserFromRequest(request: NextRequest) {
   const decoded = await verifyUserToken(token);
   if (!decoded) return null;
 
-  // Prefer userId from token so we resolve the same user as frontend profile (multi-clinic safe)
-  if (decoded.userId) {
-    const user = await prisma.user.findFirst({
-      where: { id: decoded.userId, deletedAt: null },
-      select: { id: true, name: true, role: true, phoneNumber: true },
-    });
-    return user;
-  }
-
-  // Fallback: resolve by phone (old tokens)
+  // Resolve by userId from token (phone + clinic for old tokens) - multi-clinic safe
   const user = await prisma.user.findFirst({
-    where: {
-      phoneNumber: decoded.plusAddedPhoneNumber,
-      deletedAt: null,
-    },
+    where: await tokenUserWhere(decoded),
     select: { id: true, name: true, role: true, phoneNumber: true },
   });
 

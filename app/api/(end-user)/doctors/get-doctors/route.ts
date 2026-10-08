@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { getSubdomainClinicFromRequest } from "@/lib/clinic-auth";
+import { tokenUserWhere } from "@/lib/clinic-auth";
 
 // Fetch all doctors along with their profile & availability
 export async function GET(request: NextRequest) {
@@ -28,16 +29,11 @@ export async function GET(request: NextRequest) {
         tokenClinicId = decoded.clinicId ?? null;
         tokenUserId = decoded.userId ?? null;
 
-        // Resolve user: prefer userId, fallback to phone
+        // Resolve user: prefer userId, fallback to phone + clinic
         let user = null;
-        if (decoded.userId) {
+        if (decoded.userId || decoded.plusAddedPhoneNumber) {
           user = await prisma.user.findFirst({
-            where: { id: decoded.userId, deletedAt: null },
-            select: { doctorCode: true, clinicId: true },
-          });
-        } else if (decoded.plusAddedPhoneNumber) {
-          user = await prisma.user.findFirst({
-            where: { phoneNumber: decoded.plusAddedPhoneNumber, deletedAt: null },
+            where: await tokenUserWhere(decoded),
             select: { doctorCode: true, clinicId: true },
           });
         }

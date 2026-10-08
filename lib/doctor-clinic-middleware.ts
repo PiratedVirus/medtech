@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
+import { tokenUserWhere } from '@/lib/clinic-auth';
 
 export async function getDoctorClinicId(request: NextRequest): Promise<number | null> {
   try {
@@ -29,10 +30,7 @@ export async function getDoctorClinicId(request: NextRequest): Promise<number | 
 
     // Find the user and get their clinic ID
     const user = await prisma.user.findFirst({
-      where: { 
-        phoneNumber,
-        deletedAt: null
-      },
+      where: await tokenUserWhere(decoded),
       select: { 
         clinicId: true,
         role: true

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as jose from "jose";
 import prisma from "@/lib/prisma";
+import { tokenUserWhere } from "@/lib/clinic-auth";
 
 interface JWTPayload {
   plusAddedPhoneNumber: string;
@@ -35,15 +36,8 @@ async function getUserFromRequest(request: NextRequest) {
   const decoded = await verifyUserToken(token);
   if (!decoded) return null;
 
-  if (decoded.userId) {
-    return prisma.user.findFirst({
-      where: { id: decoded.userId, deletedAt: null },
-      select: { id: true, role: true, phoneNumber: true },
-    });
-  }
-
   return prisma.user.findFirst({
-    where: { phoneNumber: decoded.plusAddedPhoneNumber, deletedAt: null },
+    where: await tokenUserWhere(decoded),
     select: { id: true, role: true, phoneNumber: true },
   });
 }

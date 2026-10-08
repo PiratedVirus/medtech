@@ -74,19 +74,33 @@ function extractPathParams(url: string, endpoint: string): Record<string, string
  */
 /**
  * Extract doctor identifier from JWT token for doctor-specific endpoints
- * Uses phoneNumber as unique identifier since each doctor has unique phone
+ * Uses userId - phone numbers are not unique across clinics
  */
-async function extractDoctorIdentifier(): Promise<string | null> {
+async function extractDoctorIdentifier(): Promise<number | null> {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
     if (!token) return null;
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    return decoded?.plusAddedPhoneNumber || null;
+    return typeof decoded?.userId === 'number' ? decoded.userId : null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Build the per-doctor cache key, distinguishing list endpoints and appointment detail
+ */
+function buildDoctorCacheKey(baseKey: string, userId: number, url: string): string {
+  if (baseKey.startsWith('doctor:appointments')) {
+    const { pathname } = new URL(url);
+    if (pathname.endsWith('/appointments/all')) return CACHE_KEYS.DOCTOR_SCOPED(baseKey, userId, 'all');
+    if (pathname.endsWith('/appointments/upcoming')) return CACHE_KEYS.DOCTOR_SCOPED(baseKey, userId, 'upcoming');
+    const { appointmentId } = extractPathParams(url, '/api/doctor/appointments/[appointmentId]');
+    if (appointmentId) return CACHE_KEYS.DOCTOR_SCOPED(baseKey, userId, 'appt', appointmentId);
+  }
+  return CACHE_KEYS.DOCTOR_SCOPED(baseKey, userId);
 }
 
 async function handleGetWithCache(
@@ -108,28 +122,24 @@ async function handleGetWithCache(
       }
     }
     
-    // Extract appointmentId from URL for doctor appointment detail endpoint
-    if (config.key.includes('doctor:appointments') && url.includes('/appointments/')) {
-      const pathParams = extractPathParams(url, '/api/doctor/appointments/[appointmentId]');
-      if (pathParams.appointmentId) {
-        cacheKey = `${config.key}:${pathParams.appointmentId}`;
-      }
-    }
-    
-    // For doctor-specific endpoints, extract doctor identifier from token
-    if (config.entityType === 'doctor' || config.key.startsWith('doctor:')) {
+    // For doctor-specific endpoints, scope the cache key to the doctor's userId
+    const isDoctorScoped = config.entityType === 'doctor' || config.key.startsWith('doctor:');
+    let isAppointmentDetail = false;
+    if (isDoctorScoped) {
       const doctorIdentifier = await extractDoctorIdentifier();
-      if (doctorIdentifier) {
-        // Use phoneNumber as unique identifier for cache key
-        cacheKey = `${config.key}:${doctorIdentifier}`;
+      if (!doctorIdentifier) {
+        // Can't scope the cache safely (e.g. old token without userId) - skip caching
+        return await handler(request, ...args);
       }
+      cacheKey = buildDoctorCacheKey(config.key, doctorIdentifier, url);
+      isAppointmentDetail = cacheKey.includes(':appt:');
     }
     
     // Try to get from cache first
     const cachedData = await cacheUtils.get(cacheKey);
     if (cachedData) {
-      // Validate cached appointment data has required fields
-      if (config.key.includes('doctor:appointments') && cacheKey.includes(':')) {
+      // Validate cached appointment detail has required fields
+      if (isAppointmentDetail) {
         // For appointment detail endpoint, ensure patientId exists
         if (!(cachedData as any).patientId) {
           console.warn(`[CACHE-MIDDLEWARE] Invalid cached appointment data (missing patientId) for ${cacheKey}, refetching...`);
@@ -170,21 +180,6 @@ async function handleGetWithCache(
         const responseData = await response.clone().json();
         if (responseData.success && responseData.data) {
           await cacheUtils.set(cacheKey, responseData.data, config.ttl);
-          
-          // Warm related caches after successful cache miss
-          if (config.entityType === 'doctor' || config.key.startsWith('doctor:')) {
-            const doctorIdentifier = await extractDoctorIdentifier();
-            if (doctorIdentifier) {
-              // Import and call warmRelatedCaches (non-blocking)
-              import('@/lib/cache-warming').then(({ warmRelatedCaches }) => {
-                warmRelatedCaches(request.url, doctorIdentifier, responseData.data).catch(() => {
-                  // Silently fail - cache warming is best effort
-                });
-              }).catch(() => {
-                // Silently fail if import fails
-              });
-            }
-          }
         }
       } catch (error) {
         console.error(`[CACHE-MIDDLEWARE] Error caching response for ${cacheKey}:`, error);
