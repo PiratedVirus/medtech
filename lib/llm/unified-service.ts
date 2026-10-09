@@ -3,8 +3,13 @@ import { groqLimiter } from './limiter';
 import { getActiveProductionProfile } from './profile-service';
 
 // Configuration
-const GROQ_SUMMARY_MODEL = process.env.GROQ_SUMMARY_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct';
-const GROQ_VALUES_MODEL = process.env.GROQ_VALUES_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct';
+// Groq retires models over time (llama-4-scout is gone); this is the default and the
+// fallback used when a configured model (env var or DB production profile) no longer exists
+export const GROQ_DEFAULT_MODEL = 'openai/gpt-oss-120b';
+const GROQ_SUMMARY_MODEL = process.env.GROQ_SUMMARY_MODEL || GROQ_DEFAULT_MODEL;
+const GROQ_VALUES_MODEL = process.env.GROQ_VALUES_MODEL || GROQ_DEFAULT_MODEL;
+// gpt-oss models spend part of max_tokens on reasoning before the JSON answer
+const REASONING_MIN_TOKENS = 4096;
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 const MAX_PDF_MB = Number(process.env.OPENROUTER_MAX_PDF_MB ?? 10);
 const MAX_TEXT_TOKENS = 8000;
@@ -284,12 +289,18 @@ async function callGroqAPIWithProfile(
   
   messages.push({ role: 'user', content: userPrompt });
   
+  const isReasoningModel = model.startsWith('openai/gpt-oss');
+  if (isReasoningModel) {
+    maxTokens = Math.max(maxTokens, REASONING_MIN_TOKENS);
+  }
+
   const payload = {
     model,
     messages,
     max_tokens: maxTokens,
     temperature,
-    response_format: { type: 'json_object' }
+    response_format: { type: 'json_object' },
+    ...(isReasoningModel ? { reasoning_effort: 'low' } : {})
   };
 
   const inputTokens = estimateTokensFromText(systemPrompt ? `${systemPrompt}\n${userPrompt}` : userPrompt);
@@ -312,6 +323,12 @@ async function callGroqAPIWithProfile(
     
     if (response.status === 400 && errorText.includes('context_length_exceeded')) {
       throw new Error('CONTEXT_LENGTH_EXCEEDED: Text too long for this model. Please use text chunking.');
+    }
+
+    // Configured model was retired/removed by Groq - retry once with the default model
+    if (response.status === 404 && errorText.includes('model_not_found') && model !== GROQ_DEFAULT_MODEL) {
+      console.warn(`[LLM-PROC] Groq model "${model}" not found, retrying with ${GROQ_DEFAULT_MODEL}. Update the LLM production profile / GROQ_*_MODEL env vars.`);
+      return callGroqAPIWithProfile(userPrompt, apiKey, GROQ_DEFAULT_MODEL, maxTokens, temperature, systemPrompt);
     }
     
     throw new Error(`Groq API error: ${response.status} ${errorText}`);
