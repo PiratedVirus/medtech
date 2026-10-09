@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
+import { cookies } from "next/headers";
+import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
 
 export async function GET(
@@ -176,6 +178,24 @@ export async function DELETE(
   { params }: { params: Promise<{ clinicId: string }> }
 ) {
   try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("superadmin_token")?.value;
+
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    let decoded: { role?: string };
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET!) as { role?: string };
+    } catch {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (decoded.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const resolvedParams = await params;
     const clinicId = parseInt(resolvedParams.clinicId);
     

@@ -16,8 +16,6 @@ import { normalizeStatus } from "@/lib/utils/status";
 import TotalEarningsCard from "@/components/admin/TotalEarningsCard";
 import { PlanUsageMinimal } from "@/components/patients/plans/PlanUsage";
 import { HealthInsightsPanel } from "@/components/admin/HealthInsightsPanel";
-import ProcessingProgressNotification from "@/components/common/ProcessingProgressNotification";
-import { useProcessingNotifications } from "@/hooks/useProcessingNotifications";
 import ConsolidatedUploadModal from "@/components/pathology/ConsolidatedUploadModal";
 
 // Icons
@@ -184,14 +182,6 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
   // React Query for cache invalidation
   const queryClient = useQueryClient();
   
-  // Use the same progress notification system as other uploads
-  const { 
-    processingNotifications, 
-    addProcessingNotification, 
-    removeProcessingNotification,
-    updateLabAnalysisNotification 
-  } = useProcessingNotifications();
-
   // Hooks
   const router = useRouter();
 
@@ -302,34 +292,6 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
     await fetchPatientDetails();
     
     setUploadModalOpen(false);
-    
-    // Create processing notifications for uploaded reports
-    const labBooking = patientDetails?.labBookings?.find(b => b.id === selectedLabBooking?.id);
-    if (labBooking?.reportAnalyses) {
-      labBooking.reportAnalyses.forEach((analysis: any, index: number) => {
-        addProcessingNotification({
-          title: `Lab Report ${index + 1}`,
-          type: 'lab-analysis',
-          stages: [
-            {
-              stage: 'Upload',
-              status: 'completed',
-              message: 'File uploaded successfully',
-              timestamp: new Date()
-            },
-            {
-              stage: 'Initializing',
-              status: 'processing',
-              message: 'Starting AI analysis...',
-              timestamp: new Date()
-            }
-          ],
-          overallStatus: 'processing',
-          reportId: selectedLabBooking?.id,
-          labResultIndex: analysis.labResultIndex
-        });
-      });
-    }
     setSelectedLabBooking(null);
     
     // Force a hard refresh after a delay to ensure all components get updated data
@@ -817,11 +779,6 @@ const PatientDetailsClient = ({ patientId }: PatientDetailsClientProps) => {
   return (
     <>
       <ToastContainer />
-      {/* Progress Notifications - Same component used by other upload operations */}
-      <ProcessingProgressNotification
-        notifications={processingNotifications}
-        onRemove={removeProcessingNotification}
-      />
       {/* Upload Modal - Same component used by pathology */}
       {selectedLabBooking && (
         <ConsolidatedUploadModal

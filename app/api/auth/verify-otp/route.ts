@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
       
       // Warm doctor caches in background (non-blocking)
       if (userRole === "DOCTOR" || userRole === "DIETICIAN") {
-        warmDoctorCaches(plusAddedPhoneNumber).catch((error) => {
+        warmDoctorCaches(userInThisClinic.id).catch((error) => {
           console.error("[AUTH] Cache warming failed (non-critical):", error);
         });
       }

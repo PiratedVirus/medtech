@@ -1,7 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import prisma from '@/lib/prisma';
 import * as jose from 'jose';
 import { generateSummary, extractValues } from '@/lib/llm/unified-service';
+import { tokenUserWhere } from "@/lib/clinic-auth";
+
+// OCR + LLM processing runs after the response via after(); allow it the full time budget
+export const maxDuration = 300;
 
 // Parse a DD/MM/YYYY or DD-MM-YYYY date string (with optional time) into a Date object
 function parseDMYDate(dateStr: string): Date | null {
@@ -155,21 +159,9 @@ async function getUserFromRequest(request: NextRequest) {
   const decoded = await verifyUserToken(token);
   if (!decoded) return null;
 
-  // Prefer userId from token so we resolve the same user as frontend profile (multi-clinic safe)
-  if (decoded.userId) {
-    const user = await prisma.user.findFirst({
-      where: { id: decoded.userId, deletedAt: null },
-      select: { id: true, name: true, role: true, phoneNumber: true },
-    });
-    return user;
-  }
-
-  // Fallback: resolve by phone (old tokens)
+  // Resolve by userId from token (phone + clinic for old tokens) - multi-clinic safe
   const user = await prisma.user.findFirst({
-    where: {
-      phoneNumber: decoded.plusAddedPhoneNumber,
-      deletedAt: null,
-    },
+    where: await tokenUserWhere(decoded),
     select: { id: true, name: true, role: true, phoneNumber: true },
   });
 
@@ -191,6 +183,7 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
         processingError: null
       }
     });
+    await prisma.standaloneReport.update({ where: { id: reportId }, data: { status: 'PROCESSING' } });
 
     // Get the report details
     const report = await prisma.standaloneReport.findUnique({
@@ -346,6 +339,13 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
           criticalValuesType: typeof criticalValues,
           criticalValuesLength: Array.isArray(criticalValues) ? criticalValues.length : 'not array'
         });
+
+        await prisma.standaloneReportAnalysis.updateMany({
+          where: { reportId, analysisType },
+          data: {
+            processingError: 'Stage 4: Detecting report date and preparing trend timeline...'
+          }
+        });
         
       } catch (valuesError) {
         console.error('Lab values extraction failed:', valuesError);
@@ -441,9 +441,19 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
       criticalValuesSample: Array.isArray(criticalValues) && criticalValues.length > 0 ? criticalValues[0] : 'none'
     });
     
-    // Determine the actual report date: prefer extracted date from report text, otherwise leave unset
-    const actualReportDate = extractedReportDate ? new Date(extractedReportDate) : null;
-    console.log(`[UPLOAD][${reportId}][DEBUG] Report date decision: extractedReportDate=${extractedReportDate ?? 'null'}, actualReportDate=${actualReportDate ? actualReportDate.toISOString() : 'NOT EXTRACTED'}`);
+    // Determine actual report date: prefer extracted date; fallback to upload timestamp
+    const actualReportDate = extractedReportDate ? new Date(extractedReportDate) : report.createdAt;
+    const usedFallbackDate = !extractedReportDate;
+    console.log(
+      `[UPLOAD][${reportId}][DEBUG] Report date decision: extractedReportDate=${extractedReportDate ?? 'null'}, actualReportDate=${actualReportDate.toISOString()}, usedFallbackDate=${usedFallbackDate}`
+    );
+
+    await prisma.standaloneReportAnalysis.updateMany({
+      where: { reportId, analysisType },
+      data: {
+        processingError: 'Stage 6: Saving analysis results...'
+      }
+    });
 
     await prisma.standaloneReportAnalysis.updateMany({
       where: { reportId, analysisType },
@@ -456,9 +466,12 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
         keyFindings,
         recommendations,
         urgency,
-        trendAnalysis: actualReportDate
-          ? { reportDate: actualReportDate.toISOString() }
-          : { reportDate: null },
+        trendAnalysis: {
+          reportDate: actualReportDate.toISOString(),
+          isFallbackDate: usedFallbackDate,
+          fallbackSource: usedFallbackDate ? 'UPLOAD_DATE' : null,
+          userCorrectedDate: false,
+        },
         llmModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
         processedAt: new Date(),
         processingError: null
@@ -466,7 +479,7 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
     });
     
     // Create trend data for standalone reports
-    if (analysisType === 'lab_analysis' && Array.isArray(allValues) && allValues.length > 0 && actualReportDate) {
+    if (analysisType === 'lab_analysis' && Array.isArray(allValues) && allValues.length > 0) {
       console.log(`[UPLOAD][${reportId}] Creating trend data for ${allValues.length} parameters`);
       
       try {
@@ -485,7 +498,7 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
                   severity: value.severity && ['LOW','NORMAL','HIGH','CRITICAL'].includes(String(value.severity).toUpperCase())
                     ? String(value.severity).toUpperCase() as 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'
                     : null,
-                  reportDate: actualReportDate, // Use date from report text, not upload date
+                  reportDate: actualReportDate, // Extracted report date, or upload date fallback
                   labBookingId: null,
                   standaloneReportId: reportId,
                   sourceReportId: null
@@ -503,6 +516,7 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
       }
     }
 
+    await prisma.standaloneReport.update({ where: { id: reportId }, data: { status: 'COMPLETED' } });
     console.log(`[UPLOAD] Successfully processed report ${reportId}`);
     console.log(`[UPLOAD][${reportId}] Database update completed with:`, {
       allValues: Array.isArray(allValues) ? allValues.length : 'not array',
@@ -512,14 +526,19 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
   } catch (error) {
     console.error(`[UPLOAD] Failed to process report ${reportId}:`, error);
     
-    // Update status to FAILED
-    await prisma.standaloneReportAnalysis.updateMany({
-      where: { reportId, analysisType },
-      data: { 
-        processingStatus: 'FAILED',
-        processingError: error instanceof Error ? error.message : 'Unknown error'
-      }
-    });
+    // Update status to FAILED (best effort - the DB itself may be what failed)
+    try {
+      await prisma.standaloneReportAnalysis.updateMany({
+        where: { reportId, analysisType },
+        data: { 
+          processingStatus: 'FAILED',
+          processingError: error instanceof Error ? error.message : 'Unknown error'
+        }
+      });
+      await prisma.standaloneReport.update({ where: { id: reportId }, data: { status: 'FAILED' } });
+    } catch (statusError) {
+      console.error(`[UPLOAD] Failed to mark report ${reportId} as FAILED:`, statusError);
+    }
     
     throw error;
   }
@@ -614,7 +633,7 @@ export async function POST(request: NextRequest) {
     try {
       const { put } = await import('@vercel/blob');
       const arrayBuffer = await file.arrayBuffer();
-      const fileName = `standalone-report-${Date.now()}-${file.name}`;
+      const fileName = file.name;
       
       console.log(`[UPLOAD][${requestId}] Uploading file: ${fileName} (${arrayBuffer.byteLength} bytes)`);
       
@@ -670,25 +689,14 @@ export async function POST(request: NextRequest) {
         siteUrl: process.env.NEXT_PUBLIC_SITE_URL
       });
       
-      try {
-        await triggerLLMProcessing(report.id, 'lab_analysis');
-        console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for report ${report.id}`);
-      } catch (error) {
-        console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for report ${report.id}:`, {
-          error,
-          message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined
-        });
-        
-        // Update the analysis record with the error
-        await prisma.standaloneReportAnalysis.updateMany({
-          where: { reportId: report.id, analysisType: 'lab_analysis' },
-          data: {
-            processingStatus: 'FAILED',
-            processingError: `LLM processing trigger failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-          }
-        });
-      }
+      // after(): Vercel freezes the function once the response is sent, so plain
+      // fire-and-forget work stalls until another request wakes the instance.
+      // triggerLLMProcessing marks the report FAILED itself on error.
+      after(() =>
+        triggerLLMProcessing(report.id, 'lab_analysis').catch((error) => {
+          console.error(`[UPLOAD][${requestId}] LLM processing failed for report ${report.id}:`, error);
+        })
+      );
     } else if (reportType === 'prescription') {
       console.log(`[UPLOAD][${requestId}] Creating prescription analysis record...`);
       await prisma.standaloneReportAnalysis.create({
@@ -701,12 +709,12 @@ export async function POST(request: NextRequest) {
 
       // Trigger automatic LLM processing for prescriptions
       console.log(`[UPLOAD][${requestId}] Triggering LLM processing for prescription ${report.id}...`);
-      try {
-        await triggerLLMProcessing(report.id, 'prescription_analysis');
-        console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for prescription ${report.id}`);
-      } catch (error) {
-        console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for prescription ${report.id}:`, error);
-      }
+      // Run after the response (see lab_report branch above)
+      after(() =>
+        triggerLLMProcessing(report.id, 'prescription_analysis').catch((error) => {
+          console.error(`[UPLOAD][${requestId}] LLM processing failed for prescription ${report.id}:`, error);
+        })
+      );
     } else {
       console.log(`[UPLOAD][${requestId}] Creating document summary analysis record...`);
       await prisma.standaloneReportAnalysis.create({
@@ -719,12 +727,12 @@ export async function POST(request: NextRequest) {
 
       // Trigger automatic LLM processing for medical documents
       console.log(`[UPLOAD][${requestId}] Triggering LLM processing for document ${report.id}...`);
-      try {
-        await triggerLLMProcessing(report.id, 'document_summary');
-        console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for document ${report.id}`);
-      } catch (error) {
-        console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for document ${report.id}:`, error);
-      }
+      // Run after the response (see lab_report branch above)
+      after(() =>
+        triggerLLMProcessing(report.id, 'document_summary').catch((error) => {
+          console.error(`[UPLOAD][${requestId}] LLM processing failed for document ${report.id}:`, error);
+        })
+      );
     }
 
     console.log(`[UPLOAD][${requestId}] Upload process completed successfully for report ${report.id}`);

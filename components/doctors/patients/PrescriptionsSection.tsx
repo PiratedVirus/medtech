@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Pill, Plus, Eye } from "lucide-react";
 import { useState } from "react";
+import { useParams } from "next/navigation";
+import { ensureDoctorPrefix } from "@/lib/utils";
+import PrescriptionUploadButton from "@/components/common/PrescriptionUploadButton";
 
 interface PrescriptionsSectionProps {
   appointments: Array<{
@@ -18,6 +21,8 @@ interface PrescriptionsSectionProps {
 export default function PrescriptionsSection({ appointments, patientName }: PrescriptionsSectionProps) {
   const [open, setOpen] = useState(false);
   const [showOnlyWithPrescription, setShowOnlyWithPrescription] = useState(false);
+  const params = useParams<{ patientId?: string }>();
+  const patientIdFromRoute = Number(params?.patientId || 0);
   const prescriptions = appointments?.filter(apt => apt.prescriptionLink) || [];
 
   const items = prescriptions.slice(0, 3);
@@ -58,7 +63,7 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
                 <div className="relative z-10">
                   <div className="flex items-center gap-3">
                     <h4 className="font-semibold text-white text-sm truncate flex-1">
-                      {prescription.doctorName ? `Prescription - Dr. ${prescription.doctorName}` : 'Prescription'}
+                      {prescription.doctorName ? `Prescription - ${ensureDoctorPrefix(prescription.doctorName)}` : 'Prescription'}
                     </h4>
                     <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full whitespace-nowrap">
                       {prescription.date ? new Date(prescription.date).toLocaleDateString('en-GB') : 'No date'}
@@ -111,7 +116,16 @@ export default function PrescriptionsSection({ appointments, patientName }: Pres
           <div className="relative z-10 w-[720px] max-w-[95vw] rounded-xl bg-white shadow-xl">
             <div className="flex items-center justify-between px-5 py-3 border-b">
               <h3 className="text-lg font-semibold">Select Appointment</h3>
-              <button className="text-gray-500 hover:text-gray-700" onClick={() => setOpen(false)} aria-label="Close">✕</button>
+              <div className="flex items-center gap-2">
+                {patientIdFromRoute > 0 && (
+                  <PrescriptionUploadButton
+                    patientId={patientIdFromRoute}
+                    variant="outline"
+                    size="sm"
+                  />
+                )}
+                <button className="text-gray-500 hover:text-gray-700" onClick={() => setOpen(false)} aria-label="Close">✕</button>
+              </div>
             </div>
             <div className="p-4 max-h-[70vh] overflow-y-auto">
               <ul className="divide-y">

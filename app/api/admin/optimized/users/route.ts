@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAdminClinicId, createClinicFilter } from "@/lib/admin-clinic-middleware";
+import { normalizeIndianPhoneNumber } from "@/lib/phone-number";
 
 // Optimized users API with better filtering and role count optimization
 export async function GET(request: NextRequest) {
@@ -122,10 +123,20 @@ export async function POST(request: Request) {
     } = data;
 
     // Create user with optimized query
+    let normalizedPhoneNumber: string;
+    try {
+      normalizedPhoneNumber = normalizeIndianPhoneNumber(phoneNumber);
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Invalid phone number" },
+        { status: 400 }
+      );
+    }
+
     const user = await prisma.user.create({
       data: {
         name,
-        phoneNumber,
+        phoneNumber: normalizedPhoneNumber,
         email,
         role,
         clinicId: clinicId || null,
@@ -159,6 +170,17 @@ export async function PUT(request: Request) {
 
     if (!id) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+    }
+
+    if (typeof updateData.phoneNumber === "string") {
+      try {
+        updateData.phoneNumber = normalizeIndianPhoneNumber(updateData.phoneNumber);
+      } catch (error) {
+        return NextResponse.json(
+          { error: error instanceof Error ? error.message : "Invalid phone number" },
+          { status: 400 }
+        );
+      }
     }
 
     const updatedUser = await prisma.user.update({

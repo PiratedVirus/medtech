@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import * as jose from 'jose';
 import { getCachedInsights } from "@/lib/data-cache";
 import { CacheEvents } from "@/lib/cache-events";
+import { tokenUserWhere } from "@/lib/clinic-auth";
 
 // JWT payload interface
 interface JWTPayload {
@@ -32,12 +33,8 @@ async function getUserFromRequest(request: NextRequest) {
   const decoded = await verifyUserToken(token);
   if (!decoded) return null;
   
-  // Get user from database using phone number from JWT
   const user = await prisma.user.findFirst({
-    where: { 
-      phoneNumber: decoded.plusAddedPhoneNumber,
-      deletedAt: null
-    },
+    where: await tokenUserWhere(decoded),
     select: { id: true, name: true, role: true, phoneNumber: true }
   });
   

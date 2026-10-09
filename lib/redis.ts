@@ -39,6 +39,11 @@ export const CACHE_KEYS = {
   DOCTOR_LIST: (clinicId: number) => `doctors:list:${clinicId}`,
   DOCTOR_AVAILABILITY: (doctorId: number) => `doctor:availability:${doctorId}`,
   DOCTOR_APPOINTMENTS: (doctorId: number) => `doctor:appointments:${doctorId}`,
+  // Doctor-scoped endpoint caches are keyed by user id, never phone number
+  // (the same phone can belong to different users in different clinics)
+  DOCTOR_SCOPED: (baseKey: string, userId: number, ...suffix: (string | number)[]) =>
+    [`${baseKey}:u${userId}`, ...suffix].join(':'),
+  DOCTOR_APPOINTMENTS_PATTERN: (userId: number) => `doctor:appointments:u${userId}:*`,
 } as const
 
 // Cache TTL (Time To Live) in seconds

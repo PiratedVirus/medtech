@@ -106,11 +106,15 @@ export default function SignInForm() {
   }, [step]);
 
   const handleOtpChange = (index: number, value: string) => {
-    if (value.length <= 1) {
+    // Allow only a single numeric digit per box
+    const sanitized = value.replace(/\D/g, "");
+    if (sanitized.length <= 1) {
       const newOtp = [...otp];
-      newOtp[index] = value;
+      newOtp[index] = sanitized;
       setOtp(newOtp);
-      if (value !== "" && index < 3) inputRefs[index + 1].current?.focus();
+      if (sanitized !== "" && index < 3) {
+        inputRefs[index + 1].current?.focus();
+      }
     }
   };
 
@@ -250,8 +254,8 @@ export default function SignInForm() {
   };
 
   return (
-    <div className={`flex items-center justify-center p-6 h-full bg-[#f9fafb]`}>
-      <div className="w-full max-w-[400px] space-y-16">
+  <div className="flex items-start md:items-center justify-center p-4 md:p-6 h-full bg-[#f9fafb] overflow-y-auto">
+      <div className="w-full max-w-[400px] space-y-10 md:space-y-16">
         {step === "signIn" ? (
           // **Sign In View**
           <div className="text-center">
@@ -331,7 +335,9 @@ export default function SignInForm() {
                 {[0, 1, 2, 3].map((index) => (
                   <Input
                     key={index}
-                    type="text"
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     maxLength={1}
                     value={otp[index]}
                     onChange={(e) => handleOtpChange(index, e.target.value)}

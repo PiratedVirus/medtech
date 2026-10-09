@@ -4,7 +4,7 @@
  */
 
 import { invalidateAllUserCaches, invalidateAllDoctorCaches } from './cache-invalidation';
-import { cacheUtils } from './redis';
+import { cacheUtils, CACHE_KEYS } from './redis';
 
 /**
  * Cache dependency mappings
@@ -149,7 +149,7 @@ export class SmartCacheInvalidation {
     
     // If doctor is involved, invalidate doctor appointment caches
     if (doctorId) {
-      await cacheUtils.invalidate(`doctor:appointments:${doctorId}`);
+      await cacheUtils.invalidate(CACHE_KEYS.DOCTOR_APPOINTMENTS_PATTERN(doctorId));
       console.log(`[SMART-CACHE] Invalidated doctor appointment cache for doctor ${doctorId}`);
     }
   }

@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, AlertCircle, Loader2, X, FileText, TrendingUp, Upload } from 'lucide-react';
 
@@ -87,16 +86,19 @@ export default function ProcessingProgressNotification({ notifications, onRemove
 
           <div className="space-y-2">
             {notification.stages.map((stage, index) => (
-              <div key={index} className="flex items-center gap-2 text-sm">
+              <div key={index} className="flex items-start gap-2 text-sm">
                 {getStageIcon(stage.status)}
-                <span className={`flex-1 ${
-                  stage.status === 'completed' ? 'text-green-700' :
-                  stage.status === 'failed' ? 'text-red-700' :
-                  stage.status === 'processing' ? 'text-blue-700' :
-                  'text-gray-500'
-                }`}>
-                  {stage.stage}
-                </span>
+                <div className="flex-1 min-w-0">
+                  <p className={`${
+                    stage.status === 'completed' ? 'text-green-700' :
+                    stage.status === 'failed' ? 'text-red-700' :
+                    stage.status === 'processing' ? 'text-blue-700' :
+                    'text-gray-500'
+                  }`}>
+                    {stage.stage}
+                  </p>
+                  <p className="text-xs text-gray-500">{stage.message}</p>
+                </div>
                 <span className="text-xs text-gray-400">
                   {stage.timestamp.toLocaleTimeString()}
                 </span>

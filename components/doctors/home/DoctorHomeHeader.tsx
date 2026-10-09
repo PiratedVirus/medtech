@@ -16,7 +16,6 @@ import { logoutUser } from "@/store/userSlice";
 import { useDecryptedProfile } from "@/hooks/use-centralized-profile";
 import { useRouter, usePathname } from "next/navigation";
 import type { AppDispatch } from "@/store";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -25,7 +24,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import NotificationBell from "@/components/notifications/NotificationBell";
-import { formatDisplayName, isDoctorName } from "@/lib/utils";
+import { formatDisplayName } from "@/lib/utils";
 
 const fullNavigation = [
   { name: "Home", href: "/doctor/home", current: true, icon: Home },
@@ -49,11 +48,20 @@ export default function DoctorHomeHeader() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const handleLogout = () => {
-    dispatch(logoutUser());
-    clearProfile(); // Clear the React Query cache and sessionStorage
-    // Force a page reload to ensure clean state
-    window.location.href = "/login";
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Logout API call failed:", error);
+    } finally {
+      dispatch(logoutUser());
+      clearProfile(); // Clear the React Query cache and sessionStorage
+      // Force a page reload to ensure clean state
+      window.location.href = "/login";
+    }
   };
 
   const navigationItems = fullNavigation.map((item) => ({
@@ -99,11 +107,9 @@ export default function DoctorHomeHeader() {
           {/* Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border border-border cursor-pointer ${
-                isDoctorName(profile?.name ?? "") ? "w-40" : "w-32"
-              }`}>
+              <div className="flex max-w-[280px] items-center gap-3 rounded-xl border border-border px-4 py-2 cursor-pointer">
                 <User className="h-6 w-6" />
-                <span className="text-sm text-foreground">
+                <span className="overflow-hidden text-ellipsis whitespace-nowrap text-sm text-foreground">
                   {formatDisplayName(profile?.name ?? "")}
                 </span>
               </div>
@@ -160,6 +166,10 @@ export default function DoctorHomeHeader() {
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleProfileClick}>
               Profile
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout}>
+              <span className="text-red-500">Logout</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

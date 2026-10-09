@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
+import { tokenUserWhere } from "@/lib/clinic-auth";
 
 // POST - Create new assignment
 export async function POST(request: Request) {
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
     const user = await prisma.user.findFirst({
-      where: { phoneNumber },
+      where: await tokenUserWhere(decoded),
     });
     if (!user || user.role !== "PATHOLOGY") {
       return new NextResponse("Unauthorized", { status: 401 });
@@ -242,7 +243,7 @@ export async function PUT(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
     const user = await prisma.user.findFirst({
-      where: { phoneNumber },
+      where: await tokenUserWhere(decoded),
     });
     if (!user || user.role !== "PATHOLOGY") {
       return new NextResponse("Unauthorized", { status: 401 });

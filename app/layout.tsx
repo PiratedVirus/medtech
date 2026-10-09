@@ -18,6 +18,7 @@ import NavigationProgress from '@/components/common/NavigationProgress';
 import MiddlewareProgressHandler from '@/components/common/MiddlewareProgressHandler';
 import SmartProgressBar from '@/components/common/SmartProgressBar';
 import { suppressExtensionErrors } from '@/lib/error-suppression';
+import { ReportUploadNotificationsProvider } from '@/hooks/context/ReportUploadNotificationsContext';
 
 const lato = Lato({
   subsets: ['latin'],
@@ -102,12 +103,14 @@ function ClientSideWrapper({ children }: { children: React.ReactNode }) {
       client={queryClient} 
       persistOptions={{ persister }}
     >
-      <ProgressProvider>
-        <NavigationProgress />
-        <MiddlewareProgressHandler />
-        <SmartProgressBar />
-        {children}
-      </ProgressProvider>
+      <ReportUploadNotificationsProvider>
+        <ProgressProvider>
+          <NavigationProgress />
+          <MiddlewareProgressHandler />
+          <SmartProgressBar />
+          {children}
+        </ProgressProvider>
+      </ReportUploadNotificationsProvider>
     </PersistQueryClientProvider>
   );
 }

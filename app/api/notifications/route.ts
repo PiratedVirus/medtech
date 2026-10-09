@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { getSubdomainClinicFromRequest } from '@/lib/clinic-auth';
+import { tokenUserWhere } from "@/lib/clinic-auth";
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,13 +44,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Find user by phone number
-    // If subdomain clinic ID is available, use it for more specific lookup
+    // Find user from token (userId; phone + clinic for old tokens)
     const user = await prisma.user.findFirst({
-      where: { 
-        phoneNumber,
-        ...(subdomainClinicId ? { clinicId: subdomainClinicId } : {}),
-      },
+      where: await tokenUserWhere(decoded),
     });
 
     if (!user) {
@@ -186,13 +183,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Find user by phone number
-    // If subdomain clinic ID is available, use it for more specific lookup
+    // Find user from token (userId; phone + clinic for old tokens)
     const user = await prisma.user.findFirst({
-      where: { 
-        phoneNumber,
-        ...(subdomainClinicId ? { clinicId: subdomainClinicId } : {}),
-      },
+      where: await tokenUserWhere(decoded),
     });
 
     if (!user) {
@@ -296,13 +289,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Find user by phone number
-    // If subdomain clinic ID is available, use it for more specific lookup
+    // Find user from token (userId; phone + clinic for old tokens)
     const user = await prisma.user.findFirst({
-      where: { 
-        phoneNumber,
-        ...(subdomainClinicId ? { clinicId: subdomainClinicId } : {}),
-      },
+      where: await tokenUserWhere(decoded),
     });
 
     if (!user) {

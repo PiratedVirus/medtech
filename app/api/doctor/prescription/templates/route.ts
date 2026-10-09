@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
+import { tokenUserWhere } from "@/lib/clinic-auth";
 
 // Helper to get doctorId from JWT
 async function getDoctorIdFromRequest() {
@@ -17,7 +18,7 @@ async function getDoctorIdFromRequest() {
   const phoneNumber = decoded.plusAddedPhoneNumber as string | undefined;
   if (!phoneNumber) return null;
   const user = await prisma.user.findFirst({
-    where: { phoneNumber },
+    where: await tokenUserWhere(decoded),
     include: { doctorProfile: true },
   });
   if (!user?.doctorProfile?.id) return null;

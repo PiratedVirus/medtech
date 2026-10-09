@@ -87,13 +87,13 @@ export async function processLabReportWithLLM(
     // STAGE 1: Update Status to PROCESSING
     // ============================================
     await updateProcessingStatus(context, 'PROCESSING', null);
-    await updateProgressIfAvailable(updateProgress, 'Stage 1: Initializing...');
+    await updateProgressIfAvailable(updateProgress, 'Stage 1: Upload complete, starting analysis...');
 
     // ============================================
     // STAGE 2: Extract Text from PDF (OCR)
     // ============================================
     console.log(`[UNIFIED-LLM][${requestId}] Stage 2: Starting OCR text extraction`);
-    await updateProgressIfAvailable(updateProgress, 'Stage 2: Extracting text from PDF...');
+    await updateProgressIfAvailable(updateProgress, 'Stage 2: OCR started - extracting text from report...');
 
     try {
       extractedText = await extractOcrText(pdfUrl);
@@ -104,7 +104,7 @@ export async function processLabReportWithLLM(
 
       // Save extracted text to database
       await updateExtractedText(context, extractedText);
-      await updateProgressIfAvailable(updateProgress, 'Stage 2: Text extraction completed');
+      await updateProgressIfAvailable(updateProgress, 'Stage 2: OCR complete - text extraction finished');
 
       console.log(`[UNIFIED-LLM][${requestId}] Stage 2: OCR completed (${extractedText.length} characters)`);
     } catch (ocrError) {
@@ -129,7 +129,7 @@ export async function processLabReportWithLLM(
     // STAGE 4: Retrieve Results from Database
     // ============================================
     console.log(`[UNIFIED-LLM][${requestId}] Stage 4: Retrieving final results from database`);
-    await updateProgressIfAvailable(updateProgress, 'Stage 4: Finalizing results...');
+    await updateProgressIfAvailable(updateProgress, 'Stage 4: Detecting report date and preparing trend context...');
 
     const finalResults = await getFinalResults(context);
     llmSummary = finalResults.llmSummary || '';
@@ -144,10 +144,10 @@ export async function processLabReportWithLLM(
     // ============================================
     if (analysisType === 'lab_analysis' && !skipTrendData && allValues.length > 0) {
       console.log(`[UNIFIED-LLM][${requestId}] Stage 5: Creating trend data for ${allValues.length} parameters`);
-      await updateProgressIfAvailable(updateProgress, 'Stage 5: Creating trend data...');
+      await updateProgressIfAvailable(updateProgress, 'Stage 5: Building trend timeline from extracted values...');
 
       try {
-        await createTrendData(context, allValues, criticalValues);
+        await createTrendData(context, allValues);
         console.log(`[UNIFIED-LLM][${requestId}] Stage 5: Trend data creation completed`);
       } catch (trendError) {
         // Don't fail the entire process if trend data creation fails
@@ -158,8 +158,9 @@ export async function processLabReportWithLLM(
     // ============================================
     // STAGE 6: Final Status Update
     // ============================================
+    await updateProgressIfAvailable(updateProgress, 'Stage 6: Saving analysis and trend results...');
     await updateProcessingStatus(context, 'COMPLETED', null);
-    await updateProgressIfAvailable(updateProgress, 'Processing completed successfully!');
+    await updateProgressIfAvailable(updateProgress, 'Completed: Analysis and trends are ready.');
 
     console.log(`[UNIFIED-LLM][${requestId}] Processing completed successfully`);
     console.log(`[UNIFIED-LLM][${requestId}] Results:`, {
@@ -222,7 +223,7 @@ async function processLabAnalysis(
 
   // Stage 3a: Generate Summary
   console.log(`[UNIFIED-LLM][${requestId}] Stage 3a: Generating summary`);
-  await updateProgressIfAvailable(updateProgress, 'Stage 3a: Generating AI summary...');
+  await updateProgressIfAvailable(updateProgress, 'Stage 3a: Understanding OCR content and generating summary...');
 
   try {
     const summaryResult = await generateSummary(extractedText, groqApiKey);
@@ -235,7 +236,7 @@ async function processLabAnalysis(
     });
 
     console.log(`[UNIFIED-LLM][${requestId}] Stage 3a: Summary generation completed`);
-    await updateProgressIfAvailable(updateProgress, 'Stage 3a: Summary generated');
+    await updateProgressIfAvailable(updateProgress, 'Stage 3a: Clinical summary generated');
   } catch (summaryError) {
     const errorMsg = summaryError instanceof Error ? summaryError.message : 'Unknown error';
     console.error(`[UNIFIED-LLM][${requestId}] Stage 3a failed:`, errorMsg);
@@ -245,7 +246,7 @@ async function processLabAnalysis(
 
   // Stage 3b: Extract Lab Values
   console.log(`[UNIFIED-LLM][${requestId}] Stage 3b: Extracting lab values`);
-  await updateProgressIfAvailable(updateProgress, 'Stage 3b: Extracting lab values...');
+  await updateProgressIfAvailable(updateProgress, 'Stage 3b: Extracting lab parameters and abnormal values...');
 
   try {
     const valuesResult = await extractValues(extractedText, groqApiKey);
@@ -286,7 +287,7 @@ async function processLabAnalysis(
     });
 
     console.log(`[UNIFIED-LLM][${requestId}] Stage 3b: Values extraction completed (${valuesResult.allValues?.length || 0} total, ${finalCriticalValues.length} critical). Report date: ${actualReportDate ? actualReportDate.toISOString() : 'NOT EXTRACTED'}`);
-    await updateProgressIfAvailable(updateProgress, 'Stage 3b: Lab values extracted');
+    await updateProgressIfAvailable(updateProgress, 'Stage 3b: Lab parameter extraction completed');
   } catch (valuesError) {
     const errorMsg = valuesError instanceof Error ? valuesError.message : 'Unknown error';
     console.error(`[UNIFIED-LLM][${requestId}] Stage 3b failed:`, errorMsg);
@@ -565,17 +566,25 @@ async function getFinalResults(context: LabReportProcessingContext): Promise<{
  */
 async function createTrendData(
   context: LabReportProcessingContext,
-  allValues: any[],
-  criticalValues: any[]
+  allValues: any[]
 ) {
   const reportDate = context.reportDate;
   if (!reportDate) {
     console.warn('[UNIFIED-LLM] Skipping trend data creation: reportDate not available');
     return;
   }
-  const valuesToProcess = criticalValues.length > 0 ? criticalValues : allValues;
 
-  for (const value of valuesToProcess) {
+  if (context.reportType === 'labBooking' && context.labReportAnalysisId) {
+    await prisma.reportTrendData.deleteMany({
+      where: { sourceReportId: context.labReportAnalysisId }
+    });
+  } else if (context.reportType === 'standalone' && context.standaloneReportId) {
+    await prisma.reportTrendData.deleteMany({
+      where: { standaloneReportId: context.standaloneReportId }
+    });
+  }
+
+  for (const value of allValues) {
     if (!value.parameter || !value.value) continue;
 
     try {

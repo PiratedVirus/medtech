@@ -2,6 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireUserAuth, handleAuthError } from "@/lib/clinic-auth";
 
+// Transaction client for the app's extended Prisma client
+type TxClient = Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">;
+
+// Medicine duration is stored as text, but voice/LLM input sends numbers (e.g. 30)
+function toDurationString(duration: unknown): string | null {
+  if (duration === null || duration === undefined || duration === "") return null;
+  return String(duration);
+}
+
+/**
+ * Save medical history on the patient's profile.
+ * Patients created from the admin panel have no PatientProfile, so create a minimal
+ * one (age/gender are required columns) only when there is history worth saving.
+ */
+async function saveMedicalHistory(tx: TxClient, patientId: number, medicalHistory: any) {
+  const data = {
+    allergies: medicalHistory.allergies || null,
+    personalHistory: medicalHistory.personalHistory || null,
+    pastMedicalHistory: medicalHistory.pastMedicalHistory || null,
+    familyHistory: medicalHistory.familyHistory || null,
+  };
+
+  const existing = await tx.patientProfile.findUnique({ where: { userId: patientId }, select: { id: true } });
+  if (existing) {
+    await tx.patientProfile.update({ where: { userId: patientId }, data });
+    return;
+  }
+
+  if (Object.values(data).some(Boolean)) {
+    await tx.patientProfile.create({ data: { userId: patientId, age: 0, gender: "", ...data } });
+  }
+}
+
 // GET: Fetch prescription by appointment ID
 export async function GET(request: NextRequest) {
   try {
@@ -198,7 +231,7 @@ export async function POST(request: Request) {
             medicineName: medicine.name,
             frequency: medicine.frequency,
             medicineTime: medicine.medicineTime,
-            duration: medicine.duration,
+            duration: toDurationString(medicine.duration),
             quantity: medicine.quantity ? parseInt(medicine.quantity) : null,
             instructions: medicine.instructions,
           })),
@@ -207,15 +240,7 @@ export async function POST(request: Request) {
 
       // Update patient profile with medical history if provided
       if (medicalHistory) {
-        await tx.patientProfile.update({
-          where: { userId: parseInt(patientId) },
-          data: {
-            allergies: medicalHistory.allergies || null,
-            personalHistory: medicalHistory.personalHistory || null,
-            pastMedicalHistory: medicalHistory.pastMedicalHistory || null,
-            familyHistory: medicalHistory.familyHistory || null,
-          },
-        });
+        await saveMedicalHistory(tx, parseInt(patientId), medicalHistory);
       }
 
       return newPrescription;
@@ -439,7 +464,7 @@ export async function PUT(request: Request) {
               medicineName: medicine.name || "",
               frequency: medicine.frequency || null,
               medicineTime: medicine.medicineTime || null,
-              duration: medicine.duration || null,
+              duration: toDurationString(medicine.duration),
               quantity: safeParseInt(medicine.quantity),
               instructions: medicine.instructions || null,
             })),
@@ -449,15 +474,7 @@ export async function PUT(request: Request) {
 
       // Update patient profile with medical history if provided
       if (medicalHistory) {
-        await tx.patientProfile.update({
-          where: { userId: updatedPrescription.patientId },
-          data: {
-            allergies: medicalHistory.allergies || null,
-            personalHistory: medicalHistory.personalHistory || null,
-            pastMedicalHistory: medicalHistory.pastMedicalHistory || null,
-            familyHistory: medicalHistory.familyHistory || null,
-          },
-        });
+        await saveMedicalHistory(tx, updatedPrescription.patientId, medicalHistory);
       }
 
       return updatedPrescription;

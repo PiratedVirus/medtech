@@ -88,11 +88,29 @@ const formatReportDate = (value?: string | null) => {
 };
 
 const getLabReportDate = (report: any, resultIndex?: number) => {
-  const analyses = report?.reportAnalyses || report?.analyses || [];
-  const analysis = typeof resultIndex === 'number'
-    ? analyses.find((item: any) => item?.labResultIndex === resultIndex)
-    : analyses.find((item: any) => item?.trendAnalysis?.reportDate);
-  return analysis?.trendAnalysis?.reportDate || null;
+  if (!report) return null;
+
+  const analyses: any[] = report.reportAnalyses || report.analyses || [];
+
+  if (analyses.length === 0) return null;
+
+  // Only use dates that were actually extracted into trendAnalysis.reportDate.
+  // Do NOT silently fall back to booking dates – UI should show "-" when
+  // no OCR/LLM report date is available.
+  const analysis =
+    typeof resultIndex === 'number'
+      ? analyses.find((item: any) => item?.labResultIndex === resultIndex && item?.trendAnalysis?.reportDate)
+      : analyses.find((item: any) => item?.trendAnalysis?.reportDate);
+
+  const trendDate = (analysis?.trendAnalysis as any)?.reportDate as string | undefined;
+  return trendDate ?? null;
+};
+
+const getLabReportResultUrls = (report: LabReport) => {
+  return ((report as any).reports?.map((r: any) => r.pdfUrl).filter(Boolean)
+    || report.labResult
+    || report.reportLink
+    || []) as string[];
 };
 
 interface LabReportAnalysis {
@@ -143,11 +161,12 @@ export default function UnifiedAnalysisModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showAllValues, setShowAllValues] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [correctedReportDate, setCorrectedReportDate] = useState('');
+  const [updatingReportDate, setUpdatingReportDate] = useState(false);
   const [activeTab, setActiveTab] = useState<'lab-reports' | 'standalone-reports'>('lab-reports');
   const [showFailedReports, setShowFailedReports] = useState(false);
 
   const selectedReport = labReports.find(r => r.id === selectedReportId);
-  const selectedStandaloneReport = standaloneReports.find(r => r.id === selectedStandaloneReportId);
 
   // Fetch standalone reports if not provided
   const [fetchedStandaloneReports, setFetchedStandaloneReports] = useState<StandaloneReport[]>([]);
@@ -174,11 +193,18 @@ export default function UnifiedAnalysisModal({
 
   // Use provided standalone reports or fetched ones
   const allStandaloneReports = standaloneReports.length > 0 ? standaloneReports : fetchedStandaloneReports;
+  const selectedStandaloneReport = allStandaloneReports.find(r => r.id === selectedStandaloneReportId);
+  const selectedTrendAnalysis = (selectedStandaloneReport?.reportAnalyses?.[0]?.trendAnalysis as any) || {};
+  const isFallbackReportDate = Boolean(selectedTrendAnalysis?.isFallbackDate);
   
   // Filter reports based on showFailedReports state
-  const filteredLabReports = showFailedReports 
-    ? labReports 
-    : labReports.filter(report => report.status !== 'FAILED');
+  const filteredLabReports = showFailedReports
+    ? labReports
+    : labReports.filter((report) => {
+        const isFailed = report.status === 'FAILED';
+        const hasNoResults = getLabReportResultUrls(report).length === 0;
+        return !isFailed && !hasNoResults;
+      });
   
   const filteredStandaloneReports = showFailedReports
     ? allStandaloneReports
@@ -188,6 +214,22 @@ export default function UnifiedAnalysisModal({
         );
         return !hasFailedAnalysis;
       });
+
+  useEffect(() => {
+    const reportDateRaw = selectedTrendAnalysis?.reportDate as string | undefined;
+    if (!reportDateRaw) {
+      setCorrectedReportDate('');
+      return;
+    }
+
+    const parsed = new Date(reportDateRaw);
+    if (Number.isNaN(parsed.getTime())) {
+      setCorrectedReportDate('');
+      return;
+    }
+
+    setCorrectedReportDate(parsed.toISOString().slice(0, 10));
+  }, [selectedStandaloneReportId, selectedTrendAnalysis?.reportDate]);
 
   // Handle pre-selection when modal opens (standalone report)
   useEffect(() => {
@@ -386,6 +428,38 @@ export default function UnifiedAnalysisModal({
     }
   };
 
+  const handleCorrectReportDate = async () => {
+    if (!selectedStandaloneReportId || !correctedReportDate) {
+      toast.error('Please select a valid report date');
+      return;
+    }
+
+    try {
+      setUpdatingReportDate(true);
+      const response = await fetch('/api/reports/upload/report-date', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reportId: selectedStandaloneReportId,
+          reportDate: correctedReportDate,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update report date');
+      }
+
+      toast.success('Report date updated and trends rebuilt');
+      await fetchStandaloneReports();
+    } catch (error) {
+      console.error('Error updating report date:', error);
+      toast.error((error as Error).message || 'Failed to update report date');
+    } finally {
+      setUpdatingReportDate(false);
+    }
+  };
+
   const retryAnalysis = async (reportId: number, labResultIndex: number = 0) => {
     if (isProcessing) {
       console.log('[UI][RETRY] Already processing, ignoring retry');
@@ -547,10 +621,10 @@ export default function UnifiedAnalysisModal({
               {activeTab === 'lab-reports' ? (
               filteredLabReports.map((report) => {
               // Support both shapes: reportLink/labResult (URL arrays) or reports (from /api/labs)
-              const results = (report as any).reports?.map((r: any) => r.pdfUrl).filter(Boolean)
-                || report.labResult || report.reportLink || [];
+              const results = getLabReportResultUrls(report);
               const displayName = report.labPackageName ?? (report as any).resultName ?? 'Lab Report';
               const displayDate = getLabReportDate(report);
+              const hasOcrDate = Boolean(displayDate);
               
               if (results.length === 0) {
                 // No results available
@@ -564,7 +638,14 @@ export default function UnifiedAnalysisModal({
                         <span className="relative z-10 inline-flex items-center gap-2">
                           <FileText className="h-4 w-4 text-gray-400" />
                           <span className="font-semibold">{displayName}</span>
-                          <span className="ml-2 text-xs rounded-full px-2 py-0.5 bg-gray-200 text-gray-500">
+                          <span
+                            className="ml-2 text-xs rounded-full px-2 py-0.5 bg-gray-200 text-gray-500"
+                            title={
+                              hasOcrDate
+                                ? 'Report date detected from report content.'
+                                : 'Report date could not be detected from report content. Trends may be using the lab booking date as a fallback.'
+                            }
+                          >
                             {formatReportDate(displayDate)}
                           </span>
                         </span>
@@ -601,7 +682,14 @@ export default function UnifiedAnalysisModal({
                         <span className="relative z-10 inline-flex items-center gap-2">
                           <FileText className={`h-4 w-4 ${isActive ? 'text-sky-600' : 'text-sky-700'}`} />
                           <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>{displayName}</span>
-                          <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
+                          <span
+                            className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}
+                            title={
+                              hasOcrDate
+                                ? 'Report date detected from report content.'
+                                : 'Report date could not be detected from report content. Trends may be using the lab booking date as a fallback.'
+                            }
+                          >
                             {formatReportDate(displayDate)}
                           </span>
                         </span>
@@ -616,6 +704,7 @@ export default function UnifiedAnalysisModal({
                 const resultId = `${report.id}-${index}`;
                 const isActive = selectedReportId === report.id && selectedLabResultIndex === index;
                 const resultDate = getLabReportDate(report, index);
+                const hasOcrDate = Boolean(resultDate);
                 return (
                   <CarouselItem key={resultId} className="pl-2 basis-auto">
                     <div className="relative">
@@ -642,7 +731,14 @@ export default function UnifiedAnalysisModal({
                           <span className={`font-semibold ${isActive ? 'text-sky-600' : 'text-gray-700'}`}>
                             {displayName}-{index + 1}
                           </span>
-                          <span className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}>
+                          <span
+                            className={`ml-2 text-xs rounded-full px-2 py-0.5 ${isActive ? 'bg-blue-100 text-sky-700 border border-sky-200' : 'bg-blue-100 text-blue-700'}`}
+                            title={
+                              hasOcrDate
+                                ? 'Report date detected from report content.'
+                                : 'Report date could not be detected from report content. Trends may be using the lab booking date as a fallback.'
+                            }
+                          >
                             {formatReportDate(resultDate)}
                           </span>
                         </span>
@@ -825,6 +921,12 @@ export default function UnifiedAnalysisModal({
                             <span className="text-xs text-gray-600">
                               Report Date: {formatReportDate((selectedStandaloneReport.reportAnalyses?.[0]?.trendAnalysis as any)?.reportDate)}
                             </span>
+                            {isFallbackReportDate && (
+                              <Badge className="bg-amber-100 text-amber-800 border border-amber-200">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Fallback: upload date
+                              </Badge>
+                            )}
                             {selectedStandaloneReport.fileUrl && (
                               <Button
                                 variant="outline"
@@ -840,6 +942,32 @@ export default function UnifiedAnalysisModal({
                         )}
                       </div>
                     </div>
+
+                    {selectedStandaloneReport && isFallbackReportDate && (
+                      <div className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50">
+                        <p className="text-sm text-amber-900 mb-2">
+                          Exact report date could not be detected. Trends currently use upload date.
+                        </p>
+                        <div className="flex items-end gap-2">
+                          <div>
+                            <label className="text-xs text-amber-900">Set accurate report date</label>
+                            <Input
+                              type="date"
+                              value={correctedReportDate}
+                              onChange={(e) => setCorrectedReportDate(e.target.value)}
+                              className="bg-white"
+                            />
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={handleCorrectReportDate}
+                            disabled={updatingReportDate || !correctedReportDate}
+                          >
+                            {updatingReportDate ? 'Saving...' : 'Save Date'}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     
                     {analysis?.llmSummary ? (
                       <p className="text-gray-700 leading-relaxed text-justify whitespace-pre-wrap bg-white/60 rounded-lg p-4 border border-blue-100/50">

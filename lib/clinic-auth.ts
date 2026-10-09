@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers, cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { extractSubdomain } from '@/lib/subdomain-utils';
 
 // =============================================================================
@@ -126,6 +127,28 @@ export async function getSubdomainClinicFromRequest(request: NextRequest): Promi
 // =============================================================================
 
 /**
+ * Build the Prisma `where` clause that identifies the user behind a token.
+ *
+ * MULTI-TENANCY: The same phone number can belong to different users in different
+ * clinics (e.g. DOCTOR in one clinic, PATIENT in another), so never look a user up
+ * by phone alone. New tokens carry userId; old tokens fall back to phone + clinic.
+ */
+export async function tokenUserWhere(decoded: TokenPayload): Promise<Prisma.UserWhereInput> {
+  if (decoded.userId) {
+    return { id: decoded.userId, deletedAt: null };
+  }
+
+  const { clinicId: subdomainClinicId } = await getSubdomainClinic();
+  const clinicIdForLookup = subdomainClinicId || decoded.clinicId;
+
+  return {
+    phoneNumber: decoded.plusAddedPhoneNumber,
+    ...(clinicIdForLookup ? { clinicId: clinicIdForLookup } : {}),
+    deletedAt: null,
+  };
+}
+
+/**
  * Verify user token from cookies and validate clinic access
  * This is the PRIMARY function for authenticating user API requests
  * 
@@ -158,9 +181,6 @@ export async function requireUserAuth(): Promise<ClinicAuthResult> {
     }
 
     const phoneNumber = decoded.plusAddedPhoneNumber;
-    const tokenUserId = decoded.userId;
-    const tokenClinicId = decoded.clinicId;
-
     if (!phoneNumber) {
       return {
         success: false,
@@ -169,49 +189,17 @@ export async function requireUserAuth(): Promise<ClinicAuthResult> {
       };
     }
 
-    // Get subdomain clinic FIRST (needed for user lookup in multi-clinic scenario)
-    const { clinicId: subdomainClinicId } = await getSubdomainClinic();
-
-    // MULTI-TENANCY: Get user from database
-    // Priority 1: Use userId from token if available (new tokens)
-    // Priority 2: Use phoneNumber + clinicId (for backward compatibility with old tokens)
-    let user;
-    
-    if (tokenUserId) {
-      // New tokens have userId - use it directly
-      user = await prisma.user.findFirst({
-        where: { 
-          id: tokenUserId,
-          deletedAt: null
-        },
-        select: {
-          id: true,
-          clinicId: true,
-          role: true,
-          status: true,
-          phoneNumber: true
-        }
-      });
-    } else {
-      // Old tokens - use phoneNumber + clinicId for lookup
-      // If subdomainClinicId is set, use it for more specific lookup
-      const clinicIdForLookup = subdomainClinicId || tokenClinicId;
-      
-      user = await prisma.user.findFirst({
-        where: { 
-          phoneNumber,
-          ...(clinicIdForLookup ? { clinicId: clinicIdForLookup } : {}),
-          deletedAt: null
-        },
-        select: {
-          id: true,
-          clinicId: true,
-          role: true,
-          status: true,
-          phoneNumber: true
-        }
-      });
-    }
+    // MULTI-TENANCY: Get user from database (userId from token, phone + clinic for old tokens)
+    const user = await prisma.user.findFirst({
+      where: await tokenUserWhere(decoded),
+      select: {
+        id: true,
+        clinicId: true,
+        role: true,
+        status: true,
+        phoneNumber: true
+      }
+    });
 
     if (!user) {
       return {
@@ -230,6 +218,7 @@ export async function requireUserAuth(): Promise<ClinicAuthResult> {
     }
 
     // Validate clinic access - user's clinic must match subdomain clinic
+    const { clinicId: subdomainClinicId } = await getSubdomainClinic();
     const clinicValidation = validateClinicAccess(user.clinicId, user.role, subdomainClinicId);
     
     if (!clinicValidation.allowed) {

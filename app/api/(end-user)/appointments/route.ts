@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getCachedAppointments, invalidateAppointmentsCache } from "@/lib/data-cache";
 import { AppointmentStatus, ConsultationType } from "@/lib/constants/enums";
 import { SmartCacheInvalidation } from "@/lib/cache-dependencies";
+import { NotificationService } from "@/lib/notification-service";
 
 /**
  * GET /api/appointments
@@ -337,13 +338,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // ✅ CACHE WARMING: Warm the new appointment cache for doctor (non-blocking)
-    import('@/lib/cache-warming').then(({ warmAppointmentCache }) => {
-      warmAppointmentCache(newAppointment.id, doctorId).catch((error) => {
-        console.error('[APPOINTMENT] Cache warming failed (non-critical):', error);
-      });
-    }).catch(() => {
-      // Silently fail if import fails
+    // Send appointment confirmation push + in-app notification to patient (non-blocking)
+    NotificationService.sendAppointmentConfirmed(newAppointment.id).catch((error) => {
+      console.error('[APPOINTMENT] Failed to send appointment confirmation notification:', error);
     });
 
     return NextResponse.json({ success: true, data: newAppointment });

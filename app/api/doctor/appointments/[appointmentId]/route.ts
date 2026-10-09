@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
 import { withUnifiedCache, getCacheConfig } from "@/lib/cache-middleware-unified";
+import { tokenUserWhere } from "@/lib/clinic-auth";
 
 const getAppointmentHandler = async (
   request: NextRequest,
@@ -40,7 +41,7 @@ const getAppointmentHandler = async (
     }
 
     const user = await prisma.user.findFirst({
-      where: { phoneNumber },
+      where: await tokenUserWhere(decoded),
       include: { doctorProfile: true },
     });
 

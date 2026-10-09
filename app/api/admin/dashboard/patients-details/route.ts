@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { normalizeStatus, normalizeLabAssignmentStatus } from "@/lib/utils/status";
 import { getAdminClinicId, createClinicFilter } from "@/lib/admin-clinic-middleware";
+import { deleteLabBookingReportCascade } from "@/lib/lab-report-cascade";
 
 export async function GET(request: NextRequest) {
   try {
@@ -332,5 +333,42 @@ export async function PUT(request: Request) {
   } catch (error) {
     console.error("Lab report upload error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+    const { labBookingId, labResultIndex } = body;
+
+    const bookingId = Number(labBookingId);
+    const resultIndex = Number(labResultIndex);
+
+    if (!Number.isInteger(bookingId) || bookingId <= 0) {
+      return NextResponse.json({ error: "Valid labBookingId is required" }, { status: 400 });
+    }
+
+    if (!Number.isInteger(resultIndex) || resultIndex < 0) {
+      return NextResponse.json({ error: "Valid labResultIndex is required" }, { status: 400 });
+    }
+
+    const cascadeResult = await deleteLabBookingReportCascade(bookingId, resultIndex);
+
+    return NextResponse.json({
+      success: true,
+      message: "Report deleted successfully with cascade cleanup",
+      data: {
+        id: bookingId,
+        status: cascadeResult.status,
+        labResult: cascadeResult.updatedLabResult,
+      },
+      removedReportUrl: cascadeResult.removedReportUrl,
+    });
+  } catch (error) {
+    console.error("Lab report delete error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to delete lab report" },
+      { status: 500 }
+    );
   }
 }

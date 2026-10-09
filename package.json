@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development NODE_OPTIONS='--inspect' next dev",
     "local-dev": "cross-env NODE_ENV=development NEXT_CONFIG=dev NODE_OPTIONS='--inspect' next dev",
+    "prebuild": "node scripts/check-phone-lookups.js",
     "build": "cross-env NODE_OPTIONS='--max-old-space-size=8192' NODE_ENV=production prisma generate && next build --no-lint",
     "build:analyze": "cross-env NODE_ENV=production ANALYZE=true NODE_OPTIONS='--max-old-space-size=8192' prisma generate && next build --no-lint",
     "start": "cross-env NODE_ENV=production next start",

@@ -5,18 +5,16 @@
 
 import { cacheUtils, CACHE_KEYS, CACHE_TTL } from './redis';
 import prisma from './prisma';
-import jwt from 'jsonwebtoken';
-import { cookies } from 'next/headers';
 
 /**
  * Warm doctor-specific caches after login
  * This pre-populates commonly accessed data to avoid cache misses
  */
-export async function warmDoctorCaches(phoneNumber: string): Promise<void> {
+export async function warmDoctorCaches(userId: number): Promise<void> {
   try {
-    // Get doctor user
+    // Get doctor user (by id - the same phone can belong to users in other clinics)
     const user = await prisma.user.findFirst({
-      where: { phoneNumber },
+      where: { id: userId, deletedAt: null },
       include: { doctorProfile: true },
     });
 
@@ -25,13 +23,12 @@ export async function warmDoctorCaches(phoneNumber: string): Promise<void> {
     }
 
     const doctorId = user.id;
-    const cacheKeyPrefix = `${phoneNumber}`;
 
     // Warm caches in parallel (non-blocking)
     Promise.all([
-      warmDoctorAppointments(doctorId, cacheKeyPrefix),
-      warmDoctorClinicInfo(user, cacheKeyPrefix),
-      warmDoctorEarnings(doctorId, cacheKeyPrefix),
+      warmDoctorAppointments(doctorId),
+      warmDoctorClinicInfo(user),
+      warmDoctorEarnings(doctorId),
     ]).catch((error) => {
       console.error('[CACHE-WARMING] Error warming doctor caches:', error);
       // Don't throw - cache warming is best effort
@@ -45,7 +42,7 @@ export async function warmDoctorCaches(phoneNumber: string): Promise<void> {
 /**
  * Warm doctor appointments cache
  */
-async function warmDoctorAppointments(doctorId: number, cacheKeyPrefix: string): Promise<void> {
+async function warmDoctorAppointments(doctorId: number): Promise<void> {
   try {
     const now = new Date();
     
@@ -129,18 +126,12 @@ async function warmDoctorAppointments(doctorId: number, cacheKeyPrefix: string):
     const upcomingEnriched = enrichAppointments(upcoming);
     const pastEnriched = enrichAppointments(past);
 
-    // Cache the appointments/all response (using phoneNumber as identifier)
-    const cacheKey = `doctor:appointments:${cacheKeyPrefix}`;
+    // Cache the appointments/all response
+    const cacheKey = CACHE_KEYS.DOCTOR_SCOPED('doctor:appointments', doctorId, 'all');
     await cacheUtils.set(cacheKey, {
       upcoming: upcomingEnriched,
       past: pastEnriched,
     }, CACHE_TTL.DOCTOR_APPOINTMENTS);
-
-    // Also warm individual appointment caches (for top 5 upcoming)
-    for (const appt of upcomingEnriched.slice(0, 5)) {
-      const individualCacheKey = `doctor:appointments:${appt.id}`;
-      await cacheUtils.set(individualCacheKey, appt, CACHE_TTL.DOCTOR_APPOINTMENTS);
-    }
 
     console.log(`[CACHE-WARMING] Warmed appointments cache for doctor ${doctorId}`);
   } catch (error) {
@@ -151,7 +142,7 @@ async function warmDoctorAppointments(doctorId: number, cacheKeyPrefix: string):
 /**
  * Warm doctor clinic info cache
  */
-async function warmDoctorClinicInfo(user: any, cacheKeyPrefix: string): Promise<void> {
+async function warmDoctorClinicInfo(user: any): Promise<void> {
   try {
     if (!user.clinicId) return;
 
@@ -170,7 +161,7 @@ async function warmDoctorClinicInfo(user: any, cacheKeyPrefix: string): Promise<
     });
 
     if (clinic) {
-      const cacheKey = `doctor:clinic-info:${cacheKeyPrefix}`;
+      const cacheKey = CACHE_KEYS.DOCTOR_SCOPED('doctor:clinic-info', user.id);
       await cacheUtils.set(cacheKey, { clinic }, CACHE_TTL.DOCTOR_PROFILE);
       console.log(`[CACHE-WARMING] Warmed clinic info cache for doctor ${user.id}`);
     }
@@ -182,7 +173,7 @@ async function warmDoctorClinicInfo(user: any, cacheKeyPrefix: string): Promise<
 /**
  * Warm doctor earnings cache
  */
-async function warmDoctorEarnings(doctorId: number, cacheKeyPrefix: string): Promise<void> {
+async function warmDoctorEarnings(doctorId: number): Promise<void> {
   try {
     // Fetch earnings data (simplified version for warming)
     const [paidPayments, pendingPayments] = await Promise.all([
@@ -231,7 +222,7 @@ async function warmDoctorEarnings(doctorId: number, cacheKeyPrefix: string): Pro
       createdAt: p.createdAt,
     }));
 
-    const cacheKey = `doctor:earnings:${cacheKeyPrefix}`;
+    const cacheKey = CACHE_KEYS.DOCTOR_SCOPED('doctor:earnings', doctorId);
     await cacheUtils.set(cacheKey, {
       payments: simplified,
       earnings: {
@@ -250,91 +241,3 @@ async function warmDoctorEarnings(doctorId: number, cacheKeyPrefix: string): Pro
     console.error('[CACHE-WARMING] Error warming earnings:', error);
   }
 }
-
-/**
- * Warm cache for a specific appointment (called after appointment creation/update)
- */
-export async function warmAppointmentCache(appointmentId: number, doctorId: number): Promise<void> {
-  try {
-    const appointment = await prisma.appointment.findFirst({
-      where: {
-        id: appointmentId,
-        userId: doctorId,
-        deletedAt: null,
-      },
-      include: {
-        patient: { select: { name: true, id: true, phoneNumber: true } },
-        payment: { select: { paymentMethod: true, paymentStatus: true, amount: true } },
-        doctorAvailability: { select: { date: true, startTime: true, endTime: true } },
-        prescription: { select: { id: true, prescriptionNumber: true } },
-      },
-    });
-
-    if (!appointment) return;
-
-    const appointmentCount = await prisma.appointment.count({
-      where: {
-        userId: doctorId,
-        patientId: appointment.patientId,
-        deletedAt: null,
-      },
-    });
-
-    const transformedAppointment = {
-      id: appointment.id,
-      patientName: appointment.patient.name,
-      patientId: appointment.patient.id,
-      date: appointment.doctorAvailability?.date,
-      startTime: appointment.doctorAvailability?.startTime,
-      endTime: appointment.doctorAvailability?.endTime,
-      status: appointment.status,
-      paymentType: appointment.payment?.paymentMethod || null,
-      paymentStatus: appointment.payment?.paymentStatus || null,
-      paymentAmount: appointment.payment?.amount || null,
-      consultationType: appointment.consultationType,
-      isFirst: appointmentCount === 1,
-      prescriptionLink: appointment.prescriptionLink || undefined,
-      prescriptionId: appointment.prescription?.id || null,
-      prescriptionNumber: appointment.prescription?.prescriptionNumber || null,
-    };
-
-    const cacheKey = `doctor:appointments:${appointmentId}`;
-    await cacheUtils.set(cacheKey, transformedAppointment, CACHE_TTL.DOCTOR_APPOINTMENTS);
-
-    console.log(`[CACHE-WARMING] Warmed appointment cache for ${appointmentId}`);
-  } catch (error) {
-    console.error('[CACHE-WARMING] Error warming appointment cache:', error);
-  }
-}
-
-/**
- * Warm related caches after a successful cache miss
- * This is called from the cache middleware to proactively warm related data
- */
-export async function warmRelatedCaches(
-  endpoint: string,
-  doctorIdentifier: string | null,
-  data: any
-): Promise<void> {
-  if (!doctorIdentifier) return;
-
-  try {
-    // If we just fetched appointments/all, warm individual appointment caches
-    if (endpoint.includes('/appointments/all') && data?.upcoming) {
-      const topAppointments = data.upcoming.slice(0, 5);
-      for (const appt of topAppointments) {
-        if (appt.id) {
-          const cacheKey = `doctor:appointments:${appt.id}`;
-          await cacheUtils.set(cacheKey, appt, CACHE_TTL.DOCTOR_APPOINTMENTS);
-        }
-      }
-    }
-  } catch (error) {
-    console.error('[CACHE-WARMING] Error warming related caches:', error);
-    // Don't throw - this is best effort
-  }
-}
-
-
-
-

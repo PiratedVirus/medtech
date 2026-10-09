@@ -3,9 +3,15 @@ import { groqLimiter } from './limiter';
 import { getActiveProductionProfile } from './profile-service';
 
 // Configuration
-const GROQ_SUMMARY_MODEL = process.env.GROQ_SUMMARY_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct';
-const GROQ_VALUES_MODEL = process.env.GROQ_VALUES_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct';
+// Groq retires models over time (llama-4-scout is gone); this is the default and the
+// fallback used when a configured model (env var or DB production profile) no longer exists
+export const GROQ_DEFAULT_MODEL = 'openai/gpt-oss-120b';
+const GROQ_SUMMARY_MODEL = process.env.GROQ_SUMMARY_MODEL || GROQ_DEFAULT_MODEL;
+const GROQ_VALUES_MODEL = process.env.GROQ_VALUES_MODEL || GROQ_DEFAULT_MODEL;
+// gpt-oss models spend part of max_tokens on reasoning before the JSON answer
+const REASONING_MIN_TOKENS = 4096;
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 const MAX_PDF_MB = Number(process.env.OPENROUTER_MAX_PDF_MB ?? 10);
 const MAX_TEXT_TOKENS = 8000;
 
@@ -93,6 +99,145 @@ function tryParseLooseJson(jsonLike: string): any | null {
   }
 }
 
+function makeUtcDate(year: number, month: number, day: number): Date | null {
+  if (year < 2000 || year > 2100) return null;
+  if (month < 1 || month > 12) return null;
+  if (day < 1 || day > 31) return null;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (Number.isNaN(date.getTime())) return null;
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return date;
+}
+
+function parseDateCandidate(raw: string): Date | null {
+  const value = raw.trim().replace(/,/g, ' ').replace(/\s+/g, ' ');
+  if (!value) return null;
+
+  // YYYY-MM-DD / YYYY/MM/DD / YYYY.MM.DD
+  let m = value.match(/^(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})$/);
+  if (m) {
+    return makeUtcDate(Number(m[1]), Number(m[2]), Number(m[3]));
+  }
+
+  // DD-MM-YYYY / MM-DD-YYYY (favor DD-MM-YYYY when ambiguous)
+  m = value.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
+  if (m) {
+    const a = Number(m[1]);
+    const b = Number(m[2]);
+    let year = Number(m[3]);
+    if (year < 100) year += 2000;
+    if (a > 12) return makeUtcDate(year, b, a); // clearly DMY
+    if (b > 12) return makeUtcDate(year, a, b); // clearly MDY
+    return makeUtcDate(year, b, a); // ambiguous; default DMY
+  }
+
+  const monthMap: Record<string, number> = {
+    jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+    jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+  };
+
+  // DD Mon YYYY
+  m = value.match(/^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{2,4})$/);
+  if (m) {
+    const day = Number(m[1]);
+    const month = monthMap[m[2].slice(0, 3).toLowerCase()];
+    let year = Number(m[3]);
+    if (year < 100) year += 2000;
+    if (!month) return null;
+    return makeUtcDate(year, month, day);
+  }
+
+  // Mon DD YYYY
+  m = value.match(/^([A-Za-z]{3,9})\s+(\d{1,2})\s+(\d{2,4})$/);
+  if (m) {
+    const month = monthMap[m[1].slice(0, 3).toLowerCase()];
+    const day = Number(m[2]);
+    let year = Number(m[3]);
+    if (year < 100) year += 2000;
+    if (!month) return null;
+    return makeUtcDate(year, month, day);
+  }
+
+  const nativeParsed = new Date(value);
+  if (!Number.isNaN(nativeParsed.getTime())) {
+    return makeUtcDate(
+      nativeParsed.getUTCFullYear(),
+      nativeParsed.getUTCMonth() + 1,
+      nativeParsed.getUTCDate()
+    );
+  }
+
+  return null;
+}
+
+function parseDateToIso(raw: string): string | undefined {
+  const parsed = parseDateCandidate(raw);
+  return parsed ? parsed.toISOString() : undefined;
+}
+
+function extractDateFromOcrText(text: string): string | undefined {
+  if (!text) return undefined;
+  const normalized = text.replace(/\r/g, '\n').replace(/\s+/g, ' ').trim();
+  if (!normalized) return undefined;
+
+  const labels = [
+    'sample\\s*collection\\s*date',
+    'sample\\s*collected',
+    'collection\\s*date',
+    'date\\s*of\\s*collection',
+    'sample\\s*date',
+    'specimen\\s*collected',
+    'collected\\s*on',
+    'collected',
+    'drawn\\s*on',
+    'report\\s*date',
+    'date\\s*of\\s*report',
+    'reporting\\s*date',
+    'reported\\s*on',
+    'reported',
+    'test\\s*date',
+    'date\\s*of\\s*test',
+    'received\\s*on',
+    'received',
+    'registered',
+    'registration\\s*date',
+  ];
+
+  const numericDatePattern = '(\\d{4}[\\/.\\-]\\d{1,2}[\\/.\\-]\\d{1,2}|\\d{1,2}[\\/.\\-]\\d{1,2}[\\/.\\-]\\d{2,4})';
+  const namedDatePattern = '((?:\\d{1,2}\\s+[A-Za-z]{3,9}\\s+\\d{2,4})|(?:[A-Za-z]{3,9}\\s+\\d{1,2}\\s+\\d{2,4}))';
+
+  for (const label of labels) {
+    const numeric = new RegExp(`${label}[\\s:\\-]{0,20}${numericDatePattern}`, 'i');
+    const numericMatch = normalized.match(numeric);
+    if (numericMatch?.[1]) {
+      const iso = parseDateToIso(numericMatch[1]);
+      if (iso) return iso;
+    }
+
+    const named = new RegExp(`${label}[\\s:\\-]{0,20}${namedDatePattern}`, 'i');
+    const namedMatch = normalized.match(named);
+    if (namedMatch?.[1]) {
+      const iso = parseDateToIso(namedMatch[1]);
+      if (iso) return iso;
+    }
+  }
+
+  const globalNumeric = new RegExp(numericDatePattern, 'g');
+  let match: RegExpExecArray | null;
+  while ((match = globalNumeric.exec(normalized)) !== null) {
+    const iso = parseDateToIso(match[1]);
+    if (iso) return iso;
+  }
+
+  const globalNamed = new RegExp(namedDatePattern, 'g');
+  while ((match = globalNamed.exec(normalized)) !== null) {
+    const iso = parseDateToIso(match[1]);
+    if (iso) return iso;
+  }
+
+  return undefined;
+}
+
 // PDF Text Extraction
 export async function extractPdfText(pdfUrl: string): Promise<string> {
   console.log('[LLM-PROC][PDF] Using OCR (Google Vision) for PDF text extraction');
@@ -145,12 +290,18 @@ async function callGroqAPIWithProfile(
   
   messages.push({ role: 'user', content: userPrompt });
   
+  const isReasoningModel = model.startsWith('openai/gpt-oss');
+  if (isReasoningModel) {
+    maxTokens = Math.max(maxTokens, REASONING_MIN_TOKENS);
+  }
+
   const payload = {
     model,
     messages,
     max_tokens: maxTokens,
     temperature,
-    response_format: { type: 'json_object' }
+    response_format: { type: 'json_object' },
+    ...(isReasoningModel ? { reasoning_effort: 'low' } : {})
   };
 
   const inputTokens = estimateTokensFromText(systemPrompt ? `${systemPrompt}\n${userPrompt}` : userPrompt);
@@ -174,6 +325,12 @@ async function callGroqAPIWithProfile(
     if (response.status === 400 && errorText.includes('context_length_exceeded')) {
       throw new Error('CONTEXT_LENGTH_EXCEEDED: Text too long for this model. Please use text chunking.');
     }
+
+    // Configured model was retired/removed by Groq - retry once with the default model
+    if (response.status === 404 && errorText.includes('model_not_found') && model !== GROQ_DEFAULT_MODEL) {
+      console.warn(`[LLM-PROC] Groq model "${model}" not found, retrying with ${GROQ_DEFAULT_MODEL}. Update the LLM production profile / GROQ_*_MODEL env vars.`);
+      return callGroqAPIWithProfile(userPrompt, apiKey, GROQ_DEFAULT_MODEL, maxTokens, temperature, systemPrompt);
+    }
     
     throw new Error(`Groq API error: ${response.status} ${errorText}`);
   }
@@ -195,6 +352,71 @@ async function callGroqAPIWithProfile(
   }
   
   return content;
+}
+
+// OpenRouter call (used when the production profile's provider is 'openrouter', e.g. llama-4-scout,
+// which Groq retired). OpenRouter's llama hosts reject response_format, so the prompt alone asks for JSON.
+async function callOpenRouterAPI(
+  userPrompt: string,
+  model: string,
+  maxTokens: number,
+  temperature: number,
+  systemPrompt?: string
+): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY not configured');
+
+  const messages: Array<{ role: string; content: string }> = [];
+  if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+  messages.push({ role: 'user', content: userPrompt });
+
+  const response = await fetch(OPENROUTER_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+      'X-Title': 'CareDB Lab Report Processing'
+    },
+    body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature })
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenRouter API error: ${response.status} ${await response.text()}`);
+  }
+
+  const data = await response.json();
+  // A truncated answer is broken JSON - fail so the caller can fall back
+  if (data?.choices?.[0]?.finish_reason === 'length') {
+    throw new Error(`OpenRouter response truncated at max_tokens=${maxTokens}`);
+  }
+
+  const content = extractChatContent(data);
+  if (content.length < 50) {
+    throw new Error('POOR_QUALITY_RESPONSE: LLM returned response that is too short');
+  }
+  return content;
+}
+
+// Route a profile-driven call to its provider; if OpenRouter fails, fall back to Groq's default model
+async function callProfileLLM(
+  provider: string | null | undefined,
+  userPrompt: string,
+  groqApiKey: string,
+  model: string,
+  maxTokens: number,
+  temperature: number,
+  systemPrompt?: string
+): Promise<string> {
+  if (provider === 'openrouter') {
+    try {
+      return await callOpenRouterAPI(userPrompt, model, maxTokens, temperature, systemPrompt);
+    } catch (error) {
+      console.warn(`[LLM-PROC] OpenRouter (${model}) failed, falling back to Groq ${GROQ_DEFAULT_MODEL}:`, error instanceof Error ? error.message : error);
+      return callGroqAPIWithProfile(userPrompt, groqApiKey, GROQ_DEFAULT_MODEL, maxTokens, temperature, systemPrompt);
+    }
+  }
+  return callGroqAPIWithProfile(userPrompt, groqApiKey, model, maxTokens, temperature, systemPrompt);
 }
 
 // Summary Generation
@@ -255,10 +477,10 @@ ${finalText}`;
   const temperature = productionProfile?.temperature || 0.1;
   const maxTokens = productionProfile?.maxTokens || 1200;
 
-  console.log(`[LLM-PROC][SUMMARY] Using ${productionProfile ? 'production profile' : 'default settings'}: ${finalModel}`);
+  console.log(`[LLM-PROC][SUMMARY] Using ${productionProfile ? 'production profile' : 'default settings'}: ${productionProfile?.provider ?? 'groq'}/${finalModel}`);
 
   try {
-    const content = await callGroqAPIWithProfile(userPrompt, apiKey, finalModel, maxTokens, temperature, systemPrompt);
+    const content = await callProfileLLM(productionProfile?.provider, userPrompt, apiKey, finalModel, maxTokens, temperature, systemPrompt);
     const parsed = tryParseLooseJson(content);
     
     if (parsed && typeof parsed.summary === 'string') {
@@ -405,12 +627,12 @@ ${finalText}`;
   const temperature = productionProfile?.temperature || 0.1;
   const maxTokens = productionProfile?.maxTokens || 2500;
 
-  console.log(`[LLM-PROC][VALUES] Using ${productionProfile ? 'production profile' : 'default settings'}: ${finalModel}`);
+  console.log(`[LLM-PROC][VALUES] Using ${productionProfile ? 'production profile' : 'default settings'}: ${productionProfile?.provider ?? 'groq'}/${finalModel}`);
   console.log(`[LLM-PROC][VALUES] User prompt length: ${userPrompt.length}`);
   console.log(`[LLM-PROC][VALUES] System prompt length: ${systemPrompt.length}`);
 
   try {
-    const content = await callGroqAPIWithProfile(userPrompt, apiKey, finalModel, maxTokens, temperature, systemPrompt);
+    const content = await callProfileLLM(productionProfile?.provider, userPrompt, apiKey, finalModel, maxTokens, temperature, systemPrompt);
     const parsed = tryParseLooseJson(content);
 
     // DEBUG: Log what the LLM returned for report date and top-level keys
@@ -444,19 +666,27 @@ ${finalText}`;
         console.warn(`[LLM-PROC][VALUES] Warning: Extracted ${totalValues} values, which seems high. Please verify against original report.`);
       }
       
-      // Extract reportDate if present
+      // Extract reportDate from LLM output first, then hard-fallback to OCR text itself.
       let reportDate: string | undefined;
       if (parsed.reportDate != null && parsed.reportDate !== '' && String(parsed.reportDate).toLowerCase() !== 'null') {
         const rawReportDate = String(parsed.reportDate).trim();
-        const parsedDate = new Date(rawReportDate);
-        if (!isNaN(parsedDate.getTime())) {
-          reportDate = parsedDate.toISOString();
+        const parsedIso = parseDateToIso(rawReportDate);
+        if (parsedIso) {
+          reportDate = parsedIso;
           console.log(`[LLM-PROC][VALUES] Extracted report date: ${reportDate} (from LLM raw: "${rawReportDate}")`);
         } else {
           console.warn(`[LLM-PROC][VALUES] Could not parse report date (invalid): "${rawReportDate}"`);
         }
-      } else {
-        console.warn('[LLM-PROC][VALUES][DEBUG] reportDate missing or null from LLM – UI will show upload date as fallback.');
+      }
+
+      if (!reportDate) {
+        const ocrExtractedDate = extractDateFromOcrText(finalText);
+        if (ocrExtractedDate) {
+          reportDate = ocrExtractedDate;
+          console.log(`[LLM-PROC][VALUES][DEBUG] Recovered report date from OCR text: ${reportDate}`);
+        } else {
+          console.warn('[LLM-PROC][VALUES][DEBUG] No report date found in LLM response or OCR text – UI will show upload date as fallback.');
+        }
       }
 
       console.log(`[LLM-PROC][VALUES] Extracted ${allValues.length} all values and ${criticalValues.length} critical values`);

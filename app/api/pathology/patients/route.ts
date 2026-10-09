@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
+import { tokenUserWhere } from "@/lib/clinic-auth";
 
 export async function GET(request: Request) {
   try {
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
     const user = await prisma.user.findFirst({
-      where: { phoneNumber },
+      where: await tokenUserWhere(decoded),
     });
     if (!user || user.role !== "PATHOLOGY") {
       return new NextResponse("Unauthorized", { status: 401 });

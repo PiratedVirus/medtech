@@ -15,6 +15,7 @@ import jwt from 'jsonwebtoken';
 import prisma from '@/lib/prisma';
 import { extractSubdomain } from '@/lib/subdomain-utils';
 import { getClinicIdFromSubdomain } from '@/lib/clinic-context-middleware';
+import { tokenUserWhere } from '@/lib/clinic-auth';
 
 // Token payload interfaces
 export interface UserTokenPayload {
@@ -22,6 +23,7 @@ export interface UserTokenPayload {
   userExists: boolean;
   userRole?: string;
   clinicId?: number;  // Added for multi-tenancy
+  userId?: number;
   iat?: number;
   exp?: number;
 }
@@ -98,10 +100,7 @@ export async function verifyUserClinicAuth(request: NextRequest): Promise<Clinic
 
     // Get user from database to verify current clinic assignment
     const user = await prisma.user.findFirst({
-      where: {
-        phoneNumber,
-        deletedAt: null
-      },
+      where: await tokenUserWhere(decoded),
       select: {
         id: true,
         clinicId: true,
