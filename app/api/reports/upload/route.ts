@@ -1,8 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import prisma from '@/lib/prisma';
 import * as jose from 'jose';
 import { generateSummary, extractValues } from '@/lib/llm/unified-service';
 import { tokenUserWhere } from "@/lib/clinic-auth";
+
+// OCR + LLM processing runs after the response via after(); allow it the full time budget
+export const maxDuration = 300;
 
 // Parse a DD/MM/YYYY or DD-MM-YYYY date string (with optional time) into a Date object
 function parseDMYDate(dateStr: string): Date | null {
@@ -180,6 +183,7 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
         processingError: null
       }
     });
+    await prisma.standaloneReport.update({ where: { id: reportId }, data: { status: 'PROCESSING' } });
 
     // Get the report details
     const report = await prisma.standaloneReport.findUnique({
@@ -512,6 +516,7 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
       }
     }
 
+    await prisma.standaloneReport.update({ where: { id: reportId }, data: { status: 'COMPLETED' } });
     console.log(`[UPLOAD] Successfully processed report ${reportId}`);
     console.log(`[UPLOAD][${reportId}] Database update completed with:`, {
       allValues: Array.isArray(allValues) ? allValues.length : 'not array',
@@ -521,14 +526,19 @@ async function triggerLLMProcessing(reportId: number, analysisType: string) {
   } catch (error) {
     console.error(`[UPLOAD] Failed to process report ${reportId}:`, error);
     
-    // Update status to FAILED
-    await prisma.standaloneReportAnalysis.updateMany({
-      where: { reportId, analysisType },
-      data: { 
-        processingStatus: 'FAILED',
-        processingError: error instanceof Error ? error.message : 'Unknown error'
-      }
-    });
+    // Update status to FAILED (best effort - the DB itself may be what failed)
+    try {
+      await prisma.standaloneReportAnalysis.updateMany({
+        where: { reportId, analysisType },
+        data: { 
+          processingStatus: 'FAILED',
+          processingError: error instanceof Error ? error.message : 'Unknown error'
+        }
+      });
+      await prisma.standaloneReport.update({ where: { id: reportId }, data: { status: 'FAILED' } });
+    } catch (statusError) {
+      console.error(`[UPLOAD] Failed to mark report ${reportId} as FAILED:`, statusError);
+    }
     
     throw error;
   }
@@ -679,26 +689,14 @@ export async function POST(request: NextRequest) {
         siteUrl: process.env.NEXT_PUBLIC_SITE_URL
       });
       
-      triggerLLMProcessing(report.id, 'lab_analysis')
-        .then(() => {
-          console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for report ${report.id}`);
+      // after(): Vercel freezes the function once the response is sent, so plain
+      // fire-and-forget work stalls until another request wakes the instance.
+      // triggerLLMProcessing marks the report FAILED itself on error.
+      after(() =>
+        triggerLLMProcessing(report.id, 'lab_analysis').catch((error) => {
+          console.error(`[UPLOAD][${requestId}] LLM processing failed for report ${report.id}:`, error);
         })
-        .catch(async (error) => {
-          console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for report ${report.id}:`, {
-            error,
-            message: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined
-          });
-
-          // Update the analysis record with the error
-          await prisma.standaloneReportAnalysis.updateMany({
-            where: { reportId: report.id, analysisType: 'lab_analysis' },
-            data: {
-              processingStatus: 'FAILED',
-              processingError: `LLM processing trigger failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-            }
-          });
-        });
+      );
     } else if (reportType === 'prescription') {
       console.log(`[UPLOAD][${requestId}] Creating prescription analysis record...`);
       await prisma.standaloneReportAnalysis.create({
@@ -711,13 +709,12 @@ export async function POST(request: NextRequest) {
 
       // Trigger automatic LLM processing for prescriptions
       console.log(`[UPLOAD][${requestId}] Triggering LLM processing for prescription ${report.id}...`);
-      triggerLLMProcessing(report.id, 'prescription_analysis')
-        .then(() => {
-          console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for prescription ${report.id}`);
+      // Run after the response (see lab_report branch above)
+      after(() =>
+        triggerLLMProcessing(report.id, 'prescription_analysis').catch((error) => {
+          console.error(`[UPLOAD][${requestId}] LLM processing failed for prescription ${report.id}:`, error);
         })
-        .catch((error) => {
-          console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for prescription ${report.id}:`, error);
-        });
+      );
     } else {
       console.log(`[UPLOAD][${requestId}] Creating document summary analysis record...`);
       await prisma.standaloneReportAnalysis.create({
@@ -730,13 +727,12 @@ export async function POST(request: NextRequest) {
 
       // Trigger automatic LLM processing for medical documents
       console.log(`[UPLOAD][${requestId}] Triggering LLM processing for document ${report.id}...`);
-      triggerLLMProcessing(report.id, 'document_summary')
-        .then(() => {
-          console.log(`[UPLOAD][${requestId}] LLM processing triggered successfully for document ${report.id}`);
+      // Run after the response (see lab_report branch above)
+      after(() =>
+        triggerLLMProcessing(report.id, 'document_summary').catch((error) => {
+          console.error(`[UPLOAD][${requestId}] LLM processing failed for document ${report.id}:`, error);
         })
-        .catch((error) => {
-          console.error(`[UPLOAD][${requestId}] Failed to trigger LLM processing for document ${report.id}:`, error);
-        });
+      );
     }
 
     console.log(`[UPLOAD][${requestId}] Upload process completed successfully for report ${report.id}`);

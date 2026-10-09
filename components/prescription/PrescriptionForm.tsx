@@ -1177,6 +1177,8 @@ export default function PrescriptionForm({
         ...prescriptionData.medicines,
         ...(voiceData.medicines || []).map((medicine: any) => ({
           ...medicine,
+          // LLM returns duration as a number; the form and DB store it as text
+          duration: medicine.duration != null ? String(medicine.duration) : "",
           id: Date.now().toString() + Math.random().toString(36).slice(2),
         }))
       ],
