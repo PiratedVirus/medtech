@@ -11,6 +11,7 @@ const GROQ_VALUES_MODEL = process.env.GROQ_VALUES_MODEL || GROQ_DEFAULT_MODEL;
 // gpt-oss models spend part of max_tokens on reasoning before the JSON answer
 const REASONING_MIN_TOKENS = 4096;
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 const MAX_PDF_MB = Number(process.env.OPENROUTER_MAX_PDF_MB ?? 10);
 const MAX_TEXT_TOKENS = 8000;
 
@@ -353,6 +354,71 @@ async function callGroqAPIWithProfile(
   return content;
 }
 
+// OpenRouter call (used when the production profile's provider is 'openrouter', e.g. llama-4-scout,
+// which Groq retired). OpenRouter's llama hosts reject response_format, so the prompt alone asks for JSON.
+async function callOpenRouterAPI(
+  userPrompt: string,
+  model: string,
+  maxTokens: number,
+  temperature: number,
+  systemPrompt?: string
+): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY not configured');
+
+  const messages: Array<{ role: string; content: string }> = [];
+  if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+  messages.push({ role: 'user', content: userPrompt });
+
+  const response = await fetch(OPENROUTER_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+      'X-Title': 'CareDB Lab Report Processing'
+    },
+    body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature })
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenRouter API error: ${response.status} ${await response.text()}`);
+  }
+
+  const data = await response.json();
+  // A truncated answer is broken JSON - fail so the caller can fall back
+  if (data?.choices?.[0]?.finish_reason === 'length') {
+    throw new Error(`OpenRouter response truncated at max_tokens=${maxTokens}`);
+  }
+
+  const content = extractChatContent(data);
+  if (content.length < 50) {
+    throw new Error('POOR_QUALITY_RESPONSE: LLM returned response that is too short');
+  }
+  return content;
+}
+
+// Route a profile-driven call to its provider; if OpenRouter fails, fall back to Groq's default model
+async function callProfileLLM(
+  provider: string | null | undefined,
+  userPrompt: string,
+  groqApiKey: string,
+  model: string,
+  maxTokens: number,
+  temperature: number,
+  systemPrompt?: string
+): Promise<string> {
+  if (provider === 'openrouter') {
+    try {
+      return await callOpenRouterAPI(userPrompt, model, maxTokens, temperature, systemPrompt);
+    } catch (error) {
+      console.warn(`[LLM-PROC] OpenRouter (${model}) failed, falling back to Groq ${GROQ_DEFAULT_MODEL}:`, error instanceof Error ? error.message : error);
+      return callGroqAPIWithProfile(userPrompt, groqApiKey, GROQ_DEFAULT_MODEL, maxTokens, temperature, systemPrompt);
+    }
+  }
+  return callGroqAPIWithProfile(userPrompt, groqApiKey, model, maxTokens, temperature, systemPrompt);
+}
+
 // Summary Generation
 export async function generateSummary(
   text: string, 
@@ -411,10 +477,10 @@ ${finalText}`;
   const temperature = productionProfile?.temperature || 0.1;
   const maxTokens = productionProfile?.maxTokens || 1200;
 
-  console.log(`[LLM-PROC][SUMMARY] Using ${productionProfile ? 'production profile' : 'default settings'}: ${finalModel}`);
+  console.log(`[LLM-PROC][SUMMARY] Using ${productionProfile ? 'production profile' : 'default settings'}: ${productionProfile?.provider ?? 'groq'}/${finalModel}`);
 
   try {
-    const content = await callGroqAPIWithProfile(userPrompt, apiKey, finalModel, maxTokens, temperature, systemPrompt);
+    const content = await callProfileLLM(productionProfile?.provider, userPrompt, apiKey, finalModel, maxTokens, temperature, systemPrompt);
     const parsed = tryParseLooseJson(content);
     
     if (parsed && typeof parsed.summary === 'string') {
@@ -561,12 +627,12 @@ ${finalText}`;
   const temperature = productionProfile?.temperature || 0.1;
   const maxTokens = productionProfile?.maxTokens || 2500;
 
-  console.log(`[LLM-PROC][VALUES] Using ${productionProfile ? 'production profile' : 'default settings'}: ${finalModel}`);
+  console.log(`[LLM-PROC][VALUES] Using ${productionProfile ? 'production profile' : 'default settings'}: ${productionProfile?.provider ?? 'groq'}/${finalModel}`);
   console.log(`[LLM-PROC][VALUES] User prompt length: ${userPrompt.length}`);
   console.log(`[LLM-PROC][VALUES] System prompt length: ${systemPrompt.length}`);
 
   try {
-    const content = await callGroqAPIWithProfile(userPrompt, apiKey, finalModel, maxTokens, temperature, systemPrompt);
+    const content = await callProfileLLM(productionProfile?.provider, userPrompt, apiKey, finalModel, maxTokens, temperature, systemPrompt);
     const parsed = tryParseLooseJson(content);
 
     // DEBUG: Log what the LLM returned for report date and top-level keys
